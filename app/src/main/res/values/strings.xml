@@ -1,3 +1,18 @@
 <resources>
     <string name="app_name">Q</string>
+    <string name="title_activity_main">Q</string>
+
+
+    <string name="drawer_open">Open</string>
+    <string name="drawer_close">Close</string>
+
+
+    <string name="nav_header_desc">Q - Queue oriented player</string>
+
+    <string name="nav_artist">Artists</string>
+    <string name="nav_album">Albums</string>
+    <string name="nav_song">Songs</string>
+    <string name="nav_genre">Genres</string>
+    <string name="nav_playlist">Playlist</string>
+    <string name="nav_setting">Settings</string>
 </resources>
