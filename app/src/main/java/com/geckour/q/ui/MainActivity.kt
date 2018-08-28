@@ -4,7 +4,6 @@ import android.databinding.DataBindingUtil
 import android.os.Bundle
 import android.support.v7.app.ActionBarDrawerToggle
 import android.support.v7.app.AppCompatActivity
-import android.view.View
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivityMainBinding
 
@@ -23,15 +22,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupDrawer() {
-        drawerToggle = object : ActionBarDrawerToggle(this,
+        drawerToggle = ActionBarDrawerToggle(this,
                 binding.drawerLayout, binding.appBarMain.toolbar,
-                R.string.drawer_open, R.string.drawer_close) {
-            override fun onDrawerOpened(drawerView: View) {
-                super.onDrawerOpened(drawerView)
-
-                supportInvalidateOptionsMenu()
-            }
-        }
+                R.string.drawer_open, R.string.drawer_close)
         binding.drawerLayout.addDrawerListener(drawerToggle)
         drawerToggle.syncState()
         binding.drawerLayout

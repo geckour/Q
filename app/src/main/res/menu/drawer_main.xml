@@ -24,8 +24,13 @@
             android:title="@string/nav_playlist" />
     </group>
 
-    <item
-        android:id="@+id/nav_setting"
-        android:icon="@drawable/ic_setting"
-        android:title="@string/nav_setting" />
+    <item android:title="@string/nav_category_others">
+        <menu>
+            <item
+                android:id="@+id/nav_setting"
+                android:icon="@drawable/ic_setting"
+                android:title="@string/nav_setting" />
+        </menu>
+    </item>
+
 </menu>

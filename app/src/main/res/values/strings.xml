@@ -9,6 +9,8 @@
 
     <string name="nav_header_desc">Q - Queue oriented player</string>
 
+    <string name="nav_category_others">Others</string>
+
     <string name="nav_artist">Artists</string>
     <string name="nav_album">Albums</string>
     <string name="nav_song">Songs</string>

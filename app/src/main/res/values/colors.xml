@@ -5,4 +5,8 @@
     <color name="colorAccent">#f095ad</color>
 
     <color name="colorDrawerHeaderBg">#f8f8f8</color>
+
+    <color name="colorTextPrimary">#a0000000</color>
+
+    <color name="colorTintOption">#808080</color>
 </resources>
