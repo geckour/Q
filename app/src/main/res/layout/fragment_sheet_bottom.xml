@@ -66,14 +66,15 @@
             app:layout_constraintRight_toRightOf="parent" />
 
         <ImageView
-            android:layout_width="20dp"
-            android:layout_height="20dp"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
             android:layout_marginRight="8dp"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="4dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:onClick="@{() -> viewModel.onClickQueueButton()}"
+            android:padding="4dp"
             android:src="@drawable/ic_queue"
             android:tint="@color/colorAccent"
-            android:onClick="@{() -> viewModel.onClickQueueButton()}"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 

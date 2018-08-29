@@ -27,6 +27,15 @@ class BottomSheetFragment : Fragment() {
 
         binding.viewModel = viewModel
         behavior = BottomSheetBehavior.from(bottom_sheet.view)
+        behavior.setBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback() {
+            override fun onSlide(v: View, dy: Float) {
+            }
+
+            override fun onStateChanged(v: View, state: Int) {
+                viewModel.sheetState.value = state
+            }
+
+        })
         observeEvents()
     }
 
