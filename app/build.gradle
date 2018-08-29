@@ -28,15 +28,31 @@ android {
 
 dependencies {
     def support_ver = '28.0.0-rc01'
+    def permission_dispatcher_ver = '3.3.1'
+    def aac_ver = '1.1.1'
+
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'com.android.support.constraint:constraint-layout:1.1.2'
     implementation "com.android.support:support-core-ui:$support_ver"
+    implementation "com.android.support:support-media-compat:$support_ver"
+    implementation "com.android.support:support-v13:$support_ver"
     implementation "com.android.support:design:$support_ver"
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'com.android.support.test:runner:1.0.2'
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
 
+    // Logging
+    implementation 'com.jakewharton.timber:timber:4.7.1'
+
+    // AAC
+    implementation "android.arch.lifecycle:extensions:$aac_ver"
+    implementation "android.arch.lifecycle:viewmodel:$aac_ver"
+
     // Data Binding
     kapt 'com.android.databinding:compiler:3.1.4'
+
+    // Permission
+    implementation "com.github.hotchemi:permissionsdispatcher:$permission_dispatcher_ver"
+    kapt "com.github.hotchemi:permissionsdispatcher-processor:$permission_dispatcher_ver"
 }
