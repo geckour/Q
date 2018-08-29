@@ -66,6 +66,7 @@
             app:layout_constraintRight_toRightOf="parent" />
 
         <ImageView
+            android:id="@+id/button_toggle_visible_queue"
             android:layout_width="28dp"
             android:layout_height="28dp"
             android:layout_marginRight="8dp"

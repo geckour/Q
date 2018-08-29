@@ -7,6 +7,7 @@ import android.support.v4.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import com.geckour.q.R
 import com.geckour.q.databinding.FragmentSheetBottomBinding
 import kotlinx.android.synthetic.main.app_bar_main.*
 
@@ -43,6 +44,12 @@ class BottomSheetFragment : Fragment() {
         viewModel.sheetState.observe(this, Observer {
             if (it == null) return@Observer
             behavior.state = it
+            binding.buttonToggleVisibleQueue.setImageResource(
+                    when (it) {
+                        BottomSheetBehavior.STATE_EXPANDED -> R.drawable.ic_collapse
+                        else -> R.drawable.ic_queue
+                    }
+            )
         })
     }
 }
