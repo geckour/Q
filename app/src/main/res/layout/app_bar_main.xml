@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
     <android.support.design.widget.CoordinatorLayout
@@ -22,5 +23,21 @@
         <include
             android:id="@+id/content_main"
             layout="@layout/content_main" />
+
+        <fragment
+            android:id="@+id/bottom_sheet"
+            android:name="com.geckour.q.ui.sheet.BottomSheetFragment"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="bottom"
+            android:layout_marginBottom="20dp"
+            android:nestedScrollingEnabled="false"
+            android:orientation="vertical"
+            android:scrollbarStyle="outsideOverlay"
+            android:scrollbars="vertical"
+            app:behavior_peekHeight="88dp"
+            app:layoutManager="LinearLayoutManager"
+            app:layout_behavior="BottomSheetBehavior"
+            tools:layout="@layout/fragment_sheet_bottom" />
     </android.support.design.widget.CoordinatorLayout>
 </layout>

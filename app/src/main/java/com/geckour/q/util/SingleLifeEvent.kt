@@ -6,7 +6,7 @@ import android.arch.lifecycle.Observer
 import android.support.annotation.MainThread
 import java.util.concurrent.atomic.AtomicBoolean
 
-class SingleLiveEvent<T> : MutableLiveData<T>() {
+class SingleLifeEvent<T> : MutableLiveData<T>() {
 
     private val pending = AtomicBoolean(false)
     private val observers = mutableSetOf<Observer<T>>()
