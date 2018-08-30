@@ -10,7 +10,10 @@ import com.geckour.q.R
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.ui.library.album.AlbumListFragment
 import com.geckour.q.ui.library.artist.ArtistListFragment
+import com.geckour.q.ui.library.artist.SongListFragment
+import com.geckour.q.util.ui
 import kotlinx.android.synthetic.main.activity_main.view.*
+import kotlinx.coroutines.experimental.Job
 
 class MainActivity : AppCompatActivity() {
 
@@ -19,6 +22,7 @@ class MainActivity : AppCompatActivity() {
     }
     internal lateinit var binding: ActivityMainBinding
     private lateinit var drawerToggle: ActionBarDrawerToggle
+    private val parentJob = Job()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,6 +56,15 @@ class MainActivity : AppCompatActivity() {
                     .commit()
             supportActionBar?.title = it.name
         })
+
+        viewModel.selectedAlbum.observe(this, Observer {
+            if (it == null) return@Observer
+            supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, SongListFragment.newInstance(it))
+                    .addToBackStack(null)
+                    .commit()
+            supportActionBar?.title = it.name
+        })
     }
 
     private fun setupDrawer() {
@@ -75,6 +88,10 @@ class MainActivity : AppCompatActivity() {
                             .commit()
                 }
                 R.id.nav_song -> {
+                    supportFragmentManager.beginTransaction()
+                            .replace(R.id.fragment_container, SongListFragment.newInstance())
+                            .addToBackStack(null)
+                            .commit()
                 }
                 R.id.nav_genre -> {
                 }
@@ -83,6 +100,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_setting -> {
                 }
             }
+            ui(parentJob) { binding.drawerLayout.closeDrawers() }
             true
         }
     }
