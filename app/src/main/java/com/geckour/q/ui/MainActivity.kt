@@ -44,8 +44,22 @@ class MainActivity : AppCompatActivity() {
         viewModel.selectedNavId.observe(this, Observer {
             if (it == null) return@Observer
             binding.navigationView.navigation_view.setCheckedItem(it)
-            if (it == R.id.nav_artist)
-                supportActionBar?.title = getString(R.string.nav_artist)
+            when (it) {
+                R.id.nav_artist -> supportActionBar?.title = getString(R.string.nav_artist)
+                R.id.nav_album -> {
+                    if (viewModel.selectedArtist.value == null)
+                        supportActionBar?.title = getString(R.string.nav_album)
+                }
+                R.id.nav_song -> {
+                    if (viewModel.selectedAlbum.value == null)
+                        supportActionBar?.title = getString(R.string.nav_song)
+                }
+                R.id.nav_genre -> supportActionBar?.title = getString(R.string.nav_genre)
+                R.id.nav_playlist -> supportActionBar?.title = getString(R.string.nav_playlist)
+                R.id.nav_setting -> supportActionBar?.title = getString(R.string.nav_setting)
+                else -> R.string.app_name
+            }
+
         })
 
         viewModel.selectedArtist.observe(this, Observer {

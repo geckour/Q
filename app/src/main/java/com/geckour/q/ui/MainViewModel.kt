@@ -18,14 +18,20 @@ class MainViewModel : ViewModel() {
     }
 
     fun onRequestNavigate(artist: Artist) {
+        selectedAlbum.value = null
+        selectedSong.value = null
         selectedArtist.value = artist
     }
 
     fun onRequestNavigate(album: Album) {
+        selectedArtist.value = null
+        selectedSong.value = null
         selectedAlbum.value = album
     }
 
     fun onRequestNavigate(song: Song) {
+        selectedArtist.value = null
+        selectedAlbum.value = null
         selectedSong.value = song
     }
 }

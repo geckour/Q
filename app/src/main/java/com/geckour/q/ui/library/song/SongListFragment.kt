@@ -46,7 +46,7 @@ class SongListFragment : Fragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
-        mainViewModel.onFragmentInflated(R.id.nav_artist)
+        mainViewModel.onFragmentInflated(R.id.nav_song)
         adapter = SongListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
         arguments?.getParcelable<Album>(ARGS_KEY_ALBUM).apply {
