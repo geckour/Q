@@ -14,7 +14,6 @@ import kotlinx.android.synthetic.main.activity_main.view.*
 
 class MainActivity : AppCompatActivity() {
 
-
     private val viewModel: MainViewModel by lazy {
         ViewModelProviders.of(this)[MainViewModel::class.java]
     }
@@ -41,6 +40,8 @@ class MainActivity : AppCompatActivity() {
         viewModel.selectedNavId.observe(this, Observer {
             if (it == null) return@Observer
             binding.navigationView.navigation_view.setCheckedItem(it)
+            if (it == R.id.nav_artist)
+                supportActionBar?.title = getString(R.string.nav_artist)
         })
 
         viewModel.selectedArtist.observe(this, Observer {
@@ -49,6 +50,7 @@ class MainActivity : AppCompatActivity() {
                     .replace(R.id.fragment_container, AlbumListFragment.newInstance(it))
                     .addToBackStack(null)
                     .commit()
+            supportActionBar?.title = it.name
         })
     }
 
@@ -58,6 +60,30 @@ class MainActivity : AppCompatActivity() {
                 R.string.drawer_open, R.string.drawer_close)
         binding.drawerLayout.addDrawerListener(drawerToggle)
         drawerToggle.syncState()
-        binding.drawerLayout
+        binding.navigationView.setNavigationItemSelectedListener {
+            when (it.itemId) {
+                R.id.nav_artist -> {
+                    supportFragmentManager.beginTransaction()
+                            .replace(R.id.fragment_container, ArtistListFragment.newInstance())
+                            .addToBackStack(null)
+                            .commit()
+                }
+                R.id.nav_album -> {
+                    supportFragmentManager.beginTransaction()
+                            .replace(R.id.fragment_container, AlbumListFragment.newInstance())
+                            .addToBackStack(null)
+                            .commit()
+                }
+                R.id.nav_song -> {
+                }
+                R.id.nav_genre -> {
+                }
+                R.id.nav_playlist -> {
+                }
+                R.id.nav_setting -> {
+                }
+            }
+            true
+        }
     }
 }

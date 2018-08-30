@@ -23,9 +23,11 @@ class AlbumListFragment : Fragment() {
 
     companion object {
         private const val ARGS_KEY_ARTIST = "args_key_artist"
-        fun newInstance(artist: Artist): AlbumListFragment = AlbumListFragment().apply {
-            arguments = Bundle().apply {
-                putParcelable(ARGS_KEY_ARTIST, artist)
+        fun newInstance(artist: Artist? = null): AlbumListFragment = AlbumListFragment().apply {
+            if (artist != null) {
+                arguments = Bundle().apply {
+                    putParcelable(ARGS_KEY_ARTIST, artist)
+                }
             }
         }
     }
@@ -50,7 +52,7 @@ class AlbumListFragment : Fragment() {
         mainViewModel.onFragmentInflated(R.id.nav_album)
         adapter = AlbumListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
-        arguments?.getParcelable<Artist>(ARGS_KEY_ARTIST)?.apply {
+        arguments?.getParcelable<Artist>(ARGS_KEY_ARTIST).apply {
             fetchAlbumsWithPermissionCheck(this)
         }
     }
@@ -67,13 +69,13 @@ class AlbumListFragment : Fragment() {
     }
 
     @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
-    internal fun fetchAlbums(artist: Artist) {
+    internal fun fetchAlbums(artist: Artist?) {
         requireActivity().contentResolver.query(MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
                 arrayOf(MediaStore.Audio.Albums._ID,
                         MediaStore.Audio.Albums.ALBUM,
                         MediaStore.Audio.Albums.ARTIST),
-                "${MediaStore.Audio.Albums.ARTIST}=?",
-                arrayOf(artist.name),
+                if (artist == null) null else "${MediaStore.Audio.Albums.ARTIST}=?",
+                if (artist == null) null else arrayOf(artist.name),
                 null)?.apply {
             val list: ArrayList<Album> = ArrayList()
             while (moveToNext()) {
