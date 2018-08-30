@@ -8,6 +8,7 @@ import android.support.v7.app.ActionBarDrawerToggle
 import android.support.v7.app.AppCompatActivity
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivityMainBinding
+import com.geckour.q.ui.library.album.AlbumListFragment
 import com.geckour.q.ui.library.artist.ArtistListFragment
 import kotlinx.android.synthetic.main.activity_main.view.*
 
@@ -24,10 +25,11 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
 
-        setSupportActionBar(binding.appBarMain.toolbar)
+        setSupportActionBar(binding.coordinatorMain.contentMain.toolbar)
 
         setupDrawer()
 
+        // TODO: 設定画面でどの画面を初期画面にするか設定できるようにする
         supportFragmentManager.beginTransaction()
                 .add(R.id.fragment_container, ArtistListFragment.newInstance())
                 .commit()
@@ -40,11 +42,19 @@ class MainActivity : AppCompatActivity() {
             if (it == null) return@Observer
             binding.navigationView.navigation_view.setCheckedItem(it)
         })
+
+        viewModel.selectedArtist.observe(this, Observer {
+            if (it == null) return@Observer
+            supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, AlbumListFragment.newInstance(it))
+                    .addToBackStack(null)
+                    .commit()
+        })
     }
 
     private fun setupDrawer() {
         drawerToggle = ActionBarDrawerToggle(this,
-                binding.drawerLayout, binding.appBarMain.toolbar,
+                binding.drawerLayout, binding.coordinatorMain.contentMain.toolbar,
                 R.string.drawer_open, R.string.drawer_close)
         binding.drawerLayout.addDrawerListener(drawerToggle)
         drawerToggle.syncState()

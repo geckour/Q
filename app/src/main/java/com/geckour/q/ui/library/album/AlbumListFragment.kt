@@ -1,4 +1,4 @@
-package com.geckour.q.ui.library.artist
+package com.geckour.q.ui.library.album
 
 import android.Manifest
 import android.arch.lifecycle.ViewModelProviders
@@ -10,6 +10,7 @@ import android.view.View
 import android.view.ViewGroup
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentListLibraryBinding
+import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.MainViewModel
 import kotlinx.coroutines.experimental.Job
@@ -18,17 +19,22 @@ import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
 
 @RuntimePermissions
-class ArtistListFragment : Fragment() {
+class AlbumListFragment : Fragment() {
 
     companion object {
-        fun newInstance(): ArtistListFragment = ArtistListFragment()
+        private const val ARGS_KEY_ARTIST = "args_key_artist"
+        fun newInstance(artist: Artist): AlbumListFragment = AlbumListFragment().apply {
+            arguments = Bundle().apply {
+                putParcelable(ARGS_KEY_ARTIST, artist)
+            }
+        }
     }
 
     private val mainViewModel: MainViewModel by lazy {
         ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
     }
     private lateinit var binding: FragmentListLibraryBinding
-    private lateinit var adapter: ArtistListAdapter
+    private lateinit var adapter: AlbumListAdapter
 
     private val parentJob = Job()
 
@@ -41,10 +47,18 @@ class ArtistListFragment : Fragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
-        mainViewModel.onFragmentInflated(R.id.nav_artist)
-        adapter = ArtistListAdapter(mainViewModel)
+        mainViewModel.onFragmentInflated(R.id.nav_album)
+        adapter = AlbumListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
-        fetchArtistsWithPermissionCheck()
+        arguments?.getParcelable<Artist>(ARGS_KEY_ARTIST)?.apply {
+            fetchAlbumsWithPermissionCheck(this)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+
+        parentJob.cancel()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -53,26 +67,31 @@ class ArtistListFragment : Fragment() {
     }
 
     @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
-    internal fun fetchArtists() {
-        // アルバムアーティストで引っ張るために MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI を使う
+    internal fun fetchAlbums(artist: Artist) {
         requireActivity().contentResolver.query(MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
-                arrayOf(
-                        MediaStore.Audio.Albums.ARTIST,
-                        MediaStore.Audio.Albums._ID),
-                null, null, null)?.apply {
-            val list: ArrayList<Artist> = ArrayList()
+                arrayOf(MediaStore.Audio.Albums._ID,
+                        MediaStore.Audio.Albums.ALBUM,
+                        MediaStore.Audio.Albums.ARTIST),
+                "${MediaStore.Audio.Albums.ARTIST}=?",
+                arrayOf(artist.name),
+                null)?.apply {
+            val list: ArrayList<Album> = ArrayList()
             while (moveToNext()) {
-                val artist = Artist(
-                        getString(getColumnIndex(MediaStore.Audio.Albums.ARTIST)),
-                        getLong(getColumnIndex(MediaStore.Audio.Albums._ID)))
-                list.add(artist)
+                val album = Album(
+                        getLong(getColumnIndex(MediaStore.Audio.Albums._ID)),
+                        getString(getColumnIndex(MediaStore.Audio.Albums.ALBUM)),
+                        getString(getColumnIndex(MediaStore.Audio.Albums.ARTIST))
+                )
+                list.add(album)
             }
-            adapter.setItems(list.distinctBy { it.name }.sortedBy { it.name })
+            adapter.setItems(list.sortedBy { it.name })
         }
     }
 
     @OnPermissionDenied(Manifest.permission.READ_EXTERNAL_STORAGE)
     internal fun onReadExternalStorageDenied() {
-        fetchArtistsWithPermissionCheck()
+        arguments?.getParcelable<Artist>(ARGS_KEY_ARTIST)?.apply {
+            fetchAlbumsWithPermissionCheck(this)
+        }
     }
 }
