@@ -12,7 +12,6 @@ import com.geckour.q.R
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.MainViewModel
-import kotlinx.coroutines.experimental.Job
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
@@ -29,8 +28,6 @@ class ArtistListFragment : Fragment() {
     }
     private lateinit var binding: FragmentListLibraryBinding
     private lateinit var adapter: ArtistListAdapter
-
-    private val parentJob = Job()
 
     override fun onCreateView(inflater: LayoutInflater,
                               container: ViewGroup?, savedInstanceState: Bundle?): View? {

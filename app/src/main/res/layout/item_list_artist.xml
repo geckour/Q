@@ -8,17 +8,12 @@
         <variable
             name="data"
             type="com.geckour.q.domain.model.Artist" />
-
-        <variable
-            name="viewModel"
-            type="com.geckour.q.ui.library.artist.ArtistListViewModel" />
     </data>
 
     <android.support.constraint.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="?android:attr/selectableItemBackground"
-        android:onClick="@{() -> viewModel.onClickRoot(data)}">
+        android:background="?android:attr/selectableItemBackground">
 
         <ImageView
             android:id="@+id/thumb"

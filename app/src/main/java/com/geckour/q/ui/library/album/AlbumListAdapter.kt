@@ -57,7 +57,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             } catch (t: Throwable) {
                 Timber.e(t)
             }
-            binding.option.setOnClickListener { viewModel.onRequestNavigate(album) }
+            binding.root.setOnClickListener { viewModel.onRequestNavigate(album) }
         }
     }
 }

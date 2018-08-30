@@ -13,7 +13,6 @@ import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.MainViewModel
-import kotlinx.coroutines.experimental.Job
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
@@ -38,8 +37,6 @@ class AlbumListFragment : Fragment() {
     private lateinit var binding: FragmentListLibraryBinding
     private lateinit var adapter: AlbumListAdapter
 
-    private val parentJob = Job()
-
     override fun onCreateView(inflater: LayoutInflater,
                               container: ViewGroup?, savedInstanceState: Bundle?): View? {
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
@@ -55,12 +52,6 @@ class AlbumListFragment : Fragment() {
         arguments?.getParcelable<Artist>(ARGS_KEY_ARTIST).apply {
             fetchAlbumsWithPermissionCheck(this)
         }
-    }
-
-    override fun onPause() {
-        super.onPause()
-
-        parentJob.cancel()
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {

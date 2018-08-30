@@ -57,7 +57,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Ada
             } catch (t: Throwable) {
                 Timber.e(t)
             }
-            binding.option.setOnClickListener { viewModel.onRequestNavigate(artist) }
+            binding.root.setOnClickListener { viewModel.onRequestNavigate(artist) }
         }
     }
 }
