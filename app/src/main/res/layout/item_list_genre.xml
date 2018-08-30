@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools">
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools">
 
     <data>
 
         <variable
             name="data"
-            type="com.geckour.q.domain.model.Genre" />
+            type="com.geckour.q.domain.model.Genre"/>
     </data>
 
     <android.support.constraint.ConstraintLayout
@@ -30,13 +30,15 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:srcBitmap="@{data.thumb}"
-            tools:src="@tools:sample/avatars" />
+            tools:src="@tools:sample/avatars"/>
 
         <TextView
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginEnd="4dp"
             android:layout_marginStart="8dp"
+            android:ellipsize="end"
+            android:maxLines="1"
             android:text="@{data.name}"
             android:textColor="@color/colorTextPrimary"
             android:textSize="16sp"
@@ -44,7 +46,7 @@
             app:layout_constraintEnd_toStartOf="@id/option"
             app:layout_constraintStart_toStartOf="@id/thumb"
             app:layout_constraintTop_toTopOf="@id/option"
-            tools:text="ジャンル名" />
+            tools:text="ジャンル名"/>
 
         <ImageView
             android:id="@+id/option"
@@ -59,6 +61,6 @@
             android:tint="@color/colorTintOption"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="@id/thumb"
-            app:layout_constraintTop_toBottomOf="@id/thumb" />
+            app:layout_constraintTop_toBottomOf="@id/thumb"/>
     </android.support.constraint.ConstraintLayout>
 </layout>
