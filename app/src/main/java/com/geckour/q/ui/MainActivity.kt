@@ -40,6 +40,12 @@ class MainActivity : AppCompatActivity() {
         observeEvents()
     }
 
+    override fun onPause() {
+        super.onPause()
+
+        parentJob.cancel()
+    }
+
     private fun observeEvents() {
         viewModel.selectedNavId.observe(this, Observer {
             if (it == null) return@Observer
