@@ -1,10 +1,10 @@
 package com.geckour.q.domain.model
 
-import android.graphics.Bitmap
-
 data class Song(
         val id: Long,
-        val thumb: Bitmap?,
+        val albumId: Long,
         val name: String?,
-        val artist: String
+        val artist: String,
+        val duration: Float,
+        val trackNum: Int
 )

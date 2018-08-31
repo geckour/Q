@@ -6,7 +6,7 @@
 
     <color name="colorDrawerHeaderBg">#f8f8f8</color>
 
-    <color name="colorTextPrimary">#70000000</color>
+    <color name="colorTextPrimary">#c0160900</color>
 
-    <color name="colorTintOption">#808080</color>
+    <color name="colorTintOption">#707070</color>
 </resources>

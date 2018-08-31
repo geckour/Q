@@ -9,7 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentSheetBottomBinding
-import kotlinx.android.synthetic.main.app_bar_main.*
+import com.geckour.q.ui.MainActivity
 
 class BottomSheetFragment : Fragment() {
 
@@ -27,7 +27,10 @@ class BottomSheetFragment : Fragment() {
         super.onActivityCreated(savedInstanceState)
 
         binding.viewModel = viewModel
-        behavior = BottomSheetBehavior.from(bottom_sheet.view)
+
+        behavior = BottomSheetBehavior.from(
+                (requireActivity() as MainActivity).binding.root
+                        .findViewById<View>(R.id.bottom_sheet))
         behavior.setBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback() {
             override fun onSlide(v: View, dy: Float) {
             }
@@ -35,8 +38,8 @@ class BottomSheetFragment : Fragment() {
             override fun onStateChanged(v: View, state: Int) {
                 viewModel.sheetState.value = state
             }
-
         })
+
         observeEvents()
     }
 
