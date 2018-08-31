@@ -3,6 +3,7 @@ package com.geckour.q.ui
 import android.arch.lifecycle.ViewModel
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Artist
+import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Song
 import com.geckour.q.util.SingleLifeEvent
 
@@ -12,6 +13,7 @@ class MainViewModel : ViewModel() {
     internal val selectedArtist: SingleLifeEvent<Artist> = SingleLifeEvent()
     internal val selectedAlbum: SingleLifeEvent<Album> = SingleLifeEvent()
     internal val selectedSong: SingleLifeEvent<Song> = SingleLifeEvent()
+    internal val selectedGenre: SingleLifeEvent<Genre> = SingleLifeEvent()
 
     fun onFragmentInflated(navId: Int) {
         selectedNavId.value = navId
@@ -33,5 +35,11 @@ class MainViewModel : ViewModel() {
         selectedArtist.value = null
         selectedAlbum.value = null
         selectedSong.value = song
+    }
+
+    fun onRequestNavigate(genre: Genre) {
+        selectedArtist.value = null
+        selectedAlbum.value = null
+        selectedGenre.value = genre
     }
 }

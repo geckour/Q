@@ -10,7 +10,8 @@ import com.geckour.q.R
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.ui.library.album.AlbumListFragment
 import com.geckour.q.ui.library.artist.ArtistListFragment
-import com.geckour.q.ui.library.artist.SongListFragment
+import com.geckour.q.ui.library.genre.GenreListFragment
+import com.geckour.q.ui.library.song.SongListFragment
 import com.geckour.q.util.ui
 import kotlinx.android.synthetic.main.activity_main.view.*
 import kotlinx.coroutines.experimental.Job
@@ -85,6 +86,15 @@ class MainActivity : AppCompatActivity() {
                     .commit()
             supportActionBar?.title = it.name
         })
+
+        viewModel.selectedGenre.observe(this, Observer {
+            if (it == null) return@Observer
+            supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, SongListFragment.newInstance(it))
+                    .addToBackStack(null)
+                    .commit()
+            supportActionBar?.title = it.name
+        })
     }
 
     private fun setupDrawer() {
@@ -114,6 +124,10 @@ class MainActivity : AppCompatActivity() {
                             .commit()
                 }
                 R.id.nav_genre -> {
+                    supportFragmentManager.beginTransaction()
+                            .replace(R.id.fragment_container, GenreListFragment.newInstance())
+                            .addToBackStack(null)
+                            .commit()
                 }
                 R.id.nav_playlist -> {
                 }
