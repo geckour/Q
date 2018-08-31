@@ -5,9 +5,7 @@ import android.arch.lifecycle.ViewModelProviders
 import android.os.Bundle
 import android.provider.MediaStore
 import android.support.v4.app.Fragment
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Album
@@ -46,12 +44,32 @@ class AlbumListFragment : Fragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
+        setHasOptionsMenu(true)
+
         mainViewModel.onFragmentInflated(R.id.nav_album)
         adapter = AlbumListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
         arguments?.getParcelable<Artist>(ARGS_KEY_ARTIST).apply {
             fetchAlbumsWithPermissionCheck(this)
         }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
+        super.onCreateOptionsMenu(menu, inflater)
+
+        inflater?.inflate(R.menu.albums, menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
+        when (item?.itemId) {
+            R.id.menu_insert_all_first -> Unit
+            R.id.menu_insert_all_last -> Unit
+            R.id.menu_override_all -> Unit
+            R.id.menu_albums_insert_all_shuffle_first -> Unit
+            R.id.menu_albums_insert_all_shuffle_last -> Unit
+            R.id.menu_albums_override_all_shuffle -> Unit
+        }
+        return true
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {

@@ -5,9 +5,7 @@ import android.arch.lifecycle.ViewModelProviders
 import android.os.Bundle
 import android.provider.MediaStore
 import android.support.v4.app.Fragment
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Artist
@@ -15,6 +13,7 @@ import com.geckour.q.ui.MainViewModel
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
+import timber.log.Timber
 
 @RuntimePermissions
 class ArtistListFragment : Fragment() {
@@ -38,10 +37,30 @@ class ArtistListFragment : Fragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
+        setHasOptionsMenu(true)
+
         mainViewModel.onFragmentInflated(R.id.nav_artist)
         adapter = ArtistListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
         fetchArtistsWithPermissionCheck()
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
+        super.onCreateOptionsMenu(menu, inflater)
+
+        inflater?.inflate(R.menu.artists, menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
+        when (item?.itemId) {
+            R.id.menu_insert_all_first -> Unit
+            R.id.menu_insert_all_last -> Unit
+            R.id.menu_override_all -> Unit
+            R.id.menu_artists_insert_all_shuffle_first -> Unit
+            R.id.menu_artists_insert_all_shuffle_last -> Unit
+            R.id.menu_artists_override_all_shuffle -> Unit
+        }
+        return true
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
