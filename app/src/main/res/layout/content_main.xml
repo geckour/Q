@@ -12,10 +12,11 @@
             android:layout_height="?attr/actionBarSize"
             android:background="@color/colorPrimary"
             android:elevation="5dp"
+            android:theme="@style/ToolbarStyle"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:titleTextColor="@android:color/white" />
+            app:popupTheme="@style/ToolbarStyle.Popup" />
 
         <FrameLayout
             android:id="@+id/fragment_container"
