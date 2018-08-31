@@ -10,6 +10,7 @@ import com.geckour.q.R
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Genre
+import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainViewModel
 import permissions.dispatcher.NeedsPermission
@@ -22,6 +23,7 @@ class SongListFragment : Fragment() {
     companion object {
         private const val ARGS_KEY_ALBUM = "args_key_album"
         private const val ARGS_KEY_GENRE = "args_key_genre"
+        private const val ARGS_KEY_PLAYLIST = "args_key_playlist"
 
         fun newInstance(): SongListFragment = SongListFragment()
 
@@ -34,6 +36,12 @@ class SongListFragment : Fragment() {
         fun newInstance(genre: Genre): SongListFragment = SongListFragment().apply {
             arguments = Bundle().apply {
                 putParcelable(ARGS_KEY_GENRE, genre)
+            }
+        }
+
+        fun newInstance(playlist: Playlist): SongListFragment = SongListFragment().apply {
+            arguments = Bundle().apply {
+                putParcelable(ARGS_KEY_PLAYLIST, playlist)
             }
         }
     }
@@ -63,6 +71,9 @@ class SongListFragment : Fragment() {
         }
         arguments?.getParcelable<Genre>(ARGS_KEY_GENRE)?.apply {
             fetchSongsWithGenreWithPermissionCheck(this)
+        }
+        arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST)?.apply {
+            fetchSongsWithPlaylistWithPermissionCheck(this)
         }
     }
 
@@ -149,6 +160,35 @@ class SongListFragment : Fragment() {
         }
     }
 
+    @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
+    internal fun fetchSongsWithPlaylist(playlist: Playlist) {
+        requireActivity().contentResolver.query(
+                MediaStore.Audio.Playlists.Members.getContentUri("external", playlist.id),
+                arrayOf(
+                        MediaStore.Audio.Playlists.Members.AUDIO_ID,
+                        MediaStore.Audio.Playlists.Members.ALBUM_ID,
+                        MediaStore.Audio.Playlists.Members.TITLE,
+                        MediaStore.Audio.Playlists.Members.ARTIST,
+                        MediaStore.Audio.Playlists.Members.DURATION,
+                        MediaStore.Audio.Playlists.Members.PLAY_ORDER),
+                null,
+                null,
+                null)?.apply {
+            val list: ArrayList<Song> = ArrayList()
+            while (moveToNext()) {
+                val song = Song(
+                        getLong(getColumnIndex(MediaStore.Audio.Playlists.Members.ALBUM_ID)),
+                        getLong(getColumnIndex(MediaStore.Audio.Playlists.Members.ALBUM_ID)),
+                        getString(getColumnIndex(MediaStore.Audio.Playlists.Members.TITLE)),
+                        getString(getColumnIndex(MediaStore.Audio.Playlists.Members.ARTIST)),
+                        getFloat(getColumnIndex(MediaStore.Audio.Playlists.Members.DURATION)),
+                        getInt(getColumnIndex(MediaStore.Audio.Playlists.Members.PLAY_ORDER)))
+                list.add(song)
+            }
+            adapter.setItems(list.sortedBy { it.trackNum })
+        }
+    }
+
     @OnPermissionDenied(Manifest.permission.READ_EXTERNAL_STORAGE)
     internal fun onReadExternalStorageDenied() {
         arguments?.getParcelable<Album>(ARGS_KEY_ALBUM).apply {
@@ -156,6 +196,9 @@ class SongListFragment : Fragment() {
         }
         arguments?.getParcelable<Genre>(ARGS_KEY_GENRE)?.apply {
             fetchSongsWithGenreWithPermissionCheck(this)
+        }
+        arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST)?.apply {
+            fetchSongsWithPlaylistWithPermissionCheck(this)
         }
     }
 }

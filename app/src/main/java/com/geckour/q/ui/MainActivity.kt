@@ -11,6 +11,7 @@ import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.ui.library.album.AlbumListFragment
 import com.geckour.q.ui.library.artist.ArtistListFragment
 import com.geckour.q.ui.library.genre.GenreListFragment
+import com.geckour.q.ui.library.playlist.PlaylistListFragment
 import com.geckour.q.ui.library.song.SongListFragment
 import com.geckour.q.util.ui
 import kotlinx.android.synthetic.main.activity_main.view.*
@@ -95,6 +96,15 @@ class MainActivity : AppCompatActivity() {
                     .commit()
             supportActionBar?.title = it.name
         })
+
+        viewModel.selectedPlaylist.observe(this, Observer {
+            if (it == null) return@Observer
+            supportFragmentManager.beginTransaction()
+                    .replace(R.id.fragment_container, SongListFragment.newInstance(it))
+                    .addToBackStack(null)
+                    .commit()
+            supportActionBar?.title = it.name
+        })
     }
 
     private fun setupDrawer() {
@@ -130,6 +140,10 @@ class MainActivity : AppCompatActivity() {
                             .commit()
                 }
                 R.id.nav_playlist -> {
+                    supportFragmentManager.beginTransaction()
+                            .replace(R.id.fragment_container, PlaylistListFragment.newInstance())
+                            .addToBackStack(null)
+                            .commit()
                 }
                 R.id.nav_setting -> {
                 }
