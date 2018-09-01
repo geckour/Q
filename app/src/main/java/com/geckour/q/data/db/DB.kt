@@ -1,15 +1,15 @@
-package com.geckour.q.data
+package com.geckour.q.data.db
 
 import android.arch.persistence.room.Database
 import android.arch.persistence.room.Room
 import android.arch.persistence.room.RoomDatabase
 import android.content.Context
-import com.geckour.q.data.dao.AlbumDao
-import com.geckour.q.data.dao.ArtistDao
-import com.geckour.q.data.dao.TrackDao
-import com.geckour.q.data.model.Album
-import com.geckour.q.data.model.Artist
-import com.geckour.q.data.model.Track
+import com.geckour.q.data.db.dao.AlbumDao
+import com.geckour.q.data.db.dao.ArtistDao
+import com.geckour.q.data.db.dao.TrackDao
+import com.geckour.q.data.db.model.Album
+import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.Track
 
 @Database(entities = [Track::class, Album::class, Artist::class], version = 1)
 abstract class DB : RoomDatabase() {
@@ -22,7 +22,9 @@ abstract class DB : RoomDatabase() {
 
         fun getInstance(context: Context): DB =
                 instance ?: synchronized(this) {
-                    Room.databaseBuilder(context, DB::class.java, DB_NAME).build()
+                    Room.databaseBuilder(context, DB::class.java, DB_NAME).build().apply {
+                        instance = this
+                    }
                 }
     }
 

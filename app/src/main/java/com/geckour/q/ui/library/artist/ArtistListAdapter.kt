@@ -30,6 +30,26 @@ class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Ada
         }
     }
 
+    internal fun upsertItem(item: Artist) {
+        var index = items.indexOfFirst { it.id == item.id }
+        if (index < 0) {
+            val tempList = ArrayList(items).apply { add(item) }.sortedBy { it.name }
+            index = tempList.indexOf(item)
+            items.add(index, item)
+            notifyItemInserted(index)
+        } else {
+            items[index] = item
+            notifyItemChanged(index)
+        }
+    }
+
+    internal fun upsertItems(items: List<Artist>) {
+        val changed = items - this.items
+        changed.forEach {
+            upsertItem(it)
+        }
+    }
+
     internal fun clearItems() {
         this.items.clear()
         notifyDataSetChanged()
@@ -52,7 +72,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Ada
             binding.data = artist
             try {
                 Glide.with(binding.thumb)
-                        .load(getArtworkUriFromAlbumId(binding.thumb.context, artist.albumId))
+                        .load(getArtworkUriFromAlbumId(artist.albumId))
                         .into(binding.thumb)
             } catch (t: Throwable) {
                 Timber.e(t)

@@ -9,4 +9,6 @@
     <color name="colorTextPrimary">#c0160900</color>
 
     <color name="colorTintOption">#707070</color>
+
+    <color name="colorBackgroundInactive">#e8ffffff</color>
 </resources>

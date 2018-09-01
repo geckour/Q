@@ -13,6 +13,8 @@ class MainViewModel : ViewModel() {
     internal val selectedGenre: SingleLifeEvent<Genre> = SingleLifeEvent()
     internal val selectedPlaylist: SingleLifeEvent<Playlist> = SingleLifeEvent()
 
+    val isLoading: SingleLifeEvent<Boolean> = SingleLifeEvent()
+
     fun onFragmentInflated(navId: Int) {
         selectedNavId.value = navId
     }

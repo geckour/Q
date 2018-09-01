@@ -6,10 +6,11 @@ import android.content.pm.PackageManager
 import android.media.MediaMetadataRetriever
 import android.provider.MediaStore
 import androidx.work.Worker
-import com.geckour.q.data.DB
-import com.geckour.q.data.model.Album
-import com.geckour.q.data.model.Artist
-import com.geckour.q.data.model.Track
+import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Album
+import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.Track
+import timber.log.Timber
 import java.io.File
 
 class MediaRetrieveWorker : Worker() {
@@ -23,6 +24,7 @@ class MediaRetrieveWorker : Worker() {
                 != PackageManager.PERMISSION_GRANTED) {
             Result.FAILURE
         } else {
+            Timber.d("qgeck media retrieve worker started")
             applicationContext.contentResolver
                     .query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                             arrayOf(MediaStore.Audio.Media._ID,
@@ -32,7 +34,7 @@ class MediaRetrieveWorker : Worker() {
                             "${MediaStore.Audio.Media.IS_MUSIC}!=0",
                             null,
                             "${MediaStore.Audio.Media.TITLE} ASC")?.use { cursor ->
-                        while (cursor.moveToFirst()) {
+                        while (cursor.moveToNext()) {
                             val trackId = cursor.getLong(
                                     cursor.getColumnIndex(MediaStore.Audio.Media._ID))
                             val albumId = cursor.getLong(
@@ -43,6 +45,7 @@ class MediaRetrieveWorker : Worker() {
                                     cursor.getColumnIndex(MediaStore.Audio.Media.DATA))
                             pushMedia(trackId, albumId, artistId, trackPath)
                         }
+                        Timber.d("qgeck media retrieve worker completed")
 
                         Result.SUCCESS
                     } ?: Result.FAILURE
@@ -58,30 +61,44 @@ class MediaRetrieveWorker : Worker() {
         }
 
         MediaMetadataRetriever().also { retriever ->
-            retriever.setDataSource(applicationContext, uri)
+            try {
+                retriever.setDataSource(applicationContext, uri)
 
-            val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-                    ?: UNKNOWN
-            val duration = retriever.extractMetadata(
-                    MediaMetadataRetriever.METADATA_KEY_DURATION).let { it.toLong() }
-            val albumTitle = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-                    ?: UNKNOWN
-            val artistTitle = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-                    ?: UNKNOWN
-            val albumArtist = retriever.extractMetadata(
-                    MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST) ?: UNKNOWN
-            val artworkUriString = getArtworkUriFromAlbumId(applicationContext, albumId).toString()
+                val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+                        ?: UNKNOWN
+                val duration = retriever.extractMetadata(
+                        MediaMetadataRetriever.METADATA_KEY_DURATION).toLong()
+                val trackSplit = retriever.extractMetadata(
+                        MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER)?.split("/")
+                val trackNum = trackSplit?.first()?.toInt()
+                val trackTotal = trackSplit?.last()?.toInt()
+                val discSplit = retriever.extractMetadata(
+                        MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER)?.split("/")
+                val discNum = discSplit?.first()?.toInt()
+                val discTotal = discSplit?.last()?.toInt()
+                val albumTitle = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+                        ?: UNKNOWN
+                val artistTitle = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+                        ?: UNKNOWN
+                val albumArtist = retriever.extractMetadata(
+                        MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST) ?: UNKNOWN
+                val artworkUriString =
+                        getArtworkUriFromAlbumId(albumId).toString()
 
-            val artist = Artist(artistId, artistTitle)
-            DB.getInstance(applicationContext).artistDao().upsert(artist)
+                val artist = Artist(artistId, artistTitle)
+                DB.getInstance(applicationContext).artistDao().upsert(artist)
 
-            val albumArtistId =
-                    DB.getInstance(applicationContext).artistDao().findArtist(albumArtist)?.id
-            val album = Album(albumId, albumTitle, artworkUriString, albumArtistId)
-            DB.getInstance(applicationContext).albumDao().upsert(album)
+                val albumArtistId = DB.getInstance(applicationContext).artistDao()
+                        .findArtist(albumArtist).firstOrNull()?.id
+                val album = Album(albumId, albumTitle, artworkUriString)
+                DB.getInstance(applicationContext).albumDao().upsert(album)
 
-            val track = Track(trackId, title, albumId, artistId, duration, trackPath)
-            DB.getInstance(applicationContext).trackDao().upsert(track)
+                val track = Track(trackId, title, albumId, artistId, albumArtistId, duration,
+                        trackNum, trackTotal, discNum, discTotal, trackPath)
+                DB.getInstance(applicationContext).trackDao().upsert(track)
+            } catch (t: Throwable) {
+                Timber.e(t)
+            }
         }
     }
 }

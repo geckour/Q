@@ -1,4 +1,4 @@
-package com.geckour.q.data.model
+package com.geckour.q.data.db.model
 
 import android.arch.persistence.room.Entity
 import android.arch.persistence.room.ForeignKey
@@ -13,6 +13,11 @@ data class Track(
         var title: String,
         var albumId: Long,
         var artistId: Long,
+        var albumArtistId: Long?,
         var duration: Long,
+        var trackNum: Int?,
+        var trackTotal: Int?,
+        var discNum: Int?,
+        var discTotal: Int?,
         var sourcePath: String
 )

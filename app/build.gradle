@@ -64,10 +64,12 @@ dependencies {
 
     // AAC ViewModel
     implementation "android.arch.lifecycle:extensions:$aac_lifecycle_ver"
-    implementation "android.arch.lifecycle:viewmodel:$aac_lifecycle_ver"
+    kapt "android.arch.lifecycle:compiler:$aac_lifecycle_ver"
+    implementation "android.arch.lifecycle:common-java8:$aac_lifecycle_ver"
 
     // AAC WorkManager
     implementation "android.arch.work:work-runtime:$aac_work_ver"
+    implementation "android.arch.work:work-runtime-ktx:$aac_work_ver"
 
     // AAC Room
     implementation "android.arch.persistence.room:runtime:$aac_room_ver"

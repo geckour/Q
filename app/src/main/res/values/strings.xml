@@ -17,6 +17,7 @@
     <string name="nav_genre">Genres</string>
     <string name="nav_playlist">Playlist</string>
     <string name="nav_setting">Settings</string>
+    <string name="nav_sync">Sync library</string>
 
 
     <string name="menu_insert_all_first">Insert all to first</string>

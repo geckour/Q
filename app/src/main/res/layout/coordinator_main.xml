@@ -3,29 +3,48 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <android.support.design.widget.CoordinatorLayout
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        tools:context=".view.activity.MainActivity">
+        android:layout_height="match_parent">
 
-        <include
-            android:id="@+id/content_main"
-            layout="@layout/content_main" />
-
-        <fragment
-            android:id="@+id/bottom_sheet"
-            android:name="com.geckour.q.ui.sheet.BottomSheetFragment"
+        <android.support.design.widget.CoordinatorLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_gravity="bottom"
-            android:layout_marginBottom="20dp"
-            android:nestedScrollingEnabled="false"
-            android:orientation="vertical"
-            android:scrollbarStyle="outsideOverlay"
-            android:scrollbars="vertical"
-            app:behavior_peekHeight="@dimen/bottom_sheet_peek_height"
-            app:layoutManager="LinearLayoutManager"
-            app:layout_behavior="BottomSheetBehavior"
-            tools:layout="@layout/fragment_sheet_bottom" />
-    </android.support.design.widget.CoordinatorLayout>
+            tools:context=".view.activity.MainActivity">
+
+            <include
+                android:id="@+id/content_main"
+                layout="@layout/content_main" />
+
+            <fragment
+                android:id="@+id/bottom_sheet"
+                android:name="com.geckour.q.ui.sheet.BottomSheetFragment"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_gravity="bottom"
+                android:layout_marginBottom="20dp"
+                android:nestedScrollingEnabled="false"
+                android:orientation="vertical"
+                android:scrollbarStyle="outsideOverlay"
+                android:scrollbars="vertical"
+                app:behavior_peekHeight="@dimen/bottom_sheet_peek_height"
+                app:layoutManager="LinearLayoutManager"
+                app:layout_behavior="BottomSheetBehavior"
+                tools:layout="@layout/fragment_sheet_bottom" />
+        </android.support.design.widget.CoordinatorLayout>
+
+        <FrameLayout
+            android:id="@+id/indicator_loading"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundInactive"
+            android:clickable="true"
+            android:visibility="gone">
+
+            <ProgressBar
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center" />
+        </FrameLayout>
+    </FrameLayout>
 </layout>
