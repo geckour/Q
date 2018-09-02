@@ -106,11 +106,12 @@ class ArtistListFragment : Fragment() {
                     val track = it.value.firstOrNull { it.albumArtistId != null }
                     if (track != null) {
                         val dbArtist = db.artistDao().get(track.artistId)
+                                ?: return@flatMap emptyList<Artist>()
                         val albumId = track.albumId
                         listOf(Artist(dbArtist.id, dbArtist.title, albumId))
                     } else {
-                        it.value.map {
-                            val dbArtist = db.artistDao().get(it.artistId)
+                        it.value.mapNotNull {
+                            val dbArtist = db.artistDao().get(it.artistId) ?: return@mapNotNull null
                             Artist(dbArtist.id, dbArtist.title, it.albumId)
                         }
                     }

@@ -30,6 +30,26 @@ class SongListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adapt
         }
     }
 
+    internal fun upsertItem(item: Song) {
+        var index = items.indexOfFirst { it.id == item.id }
+        if (index < 0) {
+            val tempList = ArrayList(items).apply { add(item) }.sortedBy { it.name }
+            index = tempList.indexOf(item)
+            items.add(index, item)
+            notifyItemInserted(index)
+        } else {
+            items[index] = item
+            notifyItemChanged(index)
+        }
+    }
+
+    internal fun upsertItems(items: List<Song>) {
+        val changed = items - this.items
+        changed.forEach {
+            upsertItem(it)
+        }
+    }
+
     internal fun clearItems() {
         this.items.clear()
         notifyDataSetChanged()

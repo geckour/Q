@@ -17,4 +17,7 @@ interface TrackDao {
 
     @Query("select * from track")
     fun getAll(): LiveData<List<Track>>
+
+    @Query("select * from track where id = :id")
+    fun get(id: Long): Track?
 }

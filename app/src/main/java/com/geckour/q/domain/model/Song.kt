@@ -5,6 +5,9 @@ data class Song(
         val albumId: Long,
         val name: String?,
         val artist: String,
-        val duration: Float,
-        val trackNum: Int
+        val duration: Long,
+        val trackNum: Int?,
+        val trackTotal: Int?,
+        val discNum: Int?,
+        val discTotal: Int?
 )

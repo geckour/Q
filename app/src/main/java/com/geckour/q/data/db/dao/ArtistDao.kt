@@ -21,5 +21,5 @@ interface ArtistDao {
     fun getAll(): List<Artist>
 
     @Query("select * from artist where id = :id")
-    fun get(id: Long): Artist
+    fun get(id: Long): Artist?
 }

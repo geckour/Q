@@ -1,23 +1,23 @@
 package com.geckour.q.ui.library.song
 
-import android.Manifest
+import android.arch.lifecycle.Observer
 import android.arch.lifecycle.ViewModelProviders
 import android.os.Bundle
 import android.provider.MediaStore
 import android.support.v4.app.Fragment
 import android.view.*
 import com.geckour.q.R
+import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainViewModel
-import permissions.dispatcher.NeedsPermission
-import permissions.dispatcher.OnPermissionDenied
-import permissions.dispatcher.RuntimePermissions
+import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.android.UI
 
-@RuntimePermissions
 class SongListFragment : Fragment() {
 
     companion object {
@@ -52,6 +52,10 @@ class SongListFragment : Fragment() {
     private lateinit var binding: FragmentListLibraryBinding
     private lateinit var adapter: SongListAdapter
 
+    private var parentJob = Job()
+    private var latestDbTrackList: List<Track> = emptyList()
+    private var chatteringCancelFlag: Boolean = false
+
     override fun onCreateView(inflater: LayoutInflater,
                               container: ViewGroup?, savedInstanceState: Bundle?): View? {
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
@@ -66,14 +70,16 @@ class SongListFragment : Fragment() {
         mainViewModel.onFragmentInflated(R.id.nav_song)
         adapter = SongListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
-        arguments?.getParcelable<Album>(ARGS_KEY_ALBUM).apply {
-            fetchSongsWithPermissionCheck(this)
-        }
-        arguments?.getParcelable<Genre>(ARGS_KEY_GENRE)?.apply {
-            fetchSongsWithGenreWithPermissionCheck(this)
-        }
-        arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST)?.apply {
-            fetchSongsWithPlaylistWithPermissionCheck(this)
+
+        val album = arguments?.getParcelable<Album>(ARGS_KEY_ALBUM)
+        val genre = arguments?.getParcelable<Genre>(ARGS_KEY_GENRE)
+        val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST)
+
+        when {
+            album != null -> fetchSongsWithAlbum(album)
+            genre != null -> fetchSongsWithGenre(genre)
+            playlist != null -> fetchSongsWithPlaylist(playlist)
+            else -> fetchSongs()
         }
     }
 
@@ -95,110 +101,93 @@ class SongListFragment : Fragment() {
         return true
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        onRequestPermissionsResult(requestCode, grantResults)
-    }
+    private fun fetchSongs() {
+        DB.getInstance(requireContext()).also { db ->
+            db.trackDao().getAll().observe(this@SongListFragment, Observer { dbTrackList ->
+                if (dbTrackList == null) return@Observer
 
-    @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
-    internal fun fetchSongs(album: Album?) {
-        requireActivity().contentResolver.query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                arrayOf(
-                        MediaStore.Audio.Media._ID,
-                        MediaStore.Audio.Media.ALBUM_ID,
-                        MediaStore.Audio.Media.TITLE,
-                        MediaStore.Audio.Media.ARTIST,
-                        MediaStore.Audio.Media.DURATION,
-                        MediaStore.Audio.Media.TRACK),
-                if (album == null) null else "${MediaStore.Audio.Media.ALBUM_ID}=?",
-                if (album == null) null else arrayOf(album.id.toString()),
-                null)?.apply {
-            val list: ArrayList<Song> = ArrayList()
-            while (moveToNext()) {
-                val song = Song(
-                        getLong(getColumnIndex(MediaStore.Audio.Media._ID)),
-                        getLong(getColumnIndex(MediaStore.Audio.Media.ALBUM_ID)),
-                        getString(getColumnIndex(MediaStore.Audio.Media.TITLE)),
-                        getString(getColumnIndex(MediaStore.Audio.Media.ARTIST)),
-                        getFloat(getColumnIndex(MediaStore.Audio.Media.DURATION)),
-                        getInt(getColumnIndex(MediaStore.Audio.Media.TRACK)))
-                list.add(song)
-            }
-            adapter.setItems(list.let {
-                if (album == null) it.sortedBy { it.name }
-                else it.sortedBy { it.trackNum }
+                latestDbTrackList = dbTrackList
+                upsertSongListIfPossible(db)
             })
         }
     }
 
-    @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
-    internal fun fetchSongsWithGenre(genre: Genre) {
+    private fun fetchSongsWithAlbum(album: Album) {
+        DB.getInstance(requireContext()).also { db ->
+            db.trackDao().getAll().observe(this@SongListFragment, Observer { dbTrackList ->
+                if (dbTrackList == null) return@Observer
+
+                latestDbTrackList = dbTrackList.filter { it.albumId == album.id }
+                upsertSongListIfPossible(db)
+            })
+        }
+    }
+
+    private fun fetchSongsWithGenre(genre: Genre) {
         requireActivity().contentResolver.query(
                 MediaStore.Audio.Genres.Members.getContentUri("external", genre.id),
                 arrayOf(
-                        MediaStore.Audio.Genres.Members.AUDIO_ID,
-                        MediaStore.Audio.Genres.Members.ALBUM_ID,
-                        MediaStore.Audio.Genres.Members.TITLE,
-                        MediaStore.Audio.Genres.Members.ARTIST,
-                        MediaStore.Audio.Genres.Members.DURATION,
-                        MediaStore.Audio.Genres.Members.TRACK),
+                        MediaStore.Audio.Genres.Members._ID),
                 null,
                 null,
-                null)?.apply {
-            val list: ArrayList<Song> = ArrayList()
-            while (moveToNext()) {
-                val song = Song(
-                        getLong(getColumnIndex(MediaStore.Audio.Genres.Members.ALBUM_ID)),
-                        getLong(getColumnIndex(MediaStore.Audio.Genres.Members.ALBUM_ID)),
-                        getString(getColumnIndex(MediaStore.Audio.Genres.Members.TITLE)),
-                        getString(getColumnIndex(MediaStore.Audio.Genres.Members.ARTIST)),
-                        getFloat(getColumnIndex(MediaStore.Audio.Genres.Members.DURATION)),
-                        getInt(getColumnIndex(MediaStore.Audio.Genres.Members.TRACK)))
-                list.add(song)
+                null)?.use {
+            val db = DB.getInstance(requireContext())
+            val trackIdList: ArrayList<Long> = ArrayList()
+            while (it.moveToNext()) {
+                val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Genres.Members._ID))
+                trackIdList.add(id)
             }
-            adapter.setItems(list.sortedBy { it.name })
+            launch(UI + parentJob) {
+                adapter.upsertItems(getSongListWithTrackId(db, trackIdList).await())
+            }
         }
     }
 
-    @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
-    internal fun fetchSongsWithPlaylist(playlist: Playlist) {
+    private fun fetchSongsWithPlaylist(playlist: Playlist) {
         requireActivity().contentResolver.query(
                 MediaStore.Audio.Playlists.Members.getContentUri("external", playlist.id),
                 arrayOf(
-                        MediaStore.Audio.Playlists.Members.AUDIO_ID,
-                        MediaStore.Audio.Playlists.Members.ALBUM_ID,
-                        MediaStore.Audio.Playlists.Members.TITLE,
-                        MediaStore.Audio.Playlists.Members.ARTIST,
-                        MediaStore.Audio.Playlists.Members.DURATION,
-                        MediaStore.Audio.Playlists.Members.PLAY_ORDER),
+                        MediaStore.Audio.Playlists.Members._ID),
                 null,
                 null,
-                null)?.apply {
-            val list: ArrayList<Song> = ArrayList()
-            while (moveToNext()) {
-                val song = Song(
-                        getLong(getColumnIndex(MediaStore.Audio.Playlists.Members.ALBUM_ID)),
-                        getLong(getColumnIndex(MediaStore.Audio.Playlists.Members.ALBUM_ID)),
-                        getString(getColumnIndex(MediaStore.Audio.Playlists.Members.TITLE)),
-                        getString(getColumnIndex(MediaStore.Audio.Playlists.Members.ARTIST)),
-                        getFloat(getColumnIndex(MediaStore.Audio.Playlists.Members.DURATION)),
-                        getInt(getColumnIndex(MediaStore.Audio.Playlists.Members.PLAY_ORDER)))
-                list.add(song)
+                null)?.use {
+            val db = DB.getInstance(requireContext())
+            val trackIdList: ArrayList<Long> = ArrayList()
+            while (it.moveToNext()) {
+                val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists.Members._ID))
+                trackIdList.add(id)
             }
-            adapter.setItems(list.sortedBy { it.trackNum })
+            launch(UI + parentJob) {
+                adapter.upsertItems(getSongListWithTrackId(db, trackIdList).await())
+            }
         }
     }
 
-    @OnPermissionDenied(Manifest.permission.READ_EXTERNAL_STORAGE)
-    internal fun onReadExternalStorageDenied() {
-        arguments?.getParcelable<Album>(ARGS_KEY_ALBUM).apply {
-            fetchSongsWithPermissionCheck(this)
-        }
-        arguments?.getParcelable<Genre>(ARGS_KEY_GENRE)?.apply {
-            fetchSongsWithGenreWithPermissionCheck(this)
-        }
-        arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST)?.apply {
-            fetchSongsWithPlaylistWithPermissionCheck(this)
+    private fun upsertSongListIfPossible(db: DB) {
+        if (chatteringCancelFlag.not()) {
+            chatteringCancelFlag = true
+            launch(UI + parentJob) {
+                delay(500)
+                val items = getSongListWithTrack(db, latestDbTrackList).await()
+                adapter.upsertItems(items)
+                chatteringCancelFlag = false
+            }
         }
     }
+
+    private fun getSongListWithTrack(db: DB, dbTrackList: List<Track>): Deferred<List<Song>> =
+            async(parentJob) { dbTrackList.mapNotNull { getSong(db, it).await() } }
+
+    private fun getSongListWithTrackId(db: DB, dbTrackIdList: List<Long>): Deferred<List<Song>> =
+            async(parentJob) { dbTrackIdList.mapNotNull { getSong(db, it).await() } }
+
+    private fun getSong(db: DB, track: Track): Deferred<Song?> =
+            async(parentJob) {
+                val artist = db.artistDao().get(track.artistId) ?: return@async null
+                Song(track.id, track.albumId, track.title, artist.title, track.duration,
+                        track.trackNum, track.trackTotal, track.discNum, track.discTotal)
+            }
+
+    private fun getSong(db: DB, trackId: Long): Deferred<Song?> =
+            async { db.trackDao().get(trackId)?.let { getSong(db, it).await() } }
 }

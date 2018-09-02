@@ -1,6 +1,5 @@
 package com.geckour.q.ui.library.album
 
-import android.Manifest
 import android.arch.lifecycle.Observer
 import android.arch.lifecycle.ViewModelProviders
 import android.os.Bundle
@@ -14,12 +13,8 @@ import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.MainViewModel
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
-import permissions.dispatcher.NeedsPermission
-import permissions.dispatcher.OnPermissionDenied
-import permissions.dispatcher.RuntimePermissions
 import com.geckour.q.data.db.model.Album as DbAlbum
 
-@RuntimePermissions
 class AlbumListFragment : Fragment() {
 
     companion object {
@@ -58,9 +53,7 @@ class AlbumListFragment : Fragment() {
         mainViewModel.onFragmentInflated(R.id.nav_album)
         adapter = AlbumListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
-        arguments?.getParcelable<Artist>(ARGS_KEY_ARTIST).apply {
-            fetchAlbumsWithPermissionCheck(this)
-        }
+        arguments?.getParcelable<Artist>(ARGS_KEY_ARTIST).apply { fetchAlbums(this) }
     }
 
     override fun onStart() {
@@ -91,13 +84,7 @@ class AlbumListFragment : Fragment() {
         return true
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        onRequestPermissionsResult(requestCode, grantResults)
-    }
-
-    @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
-    internal fun fetchAlbums(artist: Artist?) {
+    private fun fetchAlbums(artist: Artist?) {
         DB.getInstance(requireContext()).also { db ->
             db.albumDao().getAll().observe(this@AlbumListFragment, Observer { dbAlbumList ->
                 if (dbAlbumList == null) return@Observer
@@ -113,26 +100,19 @@ class AlbumListFragment : Fragment() {
             chatteringCancelFlag = true
             launch(UI) {
                 delay(500)
-                val items = getAllAlbumList(db, artist).await()
+                val items = getAlbumList(db, artist).await()
                 adapter.upsertItems(items)
                 chatteringCancelFlag = false
             }
         }
     }
 
-    private fun getAllAlbumList(db: DB, artist: Artist?): Deferred<List<Album>> =
+    private fun getAlbumList(db: DB, artist: Artist?): Deferred<List<Album>> =
             async(parentJob) {
                 (if (artist == null) latestDbAlbumList
-                else latestDbAlbumList.filter { it.artistId == artist.id }).map {
-                    val artistForAlbum = db.artistDao().get(it.artistId)
+                else latestDbAlbumList.filter { it.artistId == artist.id }).mapNotNull {
+                    val artistForAlbum = db.artistDao().get(it.artistId) ?: return@mapNotNull null
                     Album(it.id, it.title, artistForAlbum.title)
                 }
             }
-
-    @OnPermissionDenied(Manifest.permission.READ_EXTERNAL_STORAGE)
-    internal fun onReadExternalStorageDenied() {
-        arguments?.getParcelable<Artist>(ARGS_KEY_ARTIST)?.apply {
-            fetchAlbumsWithPermissionCheck(this)
-        }
-    }
 }
