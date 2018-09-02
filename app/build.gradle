@@ -16,8 +16,6 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
-
-        dataBinding.enabled = true
     }
     buildTypes {
         release {
@@ -28,11 +26,12 @@ android {
     androidExtensions {
         experimental = true
     }
+    dataBinding.enabled = true
 }
 
 dependencies {
     def support_ver = '28.0.0-rc01'
-    def coroutines_ver = '0.24.0'
+    def coroutines_ver = '0.25.0'
     def permission_dispatcher_ver = '3.3.1'
     def aac_lifecycle_ver = '1.1.1'
     def aac_work_ver = '1.0.0-alpha08'
@@ -75,9 +74,6 @@ dependencies {
     implementation "android.arch.persistence.room:runtime:$aac_room_ver"
     kapt "android.arch.persistence.room:compiler:$aac_room_ver"
     androidTestImplementation "android.arch.persistence.room:testing:$aac_room_ver"
-
-    // Data Binding
-    kapt 'com.android.databinding:compiler:3.1.4'
 
     // Permission
     implementation "com.github.hotchemi:permissionsdispatcher:$permission_dispatcher_ver"

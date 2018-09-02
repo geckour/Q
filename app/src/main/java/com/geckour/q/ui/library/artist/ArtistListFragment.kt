@@ -26,7 +26,7 @@ class ArtistListFragment : Fragment() {
     private lateinit var binding: FragmentListLibraryBinding
     private lateinit var adapter: ArtistListAdapter
 
-    private val parentJob = Job()
+    private var parentJob = Job()
     private var latestDbTrackList: List<Track> = emptyList()
     private var chatteringCancelFlag: Boolean = false
 
@@ -47,9 +47,13 @@ class ArtistListFragment : Fragment() {
         if (savedInstanceState == null) fetchArtists()
     }
 
-    override fun onPause() {
-        super.onPause()
+    override fun onStart() {
+        super.onStart()
+        parentJob = Job()
+    }
 
+    override fun onStop() {
+        super.onStop()
         parentJob.cancel()
     }
 
@@ -74,10 +78,10 @@ class ArtistListFragment : Fragment() {
     private fun fetchArtists() {
         DB.getInstance(requireContext()).also { db ->
             db.trackDao().getAll().observe(this@ArtistListFragment, Observer { dbTrackList ->
-                if (dbTrackList != null) {
-                    latestDbTrackList = dbTrackList
-                    upsertArtistListIfPossible(db)
-                }
+                if (dbTrackList == null) return@Observer
+
+                latestDbTrackList = dbTrackList
+                upsertArtistListIfPossible(db)
             })
         }
     }
@@ -85,8 +89,8 @@ class ArtistListFragment : Fragment() {
     private fun upsertArtistListIfPossible(db: DB) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
-            launch(UI) {
-                delay(1000)
+            launch(UI + parentJob) {
+                delay(500)
                 val items = getAllAlbumArtist(db, latestDbTrackList).await()
                 adapter.upsertItems(items)
                 chatteringCancelFlag = false
@@ -95,7 +99,7 @@ class ArtistListFragment : Fragment() {
     }
 
     private fun getAllAlbumArtist(db: DB, dbTrackList: List<Track>): Deferred<List<Artist>> =
-            async {
+            async(parentJob) {
                 dbTrackList.groupBy {
                     it.albumId
                 }.flatMap {

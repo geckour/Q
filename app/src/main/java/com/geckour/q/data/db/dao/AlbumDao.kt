@@ -1,5 +1,6 @@
 package com.geckour.q.data.db.dao
 
+import android.arch.lifecycle.LiveData
 import android.arch.persistence.room.*
 import com.geckour.q.data.db.model.Album
 
@@ -15,7 +16,7 @@ interface AlbumDao {
     fun upsert(album: Album)
 
     @Query("select * from album")
-    fun getAll(): List<Album>
+    fun getAll(): LiveData<List<Album>>
 
     @Query("select * from album where :id")
     fun get(id: Long): Album

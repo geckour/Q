@@ -22,10 +22,10 @@ import com.geckour.q.ui.library.genre.GenreListFragment
 import com.geckour.q.ui.library.playlist.PlaylistListFragment
 import com.geckour.q.ui.library.song.SongListFragment
 import com.geckour.q.util.MediaRetrieveWorker
-import com.geckour.q.util.launch
-import com.geckour.q.util.ui
 import kotlinx.android.synthetic.main.activity_main.view.*
 import kotlinx.coroutines.experimental.Job
+import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
@@ -43,7 +43,7 @@ class MainActivity : AppCompatActivity() {
     }
     internal lateinit var binding: ActivityMainBinding
     private lateinit var drawerToggle: ActionBarDrawerToggle
-    private val parentJob = Job()
+    private var parentJob = Job()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,9 +63,25 @@ class MainActivity : AppCompatActivity() {
         retrieveMediaIfEmpty()
     }
 
-    override fun onPause() {
-        super.onPause()
+    override fun onResume() {
+        super.onResume()
 
+        getLatestWorkerId()?.apply {
+            WorkManager.getInstance()
+                    .getStatusById(this)
+                    .observe(this@MainActivity, Observer {
+                        viewModel.isLoading.value = it?.state == State.RUNNING
+                    })
+        }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        parentJob = Job()
+    }
+
+    override fun onStop() {
+        super.onStop()
         parentJob.cancel()
     }
 
@@ -235,7 +251,7 @@ class MainActivity : AppCompatActivity() {
                     retrieveMediaWithPermissionCheck()
                 }
             }
-            ui(parentJob) { binding.drawerLayout.closeDrawers() }
+            launch(UI + parentJob) { binding.drawerLayout.closeDrawers() }
             true
         }
     }

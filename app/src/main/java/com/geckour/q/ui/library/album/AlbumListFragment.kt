@@ -1,19 +1,23 @@
 package com.geckour.q.ui.library.album
 
 import android.Manifest
+import android.arch.lifecycle.Observer
 import android.arch.lifecycle.ViewModelProviders
 import android.os.Bundle
-import android.provider.MediaStore
 import android.support.v4.app.Fragment
 import android.view.*
 import com.geckour.q.R
+import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.MainViewModel
+import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.android.UI
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
+import com.geckour.q.data.db.model.Album as DbAlbum
 
 @RuntimePermissions
 class AlbumListFragment : Fragment() {
@@ -35,6 +39,11 @@ class AlbumListFragment : Fragment() {
     private lateinit var binding: FragmentListLibraryBinding
     private lateinit var adapter: AlbumListAdapter
 
+    private var latestDbAlbumList: List<DbAlbum> = emptyList()
+    private var chatteringCancelFlag: Boolean = false
+
+    private var parentJob = Job()
+
     override fun onCreateView(inflater: LayoutInflater,
                               container: ViewGroup?, savedInstanceState: Bundle?): View? {
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
@@ -52,6 +61,16 @@ class AlbumListFragment : Fragment() {
         arguments?.getParcelable<Artist>(ARGS_KEY_ARTIST).apply {
             fetchAlbumsWithPermissionCheck(this)
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        parentJob = Job()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        parentJob.cancel()
     }
 
     override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
@@ -79,25 +98,36 @@ class AlbumListFragment : Fragment() {
 
     @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
     internal fun fetchAlbums(artist: Artist?) {
-        requireActivity().contentResolver.query(MediaStore.Audio.Albums.EXTERNAL_CONTENT_URI,
-                arrayOf(MediaStore.Audio.Albums._ID,
-                        MediaStore.Audio.Albums.ALBUM,
-                        MediaStore.Audio.Albums.ARTIST),
-                if (artist == null) null else "${MediaStore.Audio.Albums.ARTIST}=?",
-                if (artist == null) null else arrayOf(artist.name),
-                null)?.apply {
-            val list: ArrayList<Album> = ArrayList()
-            while (moveToNext()) {
-                val album = Album(
-                        getLong(getColumnIndex(MediaStore.Audio.Albums._ID)),
-                        getString(getColumnIndex(MediaStore.Audio.Albums.ALBUM)),
-                        getString(getColumnIndex(MediaStore.Audio.Albums.ARTIST))
-                )
-                list.add(album)
-            }
-            adapter.setItems(list.sortedBy { it.name })
+        DB.getInstance(requireContext()).also { db ->
+            db.albumDao().getAll().observe(this@AlbumListFragment, Observer { dbAlbumList ->
+                if (dbAlbumList == null) return@Observer
+
+                latestDbAlbumList = dbAlbumList
+                upsertArtistListIfPossible(db, artist)
+            })
         }
     }
+
+    private fun upsertArtistListIfPossible(db: DB, artist: Artist?) {
+        if (chatteringCancelFlag.not()) {
+            chatteringCancelFlag = true
+            launch(UI) {
+                delay(500)
+                val items = getAllAlbumList(db, artist).await()
+                adapter.upsertItems(items)
+                chatteringCancelFlag = false
+            }
+        }
+    }
+
+    private fun getAllAlbumList(db: DB, artist: Artist?): Deferred<List<Album>> =
+            async(parentJob) {
+                (if (artist == null) latestDbAlbumList
+                else latestDbAlbumList.filter { it.artistId == artist.id }).map {
+                    val artistForAlbum = db.artistDao().get(it.artistId)
+                    Album(it.id, it.title, artistForAlbum.title)
+                }
+            }
 
     @OnPermissionDenied(Manifest.permission.READ_EXTERNAL_STORAGE)
     internal fun onReadExternalStorageDenied() {

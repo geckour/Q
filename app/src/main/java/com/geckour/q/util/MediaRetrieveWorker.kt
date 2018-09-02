@@ -81,16 +81,18 @@ class MediaRetrieveWorker : Worker() {
                 val artistTitle = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
                         ?: UNKNOWN
                 val albumArtist = retriever.extractMetadata(
-                        MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST) ?: UNKNOWN
+                        MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
                 val artworkUriString =
                         getArtworkUriFromAlbumId(albumId).toString()
 
                 val artist = Artist(artistId, artistTitle)
                 DB.getInstance(applicationContext).artistDao().upsert(artist)
 
-                val albumArtistId = DB.getInstance(applicationContext).artistDao()
-                        .findArtist(albumArtist).firstOrNull()?.id
-                val album = Album(albumId, albumTitle, artworkUriString)
+                val albumArtistId = albumArtist?.let {
+                    DB.getInstance(applicationContext).artistDao()
+                            .findArtist(albumArtist).firstOrNull()?.id
+                }
+                val album = Album(albumId, albumTitle, albumArtistId ?: artistId, artworkUriString)
                 DB.getInstance(applicationContext).albumDao().upsert(album)
 
                 val track = Track(trackId, title, albumId, artistId, albumArtistId, duration,
