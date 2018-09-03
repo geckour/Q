@@ -10,7 +10,6 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Artist
-import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
@@ -107,18 +106,19 @@ class ArtistListFragment : Fragment() {
             async(parentJob) {
                 dbTrackList.groupBy {
                     it.albumId
-                }.flatMap {
+                }.mapNotNull {
                     val track = it.value.firstOrNull { it.albumArtistId != null }
                     if (track != null) {
-                        val dbArtist = db.artistDao().get(track.artistId)
-                                ?: return@flatMap emptyList<Artist>()
+                        val dbArtist = db.artistDao().get(track.albumArtistId
+                                ?: throw IllegalStateException())
+                                ?: return@mapNotNull null
                         val albumId = track.albumId
-                        listOf(Artist(dbArtist.id, dbArtist.title, albumId))
+                        Artist(dbArtist.id, dbArtist.title, albumId)
                     } else {
-                        it.value.mapNotNull {
-                            val dbArtist = db.artistDao().get(it.artistId) ?: return@mapNotNull null
-                            Artist(dbArtist.id, dbArtist.title, it.albumId)
-                        }
+                        val dbArtist = (it.value.maxBy { it.artistId }
+                                ?: it.value.first()).let { db.artistDao().get(it.artistId) }
+                                ?: return@mapNotNull null
+                        Artist(dbArtist.id, dbArtist.title, it.key)
                     }
                 }
             }
