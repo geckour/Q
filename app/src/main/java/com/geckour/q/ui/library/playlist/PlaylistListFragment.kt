@@ -9,6 +9,7 @@ import android.view.*
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Playlist
+import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
@@ -38,10 +39,14 @@ class PlaylistListFragment : Fragment() {
 
         setHasOptionsMenu(true)
 
-        mainViewModel.onFragmentInflated(R.id.nav_playlist)
         adapter = PlaylistListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
         fetchPlaylistsWithPermissionCheck()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mainViewModel.resumedFragmentId.value = R.id.nav_playlist
     }
 
     override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {

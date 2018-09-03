@@ -10,6 +10,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Artist
+import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
@@ -50,7 +51,6 @@ class AlbumListFragment : Fragment() {
 
         setHasOptionsMenu(true)
 
-        mainViewModel.onFragmentInflated(R.id.nav_album)
         adapter = AlbumListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
         arguments?.getParcelable<Artist>(ARGS_KEY_ARTIST).apply { fetchAlbums(this) }
@@ -59,6 +59,11 @@ class AlbumListFragment : Fragment() {
     override fun onStart() {
         super.onStart()
         parentJob = Job()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mainViewModel.resumedFragmentId.value = R.id.nav_album
     }
 
     override fun onStop() {

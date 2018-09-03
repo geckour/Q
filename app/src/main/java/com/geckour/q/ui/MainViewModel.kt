@@ -6,7 +6,7 @@ import com.geckour.q.util.SingleLifeEvent
 
 class MainViewModel : ViewModel() {
 
-    internal val selectedNavId: SingleLifeEvent<Int> = SingleLifeEvent()
+    internal val resumedFragmentId: SingleLifeEvent<Int> = SingleLifeEvent()
     internal val selectedArtist: SingleLifeEvent<Artist> = SingleLifeEvent()
     internal val selectedAlbum: SingleLifeEvent<Album> = SingleLifeEvent()
     internal val selectedSong: SingleLifeEvent<Song> = SingleLifeEvent()
@@ -14,10 +14,6 @@ class MainViewModel : ViewModel() {
     internal val selectedPlaylist: SingleLifeEvent<Playlist> = SingleLifeEvent()
 
     val isLoading: SingleLifeEvent<Boolean> = SingleLifeEvent()
-
-    fun onFragmentInflated(navId: Int) {
-        selectedNavId.value = navId
-    }
 
     fun onRequestNavigate(artist: Artist) {
         selectedAlbum.value = null

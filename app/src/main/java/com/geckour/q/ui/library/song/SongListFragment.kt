@@ -14,6 +14,7 @@ import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
+import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
@@ -67,7 +68,6 @@ class SongListFragment : Fragment() {
 
         setHasOptionsMenu(true)
 
-        mainViewModel.onFragmentInflated(R.id.nav_song)
         adapter = SongListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
 
@@ -81,6 +81,11 @@ class SongListFragment : Fragment() {
             playlist != null -> fetchSongsWithPlaylist(playlist)
             else -> fetchSongs()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mainViewModel.resumedFragmentId.value = R.id.nav_song
     }
 
     override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {

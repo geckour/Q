@@ -10,6 +10,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Artist
+import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
@@ -41,7 +42,6 @@ class ArtistListFragment : Fragment() {
 
         setHasOptionsMenu(true)
 
-        mainViewModel.onFragmentInflated(R.id.nav_artist)
         adapter = ArtistListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
         if (savedInstanceState == null) fetchArtists()
@@ -50,6 +50,11 @@ class ArtistListFragment : Fragment() {
     override fun onStart() {
         super.onStart()
         parentJob = Job()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mainViewModel.resumedFragmentId.value = R.id.nav_artist
     }
 
     override fun onStop() {

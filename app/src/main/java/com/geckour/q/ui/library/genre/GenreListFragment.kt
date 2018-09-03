@@ -38,10 +38,14 @@ class GenreListFragment : Fragment() {
 
         setHasOptionsMenu(true)
 
-        mainViewModel.onFragmentInflated(R.id.nav_genre)
         adapter = GenreListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
         fetchGenresWithPermissionCheck()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mainViewModel.resumedFragmentId.value = R.id.nav_genre
     }
 
     override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {

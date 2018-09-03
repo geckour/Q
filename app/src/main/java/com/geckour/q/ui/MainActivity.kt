@@ -8,6 +8,7 @@ import android.os.Bundle
 import android.preference.PreferenceManager
 import android.support.v7.app.ActionBarDrawerToggle
 import android.support.v7.app.AppCompatActivity
+import android.view.MenuItem
 import android.view.View
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.State
@@ -22,13 +23,13 @@ import com.geckour.q.ui.library.genre.GenreListFragment
 import com.geckour.q.ui.library.playlist.PlaylistListFragment
 import com.geckour.q.ui.library.song.SongListFragment
 import com.geckour.q.util.MediaRetrieveWorker
-import kotlinx.android.synthetic.main.activity_main.view.*
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
+import timber.log.Timber
 import java.util.*
 
 @RuntimePermissions
@@ -45,6 +46,54 @@ class MainActivity : AppCompatActivity() {
     private lateinit var drawerToggle: ActionBarDrawerToggle
     private var parentJob = Job()
 
+    private val onNavigationItemSelectedListener: ((MenuItem) -> Boolean) = {
+        when (it.itemId) {
+            R.id.nav_artist -> {
+                supportFragmentManager.beginTransaction()
+                        .replace(R.id.fragment_container,
+                                ArtistListFragment.newInstance(), getString(R.string.nav_artist))
+                        .addToBackStack(null)
+                        .commit()
+            }
+            R.id.nav_album -> {
+                supportFragmentManager.beginTransaction()
+                        .replace(R.id.fragment_container,
+                                AlbumListFragment.newInstance(), getString(R.string.nav_album))
+                        .addToBackStack(null)
+                        .commit()
+            }
+            R.id.nav_song -> {
+                supportFragmentManager.beginTransaction()
+                        .replace(R.id.fragment_container,
+                                SongListFragment.newInstance(), getString(R.string.nav_song))
+                        .addToBackStack(null)
+                        .commit()
+            }
+            R.id.nav_genre -> {
+                supportFragmentManager.beginTransaction()
+                        .replace(R.id.fragment_container,
+                                GenreListFragment.newInstance(), getString(R.string.nav_genre))
+                        .addToBackStack(null)
+                        .commit()
+            }
+            R.id.nav_playlist -> {
+                supportFragmentManager.beginTransaction()
+                        .replace(R.id.fragment_container,
+                                PlaylistListFragment.newInstance(),
+                                getString(R.string.nav_playlist))
+                        .addToBackStack(null)
+                        .commit()
+            }
+            R.id.nav_setting -> {
+            }
+            R.id.nav_sync -> {
+                retrieveMediaWithPermissionCheck()
+            }
+        }
+        launch(UI + parentJob) { binding.drawerLayout.closeDrawers() }
+        true
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
@@ -54,9 +103,9 @@ class MainActivity : AppCompatActivity() {
         setupDrawer()
 
         // TODO: 設定画面でどの画面を初期画面にするか設定できるようにする
-        supportFragmentManager.beginTransaction()
-                .add(R.id.fragment_container, ArtistListFragment.newInstance())
-                .commit()
+        val navId = R.id.nav_artist
+        onNavigationItemSelectedListener(binding.navigationView.menu.findItem(navId))
+        binding.navigationView.setCheckedItem(navId)
 
         observeEvents()
 
@@ -83,6 +132,13 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         parentJob.cancel()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle?) {
+        super.onSaveInstanceState(outState)
+        outState?.keySet()?.forEach {
+            Timber.d("saved state: $it - ${outState[it]}")
+        }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -144,66 +200,56 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun observeEvents() {
+        viewModel.resumedFragmentId.observe(this, Observer { navId ->
+            if (navId == null) return@Observer
+            supportFragmentManager.fragments.firstOrNull {
+                when (navId) {
+                    R.id.nav_artist -> it is ArtistListFragment
+                    R.id.nav_album -> it is AlbumListFragment
+                    R.id.nav_song -> it is SongListFragment
+                    R.id.nav_genre -> it is GenreListFragment
+                    R.id.nav_playlist -> it is PlaylistListFragment
+                    else -> false
+                }
+            }?.tag?.apply {
+                supportActionBar?.title = this
+            }
+        })
         viewModel.isLoading.observe(this, Observer {
             binding.coordinatorMain.indicatorLoading.visibility =
                     if (it == true) View.VISIBLE else View.GONE
         })
 
-        viewModel.selectedNavId.observe(this, Observer {
-            if (it == null) return@Observer
-            binding.navigationView.navigation_view.setCheckedItem(it)
-            when (it) {
-                R.id.nav_artist -> supportActionBar?.title = getString(R.string.nav_artist)
-                R.id.nav_album -> {
-                    if (viewModel.selectedArtist.value == null)
-                        supportActionBar?.title = getString(R.string.nav_album)
-                }
-                R.id.nav_song -> {
-                    if (viewModel.selectedAlbum.value == null)
-                        supportActionBar?.title = getString(R.string.nav_song)
-                }
-                R.id.nav_genre -> supportActionBar?.title = getString(R.string.nav_genre)
-                R.id.nav_playlist -> supportActionBar?.title = getString(R.string.nav_playlist)
-                R.id.nav_setting -> supportActionBar?.title = getString(R.string.nav_setting)
-                else -> R.string.app_name
-            }
-
-        })
-
         viewModel.selectedArtist.observe(this, Observer {
             if (it == null) return@Observer
             supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, AlbumListFragment.newInstance(it))
+                    .replace(R.id.fragment_container, AlbumListFragment.newInstance(it), it.name)
                     .addToBackStack(null)
                     .commit()
-            supportActionBar?.title = it.name
         })
 
         viewModel.selectedAlbum.observe(this, Observer {
             if (it == null) return@Observer
             supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, SongListFragment.newInstance(it))
+                    .replace(R.id.fragment_container, SongListFragment.newInstance(it), it.name)
                     .addToBackStack(null)
                     .commit()
-            supportActionBar?.title = it.name
         })
 
         viewModel.selectedGenre.observe(this, Observer {
             if (it == null) return@Observer
             supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, SongListFragment.newInstance(it))
+                    .replace(R.id.fragment_container, SongListFragment.newInstance(it), it.name)
                     .addToBackStack(null)
                     .commit()
-            supportActionBar?.title = it.name
         })
 
         viewModel.selectedPlaylist.observe(this, Observer {
             if (it == null) return@Observer
             supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, SongListFragment.newInstance(it))
+                    .replace(R.id.fragment_container, SongListFragment.newInstance(it), it.name)
                     .addToBackStack(null)
                     .commit()
-            supportActionBar?.title = it.name
         })
     }
 
@@ -213,46 +259,6 @@ class MainActivity : AppCompatActivity() {
                 R.string.drawer_open, R.string.drawer_close)
         binding.drawerLayout.addDrawerListener(drawerToggle)
         drawerToggle.syncState()
-        binding.navigationView.setNavigationItemSelectedListener {
-            when (it.itemId) {
-                R.id.nav_artist -> {
-                    supportFragmentManager.beginTransaction()
-                            .replace(R.id.fragment_container, ArtistListFragment.newInstance())
-                            .addToBackStack(null)
-                            .commit()
-                }
-                R.id.nav_album -> {
-                    supportFragmentManager.beginTransaction()
-                            .replace(R.id.fragment_container, AlbumListFragment.newInstance())
-                            .addToBackStack(null)
-                            .commit()
-                }
-                R.id.nav_song -> {
-                    supportFragmentManager.beginTransaction()
-                            .replace(R.id.fragment_container, SongListFragment.newInstance())
-                            .addToBackStack(null)
-                            .commit()
-                }
-                R.id.nav_genre -> {
-                    supportFragmentManager.beginTransaction()
-                            .replace(R.id.fragment_container, GenreListFragment.newInstance())
-                            .addToBackStack(null)
-                            .commit()
-                }
-                R.id.nav_playlist -> {
-                    supportFragmentManager.beginTransaction()
-                            .replace(R.id.fragment_container, PlaylistListFragment.newInstance())
-                            .addToBackStack(null)
-                            .commit()
-                }
-                R.id.nav_setting -> {
-                }
-                R.id.nav_sync -> {
-                    retrieveMediaWithPermissionCheck()
-                }
-            }
-            launch(UI + parentJob) { binding.drawerLayout.closeDrawers() }
-            true
-        }
+        binding.navigationView.setNavigationItemSelectedListener(onNavigationItemSelectedListener)
     }
 }
