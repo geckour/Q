@@ -14,7 +14,6 @@ import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
-import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
@@ -112,7 +111,7 @@ class SongListFragment : Fragment() {
                 if (dbTrackList == null) return@Observer
 
                 latestDbTrackList = dbTrackList
-                upsertSongListIfPossible(db)
+                upsertSongListIfPossible(db, false)
             })
         }
     }
@@ -143,7 +142,7 @@ class SongListFragment : Fragment() {
                 trackIdList.add(id)
             }
             launch(UI + parentJob) {
-                adapter.upsertItems(getSongListWithTrackId(db, trackIdList).await())
+                adapter.upsertItems(getSongListWithTrackId(db, trackIdList).await(), false)
             }
         }
     }
@@ -152,14 +151,14 @@ class SongListFragment : Fragment() {
         requireActivity().contentResolver.query(
                 MediaStore.Audio.Playlists.Members.getContentUri("external", playlist.id),
                 arrayOf(
-                        MediaStore.Audio.Playlists.Members._ID),
+                        MediaStore.Audio.Playlists.Members.AUDIO_ID),
                 null,
                 null,
                 null)?.use {
             val db = DB.getInstance(requireContext())
             val trackIdList: ArrayList<Long> = ArrayList()
             while (it.moveToNext()) {
-                val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists.Members._ID))
+                val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists.Members.AUDIO_ID))
                 trackIdList.add(id)
             }
             launch(UI + parentJob) {
@@ -168,13 +167,13 @@ class SongListFragment : Fragment() {
         }
     }
 
-    private fun upsertSongListIfPossible(db: DB) {
+    private fun upsertSongListIfPossible(db: DB, sortByTrackId: Boolean = true) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
             launch(UI + parentJob) {
                 delay(500)
                 val items = getSongListWithTrack(db, latestDbTrackList).await()
-                adapter.upsertItems(items)
+                adapter.upsertItems(items, sortByTrackId)
                 chatteringCancelFlag = false
             }
         }
