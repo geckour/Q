@@ -9,5 +9,7 @@ data class Song(
         val trackNum: Int?,
         val trackTotal: Int?,
         val discNum: Int?,
-        val discTotal: Int?
+        val discTotal: Int?,
+        val genreId: Long?,
+        val playlistId: Long?
 )

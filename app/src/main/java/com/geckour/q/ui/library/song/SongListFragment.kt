@@ -142,7 +142,7 @@ class SongListFragment : Fragment() {
                 trackIdList.add(id)
             }
             launch(UI + parentJob) {
-                adapter.upsertItems(getSongListWithTrackId(db, trackIdList).await(), false)
+                adapter.upsertItems(getSongListWithTrackId(db, trackIdList, genreId = genre.id).await(), false)
             }
         }
     }
@@ -162,7 +162,7 @@ class SongListFragment : Fragment() {
                 trackIdList.add(id)
             }
             launch(UI + parentJob) {
-                adapter.upsertItems(getSongListWithTrackId(db, trackIdList).await())
+                adapter.upsertItems(getSongListWithTrackId(db, trackIdList, playlistId = playlist.id).await())
             }
         }
     }
@@ -182,16 +182,25 @@ class SongListFragment : Fragment() {
     private fun getSongListWithTrack(db: DB, dbTrackList: List<Track>): Deferred<List<Song>> =
             async(parentJob) { dbTrackList.mapNotNull { getSong(db, it).await() } }
 
-    private fun getSongListWithTrackId(db: DB, dbTrackIdList: List<Long>): Deferred<List<Song>> =
-            async(parentJob) { dbTrackIdList.mapNotNull { getSong(db, it).await() } }
+    private fun getSongListWithTrackId(db: DB,
+                                       dbTrackIdList: List<Long>,
+                                       genreId: Long? = null,
+                                       playlistId: Long? = null): Deferred<List<Song>> =
+            async(parentJob) {
+                dbTrackIdList.mapNotNull { getSong(db, it, genreId, playlistId).await() }
+            }
 
-    private fun getSong(db: DB, track: Track): Deferred<Song?> =
+    private fun getSong(db: DB, track: Track, genreId: Long? = null, playlistId: Long? = null): Deferred<Song?> =
             async(parentJob) {
                 val artist = db.artistDao().get(track.artistId) ?: return@async null
                 Song(track.id, track.albumId, track.title, artist.title, track.duration,
-                        track.trackNum, track.trackTotal, track.discNum, track.discTotal)
+                        track.trackNum, track.trackTotal, track.discNum, track.discTotal,
+                        genreId, playlistId)
             }
 
-    private fun getSong(db: DB, trackId: Long): Deferred<Song?> =
-            async { db.trackDao().get(trackId)?.let { getSong(db, it).await() } }
+    private fun getSong(db: DB, trackId: Long,
+                        genreId: Long? = null, playlistId: Long? = null): Deferred<Song?> =
+            async(parentJob) {
+                db.trackDao().get(trackId)?.let { getSong(db, it, genreId, playlistId).await() }
+            }
 }
