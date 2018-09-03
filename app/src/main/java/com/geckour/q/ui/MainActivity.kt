@@ -251,6 +251,11 @@ class MainActivity : AppCompatActivity() {
                     .addToBackStack(null)
                     .commit()
         })
+
+        viewModel.selectedSong.observe(this, Observer {
+            if (it == null) return@Observer
+            // TODO: ExoPlayerにわたす
+        })
     }
 
     private fun setupDrawer() {
