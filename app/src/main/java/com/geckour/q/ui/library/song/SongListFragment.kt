@@ -5,6 +5,7 @@ import android.arch.lifecycle.ViewModelProviders
 import android.os.Bundle
 import android.provider.MediaStore
 import android.support.v4.app.Fragment
+import android.support.v7.widget.PopupMenu
 import android.view.*
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -14,9 +15,11 @@ import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
+import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.MainViewModel
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
+import timber.log.Timber
 
 class SongListFragment : Fragment() {
 
@@ -80,6 +83,15 @@ class SongListFragment : Fragment() {
             playlist != null -> fetchSongsWithPlaylist(playlist)
             else -> fetchSongs()
         }
+
+        observeEvents()
+    }
+
+    private fun observeEvents() {
+        mainViewModel.newQueue.observe(this, Observer {
+            if (it == null) return@Observer
+            // TODO: PlayerServiceにわたす
+        })
     }
 
     override fun onResume() {
@@ -93,15 +105,17 @@ class SongListFragment : Fragment() {
         inflater?.inflate(R.menu.songs, menu)
     }
 
-    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
-        when (item?.itemId) {
-            R.id.menu_insert_all_first -> Unit
-            R.id.menu_insert_all_last -> Unit
-            R.id.menu_override_all -> Unit
-            R.id.menu_songs_insert_all_shuffle_first -> Unit
-            R.id.menu_songs_insert_all_shuffle_last -> Unit
-            R.id.menu_songs_override_all_shuffle -> Unit
-        }
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        adapter.onNewQueue(when (item.itemId) {
+            R.id.menu_insert_all_next -> PlayerService.InsertActionType.NEXT
+            R.id.menu_insert_all_last -> PlayerService.InsertActionType.LAST
+            R.id.menu_override_all -> PlayerService.InsertActionType.OVERRIDE
+            R.id.menu_songs_insert_all_shuffle_next -> PlayerService.InsertActionType.SHUFFLE_NEXT
+            R.id.menu_songs_insert_all_shuffle_last -> PlayerService.InsertActionType.SHUFFLE_LAST
+            R.id.menu_songs_override_all_shuffle -> PlayerService.InsertActionType.SHUFFLE_OVERRIDE
+            else -> return false
+        })
+
         return true
     }
 
@@ -142,7 +156,7 @@ class SongListFragment : Fragment() {
                 trackIdList.add(id)
             }
             launch(UI + parentJob) {
-                adapter.upsertItems(getSongListWithTrackId(db, trackIdList, genreId = genre.id).await(), false)
+                adapter.upsertItems(getSongListFromTrackId(db, trackIdList, genreId = genre.id).await(), false)
             }
         }
     }
@@ -162,27 +176,27 @@ class SongListFragment : Fragment() {
                 trackIdList.add(id)
             }
             launch(UI + parentJob) {
-                adapter.upsertItems(getSongListWithTrackId(db, trackIdList, playlistId = playlist.id).await())
+                adapter.upsertItems(getSongListFromTrackId(db, trackIdList, playlistId = playlist.id).await())
             }
         }
     }
 
-    private fun upsertSongListIfPossible(db: DB, sortByTrackId: Boolean = true) {
+    private fun upsertSongListIfPossible(db: DB, sortByTrackOrder: Boolean = true) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
             launch(UI + parentJob) {
                 delay(500)
-                val items = getSongListWithTrack(db, latestDbTrackList).await()
-                adapter.upsertItems(items, sortByTrackId)
+                val items = getSongListFromTrackList(db, latestDbTrackList).await()
+                adapter.upsertItems(items, sortByTrackOrder)
                 chatteringCancelFlag = false
             }
         }
     }
 
-    private fun getSongListWithTrack(db: DB, dbTrackList: List<Track>): Deferred<List<Song>> =
+    private fun getSongListFromTrackList(db: DB, dbTrackList: List<Track>): Deferred<List<Song>> =
             async(parentJob) { dbTrackList.mapNotNull { getSong(db, it).await() } }
 
-    private fun getSongListWithTrackId(db: DB,
+    private fun getSongListFromTrackId(db: DB,
                                        dbTrackIdList: List<Long>,
                                        genreId: Long? = null,
                                        playlistId: Long? = null): Deferred<List<Song>> =

@@ -252,9 +252,9 @@ class MainActivity : AppCompatActivity() {
                     .commit()
         })
 
-        viewModel.selectedSong.observe(this, Observer {
-            if (it == null) return@Observer
-            // TODO: ExoPlayerにわたす
+        viewModel.newQueue.observe(this, Observer {
+            Timber.d("qgeck received queue: $it")
+            // TODO: PlayerServiceにわたす
         })
     }
 

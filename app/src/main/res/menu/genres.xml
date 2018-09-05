@@ -2,8 +2,8 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
-        android:id="@+id/menu_insert_all_first"
-        android:title="@string/menu_insert_all_first"
+        android:id="@+id/menu_insert_all_next"
+        android:title="@string/menu_insert_all_next"
         app:showAsAction="never" />
     <item
         android:id="@+id/menu_insert_all_last"
@@ -14,8 +14,8 @@
         android:title="@string/menu_override_all"
         app:showAsAction="never" />
     <item
-        android:id="@+id/menu_genres_insert_all_shuffle_first"
-        android:title="@string/menu_genres_insert_all_shuffle_first"
+        android:id="@+id/menu_genres_insert_all_shuffle_next"
+        android:title="@string/menu_genres_insert_all_shuffle_next"
         app:showAsAction="never" />
     <item
         android:id="@+id/menu_genres_insert_all_shuffle_last"

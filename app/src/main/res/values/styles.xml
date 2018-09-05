@@ -17,6 +17,6 @@
 
     <style name="ToolbarStyle.Popup" parent="AppTheme">
         <!-- text -->
-        <item name="android:textColorPrimary">@color/colorAccent</item>
+        <item name="android:textColorPrimary">@color/colorTextPrimary</item>
     </style>
 </resources>

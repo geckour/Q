@@ -20,27 +20,31 @@
     <string name="nav_sync">Sync library</string>
 
 
-    <string name="menu_insert_all_first">Insert all to first</string>
+    <string name="menu_insert_next">Insert to next</string>
+    <string name="menu_insert_last">Insert to last</string>
+    <string name="menu_override">Override</string>
+
+    <string name="menu_insert_all_next">Insert all to next</string>
     <string name="menu_insert_all_last">Insert all to last</string>
     <string name="menu_override_all">Override with all</string>
 
-    <string name="menu_artists_insert_all_shuffle_first">Shuffle with artists to first</string>
+    <string name="menu_artists_insert_all_shuffle_next">Shuffle with artists to next</string>
     <string name="menu_artists_insert_all_shuffle_last">Shuffle with artists to last</string>
     <string name="menu_artists_override_all_shuffle">Shuffle and override with artist</string>
 
-    <string name="menu_albums_insert_all_shuffle_first">Shuffle with albums to first</string>
+    <string name="menu_albums_insert_all_shuffle_next">Shuffle with albums to next</string>
     <string name="menu_albums_insert_all_shuffle_last">Shuffle with albums to last</string>
     <string name="menu_albums_override_all_shuffle">Shuffle and override with albums</string>
 
-    <string name="menu_songs_insert_all_shuffle_first">Shuffle with songs to first</string>
+    <string name="menu_songs_insert_all_shuffle_next">Shuffle with songs to next</string>
     <string name="menu_songs_insert_all_shuffle_last">Shuffle with songs to last</string>
     <string name="menu_songs_override_all_shuffle">Shuffle and override with songs</string>
 
-    <string name="menu_genres_insert_all_shuffle_first">Shuffle with genres to first</string>
+    <string name="menu_genres_insert_all_shuffle_next">Shuffle with genres to next</string>
     <string name="menu_genres_insert_all_shuffle_last">Shuffle with genres to last</string>
     <string name="menu_genres_override_all_shuffle">Shuffle and override with genres</string>
 
-    <string name="menu_playlists_insert_all_shuffle_first">Shuffle with playlists to first</string>
+    <string name="menu_playlists_insert_all_shuffle_next">Shuffle with playlists to next</string>
     <string name="menu_playlists_insert_all_shuffle_last">Shuffle with playlists to last</string>
     <string name="menu_playlists_override_all_shuffle">Shuffle and override with playlists</string>
 </resources>

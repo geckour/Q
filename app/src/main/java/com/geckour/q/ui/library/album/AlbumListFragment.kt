@@ -79,10 +79,10 @@ class AlbumListFragment : Fragment() {
 
     override fun onOptionsItemSelected(item: MenuItem?): Boolean {
         when (item?.itemId) {
-            R.id.menu_insert_all_first -> Unit
+            R.id.menu_insert_all_next -> Unit
             R.id.menu_insert_all_last -> Unit
             R.id.menu_override_all -> Unit
-            R.id.menu_albums_insert_all_shuffle_first -> Unit
+            R.id.menu_albums_insert_all_shuffle_next -> Unit
             R.id.menu_albums_insert_all_shuffle_last -> Unit
             R.id.menu_albums_override_all_shuffle -> Unit
         }
