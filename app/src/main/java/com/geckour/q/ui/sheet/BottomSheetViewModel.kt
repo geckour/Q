@@ -6,7 +6,17 @@ import com.geckour.q.util.SingleLifeEvent
 
 class BottomSheetViewModel : ViewModel() {
 
+    enum class PlaybackButton {
+        PLAY_OR_PAUSE,
+        NEXT,
+        PREV,
+        FF,
+        REWIND
+    }
+
     internal val sheetState: SingleLifeEvent<Int> = SingleLifeEvent()
+    internal val playbackButton: SingleLifeEvent<PlaybackButton> = SingleLifeEvent()
+    internal val isActive: SingleLifeEvent<Boolean> = SingleLifeEvent()
 
     init {
         sheetState.value = BottomSheetBehavior.STATE_COLLAPSED
@@ -17,5 +27,27 @@ class BottomSheetViewModel : ViewModel() {
             BottomSheetBehavior.STATE_EXPANDED -> BottomSheetBehavior.STATE_COLLAPSED
             else -> BottomSheetBehavior.STATE_EXPANDED
         }
+    }
+
+    fun onPlayOrPause() {
+        playbackButton.value = PlaybackButton.PLAY_OR_PAUSE
+    }
+
+    fun onNext() {
+        playbackButton.value = PlaybackButton.NEXT
+    }
+
+    fun onPrev() {
+        playbackButton.value = PlaybackButton.PREV
+    }
+
+    fun onFF(): Boolean {
+        playbackButton.value = PlaybackButton.FF
+        return true
+    }
+
+    fun onRewind(): Boolean {
+        playbackButton.value = PlaybackButton.REWIND
+        return true
     }
 }

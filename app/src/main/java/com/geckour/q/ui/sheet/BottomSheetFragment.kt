@@ -1,19 +1,25 @@
 package com.geckour.q.ui.sheet
 
 import android.arch.lifecycle.Observer
+import android.arch.lifecycle.ViewModelProviders
+import android.content.res.ColorStateList
 import android.os.Bundle
 import android.support.design.widget.BottomSheetBehavior
 import android.support.v4.app.Fragment
+import android.support.v4.content.ContextCompat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentSheetBottomBinding
 import com.geckour.q.ui.MainActivity
+import timber.log.Timber
 
 class BottomSheetFragment : Fragment() {
 
-    private val viewModel: BottomSheetViewModel = BottomSheetViewModel()
+    private val viewModel: BottomSheetViewModel by lazy {
+        ViewModelProviders.of(requireActivity())[BottomSheetViewModel::class.java]
+    }
     private lateinit var binding: FragmentSheetBottomBinding
     private lateinit var behavior: BottomSheetBehavior<*>
 
@@ -41,6 +47,8 @@ class BottomSheetFragment : Fragment() {
         })
 
         observeEvents()
+
+        viewModel.isActive.value = false
     }
 
     private fun observeEvents() {
@@ -53,6 +61,24 @@ class BottomSheetFragment : Fragment() {
                         else -> R.drawable.ic_queue
                     }
             )
+        })
+
+        viewModel.isActive.observe(this, Observer {
+            binding.isControllerActive = it == true
+            binding.seekBar.apply {
+                thumbTintList =
+                        if (it == true) {
+                            Timber.d("qgeck enter state of true")
+                            setOnTouchListener(null)
+                            ColorStateList.valueOf(ContextCompat.getColor(requireContext(),
+                                    R.color.colorPrimaryDark))
+                        } else {
+                            Timber.d("qgeck enter state of false")
+                            setOnTouchListener { _, _ -> true }
+                            ColorStateList.valueOf(ContextCompat.getColor(requireContext(),
+                                    R.color.colorTintInactive))
+                        }
+            }
         })
     }
 }

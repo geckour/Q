@@ -3,8 +3,12 @@ package com.geckour.q.ui
 import android.Manifest
 import android.arch.lifecycle.Observer
 import android.arch.lifecycle.ViewModelProviders
+import android.content.ComponentName
+import android.content.Context
+import android.content.ServiceConnection
 import android.databinding.DataBindingUtil
 import android.os.Bundle
+import android.os.IBinder
 import android.preference.PreferenceManager
 import android.support.v7.app.ActionBarDrawerToggle
 import android.support.v7.app.AppCompatActivity
@@ -17,11 +21,13 @@ import androidx.work.WorkRequest
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ActivityMainBinding
+import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.library.album.AlbumListFragment
 import com.geckour.q.ui.library.artist.ArtistListFragment
 import com.geckour.q.ui.library.genre.GenreListFragment
 import com.geckour.q.ui.library.playlist.PlaylistListFragment
 import com.geckour.q.ui.library.song.SongListFragment
+import com.geckour.q.ui.sheet.BottomSheetViewModel
 import com.geckour.q.util.MediaRetrieveWorker
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.UI
@@ -42,9 +48,14 @@ class MainActivity : AppCompatActivity() {
     private val viewModel: MainViewModel by lazy {
         ViewModelProviders.of(this)[MainViewModel::class.java]
     }
+    private val bottomSheetViewModel: BottomSheetViewModel by lazy {
+        ViewModelProviders.of(this)[BottomSheetViewModel::class.java]
+    }
     internal lateinit var binding: ActivityMainBinding
     private lateinit var drawerToggle: ActionBarDrawerToggle
     private var parentJob = Job()
+
+    private var player: PlayerService? = null
 
     private val onNavigationItemSelectedListener: ((MenuItem) -> Boolean) = {
         when (it.itemId) {
@@ -94,6 +105,24 @@ class MainActivity : AppCompatActivity() {
         true
     }
 
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            if (name == ComponentName(applicationContext, PlayerService::class.java)) {
+                player = (service as? PlayerService.PlayerBinder)?.service?.apply {
+                    setOnQueueChangedListener {
+                        bottomSheetViewModel.isActive.value = it.isEmpty().not()
+                    }
+                }
+            }
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            if (name == ComponentName(applicationContext, PlayerService::class.java)) {
+                player = null
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
@@ -127,11 +156,13 @@ class MainActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         parentJob = Job()
+        bindService(PlayerService.createIntent(this), serviceConnection, Context.BIND_AUTO_CREATE)
     }
 
     override fun onStop() {
         super.onStop()
         parentJob.cancel()
+        unbindService(serviceConnection)
     }
 
     override fun onSaveInstanceState(outState: Bundle?) {
@@ -253,8 +284,19 @@ class MainActivity : AppCompatActivity() {
         })
 
         viewModel.newQueue.observe(this, Observer {
-            Timber.d("qgeck received queue: $it")
-            // TODO: PlayerServiceにわたす
+            if (it == null) return@Observer
+            player?.submitQueue(it)
+        })
+
+        bottomSheetViewModel.playbackButton.observe(this, Observer {
+            if (it == null) return@Observer
+            when (it) {
+                BottomSheetViewModel.PlaybackButton.PLAY_OR_PAUSE -> player?.togglePlayPause()
+                BottomSheetViewModel.PlaybackButton.NEXT -> player?.next()
+                BottomSheetViewModel.PlaybackButton.PREV -> player?.prev()
+                BottomSheetViewModel.PlaybackButton.FF -> player?.fastForward()
+                BottomSheetViewModel.PlaybackButton.REWIND -> player?.rewind()
+            }
         })
     }
 

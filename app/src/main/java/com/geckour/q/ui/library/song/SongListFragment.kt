@@ -209,7 +209,7 @@ class SongListFragment : Fragment() {
                 val artist = db.artistDao().get(track.artistId) ?: return@async null
                 Song(track.id, track.albumId, track.title, artist.title, track.duration,
                         track.trackNum, track.trackTotal, track.discNum, track.discTotal,
-                        genreId, playlistId)
+                        genreId, playlistId, track.sourcePath)
             }
 
     private fun getSong(db: DB, trackId: Long,
