@@ -1,14 +1,18 @@
 package com.geckour.q.service
 
 import android.app.Service
+import android.bluetooth.BluetoothHeadset
+import android.bluetooth.BluetoothProfile
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
 import android.os.Binder
-import android.os.Handler
 import android.os.IBinder
 import com.geckour.q.domain.model.Song
 import com.google.android.exoplayer2.*
+import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.source.ExtractorMediaSource
 import com.google.android.exoplayer2.source.TrackGroupArray
 import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection
@@ -37,6 +41,11 @@ class PlayerService : Service() {
         PLAYLIST
     }
 
+    enum class OutputSourceType {
+        WIRED,
+        BLUETOOTH
+    }
+
     data class QueueMetadata(
             val actionType: InsertActionType,
             val classType: OrientedClassType
@@ -53,23 +62,26 @@ class PlayerService : Service() {
 
     companion object {
         fun createIntent(context: Context): Intent = Intent(context, PlayerService::class.java)
+
+        private const val SOURCE_ACTION_WIRED_STATE = Intent.ACTION_HEADSET_PLUG
+        private const val SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE =
+                BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED
     }
 
     private val binder = PlayerBinder()
     private val trackSelector = DefaultTrackSelector(AdaptiveTrackSelection.Factory(null))
     private lateinit var player: SimpleExoPlayer
-    val queue: ArrayList<Song> = ArrayList()
+    private val queue: ArrayList<Song> = ArrayList()
     private var currentPosition: Int = 0
     private val currentSong: Song?
         get() = if (currentPosition in queue.indices) queue[currentPosition] else null
 
     private var onQueueChanged: ((List<Song>) -> Unit)? = null
 
-    private val handler = Handler()
-
     private val mediaSourceFactory: ExtractorMediaSource.Factory by lazy {
         ExtractorMediaSource.Factory(DefaultDataSourceFactory(applicationContext,
                 Util.getUserAgent(applicationContext, packageName)))
+                .setExtractorsFactory(DefaultExtractorsFactory())
     }
 
     private val eventListener = object : Player.EventListener {
@@ -120,6 +132,35 @@ class PlayerService : Service() {
         }
     }
 
+    private val headsetStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            when (intent.action) {
+                SOURCE_ACTION_WIRED_STATE -> {
+                    val state = intent.getIntExtra("state", -1)
+                    Timber.d("qgeck wired state: $state")
+                    if (state > 0) {
+                        onOutputSourceChange(OutputSourceType.WIRED)
+                    } else {
+                        onUnplugged()
+                    }
+                }
+
+                SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE -> {
+                    val state = intent.getIntExtra(BluetoothProfile.EXTRA_STATE, -1)
+                    Timber.d("qgeck bl connection state: $state")
+                    when (state) {
+                        BluetoothHeadset.STATE_CONNECTED -> {
+                            onOutputSourceChange(OutputSourceType.BLUETOOTH)
+                        }
+                        BluetoothHeadset.STATE_DISCONNECTED -> {
+                            onUnplugged()
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     override fun onBind(intent: Intent?): IBinder? = binder
 
     override fun onCreate() {
@@ -128,6 +169,11 @@ class PlayerService : Service() {
         player = ExoPlayerFactory.newSimpleInstance(this, trackSelector).apply {
             addListener(eventListener)
         }
+
+        registerReceiver(headsetStateReceiver, IntentFilter().apply {
+            addAction(SOURCE_ACTION_WIRED_STATE)
+            addAction(SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE)
+        })
     }
 
     override fun onDestroy() {
@@ -254,6 +300,19 @@ class PlayerService : Service() {
         val toShuffle = this.queue.subList(currentPosition + 1, this.queue.size)
         this.queue.clear()
         this.queue.addAll(toHold + toShuffle.shuffled())
+    }
+
+    fun onOutputSourceChange(outputSourceType: OutputSourceType) {
+        when (outputSourceType) {
+            OutputSourceType.WIRED -> Unit
+            OutputSourceType.BLUETOOTH -> {
+
+            }
+        }
+    }
+
+    fun onUnplugged() {
+        pause()
     }
 
     private fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> =

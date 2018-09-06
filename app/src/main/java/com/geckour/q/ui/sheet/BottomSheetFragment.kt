@@ -68,12 +68,10 @@ class BottomSheetFragment : Fragment() {
             binding.seekBar.apply {
                 thumbTintList =
                         if (it == true) {
-                            Timber.d("qgeck enter state of true")
                             setOnTouchListener(null)
                             ColorStateList.valueOf(ContextCompat.getColor(requireContext(),
                                     R.color.colorPrimaryDark))
                         } else {
-                            Timber.d("qgeck enter state of false")
                             setOnTouchListener { _, _ -> true }
                             ColorStateList.valueOf(ContextCompat.getColor(requireContext(),
                                     R.color.colorTintInactive))
