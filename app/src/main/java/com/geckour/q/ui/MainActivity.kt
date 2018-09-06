@@ -112,6 +112,9 @@ class MainActivity : AppCompatActivity() {
                     setOnQueueChangedListener {
                         bottomSheetViewModel.currentQueue.value = it
                     }
+                    setOnCurrentPositionChangedListener {
+                        bottomSheetViewModel.currentPosition.value = it
+                    }
                 }
             }
         }

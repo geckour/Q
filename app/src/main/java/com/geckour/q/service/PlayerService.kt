@@ -77,6 +77,7 @@ class PlayerService : Service() {
         get() = if (currentPosition in queue.indices) queue[currentPosition] else null
 
     private var onQueueChanged: ((List<Song>) -> Unit)? = null
+    private var onCurrentPositionChanged: ((Int) -> Unit)? = null
 
     private val mediaSourceFactory: ExtractorMediaSource.Factory by lazy {
         ExtractorMediaSource.Factory(DefaultDataSourceFactory(applicationContext,
@@ -186,6 +187,10 @@ class PlayerService : Service() {
         this.onQueueChanged = listener
     }
 
+    fun setOnCurrentPositionChangedListener(listener: (Int) -> Unit) {
+        this.onCurrentPositionChanged = listener
+    }
+
     fun submitQueue(queue: InsertQueue) {
         when (queue.metadata.actionType) {
             InsertActionType.NEXT -> {
@@ -213,12 +218,14 @@ class PlayerService : Service() {
         }
 
         onQueueChanged?.invoke(this.queue)
+        onCurrentPositionChanged?.invoke(currentPosition)
     }
 
     fun play(position: Int = currentPosition) {
         Timber.d("qgeck play invoked")
         if (position > queue.lastIndex) return
         this.currentPosition = position
+        onCurrentPositionChanged?.invoke(currentPosition)
 
         val uri = try {
             Uri.parse(currentSong?.sourcePath ?: return)

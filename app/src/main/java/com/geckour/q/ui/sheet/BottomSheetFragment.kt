@@ -10,10 +10,12 @@ import android.support.v4.content.ContextCompat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentSheetBottomBinding
 import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
+import com.geckour.q.util.getArtworkUriFromAlbumId
 
 class BottomSheetFragment : Fragment() {
 
@@ -91,5 +93,24 @@ class BottomSheetFragment : Fragment() {
                         }
             }
         })
+
+        viewModel.currentPosition.observe(this, Observer {
+            val song = adapter.getItem(it)
+
+            Glide.with(binding.artwork)
+                    .load(song?.albumId?.let { getArtworkUriFromAlbumId(it) })
+                    .into(binding.artwork)
+            binding.textSong.text = song?.name
+            binding.textArtist.text = song?.artist
+            binding.textTimeLeft.text = if (song != null) 0L.getTimeString() else null
+            binding.textTimeRight.text = song?.duration?.getTimeString()
+        })
+    }
+
+    private fun Long.getTimeString(): String {
+        val hour = this / 3600000
+        val minute = (this / 60000) % 3600
+        val second = (this / 1000) % 60
+        return if (hour > 0) String.format("%02d", hour) else "" + String.format("%02d:%02d", minute, second)
     }
 }

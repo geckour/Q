@@ -22,6 +22,9 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
         notifyDataSetChanged()
     }
 
+    internal fun getItem(index: Int?): Song? =
+            if (index in 0..items.lastIndex) items[requireNotNull(index)] else null
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
             ViewHolder(ItemListSongBinding.inflate(LayoutInflater.from(parent.context), parent, false))
 
