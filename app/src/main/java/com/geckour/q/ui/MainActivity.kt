@@ -110,7 +110,7 @@ class MainActivity : AppCompatActivity() {
             if (name == ComponentName(applicationContext, PlayerService::class.java)) {
                 player = (service as? PlayerService.PlayerBinder)?.service?.apply {
                     setOnQueueChangedListener {
-                        bottomSheetViewModel.isActive.value = it.isEmpty().not()
+                        bottomSheetViewModel.currentQueue.value = it
                     }
                 }
             }

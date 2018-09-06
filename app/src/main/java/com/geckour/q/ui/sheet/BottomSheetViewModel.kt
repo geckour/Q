@@ -2,6 +2,7 @@ package com.geckour.q.ui.sheet
 
 import android.arch.lifecycle.ViewModel
 import android.support.design.widget.BottomSheetBehavior
+import com.geckour.q.domain.model.Song
 import com.geckour.q.util.SingleLifeEvent
 
 class BottomSheetViewModel : ViewModel() {
@@ -16,7 +17,7 @@ class BottomSheetViewModel : ViewModel() {
 
     internal val sheetState: SingleLifeEvent<Int> = SingleLifeEvent()
     internal val playbackButton: SingleLifeEvent<PlaybackButton> = SingleLifeEvent()
-    internal val isActive: SingleLifeEvent<Boolean> = SingleLifeEvent()
+    internal val currentQueue: SingleLifeEvent<List<Song>> = SingleLifeEvent()
 
     init {
         sheetState.value = BottomSheetBehavior.STATE_COLLAPSED

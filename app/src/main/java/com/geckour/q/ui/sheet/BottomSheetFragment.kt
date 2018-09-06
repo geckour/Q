@@ -13,20 +13,31 @@ import android.view.ViewGroup
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentSheetBottomBinding
 import com.geckour.q.ui.MainActivity
-import timber.log.Timber
+import com.geckour.q.ui.MainViewModel
 
 class BottomSheetFragment : Fragment() {
 
     private val viewModel: BottomSheetViewModel by lazy {
         ViewModelProviders.of(requireActivity())[BottomSheetViewModel::class.java]
     }
+    private val mainViewModel: MainViewModel by lazy {
+        ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
+    }
     private lateinit var binding: FragmentSheetBottomBinding
+    private lateinit var adapter: QueueListAdapter
     private lateinit var behavior: BottomSheetBehavior<*>
 
     override fun onCreateView(inflater: LayoutInflater,
                               container: ViewGroup?, savedInstanceState: Bundle?): View? {
         binding = FragmentSheetBottomBinding.inflate(inflater, container, false)
         return binding.root
+    }
+
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+
+        adapter = QueueListAdapter(mainViewModel)
+        binding.recyclerView.adapter = adapter
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -48,7 +59,7 @@ class BottomSheetFragment : Fragment() {
 
         observeEvents()
 
-        viewModel.isActive.value = false
+        viewModel.currentQueue.value = emptyList()
     }
 
     private fun observeEvents() {
@@ -63,11 +74,13 @@ class BottomSheetFragment : Fragment() {
             )
         })
 
-        viewModel.isActive.observe(this, Observer {
-            binding.isControllerActive = it == true
+        viewModel.currentQueue.observe(this, Observer {
+            adapter.setItems(it ?: emptyList())
+            val state = it?.isNotEmpty() ?: false
+            binding.isControllerActive = state
             binding.seekBar.apply {
                 thumbTintList =
-                        if (it == true) {
+                        if (state) {
                             setOnTouchListener(null)
                             ColorStateList.valueOf(ContextCompat.getColor(requireContext(),
                                     R.color.colorPrimaryDark))
