@@ -238,7 +238,7 @@ class PlayerService : Service() {
 
     fun headOrPrev() {
         val current = currentSong ?: return
-        if (player.contentPosition < current.duration / 100) prev()
+        if (currentPosition > 0 && player.contentPosition < current.duration / 100) prev()
         else seekToHead()
     }
 

@@ -293,7 +293,7 @@ class MainActivity : AppCompatActivity() {
             when (it) {
                 BottomSheetViewModel.PlaybackButton.PLAY_OR_PAUSE -> player?.togglePlayPause()
                 BottomSheetViewModel.PlaybackButton.NEXT -> player?.next()
-                BottomSheetViewModel.PlaybackButton.PREV -> player?.prev()
+                BottomSheetViewModel.PlaybackButton.PREV -> player?.headOrPrev()
                 BottomSheetViewModel.PlaybackButton.FF -> player?.fastForward()
                 BottomSheetViewModel.PlaybackButton.REWIND -> player?.rewind()
             }
