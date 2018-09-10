@@ -133,6 +133,8 @@ class MainActivity : AppCompatActivity() {
                     setOnPlaybackRatioChangedListener {
                         bottomSheetViewModel.playbackRatio.value = it
                     }
+
+                    publishQueue()
                 }
             }
         }
@@ -189,6 +191,7 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         parentJob.cancel()
+        player?.onActivityStop()
         if (isBoundedService) {
             isBoundedService = false
             unbindService(serviceConnection)

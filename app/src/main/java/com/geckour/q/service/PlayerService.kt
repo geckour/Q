@@ -518,6 +518,15 @@ class PlayerService : MediaBrowserService() {
         onCurrentPositionChanged?.invoke(currentPosition)
     }
 
+    fun onActivityStop() {
+        if (player.playWhenReady.not()) stopForeground(true)
+    }
+
+    fun publishQueue() {
+        onQueueChanged?.invoke(queue)
+        onCurrentPositionChanged?.invoke(currentPosition)
+    }
+
     fun onOutputSourceChange(outputSourceType: OutputSourceType) {
         when (outputSourceType) {
             OutputSourceType.WIRED -> Unit
