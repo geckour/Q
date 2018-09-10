@@ -22,6 +22,7 @@ class BottomSheetViewModel : ViewModel() {
     internal val newSeekBarProgress: SingleLifeEvent<Float> = SingleLifeEvent()
     internal val shuffle: SingleLifeEvent<Unit> = SingleLifeEvent()
     internal val changedQueue: SingleLifeEvent<List<Song>> = SingleLifeEvent()
+    internal val changedPosition: SingleLifeEvent<Int> = SingleLifeEvent()
 
     internal var playing: SingleLifeEvent<Boolean> = SingleLifeEvent()
     internal var playbackRatio: SingleLifeEvent<Float> = SingleLifeEvent()
@@ -38,15 +39,17 @@ class BottomSheetViewModel : ViewModel() {
     }
 
     fun onClickClearQueueButton() {
-        val newQueue = if (playing.value == true) {
-            val position = currentPosition.value
-            if (position == null) emptyList()
-            else currentQueue.value?.get(position)?.let { listOf(it) } ?: emptyList()
-        } else emptyList()
+        val newQueue =
+                if (playing.value == true) {
+                    currentPosition.value?.let {
+                        currentQueue.value?.get(it)?.let { listOf(it) }
+                    } ?: emptyList()
+                } else emptyList()
 
-        currentQueue.value = newQueue
         currentPosition.value = 0
+        currentQueue.value = newQueue
 
+        changedPosition.value = 0
         changedQueue.value = newQueue
     }
 

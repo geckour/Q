@@ -363,6 +363,11 @@ class MainActivity : AppCompatActivity() {
                     PlayerService.QueueMetadata(PlayerService.InsertActionType.OVERRIDE,
                             PlayerService.OrientedClassType.SONG), it))
         })
+
+        bottomSheetViewModel.changedPosition.observe(this, Observer {
+            if (it == null) return@Observer
+            player?.forcePosition(it)
+        })
     }
 
     private fun setupDrawer() {

@@ -98,7 +98,7 @@ class BottomSheetFragment : Fragment() {
         viewModel.currentQueue.observe(this, Observer {
             adapter.setItems(it ?: emptyList())
             val state = it?.isNotEmpty() ?: false
-            binding.isControllerActive = state
+            binding.isQueueNotEmpty = state
             binding.seekBar.apply {
                 thumbTintList =
                         if (state) {

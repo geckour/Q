@@ -371,6 +371,10 @@ class PlayerService : MediaBrowserService() {
         onCurrentPositionChanged?.invoke(currentPosition)
     }
 
+    fun forcePosition(position: Int) {
+        this.currentPosition = position
+    }
+
     fun play(position: Int = currentPosition) {
         Timber.d("qgeck play invoked")
         if (position > queue.lastIndex) return
@@ -462,6 +466,7 @@ class PlayerService : MediaBrowserService() {
     fun stop() {
         pause()
         seekToHead()
+        stopForeground(true)
     }
 
     fun clear() {

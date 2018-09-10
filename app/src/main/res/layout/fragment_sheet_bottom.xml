@@ -10,7 +10,7 @@
             type="com.geckour.q.ui.sheet.BottomSheetViewModel" />
 
         <variable
-            name="isControllerActive"
+            name="isQueueNotEmpty"
             type="Boolean" />
 
         <variable
@@ -79,12 +79,12 @@
             android:layout_height="44dp"
             android:layout_marginRight="44dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:clickable="@{isControllerActive}"
+            android:clickable="@{isQueueNotEmpty}"
             android:onClick="@{() -> viewModel.onPrev()}"
             android:onLongClick="@{() -> viewModel.onRewind()}"
             android:padding="8dp"
             android:src="@drawable/ic_backward"
-            android:tint="@{isControllerActive ? @color/colorPrimaryDark : @color/colorTintInactive}"
+            android:tint="@{isQueueNotEmpty ? @color/colorPrimaryDark : @color/colorTintInactive}"
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
             app:layout_constraintRight_toLeftOf="@id/button_controller_center"
             tools:tint="@color/colorPrimaryDark" />
@@ -95,11 +95,11 @@
             android:layout_height="44dp"
             android:layout_marginBottom="8dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:clickable="@{isControllerActive}"
+            android:clickable="@{isQueueNotEmpty}"
             android:onClick="@{() -> viewModel.onPlayOrPause()}"
             android:padding="8dp"
             android:src="@{playing ? @drawable/ic_pause : @drawable/ic_play}"
-            android:tint="@{isControllerActive ? @color/colorPrimaryDark : @color/colorTintInactive}"
+            android:tint="@{isQueueNotEmpty ? @color/colorPrimaryDark : @color/colorTintInactive}"
             app:layout_constraintBottom_toTopOf="@id/seek_bar"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
@@ -112,12 +112,12 @@
             android:layout_height="44dp"
             android:layout_marginLeft="44dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:clickable="@{isControllerActive}"
+            android:clickable="@{isQueueNotEmpty}"
             android:onClick="@{() -> viewModel.onNext()}"
             android:onLongClick="@{() -> viewModel.onFF()}"
             android:padding="8dp"
             android:src="@drawable/ic_forward"
-            android:tint="@{isControllerActive ? @color/colorPrimaryDark : @color/colorTintInactive}"
+            android:tint="@{isQueueNotEmpty ? @color/colorPrimaryDark : @color/colorTintInactive}"
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
             app:layout_constraintLeft_toRightOf="@id/button_controller_center"
             tools:tint="@color/colorPrimaryDark" />
@@ -132,7 +132,7 @@
             android:onClick="@{() -> viewModel.onClickShuffleButton()}"
             android:padding="4dp"
             android:src="@drawable/ic_shuffle"
-            android:tint="@{isControllerActive ? @color/colorPrimaryDark : @color/colorTintInactive}"
+            android:tint="@{isQueueNotEmpty ? @color/colorPrimaryDark : @color/colorTintInactive}"
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="@id/button_controller_center"
@@ -148,7 +148,7 @@
             android:onClick="@{() -> viewModel.onClickShuffleButton()}"
             android:padding="4dp"
             android:src="@drawable/ic_shuffle"
-            android:tint="@{isControllerActive ? @color/colorPrimaryDark : @color/colorTintInactive}"
+            android:tint="@{isQueueNotEmpty ? @color/colorPrimaryDark : @color/colorTintInactive}"
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="@id/button_controller_center"
@@ -213,7 +213,7 @@
             android:onClick="@{() -> viewModel.onClickClearQueueButton()}"
             android:padding="4dp"
             android:src="@drawable/ic_remove"
-            android:tint="@color/colorPrimaryDark"
+            android:tint="@{isQueueNotEmpty ? @color/colorPrimaryDark : @color/colorTintInactive}"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toBottomOf="@id/guide_peek_height" />
 
