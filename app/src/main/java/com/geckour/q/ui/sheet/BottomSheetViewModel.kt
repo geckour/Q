@@ -12,7 +12,8 @@ class BottomSheetViewModel : ViewModel() {
         NEXT,
         PREV,
         FF,
-        REWIND
+        REWIND,
+        UNDEFINED
     }
 
     internal val sheetState: SingleLifeEvent<Int> = SingleLifeEvent()

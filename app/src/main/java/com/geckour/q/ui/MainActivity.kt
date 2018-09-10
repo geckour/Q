@@ -345,6 +345,7 @@ class MainActivity : AppCompatActivity() {
                 BottomSheetViewModel.PlaybackButton.PREV -> player?.headOrPrev()
                 BottomSheetViewModel.PlaybackButton.FF -> player?.fastForward()
                 BottomSheetViewModel.PlaybackButton.REWIND -> player?.rewind()
+                BottomSheetViewModel.PlaybackButton.UNDEFINED -> player?.stopRunningButtonAction()
             }
         })
 

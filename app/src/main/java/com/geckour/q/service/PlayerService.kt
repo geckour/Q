@@ -168,6 +168,7 @@ class PlayerService : MediaBrowserService() {
     }
 
     private var notifyPlaybackRatioJob: Job? = null
+    private var seekJob: Job? = null
 
     private val eventListener = object : Player.EventListener {
         override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters?) {
@@ -481,11 +482,38 @@ class PlayerService : MediaBrowserService() {
     }
 
     fun fastForward() {
-
+        val song = currentSong
+        if (song != null) {
+            seekJob?.cancel()
+            seekJob = launch(UI + parentJob) {
+                while (true) {
+                    val seekTo = (player.currentPosition + 3000).let {
+                        if (it > song.duration) song.duration else it
+                    }
+                    seek(seekTo)
+                    delay(250)
+                }
+            }
+        }
     }
 
     fun rewind() {
+        if (currentSong != null) {
+            seekJob?.cancel()
+            seekJob = launch(UI + parentJob) {
+                while (true) {
+                    val seekTo = (player.currentPosition - 3000).let {
+                        if (it < 0) 0 else it
+                    }
+                    seek(seekTo)
+                    delay(250)
+                }
+            }
+        }
+    }
 
+    fun stopRunningButtonAction() {
+        seekJob?.cancel()
     }
 
     fun seekToHead() {

@@ -8,6 +8,7 @@ import android.support.design.widget.BottomSheetBehavior
 import android.support.v4.app.Fragment
 import android.support.v4.content.ContextCompat
 import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
@@ -59,6 +60,21 @@ class BottomSheetFragment : Fragment() {
                 viewModel.newSeekBarProgress.value = seekBar.progress.toFloat() / seekBar.max
             }
         })
+
+        listOf(binding.buttonControllerLeft,
+                binding.buttonControllerCenter,
+                binding.buttonControllerRight).forEach {
+            it.setOnTouchListener { _, event ->
+                when (event.action) {
+                    MotionEvent.ACTION_UP -> {
+                        viewModel.playbackButton.value =
+                                BottomSheetViewModel.PlaybackButton.UNDEFINED
+                    }
+                }
+
+                return@setOnTouchListener false
+            }
+        }
 
         behavior = BottomSheetBehavior.from(
                 (requireActivity() as MainActivity).binding.root
