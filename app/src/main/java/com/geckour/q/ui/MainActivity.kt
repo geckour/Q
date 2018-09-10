@@ -61,6 +61,8 @@ class MainActivity : AppCompatActivity() {
 
     private var player: PlayerService? = null
 
+    private var isBoundedService = false
+
     private val onNavigationItemSelectedListener: ((MenuItem) -> Boolean) = {
         when (it.itemId) {
             R.id.nav_artist -> {
@@ -112,6 +114,7 @@ class MainActivity : AppCompatActivity() {
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             if (name == ComponentName(applicationContext, PlayerService::class.java)) {
+                isBoundedService = true
                 player = (service as? PlayerService.PlayerBinder)?.service?.apply {
                     setOnQueueChangedListener {
                         bottomSheetViewModel.currentQueue.value = it
@@ -177,13 +180,19 @@ class MainActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         parentJob = Job()
-        bindService(PlayerService.createIntent(this), serviceConnection, Context.BIND_ADJUST_WITH_ACTIVITY)
+        if (isBoundedService.not()) {
+            bindService(PlayerService.createIntent(this),
+                    serviceConnection, Context.BIND_ADJUST_WITH_ACTIVITY)
+        }
     }
 
     override fun onStop() {
         super.onStop()
         parentJob.cancel()
-        unbindService(serviceConnection)
+        if (isBoundedService) {
+            isBoundedService = false
+            unbindService(serviceConnection)
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle?) {
