@@ -191,11 +191,15 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         parentJob.cancel()
-        player?.onActivityStop()
         if (isBoundedService) {
             isBoundedService = false
             unbindService(serviceConnection)
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        player?.onActivityDestroy()
     }
 
     override fun onSaveInstanceState(outState: Bundle?) {

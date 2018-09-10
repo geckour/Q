@@ -518,7 +518,7 @@ class PlayerService : MediaBrowserService() {
         onCurrentPositionChanged?.invoke(currentPosition)
     }
 
-    fun onActivityStop() {
+    fun onActivityDestroy() {
         if (player.playWhenReady.not()) stopForeground(true)
     }
 
