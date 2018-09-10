@@ -160,6 +160,7 @@ class PlayerService : MediaBrowserService() {
 
     private var onQueueChanged: ((List<Song>) -> Unit)? = null
     private var onCurrentPositionChanged: ((Int) -> Unit)? = null
+    private var onPlaybackStateChanged: ((Int, Boolean) -> Unit)? = null
 
     private val mediaSourceFactory: ExtractorMediaSource.Factory by lazy {
         ExtractorMediaSource.Factory(DefaultDataSourceFactory(applicationContext,
@@ -208,11 +209,9 @@ class PlayerService : MediaBrowserService() {
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
             // TODO: Bottom Navigationのボタンに反映する
             when (playbackState) {
-                Player.STATE_READY -> Unit
-                Player.STATE_IDLE -> Unit
-                Player.STATE_BUFFERING -> Unit
                 Player.STATE_ENDED -> next()
             }
+            onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
         }
     }
 
@@ -312,6 +311,11 @@ class PlayerService : MediaBrowserService() {
 
     fun setOnCurrentPositionChangedListener(listener: (Int) -> Unit) {
         this.onCurrentPositionChanged = listener
+    }
+
+    fun setOnPlaybackStateChangeListener(
+            listener: (playbackState: Int, playWhenReady: Boolean) -> Unit) {
+        this.onPlaybackStateChanged = listener
     }
 
     fun submitQueue(queue: InsertQueue) {

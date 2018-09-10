@@ -30,6 +30,7 @@ import com.geckour.q.ui.library.playlist.PlaylistListFragment
 import com.geckour.q.ui.library.song.SongListFragment
 import com.geckour.q.ui.sheet.BottomSheetViewModel
 import com.geckour.q.util.MediaRetrieveWorker
+import com.google.android.exoplayer2.Player
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
@@ -117,6 +118,14 @@ class MainActivity : AppCompatActivity() {
                     }
                     setOnCurrentPositionChangedListener {
                         bottomSheetViewModel.currentPosition.value = it
+                    }
+                    setOnPlaybackStateChangeListener { playbackState, playWhenReady ->
+                        bottomSheetViewModel.playing.value = when (playbackState) {
+                            Player.STATE_READY -> {
+                                playWhenReady
+                            }
+                            else -> false
+                        }
                     }
                 }
             }

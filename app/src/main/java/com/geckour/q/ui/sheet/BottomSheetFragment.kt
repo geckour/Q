@@ -111,6 +111,10 @@ class BottomSheetFragment : Fragment() {
             binding.textTimeLeft.text = if (song != null) 0L.getTimeString() else null
             binding.textTimeRight.text = song?.duration?.getTimeString()
         })
+
+        viewModel.playing.observe(this, Observer {
+            binding.playing = it
+        })
     }
 
     private fun Long.getTimeString(): String {
