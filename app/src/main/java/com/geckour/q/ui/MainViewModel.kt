@@ -14,6 +14,7 @@ class MainViewModel : ViewModel() {
     internal val selectedGenre: SingleLifeEvent<Genre> = SingleLifeEvent()
     internal val selectedPlaylist: SingleLifeEvent<Playlist> = SingleLifeEvent()
     internal val newQueue: SingleLifeEvent<PlayerService.InsertQueue> = SingleLifeEvent()
+    internal val requestedSongInQueue: SingleLifeEvent<Song> = SingleLifeEvent()
 
     private var currentOrientedClassType: PlayerService.OrientedClassType? = null
 

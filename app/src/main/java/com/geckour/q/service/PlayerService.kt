@@ -417,6 +417,10 @@ class PlayerService : MediaBrowserService() {
         }
     }
 
+    fun play(song: Song) {
+        play(queue.indexOf(song))
+    }
+
     private fun Notification.show() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             startForeground(NOTIFICATION_ID_PLAYER, this)

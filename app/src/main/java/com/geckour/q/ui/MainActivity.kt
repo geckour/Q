@@ -318,6 +318,11 @@ class MainActivity : AppCompatActivity() {
             player?.submitQueue(it)
         })
 
+        viewModel.requestedSongInQueue.observe(this, Observer {
+            if (it == null) return@Observer
+            player?.play(it)
+        })
+
         bottomSheetViewModel.playbackButton.observe(this, Observer {
             if (it == null) return@Observer
             when (it) {

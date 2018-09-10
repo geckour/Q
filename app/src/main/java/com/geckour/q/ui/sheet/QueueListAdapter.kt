@@ -47,9 +47,15 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             }
 
             binding.root.setOnClickListener { onSongSelected(song) }
+            binding.root.setOnLongClickListener { onSongLongTapped(song) }
         }
 
         private fun onSongSelected(song: Song) {
+            viewModel.onRequestNavigate(song)
+            viewModel.requestedSongInQueue.value = song
+        }
+
+        private fun onSongLongTapped(song: Song): Boolean {
             viewModel.onRequestNavigate(song)
             PopupMenu(binding.root.context, binding.root).apply {
                 setOnMenuItemClickListener {
@@ -73,6 +79,8 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
                 inflate(R.menu.queue)
                 show()
             }
+
+            return true
         }
     }
 }
