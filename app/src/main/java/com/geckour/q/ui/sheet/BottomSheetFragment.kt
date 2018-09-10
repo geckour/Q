@@ -123,6 +123,7 @@ class BottomSheetFragment : Fragment() {
             binding.textArtist.text = song?.artist
             binding.textTimeLeft.text = if (song != null) 0L.getTimeString() else null
             binding.textTimeRight.text = song?.duration?.getTimeString()
+            adapter.setNowPlaying(it)
         })
 
         viewModel.playing.observe(this, Observer {

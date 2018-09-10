@@ -12,5 +12,6 @@ data class Song(
         val discTotal: Int?,
         val genreId: Long?,
         val playlistId: Long?,
-        val sourcePath: String
+        val sourcePath: String,
+        val nowPlaying: Boolean = false
 )

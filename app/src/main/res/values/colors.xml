@@ -10,6 +10,7 @@
 
     <color name="colorTintOption">#707070</color>
     <color name="colorTintInactive">#dfdcd5</color>
+    <color name="colorTintNowPlaying">#50f095ad</color>
 
     <color name="colorBackgroundInactive">#e8ffffff</color>
 </resources>

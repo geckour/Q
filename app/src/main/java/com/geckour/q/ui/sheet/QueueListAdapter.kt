@@ -25,6 +25,20 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
     internal fun getItem(index: Int?): Song? =
             if (index in 0..items.lastIndex) items[requireNotNull(index)] else null
 
+    internal fun setNowPlaying(index: Int?) {
+        items = items.map { it.copy(nowPlaying = false) }
+        items.mapIndexed { i, song -> i to song.nowPlaying }
+                .forEach { notifyItemChanged(it.first) }
+
+        if (index != null && index in 0..items.lastIndex) {
+            items = items.mapIndexed { i, song ->
+                if (i == index) song.copy(nowPlaying = true)
+                else song
+            }
+            notifyItemChanged(index)
+        }
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
             ViewHolder(ItemListSongBinding.inflate(LayoutInflater.from(parent.context), parent, false))
 
