@@ -405,24 +405,13 @@ class PlayerService : MediaBrowserService() {
             }
         }
         player.prepare(mediaSource)
-
-        notifyPlaybackRatioJob?.cancel()
-        notifyPlaybackRatioJob = launch(UI + parentJob) {
-            while (true) {
-                onPlaybackRatioChanged?.invoke(player.contentPosition.toFloat() / song.duration)
-                delay(100)
-            }
-        }
+        resume()
 
         launch(parentJob) {
             val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
             mediaSession.setMetadata(song.getMediaMetadata(albumTitle).await())
             getNotification(song, albumTitle).await().show()
         }
-    }
-
-    fun play(song: Song) {
-        play(queue.indexOf(song))
     }
 
     private fun Notification.show() {
@@ -436,6 +425,15 @@ class PlayerService : MediaBrowserService() {
 
     fun resume() {
         Timber.d("qgeck resume invoked")
+        notifyPlaybackRatioJob?.cancel()
+        notifyPlaybackRatioJob = launch(UI + parentJob) {
+            while (true) {
+                val song = currentSong ?: break
+                onPlaybackRatioChanged?.invoke(player.contentPosition.toFloat() / song.duration)
+                delay(100)
+            }
+        }
+
         player.playWhenReady = true
     }
 

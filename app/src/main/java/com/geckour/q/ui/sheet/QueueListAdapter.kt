@@ -45,12 +45,12 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
     override fun getItemCount(): Int = items.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.onBind(items[holder.adapterPosition])
+        holder.onBind(items[holder.adapterPosition], holder.adapterPosition)
     }
 
     inner class ViewHolder(private val binding: ItemListSongBinding) :
             RecyclerView.ViewHolder(binding.root) {
-        fun onBind(song: Song) {
+        fun onBind(song: Song, position: Int) {
             binding.data = song
             try {
                 Glide.with(binding.thumb)
@@ -60,13 +60,13 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
                 Timber.e(t)
             }
 
-            binding.root.setOnClickListener { onSongSelected(song) }
+            binding.root.setOnClickListener { onSongSelected(song, position) }
             binding.root.setOnLongClickListener { onSongLongTapped(song) }
         }
 
-        private fun onSongSelected(song: Song) {
+        private fun onSongSelected(song: Song, position: Int) {
             viewModel.onRequestNavigate(song)
-            viewModel.requestedSongInQueue.value = song
+            viewModel.requestedPositionInQueue.value = position
         }
 
         private fun onSongLongTapped(song: Song): Boolean {

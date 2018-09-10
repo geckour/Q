@@ -332,7 +332,7 @@ class MainActivity : AppCompatActivity() {
             player?.submitQueue(it)
         })
 
-        viewModel.requestedSongInQueue.observe(this, Observer {
+        viewModel.requestedPositionInQueue.observe(this, Observer {
             if (it == null) return@Observer
             player?.play(it)
         })
