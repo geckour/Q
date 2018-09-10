@@ -4,7 +4,6 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.arch.lifecycle.Observer
 import android.bluetooth.BluetoothHeadset
 import android.bluetooth.BluetoothProfile
 import android.content.BroadcastReceiver
@@ -99,8 +98,6 @@ class PlayerService : MediaBrowserService() {
 
         const val NOTIFICATION_CHANNEL_ID_PLAYER = "notification_channel_id_player"
         private const val NOTIFICATION_ID_PLAYER = 320
-
-        private const val REQUEST_CODE_DELETE_NOTIFICATION = 181
     }
 
     private val binder = PlayerBinder()
@@ -365,7 +362,6 @@ class PlayerService : MediaBrowserService() {
 
     fun play(position: Int = currentPosition) {
         Timber.d("qgeck play invoked")
-        stop()
         if (position > queue.lastIndex) return
 
         this.currentPosition = position
@@ -379,6 +375,7 @@ class PlayerService : MediaBrowserService() {
             return
         }
 
+        seekToHead()
         player.playWhenReady = true
         mediaSession.isActive = true
         val mediaSource = mediaSourceFactory.createMediaSource(uri)
@@ -563,7 +560,7 @@ class PlayerService : MediaBrowserService() {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                             Notification.Builder(applicationContext, NOTIFICATION_CHANNEL_ID_PLAYER)
                         else Notification.Builder(applicationContext)
-                builder.setSmallIcon(R.mipmap.ic_launcher_foreground)
+                builder.setSmallIcon(R.drawable.ic_notification)
                         .setLargeIcon(artwork)
                         .setContentTitle(song.name)
                         .setContentText(song.artist)
