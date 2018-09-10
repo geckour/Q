@@ -19,6 +19,7 @@ class BottomSheetViewModel : ViewModel() {
     internal val playbackButton: SingleLifeEvent<PlaybackButton> = SingleLifeEvent()
     internal val currentQueue: SingleLifeEvent<List<Song>> = SingleLifeEvent()
     internal val currentPosition: SingleLifeEvent<Int> = SingleLifeEvent()
+    internal val newSeekBarProgress: SingleLifeEvent<Float> = SingleLifeEvent()
 
     internal var playing: SingleLifeEvent<Boolean> = SingleLifeEvent()
     internal var playbackRatio: SingleLifeEvent<Float> = SingleLifeEvent()

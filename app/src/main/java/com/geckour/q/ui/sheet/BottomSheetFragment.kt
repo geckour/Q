@@ -10,6 +10,7 @@ import android.support.v4.content.ContextCompat
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.SeekBar
 import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentSheetBottomBinding
@@ -46,6 +47,18 @@ class BottomSheetFragment : Fragment() {
         super.onActivityCreated(savedInstanceState)
 
         binding.viewModel = viewModel
+
+        binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar) {
+            }
+
+            override fun onStopTrackingTouch(seekBar: SeekBar) {
+                viewModel.newSeekBarProgress.value = seekBar.progress.toFloat() / seekBar.max
+            }
+        })
 
         behavior = BottomSheetBehavior.from(
                 (requireActivity() as MainActivity).binding.root

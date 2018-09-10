@@ -328,6 +328,11 @@ class MainActivity : AppCompatActivity() {
                 BottomSheetViewModel.PlaybackButton.REWIND -> player?.rewind()
             }
         })
+
+        bottomSheetViewModel.newSeekBarProgress.observe(this, Observer {
+            if (it == null) return@Observer
+            player?.seek(it)
+        })
     }
 
     private fun setupDrawer() {
