@@ -23,9 +23,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@drawable/sheet_background"
-        android:clickable="true"
         android:elevation="24dp"
-        android:focusable="true"
         android:orientation="vertical"
         tools:ignore="Overdraw">
 
@@ -38,12 +36,11 @@
 
         <ImageView
             android:id="@+id/artwork"
-            android:layout_width="56dp"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="8dp"
-            android:layout_marginRight="8dp"
-            android:layout_marginTop="8dp"
-            android:adjustViewBounds="true"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:layout_margin="8dp"
+            android:scaleType="fitCenter"
+            app:layout_constraintBottom_toTopOf="@id/seek_bar"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toLeftOf="@id/button_controller_left"
             app:layout_constraintTop_toTopOf="parent"
@@ -106,7 +103,8 @@
             app:layout_constraintBottom_toTopOf="@id/seek_bar"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
-            tools:tint="@color/colorTintInactive" />
+            tools:src="@drawable/ic_pause"
+            tools:tint="@color/colorPrimaryDark" />
 
         <ImageView
             android:id="@+id/button_controller_right"
@@ -137,7 +135,8 @@
             android:tint="@{isControllerActive ? @color/colorPrimaryDark : @color/colorTintInactive}"
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
             app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toTopOf="@id/button_controller_center" />
+            app:layout_constraintTop_toTopOf="@id/button_controller_center"
+            tools:tint="@color/colorPrimaryDark" />
 
         <ImageView
             android:id="@+id/button_toggle_visible_queue"
