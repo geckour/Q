@@ -11,6 +11,7 @@ import android.databinding.DataBindingUtil
 import android.os.Bundle
 import android.os.IBinder
 import android.preference.PreferenceManager
+import android.support.design.widget.BottomSheetBehavior
 import android.support.v7.app.ActionBarDrawerToggle
 import android.support.v7.app.AppCompatActivity
 import android.view.MenuItem
@@ -200,6 +201,12 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         player?.onActivityDestroy()
+    }
+
+    override fun onBackPressed() {
+        if (bottomSheetViewModel.sheetState.value == BottomSheetBehavior.STATE_EXPANDED)
+            bottomSheetViewModel.sheetState.value = BottomSheetBehavior.STATE_COLLAPSED
+        else super.onBackPressed()
     }
 
     override fun onSaveInstanceState(outState: Bundle?) {
