@@ -5,6 +5,7 @@ import android.arch.lifecycle.Observer
 import android.arch.lifecycle.ViewModelProviders
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.content.ServiceConnection
 import android.databinding.DataBindingUtil
 import android.os.Bundle
@@ -43,6 +44,8 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val PREF_KEY_LATEST_WORKER_ID = "pref_key_latest_worker_id"
+
+        fun createIntent(context: Context): Intent = Intent(context, MainActivity::class.java)
     }
 
     private val viewModel: MainViewModel by lazy {
@@ -128,6 +131,9 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        startService(PlayerService.createIntent(this))
+
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
 
         setSupportActionBar(binding.coordinatorMain.contentMain.toolbar)
@@ -159,7 +165,7 @@ class MainActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         parentJob = Job()
-        bindService(PlayerService.createIntent(this), serviceConnection, Context.BIND_AUTO_CREATE)
+        bindService(PlayerService.createIntent(this), serviceConnection, Context.BIND_ADJUST_WITH_ACTIVITY)
     }
 
     override fun onStop() {
@@ -200,7 +206,7 @@ class MainActivity : AppCompatActivity() {
         launch(parentJob) {
             DB.getInstance(this@MainActivity)
                     .trackDao()
-                    .getAll()
+                    .getAllAsync()
                     .observe(this@MainActivity, Observer {
                         if (it?.isNotEmpty() == false) retrieveMediaWithPermissionCheck()
                     })

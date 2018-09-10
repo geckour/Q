@@ -81,7 +81,7 @@ class ArtistListFragment : Fragment() {
 
     private fun fetchArtists() {
         DB.getInstance(requireContext()).also { db ->
-            db.trackDao().getAll().observe(this@ArtistListFragment, Observer { dbTrackList ->
+            db.trackDao().getAllAsync().observe(this@ArtistListFragment, Observer { dbTrackList ->
                 if (dbTrackList == null) return@Observer
 
                 latestDbTrackList = dbTrackList

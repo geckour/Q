@@ -16,7 +16,7 @@ import java.io.File
 class MediaRetrieveWorker : Worker() {
 
     companion object {
-        private const val UNKNOWN = "UNKNOWN"
+        const val UNKNOWN: String = "UNKNOWN"
     }
 
     override fun doWork(): Result {

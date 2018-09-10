@@ -7,6 +7,10 @@
     <string name="drawer_close">Close</string>
 
 
+    <string name="notification_channel_player">Player</string>
+    <string name="notification_channel_description_player">Player information notification for keep player alive</string>
+
+
     <string name="nav_header_desc">Q - Queue oriented player</string>
 
     <string name="nav_category_others">Others</string>

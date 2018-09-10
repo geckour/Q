@@ -1,5 +1,8 @@
 package com.geckour.q.service
 
+import android.app.Notification
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.bluetooth.BluetoothHeadset
 import android.bluetooth.BluetoothProfile
@@ -7,10 +10,26 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.MediaMetadata
+import android.media.browse.MediaBrowser
+import android.media.session.MediaSession
+import android.media.session.PlaybackState
 import android.net.Uri
 import android.os.Binder
+import android.os.Build
+import android.os.Bundle
 import android.os.IBinder
+import android.service.media.MediaBrowserService
+import android.support.v4.media.MediaBrowserCompat
+import android.support.v4.media.MediaDescriptionCompat
+import com.bumptech.glide.Glide
+import com.geckour.q.App
+import com.geckour.q.R
+import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.Song
+import com.geckour.q.ui.MainActivity
+import com.geckour.q.util.MediaRetrieveWorker
+import com.geckour.q.util.getArtworkUriFromAlbumId
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.source.ExtractorMediaSource
@@ -20,9 +39,13 @@ import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
+import kotlinx.coroutines.experimental.Deferred
+import kotlinx.coroutines.experimental.Job
+import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
 
-class PlayerService : Service() {
+class PlayerService : MediaBrowserService() {
 
     enum class InsertActionType {
         NEXT,
@@ -63,12 +86,71 @@ class PlayerService : Service() {
     companion object {
         fun createIntent(context: Context): Intent = Intent(context, PlayerService::class.java)
 
+        private val TAG: String = PlayerService::class.java.simpleName
+
+        const val BROWSER_ROOT_ID = "com.geckour.q.browser.root"
+
         private const val SOURCE_ACTION_WIRED_STATE = Intent.ACTION_HEADSET_PLUG
         private const val SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE =
                 BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED
+
+        const val NOTIFICATION_CHANNEL_ID_PLAYER = "notification_channel_id_player"
+        private const val NOTIFICATION_ID_PLAYER = 320
+
+        private const val REQUEST_CODE_DELETE_NOTIFICATION = 181
     }
 
     private val binder = PlayerBinder()
+
+    private val mediaSession: MediaSession by lazy {
+        MediaSession(applicationContext, TAG).apply {
+            setPlaybackState(PlaybackState.Builder()
+                    .setActions(PlaybackState.ACTION_PLAY_PAUSE or
+                            PlaybackState.ACTION_SKIP_TO_NEXT or
+                            PlaybackState.ACTION_SKIP_TO_PREVIOUS or
+                            PlaybackState.ACTION_FAST_FORWARD or
+                            PlaybackState.ACTION_REWIND or
+                            PlaybackState.ACTION_SEEK_TO)
+                    .build())
+            setCallback(mediaSessionCallback)
+        }
+    }
+    private val mediaSessionCallback = object : MediaSession.Callback() {
+        override fun onPlay() {
+            super.onPlay()
+            play()
+        }
+
+        override fun onPause() {
+            super.onPause()
+            pause()
+        }
+
+        override fun onSkipToNext() {
+            super.onSkipToNext()
+            next()
+        }
+
+        override fun onSkipToPrevious() {
+            super.onSkipToPrevious()
+            prev()
+        }
+
+        override fun onFastForward() {
+            super.onFastForward()
+            fastForward()
+        }
+
+        override fun onRewind() {
+            super.onRewind()
+            rewind()
+        }
+
+        override fun onSeekTo(pos: Long) {
+            super.onSeekTo(pos)
+            seek(pos)
+        }
+    }
     private val trackSelector = DefaultTrackSelector(AdaptiveTrackSelection.Factory(null))
     private lateinit var player: SimpleExoPlayer
     private val queue: ArrayList<Song> = ArrayList()
@@ -124,6 +206,7 @@ class PlayerService : Service() {
         }
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
+            // TODO: Bottom Navigationのボタンに反映する
             when (playbackState) {
                 Player.STATE_READY -> Unit
                 Player.STATE_IDLE -> Unit
@@ -162,10 +245,45 @@ class PlayerService : Service() {
         }
     }
 
+    private var parentJob = Job()
+
+    override fun onLoadChildren(parentId: String,
+                                result: Result<MutableList<MediaBrowser.MediaItem>>) {
+        val mediaItems: ArrayList<MediaBrowserCompat.MediaItem> = ArrayList()
+
+        if (parentId == BROWSER_ROOT_ID) {
+            val db = DB.getInstance(this)
+            mediaItems.addAll(db.trackDao().getAll().map {
+                val artist = db.artistDao().get(it.artistId)?.title ?: MediaRetrieveWorker.UNKNOWN
+                val album = db.albumDao().get(it.albumId).title
+
+                MediaBrowserCompat.MediaItem(MediaDescriptionCompat.Builder()
+                        .setMediaId(it.id.toString())
+                        .setTitle(it.title)
+                        .setSubtitle(artist)
+                        .setIconUri(getArtworkUriFromAlbumId(it.albumId))
+                        .setDescription(album)
+                        .build(),
+                        MediaBrowserCompat.MediaItem.FLAG_BROWSABLE)
+            })
+        } else {
+            // TODO: 階層的なブラウジングを実装する
+        }
+    }
+
+    override fun onGetRoot(clientPackageName: String,
+                           clientUid: Int, rootHints: Bundle?): BrowserRoot? =
+            BrowserRoot(BROWSER_ROOT_ID, null)
+
     override fun onBind(intent: Intent?): IBinder? = binder
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int =
+            Service.START_NOT_STICKY
 
     override fun onCreate() {
         super.onCreate()
+
+        parentJob = Job()
 
         player = ExoPlayerFactory.newSimpleInstance(this, trackSelector).apply {
             addListener(eventListener)
@@ -175,11 +293,16 @@ class PlayerService : Service() {
             addAction(SOURCE_ACTION_WIRED_STATE)
             addAction(SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE)
         })
+
+        sessionToken = mediaSession.sessionToken
     }
 
     override fun onDestroy() {
         super.onDestroy()
 
+        mediaSession.isActive = false
+        unregisterReceiver(headsetStateReceiver)
+        parentJob.cancel()
         player.release()
     }
 
@@ -194,22 +317,38 @@ class PlayerService : Service() {
     fun submitQueue(queue: InsertQueue) {
         when (queue.metadata.actionType) {
             InsertActionType.NEXT -> {
-                this.queue.addAll(currentPosition + 1, queue.queue)
+                if (this.queue.isEmpty()) {
+                    this.queue.addAll(queue.queue)
+                } else {
+                    this.queue.addAll(currentPosition + 1, queue.queue)
+                }
             }
             InsertActionType.LAST -> {
-                this.queue.addAll(this.queue.size, queue.queue)
+                if (this.queue.isEmpty()) {
+                    this.queue.addAll(queue.queue)
+                } else {
+                    this.queue.addAll(this.queue.size, queue.queue)
+                }
             }
             InsertActionType.OVERRIDE -> {
                 this.queue.clear()
                 this.queue.addAll(queue.queue)
             }
             InsertActionType.SHUFFLE_NEXT -> {
-                this.queue.addAll(currentPosition + 1,
-                        queue.queue.shuffleByClassType(queue.metadata.classType))
+                if (this.queue.isEmpty()) {
+                    this.queue.addAll(queue.queue.shuffleByClassType(queue.metadata.classType))
+                } else {
+                    this.queue.addAll(currentPosition + 1,
+                            queue.queue.shuffleByClassType(queue.metadata.classType))
+                }
             }
             InsertActionType.SHUFFLE_LAST -> {
-                this.queue.addAll(this.queue.size,
-                        queue.queue.shuffleByClassType(queue.metadata.classType))
+                if (this.queue.isEmpty()) {
+                    this.queue.addAll(queue.queue.shuffleByClassType(queue.metadata.classType))
+                } else {
+                    this.queue.addAll(this.queue.size,
+                            queue.queue.shuffleByClassType(queue.metadata.classType))
+                }
             }
             InsertActionType.SHUFFLE_OVERRIDE -> {
                 this.queue.clear()
@@ -223,22 +362,38 @@ class PlayerService : Service() {
 
     fun play(position: Int = currentPosition) {
         Timber.d("qgeck play invoked")
+        stop()
         if (position > queue.lastIndex) return
+
         this.currentPosition = position
         onCurrentPositionChanged?.invoke(currentPosition)
 
+        val song = currentSong
         val uri = try {
-            Uri.parse(currentSong?.sourcePath ?: return)
+            Uri.parse(song?.sourcePath ?: return)
         } catch (t: Throwable) {
             Timber.e(t)
             return
         }
 
-        stop()
-
         player.playWhenReady = true
+        mediaSession.isActive = true
         val mediaSource = mediaSourceFactory.createMediaSource(uri)
         player.prepare(mediaSource)
+        launch(parentJob) {
+            val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
+            mediaSession.setMetadata(song.getMediaMetadata(albumTitle).await())
+            getNotification(song, albumTitle).await().show()
+        }
+    }
+
+    private fun Notification.show() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForeground(NOTIFICATION_ID_PLAYER, this)
+        } else {
+            getSystemService(NotificationManager::class.java)
+                    .notify(NOTIFICATION_ID_PLAYER, this)
+        }
     }
 
     fun resume() {
@@ -249,6 +404,7 @@ class PlayerService : Service() {
     fun pause() {
         Timber.d("qgeck pause invoked")
         player.playWhenReady = false
+        stopForeground(false)
     }
 
     fun togglePlayPause() {
@@ -261,7 +417,7 @@ class PlayerService : Service() {
 
     fun stop() {
         pause()
-        player.seekTo(0)
+        seekToHead()
     }
 
     fun clear() {
@@ -286,7 +442,7 @@ class PlayerService : Service() {
     }
 
     fun seekToHead() {
-        player.seekTo(0)
+        seek(0)
     }
 
     fun headOrPrev() {
@@ -298,7 +454,11 @@ class PlayerService : Service() {
     fun seek(ratio: Float) {
         if (ratio !in 0..1) return
         val current = currentSong ?: return
-        player.seekTo((current.duration * ratio).toLong())
+        seek((current.duration * ratio).toLong())
+    }
+
+    fun seek(playbackPosition: Long) {
+        player.seekTo(playbackPosition)
     }
 
     fun shuffle() {
@@ -312,9 +472,7 @@ class PlayerService : Service() {
     fun onOutputSourceChange(outputSourceType: OutputSourceType) {
         when (outputSourceType) {
             OutputSourceType.WIRED -> Unit
-            OutputSourceType.BLUETOOTH -> {
-
-            }
+            OutputSourceType.BLUETOOTH -> Unit
         }
     }
 
@@ -351,5 +509,49 @@ class PlayerService : Service() {
                         this.filter { it.playlistId == id }
                     }.flatten()
                 }
+            }
+
+    private fun Song.getMediaMetadata(albumTitle: String? = null): Deferred<MediaMetadata> = async {
+        val album = albumTitle
+                ?: DB.getInstance(this@PlayerService)
+                        .albumDao()
+                        .get(this@getMediaMetadata.albumId)
+                        .title
+
+        MediaMetadata.Builder()
+                .putString(MediaMetadata.METADATA_KEY_MEDIA_ID,
+                        this@getMediaMetadata.id.toString())
+                .putString(MediaMetadata.METADATA_KEY_TITLE, this@getMediaMetadata.name)
+                .putString(MediaMetadata.METADATA_KEY_ARTIST, this@getMediaMetadata.artist)
+                .putString(MediaMetadata.METADATA_KEY_ALBUM, album)
+                .putString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
+                        getArtworkUriFromAlbumId(this@getMediaMetadata.albumId).toString())
+                .putLong(MediaMetadata.METADATA_KEY_DURATION, this@getMediaMetadata.duration)
+                .build()
+    }
+
+    private fun getNotification(song: Song, albumTitle: String): Deferred<Notification> =
+            async {
+                val artwork = Glide.with(this@PlayerService)
+                        .asBitmap()
+                        .load(getArtworkUriFromAlbumId(song.albumId))
+                        .submit()
+                        .get()
+                val builder =
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                            Notification.Builder(applicationContext, NOTIFICATION_CHANNEL_ID_PLAYER)
+                        else Notification.Builder(applicationContext)
+                builder.setSmallIcon(R.mipmap.ic_launcher_foreground)
+                        .setLargeIcon(artwork)
+                        .setContentTitle(song.name)
+                        .setContentText(song.artist)
+                        .setSubText(albumTitle)
+                        .setStyle(Notification.MediaStyle()
+                                .setMediaSession(mediaSession.sessionToken))
+                        .setContentIntent(PendingIntent.getActivity(applicationContext,
+                                App.REQUEST_CODE_OPEN_DEFAULT_ACTIVITY,
+                                MainActivity.createIntent(applicationContext),
+                                PendingIntent.FLAG_UPDATE_CURRENT))
+                        .build()
             }
 }

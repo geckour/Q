@@ -64,6 +64,12 @@ class BottomSheetFragment : Fragment() {
         viewModel.currentQueue.value = emptyList()
     }
 
+    override fun onResume() {
+        super.onResume()
+
+        viewModel.restoreState()
+    }
+
     private fun observeEvents() {
         viewModel.sheetState.observe(this, Observer {
             if (it == null) return@Observer

@@ -5,7 +5,6 @@ import android.arch.lifecycle.ViewModelProviders
 import android.os.Bundle
 import android.provider.MediaStore
 import android.support.v4.app.Fragment
-import android.support.v7.widget.PopupMenu
 import android.view.*
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -19,7 +18,6 @@ import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.MainViewModel
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
-import timber.log.Timber
 
 class SongListFragment : Fragment() {
 
@@ -121,7 +119,7 @@ class SongListFragment : Fragment() {
 
     private fun fetchSongs() {
         DB.getInstance(requireContext()).also { db ->
-            db.trackDao().getAll().observe(this@SongListFragment, Observer { dbTrackList ->
+            db.trackDao().getAllAsync().observe(this@SongListFragment, Observer { dbTrackList ->
                 if (dbTrackList == null) return@Observer
 
                 latestDbTrackList = dbTrackList
@@ -132,7 +130,7 @@ class SongListFragment : Fragment() {
 
     private fun fetchSongsWithAlbum(album: Album) {
         DB.getInstance(requireContext()).also { db ->
-            db.trackDao().getAll().observe(this@SongListFragment, Observer { dbTrackList ->
+            db.trackDao().getAllAsync().observe(this@SongListFragment, Observer { dbTrackList ->
                 if (dbTrackList == null) return@Observer
 
                 latestDbTrackList = dbTrackList.filter { it.albumId == album.id }
