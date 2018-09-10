@@ -21,6 +21,7 @@ class BottomSheetViewModel : ViewModel() {
     internal val currentPosition: SingleLifeEvent<Int> = SingleLifeEvent()
 
     internal var playing: SingleLifeEvent<Boolean> = SingleLifeEvent()
+    internal var playbackRatio: SingleLifeEvent<Float> = SingleLifeEvent()
 
     init {
         sheetState.value = BottomSheetBehavior.STATE_COLLAPSED

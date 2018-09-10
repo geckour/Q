@@ -41,10 +41,8 @@ import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
-import kotlinx.coroutines.experimental.Deferred
-import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.async
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.android.UI
 import timber.log.Timber
 
 class PlayerService : MediaBrowserService() {
@@ -161,12 +159,15 @@ class PlayerService : MediaBrowserService() {
     private var onQueueChanged: ((List<Song>) -> Unit)? = null
     private var onCurrentPositionChanged: ((Int) -> Unit)? = null
     private var onPlaybackStateChanged: ((Int, Boolean) -> Unit)? = null
+    private var onPlaybackRatioChanged: ((Float) -> Unit)? = null
 
     private val mediaSourceFactory: ExtractorMediaSource.Factory by lazy {
         ExtractorMediaSource.Factory(DefaultDataSourceFactory(applicationContext,
                 Util.getUserAgent(applicationContext, packageName)))
                 .setExtractorsFactory(DefaultExtractorsFactory())
     }
+
+    private var notifyPlaybackRatioJob: Job? = null
 
     private val eventListener = object : Player.EventListener {
         override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters?) {
@@ -318,6 +319,10 @@ class PlayerService : MediaBrowserService() {
         this.onPlaybackStateChanged = listener
     }
 
+    fun setOnPlaybackRatioChangedListener(listener: (Float) -> Unit) {
+        this.onPlaybackRatioChanged = listener
+    }
+
     fun submitQueue(queue: InsertQueue) {
         when (queue.metadata.actionType) {
             InsertActionType.NEXT -> {
@@ -394,6 +399,15 @@ class PlayerService : MediaBrowserService() {
             }
         }
         player.prepare(mediaSource)
+
+        notifyPlaybackRatioJob?.cancel()
+        notifyPlaybackRatioJob = launch(UI + parentJob) {
+            while (true) {
+                onPlaybackRatioChanged?.invoke(player.contentPosition.toFloat() / song.duration)
+                delay(100)
+            }
+        }
+
         launch(parentJob) {
             val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
             mediaSession.setMetadata(song.getMediaMetadata(albumTitle).await())
@@ -418,6 +432,7 @@ class PlayerService : MediaBrowserService() {
     fun pause() {
         Timber.d("qgeck pause invoked")
         player.playWhenReady = false
+        notifyPlaybackRatioJob?.cancel()
         getSystemService(AudioManager::class.java).apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val audioFocusRequest = AudioFocusRequest.Builder(

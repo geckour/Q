@@ -127,6 +127,9 @@ class MainActivity : AppCompatActivity() {
                             else -> false
                         }
                     }
+                    setOnPlaybackRatioChangedListener {
+                        bottomSheetViewModel.playbackRatio.value = it
+                    }
                 }
             }
         }

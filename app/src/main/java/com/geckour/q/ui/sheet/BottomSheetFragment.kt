@@ -115,6 +115,13 @@ class BottomSheetFragment : Fragment() {
         viewModel.playing.observe(this, Observer {
             binding.playing = it
         })
+
+        viewModel.playbackRatio.observe(this, Observer {
+            if (it == null) return@Observer
+            binding.seekBar.progress = (binding.seekBar.max * it).toInt()
+            val song = adapter.getItem(viewModel.currentPosition.value) ?: return@Observer
+            binding.textTimeLeft.text = (song.duration * it).toLong().getTimeString()
+        })
     }
 
     private fun Long.getTimeString(): String {
