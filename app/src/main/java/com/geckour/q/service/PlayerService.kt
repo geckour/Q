@@ -4,12 +4,15 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.arch.lifecycle.Observer
 import android.bluetooth.BluetoothHeadset
 import android.bluetooth.BluetoothProfile
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.MediaMetadata
 import android.media.browse.MediaBrowser
 import android.media.session.MediaSession
@@ -379,6 +382,16 @@ class PlayerService : MediaBrowserService() {
         player.playWhenReady = true
         mediaSession.isActive = true
         val mediaSource = mediaSourceFactory.createMediaSource(uri)
+        getSystemService(AudioManager::class.java).apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val audioFocusRequest = AudioFocusRequest.Builder(
+                        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK).build()
+                requestAudioFocus(audioFocusRequest)
+            } else {
+                requestAudioFocus({}, AudioManager.STREAM_MUSIC,
+                        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+            }
+        }
         player.prepare(mediaSource)
         launch(parentJob) {
             val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
@@ -404,6 +417,15 @@ class PlayerService : MediaBrowserService() {
     fun pause() {
         Timber.d("qgeck pause invoked")
         player.playWhenReady = false
+        getSystemService(AudioManager::class.java).apply {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val audioFocusRequest = AudioFocusRequest.Builder(
+                        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK).build()
+                abandonAudioFocusRequest(audioFocusRequest)
+            } else {
+                abandonAudioFocus {}
+            }
+        }
         stopForeground(false)
     }
 
