@@ -333,6 +333,17 @@ class MainActivity : AppCompatActivity() {
             if (it == null) return@Observer
             player?.seek(it)
         })
+
+        bottomSheetViewModel.shuffle.observe(this, Observer {
+            player?.shuffle()
+        })
+
+        bottomSheetViewModel.changedQueue.observe(this, Observer {
+            if (it == null) return@Observer
+            player?.submitQueue(PlayerService.InsertQueue(
+                    PlayerService.QueueMetadata(PlayerService.InsertActionType.OVERRIDE,
+                            PlayerService.OrientedClassType.SONG), it))
+        })
     }
 
     private fun setupDrawer() {

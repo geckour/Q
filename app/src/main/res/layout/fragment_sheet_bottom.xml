@@ -80,6 +80,7 @@
             android:id="@+id/button_controller_left"
             android:layout_width="44dp"
             android:layout_height="44dp"
+            android:layout_marginRight="44dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:clickable="@{isControllerActive}"
             android:onClick="@{() -> viewModel.onPrev()}"
@@ -88,7 +89,6 @@
             android:src="@drawable/ic_backward"
             android:tint="@{isControllerActive ? @color/colorPrimaryDark : @color/colorTintInactive}"
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
-            app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toLeftOf="@id/button_controller_center"
             tools:tint="@color/colorPrimaryDark" />
 
@@ -104,14 +104,15 @@
             android:src="@{playing ? @drawable/ic_pause : @drawable/ic_play}"
             android:tint="@{isControllerActive ? @color/colorPrimaryDark : @color/colorTintInactive}"
             app:layout_constraintBottom_toTopOf="@id/seek_bar"
-            app:layout_constraintLeft_toRightOf="@id/button_controller_left"
-            app:layout_constraintRight_toLeftOf="@id/button_controller_right"
+            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
             tools:tint="@color/colorTintInactive" />
 
         <ImageView
             android:id="@+id/button_controller_right"
             android:layout_width="44dp"
             android:layout_height="44dp"
+            android:layout_marginLeft="44dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:clickable="@{isControllerActive}"
             android:onClick="@{() -> viewModel.onNext()}"
@@ -121,8 +122,22 @@
             android:tint="@{isControllerActive ? @color/colorPrimaryDark : @color/colorTintInactive}"
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
             app:layout_constraintLeft_toRightOf="@id/button_controller_center"
-            app:layout_constraintRight_toRightOf="parent"
             tools:tint="@color/colorPrimaryDark" />
+
+        <ImageView
+            android:id="@+id/button_shuffle"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginRight="8dp"
+            android:layout_marginTop="4dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:onClick="@{() -> viewModel.onClickShuffleButton()}"
+            android:padding="4dp"
+            android:src="@drawable/ic_shuffle"
+            android:tint="@{isControllerActive ? @color/colorPrimaryDark : @color/colorTintInactive}"
+            app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toTopOf="@id/button_controller_center" />
 
         <ImageView
             android:id="@+id/button_toggle_visible_queue"
@@ -174,6 +189,19 @@
             app:layout_constraintTop_toTopOf="@id/seek_bar"
             tools:text="3:12" />
 
+        <ImageView
+            android:id="@+id/button_clear_queue"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginRight="8dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:onClick="@{() -> viewModel.onClickClearQueueButton()}"
+            android:padding="4dp"
+            android:src="@drawable/ic_remove"
+            android:tint="@color/colorPrimaryDark"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/guide_peek_height" />
+
         <android.support.v7.widget.RecyclerView
             android:id="@+id/recycler_view"
             android:layout_width="0dp"
@@ -185,7 +213,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/guide_peek_height"
+            app:layout_constraintTop_toBottomOf="@id/button_clear_queue"
             tools:listitem="@layout/item_list_song" />
 
     </android.support.constraint.ConstraintLayout>

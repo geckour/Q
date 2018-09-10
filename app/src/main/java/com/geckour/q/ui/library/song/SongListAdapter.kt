@@ -37,15 +37,17 @@ class SongListAdapter(private val viewModel: MainViewModel)
     internal fun upsertItem(item: Song, sortByTrackOrder: Boolean = true) {
         var index = items.indexOfFirst { it.id == item.id }
         if (index < 0) {
-            val tempList = ArrayList(items).apply {
-                add(item)
+            val tempList = (items + item).let {
                 if (sortByTrackOrder) {
-                    sortBy { it.discNum }
-                    sortBy { it.trackNum }
+                    it.groupBy { it.discNum }
+                            .map { it.key to it.value.sortedBy { it.trackNum } }
+                            .sortedBy { it.first }
+                            .flatMap { it.second }
                 } else {
-                    sortBy { it.name }
+                    it.sortedBy { it.name }
                 }
             }
+
             index = tempList.indexOf(item)
             items.add(index, item)
             notifyItemInserted(index)

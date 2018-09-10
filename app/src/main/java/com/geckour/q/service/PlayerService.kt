@@ -340,6 +340,7 @@ class PlayerService : MediaBrowserService() {
                 }
             }
             InsertActionType.OVERRIDE -> {
+                if (queue.queue.isEmpty()) stop()
                 this.queue.clear()
                 this.queue.addAll(queue.queue)
             }
@@ -360,6 +361,7 @@ class PlayerService : MediaBrowserService() {
                 }
             }
             InsertActionType.SHUFFLE_OVERRIDE -> {
+                if (queue.queue.isEmpty()) stop()
                 this.queue.clear()
                 this.queue.addAll(queue.queue.shuffleByClassType(queue.metadata.classType))
             }
@@ -497,14 +499,19 @@ class PlayerService : MediaBrowserService() {
 
     fun seek(playbackPosition: Long) {
         player.seekTo(playbackPosition)
+        val current = currentSong ?: return
+        onPlaybackRatioChanged?.invoke(playbackPosition.toFloat() / current.duration)
     }
 
     fun shuffle() {
         if (this.queue.isEmpty()) return
-        val toHold = this.queue.subList(0, currentPosition + 1)
-        val toShuffle = this.queue.subList(currentPosition + 1, this.queue.size)
+        val toHold = this.queue.subList(0, currentPosition + 1).toList()
+        val toShuffle = this.queue.subList(currentPosition + 1, this.queue.size).toList()
         this.queue.clear()
         this.queue.addAll(toHold + toShuffle.shuffled())
+
+        onQueueChanged?.invoke(this.queue)
+        onCurrentPositionChanged?.invoke(currentPosition)
     }
 
     fun onOutputSourceChange(outputSourceType: OutputSourceType) {
