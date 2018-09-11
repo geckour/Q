@@ -211,7 +211,10 @@ class PlayerService : MediaBrowserService() {
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
             // TODO: Bottom Navigationのボタンに反映する
             when (playbackState) {
-                Player.STATE_ENDED -> next()
+                Player.STATE_ENDED -> {
+                    if (currentPosition == queue.lastIndex) stop()
+                    else next()
+                }
             }
             onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
         }
@@ -341,8 +344,7 @@ class PlayerService : MediaBrowserService() {
                 }
             }
             InsertActionType.OVERRIDE -> {
-                if (queue.queue.isEmpty()) stop()
-                this.queue.clear()
+                clear()
                 this.queue.addAll(queue.queue)
             }
             InsertActionType.SHUFFLE_NEXT -> {
@@ -362,8 +364,7 @@ class PlayerService : MediaBrowserService() {
                 }
             }
             InsertActionType.SHUFFLE_OVERRIDE -> {
-                if (queue.queue.isEmpty()) stop()
-                this.queue.clear()
+                clear()
                 this.queue.addAll(queue.queue.shuffleByClassType(queue.metadata.classType))
             }
         }
@@ -465,12 +466,15 @@ class PlayerService : MediaBrowserService() {
     fun stop() {
         pause()
         seekToHead()
-        stopForeground(true)
+        player.stop()
     }
 
     fun clear() {
         stop()
+        currentPosition = 0
+        onCurrentPositionChanged?.invoke(currentPosition)
         this.queue.clear()
+        stopForeground(true)
     }
 
     fun next() {
