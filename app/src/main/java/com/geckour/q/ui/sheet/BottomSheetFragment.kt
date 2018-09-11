@@ -137,7 +137,6 @@ class BottomSheetFragment : Fragment() {
                     .into(binding.artwork)
             binding.textSong.text = song?.name
             binding.textArtist.text = song?.artist
-            binding.textTimeLeft.text = if (song != null) 0L.getTimeString() else null
             binding.textTimeRight.text = song?.duration?.getTimeString()
             adapter.setNowPlaying(it)
         })
