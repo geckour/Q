@@ -13,30 +13,23 @@ import android.content.IntentFilter
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaMetadata
-import android.media.browse.MediaBrowser
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.net.Uri
 import android.os.Binder
 import android.os.Build
-import android.os.Bundle
 import android.os.IBinder
-import android.service.media.MediaBrowserService
-import android.support.v4.media.MediaBrowserCompat
-import android.support.v4.media.MediaDescriptionCompat
 import com.bumptech.glide.Glide
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainActivity
-import com.geckour.q.util.MediaRetrieveWorker
 import com.geckour.q.util.getArtworkUriFromAlbumId
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.source.ExtractorMediaSource
 import com.google.android.exoplayer2.source.TrackGroupArray
-import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
@@ -45,7 +38,7 @@ import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
 import timber.log.Timber
 
-class PlayerService : MediaBrowserService() {
+class PlayerService : Service() {
 
     enum class InsertActionType {
         NEXT,
@@ -113,6 +106,7 @@ class PlayerService : MediaBrowserService() {
             setCallback(mediaSessionCallback)
         }
     }
+
     private val mediaSessionCallback = object : MediaSession.Callback() {
         override fun onPlay() {
             super.onPlay()
@@ -149,7 +143,7 @@ class PlayerService : MediaBrowserService() {
             seek(pos)
         }
     }
-    private val trackSelector = DefaultTrackSelector(AdaptiveTrackSelection.Factory(null))
+
     private lateinit var player: SimpleExoPlayer
     private val queue: ArrayList<Song> = ArrayList()
     private var currentPosition: Int = 0
@@ -251,34 +245,6 @@ class PlayerService : MediaBrowserService() {
 
     private var parentJob = Job()
 
-    override fun onLoadChildren(parentId: String,
-                                result: Result<MutableList<MediaBrowser.MediaItem>>) {
-        val mediaItems: ArrayList<MediaBrowserCompat.MediaItem> = ArrayList()
-
-        if (parentId == BROWSER_ROOT_ID) {
-            val db = DB.getInstance(this)
-            mediaItems.addAll(db.trackDao().getAll().map {
-                val artist = db.artistDao().get(it.artistId)?.title ?: MediaRetrieveWorker.UNKNOWN
-                val album = db.albumDao().get(it.albumId).title
-
-                MediaBrowserCompat.MediaItem(MediaDescriptionCompat.Builder()
-                        .setMediaId(it.id.toString())
-                        .setTitle(it.title)
-                        .setSubtitle(artist)
-                        .setIconUri(getArtworkUriFromAlbumId(it.albumId))
-                        .setDescription(album)
-                        .build(),
-                        MediaBrowserCompat.MediaItem.FLAG_BROWSABLE)
-            })
-        } else {
-            // TODO: 階層的なブラウジングを実装する
-        }
-    }
-
-    override fun onGetRoot(clientPackageName: String,
-                           clientUid: Int, rootHints: Bundle?): BrowserRoot? =
-            BrowserRoot(BROWSER_ROOT_ID, null)
-
     override fun onBind(intent: Intent?): IBinder? = binder
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int =
@@ -289,7 +255,7 @@ class PlayerService : MediaBrowserService() {
 
         parentJob = Job()
 
-        player = ExoPlayerFactory.newSimpleInstance(this, trackSelector).apply {
+        player = ExoPlayerFactory.newSimpleInstance(this, DefaultTrackSelector()).apply {
             addListener(eventListener)
         }
 
@@ -297,8 +263,6 @@ class PlayerService : MediaBrowserService() {
             addAction(SOURCE_ACTION_WIRED_STATE)
             addAction(SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE)
         })
-
-        sessionToken = mediaSession.sessionToken
     }
 
     override fun onDestroy() {
