@@ -28,7 +28,9 @@ import com.geckour.q.ui.MainActivity
 import com.geckour.q.util.getArtworkUriFromAlbumId
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
+import com.google.android.exoplayer2.source.ConcatenatingMediaSource
 import com.google.android.exoplayer2.source.ExtractorMediaSource
+import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.TrackGroupArray
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray
@@ -80,8 +82,6 @@ class PlayerService : Service() {
         fun createIntent(context: Context): Intent = Intent(context, PlayerService::class.java)
 
         private val TAG: String = PlayerService::class.java.simpleName
-
-        const val BROWSER_ROOT_ID = "com.geckour.q.browser.root"
 
         private const val SOURCE_ACTION_WIRED_STATE = Intent.ACTION_HEADSET_PLUG
         private const val SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE =
@@ -160,6 +160,7 @@ class PlayerService : Service() {
                 Util.getUserAgent(applicationContext, packageName)))
                 .setExtractorsFactory(DefaultExtractorsFactory())
     }
+    private var source = ConcatenatingMediaSource()
 
     private var notifyPlaybackRatioJob: Job? = null
     private var seekJob: Job? = null
@@ -206,8 +207,8 @@ class PlayerService : Service() {
             // TODO: Bottom Navigationのボタンに反映する
             when (playbackState) {
                 Player.STATE_ENDED -> {
-                    if (currentPosition == queue.lastIndex) stop()
-                    else next()
+                    if (source.size > 0 && currentPosition == queue.lastIndex)
+                        stop()
                 }
             }
             onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
@@ -258,6 +259,7 @@ class PlayerService : Service() {
         player = ExoPlayerFactory.newSimpleInstance(this, DefaultTrackSelector()).apply {
             addListener(eventListener)
         }
+        mediaSession.isActive = true
 
         registerReceiver(headsetStateReceiver, IntentFilter().apply {
             addAction(SOURCE_ACTION_WIRED_STATE)
@@ -292,6 +294,8 @@ class PlayerService : Service() {
     }
 
     fun submitQueue(queue: InsertQueue) {
+        var needPrepare = this.queue.isEmpty()
+
         when (queue.metadata.actionType) {
             InsertActionType.NEXT -> {
                 if (this.queue.isEmpty()) {
@@ -299,6 +303,8 @@ class PlayerService : Service() {
                 } else {
                     this.queue.addAll(currentPosition + 1, queue.queue)
                 }
+                source.addMediaSources(player.currentPeriodIndex,
+                        queue.queue.map { it.getMediaSource() })
             }
             InsertActionType.LAST -> {
                 if (this.queue.isEmpty()) {
@@ -306,10 +312,14 @@ class PlayerService : Service() {
                 } else {
                     this.queue.addAll(this.queue.size, queue.queue)
                 }
+                source.addMediaSources(source.size,
+                        queue.queue.map { it.getMediaSource() })
             }
             InsertActionType.OVERRIDE -> {
                 clear()
                 this.queue.addAll(queue.queue)
+                source.addMediaSources(queue.queue.map { it.getMediaSource() })
+                needPrepare = true
             }
             InsertActionType.SHUFFLE_NEXT -> {
                 if (this.queue.isEmpty()) {
@@ -318,6 +328,10 @@ class PlayerService : Service() {
                     this.queue.addAll(currentPosition + 1,
                             queue.queue.shuffleByClassType(queue.metadata.classType))
                 }
+                source.addMediaSources(player.currentPeriodIndex,
+                        queue.queue
+                                .shuffleByClassType(queue.metadata.classType)
+                                .map { it.getMediaSource() })
             }
             InsertActionType.SHUFFLE_LAST -> {
                 if (this.queue.isEmpty()) {
@@ -326,40 +340,41 @@ class PlayerService : Service() {
                     this.queue.addAll(this.queue.size,
                             queue.queue.shuffleByClassType(queue.metadata.classType))
                 }
+                source.addMediaSources(source.size,
+                        queue.queue
+                                .shuffleByClassType(queue.metadata.classType)
+                                .map { it.getMediaSource() })
             }
             InsertActionType.SHUFFLE_OVERRIDE -> {
                 clear()
                 this.queue.addAll(queue.queue.shuffleByClassType(queue.metadata.classType))
+                source.addMediaSources(queue.queue
+                        .shuffleByClassType(queue.metadata.classType)
+                        .map { it.getMediaSource() })
+                needPrepare = true
             }
         }
 
         onQueueChanged?.invoke(this.queue)
         onCurrentPositionChanged?.invoke(currentPosition)
+        if (needPrepare) player.prepare(source)
+    }
+
+    private fun overrideSourceWithPosition(position: Int = currentPosition) {
+        source = ConcatenatingMediaSource(*this.queue
+                .subList(position, this.queue.size)
+                .map { it.getMediaSource() }
+                .toTypedArray())
+        player.prepare(source)
     }
 
     fun forcePosition(position: Int) {
         this.currentPosition = position
+        onCurrentPositionChanged?.invoke(position)
     }
 
-    fun play(position: Int = currentPosition) {
+    fun play() {
         Timber.d("qgeck play invoked")
-        if (position > queue.lastIndex) return
-
-        this.currentPosition = position
-        onCurrentPositionChanged?.invoke(currentPosition)
-
-        val song = currentSong
-        val uri = try {
-            Uri.parse(song?.sourcePath ?: return)
-        } catch (t: Throwable) {
-            Timber.e(t)
-            return
-        }
-
-        seekToHead()
-        player.playWhenReady = true
-        mediaSession.isActive = true
-        val mediaSource = mediaSourceFactory.createMediaSource(uri)
         getSystemService(AudioManager::class.java).apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val audioFocusRequest = AudioFocusRequest.Builder(
@@ -370,23 +385,20 @@ class PlayerService : Service() {
                         AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
             }
         }
-        player.prepare(mediaSource)
+
         resume()
 
         launch(parentJob) {
+            val song = currentSong ?: return@launch
             val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
             mediaSession.setMetadata(song.getMediaMetadata(albumTitle).await())
             getNotification(song, albumTitle).await().show()
         }
     }
 
-    private fun Notification.show() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForeground(NOTIFICATION_ID_PLAYER, this)
-        } else {
-            getSystemService(NotificationManager::class.java)
-                    .notify(NOTIFICATION_ID_PLAYER, this)
-        }
+    fun play(position: Int) {
+        forcePosition(position)
+        overrideSourceWithPosition(position)
     }
 
     fun resume() {
@@ -438,15 +450,21 @@ class PlayerService : Service() {
         currentPosition = 0
         onCurrentPositionChanged?.invoke(currentPosition)
         this.queue.clear()
+        source.clear()
         stopForeground(true)
     }
 
     fun next() {
-        play(currentPosition + 1)
+        currentSong?.duration?.let { seek(it) }
+        onCurrentPositionChanged?.invoke(++currentPosition)
+        play()
     }
 
     fun prev() {
-        play(currentPosition - 1)
+        onCurrentPositionChanged?.invoke(--currentPosition)
+        overrideSourceWithPosition()
+        player.prepare(source)
+        play()
     }
 
     fun fastForward() {
@@ -517,6 +535,15 @@ class PlayerService : Service() {
         onCurrentPositionChanged?.invoke(currentPosition)
     }
 
+    private fun Notification.show() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForeground(NOTIFICATION_ID_PLAYER, this)
+        } else {
+            getSystemService(NotificationManager::class.java)
+                    .notify(NOTIFICATION_ID_PLAYER, this)
+        }
+    }
+
     fun onActivityDestroy() {
         if (player.playWhenReady.not()) stopForeground(true)
     }
@@ -536,6 +563,9 @@ class PlayerService : Service() {
     fun onUnplugged() {
         pause()
     }
+
+    fun Song.getMediaSource(): MediaSource =
+            mediaSourceFactory.createMediaSource(Uri.parse(sourcePath))
 
     private fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> =
             when (classType) {
