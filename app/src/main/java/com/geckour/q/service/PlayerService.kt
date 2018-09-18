@@ -185,6 +185,7 @@ class PlayerService : Service() {
     private var onCurrentPositionChanged: ((Int) -> Unit)? = null
     private var onPlaybackStateChanged: ((Int, Boolean) -> Unit)? = null
     private var onPlaybackRatioChanged: ((Float) -> Unit)? = null
+    private var onRepeatModeChanged: ((Int) -> Unit)? = null
 
     private val mediaSourceFactory: ExtractorMediaSource.Factory by lazy {
         ExtractorMediaSource.Factory(DefaultDataSourceFactory(applicationContext,
@@ -243,7 +244,8 @@ class PlayerService : Service() {
         }
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
-            if (playbackState == Player.STATE_ENDED) {
+            if (playbackState == Player.STATE_ENDED
+                    && player.repeatMode == Player.REPEAT_MODE_OFF) {
                 pause()
                 seekToHead()
             }
@@ -342,6 +344,10 @@ class PlayerService : Service() {
         this.onPlaybackRatioChanged = listener
     }
 
+    fun setOnRepeatModeChangedListener(listener: (Int) -> Unit) {
+        this.onRepeatModeChanged = listener
+    }
+
     fun submitQueue(queue: InsertQueue) {
         var needPrepare = this.source.size == 0
 
@@ -390,6 +396,7 @@ class PlayerService : Service() {
 
         onQueueChanged?.invoke(this.queue)
         onCurrentPositionChanged?.invoke(currentPosition)
+        onRepeatModeChanged?.invoke(player.repeatMode)
         if (needPrepare) player.prepare(source)
     }
 
@@ -483,10 +490,13 @@ class PlayerService : Service() {
     }
 
     fun next() {
-        if (player.currentWindowIndex < source.size - 1) {
-            val index = source.size - 1
-            player.seekToDefaultPosition(index)
-        } else stop()
+        if (player.repeatMode != Player.REPEAT_MODE_OFF) seekToTail()
+        else {
+            if (player.currentWindowIndex < source.size - 1) {
+                val index = source.size - 1
+                player.seekToDefaultPosition(index)
+            } else stop()
+        }
     }
 
     private fun prev() {
@@ -536,6 +546,10 @@ class PlayerService : Service() {
         seek(0)
     }
 
+    private fun seekToTail() {
+        currentSong?.duration?.apply { seek(this) }
+    }
+
     fun headOrPrev() {
         val current = currentSong ?: return
         if (currentPosition > 0 && player.contentPosition < current.duration / 100) prev()
@@ -570,6 +584,16 @@ class PlayerService : Service() {
 
         onQueueChanged?.invoke(this.queue)
         onCurrentPositionChanged?.invoke(currentPosition)
+    }
+
+    fun rotateRepeatMode() {
+        player.repeatMode = when (player.repeatMode) {
+            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+            Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_OFF
+            else -> throw IllegalStateException()
+        }
+        onRepeatModeChanged?.invoke(player.repeatMode)
     }
 
     private fun Notification.show() {

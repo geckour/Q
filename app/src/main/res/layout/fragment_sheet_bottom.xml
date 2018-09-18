@@ -129,17 +129,16 @@
             android:id="@+id/button_repeat"
             android:layout_width="28dp"
             android:layout_height="28dp"
-            android:layout_marginRight="8dp"
             android:layout_marginTop="4dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> viewModel.onClickShuffleButton()}"
+            android:onClick="@{() -> viewModel.onClickRepeatButton()}"
             android:padding="4dp"
-            android:src="@drawable/ic_shuffle"
-            android:tint="@{isQueueNotEmpty ? @color/colorPrimaryDark : @color/colorTintInactive}"
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
-            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintLeft_toRightOf="@id/button_controller_right"
+            app:layout_constraintRight_toLeftOf="@id/button_shuffle"
             app:layout_constraintTop_toTopOf="@id/button_controller_center"
-            tools:tint="@color/colorPrimaryDark" />
+            tools:src="@drawable/ic_repeat"
+            tools:tint="@color/colorTintInactive" />
 
         <ImageView
             android:id="@+id/button_shuffle"

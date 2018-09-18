@@ -18,6 +18,7 @@ import com.geckour.q.databinding.FragmentSheetBottomBinding
 import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.getArtworkUriFromAlbumId
+import com.google.android.exoplayer2.Player
 
 class BottomSheetFragment : Fragment() {
 
@@ -150,6 +151,18 @@ class BottomSheetFragment : Fragment() {
             binding.seekBar.progress = (binding.seekBar.max * it).toInt()
             val song = adapter.getItem(viewModel.currentPosition.value) ?: return@Observer
             binding.textTimeLeft.text = (song.duration * it).toLong().getTimeString()
+        })
+
+        viewModel.repeatMode.observe(this, Observer {
+            if (it == null) return@Observer
+            binding.buttonRepeat.apply {
+                setImageResource(
+                        if (it == Player.REPEAT_MODE_ONE) R.drawable.ic_repeat_one
+                        else R.drawable.ic_repeat)
+                imageTintList = ColorStateList.valueOf(requireContext().getColor(
+                        if (it == Player.REPEAT_MODE_OFF) R.color.colorTintInactive
+                        else R.color.colorAccent))
+            }
         })
     }
 

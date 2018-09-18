@@ -134,6 +134,9 @@ class MainActivity : AppCompatActivity() {
                     setOnPlaybackRatioChangedListener {
                         bottomSheetViewModel.playbackRatio.value = it
                     }
+                    setOnRepeatModeChangedListener {
+                        bottomSheetViewModel.repeatMode.value = it
+                    }
 
                     publishStatus()
                 }
@@ -356,6 +359,10 @@ class MainActivity : AppCompatActivity() {
 
         bottomSheetViewModel.shuffle.observe(this, Observer {
             player?.shuffle()
+        })
+
+        bottomSheetViewModel.changeRepeatMode.observe(this, Observer {
+            player?.rotateRepeatMode()
         })
 
         bottomSheetViewModel.changedQueue.observe(this, Observer {

@@ -25,8 +25,11 @@ class BottomSheetViewModel : ViewModel() {
     internal val changedQueue: SingleLifeEvent<List<Song>> = SingleLifeEvent()
     internal val changedPosition: SingleLifeEvent<Int> = SingleLifeEvent()
 
-    internal var playing: SingleLifeEvent<Boolean> = SingleLifeEvent()
-    internal var playbackRatio: SingleLifeEvent<Float> = SingleLifeEvent()
+    internal val playing: SingleLifeEvent<Boolean> = SingleLifeEvent()
+    internal val playbackRatio: SingleLifeEvent<Float> = SingleLifeEvent()
+
+    internal val repeatMode: SingleLifeEvent<Int> = SingleLifeEvent()
+    internal val changeRepeatMode: SingleLifeEvent<Unit> = SingleLifeEvent()
 
     init {
         sheetState.value = BottomSheetBehavior.STATE_COLLAPSED
@@ -56,6 +59,10 @@ class BottomSheetViewModel : ViewModel() {
 
     fun onClickShuffleButton() {
         shuffle.call()
+    }
+
+    fun onClickRepeatButton() {
+        changeRepeatMode.call()
     }
 
     fun onPlayOrPause() {
