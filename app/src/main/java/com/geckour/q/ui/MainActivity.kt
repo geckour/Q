@@ -135,7 +135,7 @@ class MainActivity : AppCompatActivity() {
                         bottomSheetViewModel.playbackRatio.value = it
                     }
 
-                    publishQueue()
+                    publishStatus()
                 }
             }
         }

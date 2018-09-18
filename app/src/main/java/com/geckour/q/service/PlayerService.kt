@@ -208,9 +208,11 @@ class PlayerService : Service() {
         override fun onTracksChanged(trackGroups: TrackGroupArray?,
                                      trackSelections: TrackSelectionArray?) {
             onCurrentPositionChanged?.invoke(currentPosition)
-            launch(parentJob) {
+            launch(UI + parentJob) {
                 val song = currentSong ?: return@launch
-                val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
+                val albumTitle = async(parentJob) {
+                    DB.getInstance(applicationContext).albumDao().get(song.albumId).title
+                }.await()
                 mediaSession.setMetadata(song.getMediaMetadata(albumTitle).await())
                 getNotification(song, albumTitle).await().show()
             }
@@ -241,9 +243,11 @@ class PlayerService : Service() {
         }
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
-            if (playbackState == Player.STATE_ENDED) stop()
+            if (playbackState == Player.STATE_ENDED) {
+                pause()
+                seekToHead()
+            }
             onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
-
         }
     }
 
@@ -294,7 +298,6 @@ class PlayerService : Service() {
         player = ExoPlayerFactory.newSimpleInstance(this, DefaultTrackSelector()).apply {
             addListener(eventListener)
         }
-        mediaSession.isActive = true
 
         registerReceiver(headsetStateReceiver, IntentFilter().apply {
             addAction(SOURCE_ACTION_WIRED_STATE)
@@ -305,7 +308,6 @@ class PlayerService : Service() {
     override fun onDestroy() {
         super.onDestroy()
 
-        mediaSession.isActive = false
         unregisterReceiver(headsetStateReceiver)
         parentJob.cancel()
         player.release()
@@ -427,6 +429,7 @@ class PlayerService : Service() {
         }
 
         if (player.playWhenReady.not()) {
+            mediaSession.isActive = true
             launch(parentJob) {
                 val song = currentSong ?: return@launch
                 val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
@@ -467,8 +470,8 @@ class PlayerService : Service() {
 
     fun stop() {
         pause()
+        mediaSession.isActive = false
         seekToHead()
-        player.stop()
     }
 
     fun clear() {
@@ -573,12 +576,16 @@ class PlayerService : Service() {
     }
 
     fun onActivityDestroy() {
-        if (player.playWhenReady.not()) stopForeground(true)
+        if (player.playWhenReady.not()) {
+            stopForeground(true)
+            stopSelf()
+        }
     }
 
-    fun publishQueue() {
+    fun publishStatus() {
         onQueueChanged?.invoke(queue)
         onCurrentPositionChanged?.invoke(currentPosition)
+        onPlaybackStateChanged?.invoke(player.playbackState, player.playWhenReady)
     }
 
     fun onOutputSourceChange(outputSourceType: OutputSourceType) {
