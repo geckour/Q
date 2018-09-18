@@ -10,6 +10,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.drawable.Icon
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaMetadata
@@ -18,18 +19,22 @@ import android.media.session.PlaybackState
 import android.net.Uri
 import android.os.Binder
 import android.os.Build
-import android.os.Handler
 import android.os.IBinder
+import android.view.KeyEvent
 import com.bumptech.glide.Glide
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainActivity
+import com.geckour.q.ui.sheet.BottomSheetViewModel
 import com.geckour.q.util.getArtworkUriFromAlbumId
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
-import com.google.android.exoplayer2.source.*
+import com.google.android.exoplayer2.source.ConcatenatingMediaSource
+import com.google.android.exoplayer2.source.ExtractorMediaSource
+import com.google.android.exoplayer2.source.MediaSource
+import com.google.android.exoplayer2.source.TrackGroupArray
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
@@ -37,7 +42,6 @@ import com.google.android.exoplayer2.util.Util
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
 import timber.log.Timber
-import java.io.IOException
 
 class PlayerService : Service() {
 
@@ -81,6 +85,8 @@ class PlayerService : Service() {
         fun createIntent(context: Context): Intent = Intent(context, PlayerService::class.java)
 
         private val TAG: String = PlayerService::class.java.simpleName
+
+        private const val ARGS_KEY_CONTROL_COMMAND = "args_key_control_command"
 
         private const val SOURCE_ACTION_WIRED_STATE = Intent.ACTION_HEADSET_PLUG
         private const val SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE =
@@ -141,6 +147,25 @@ class PlayerService : Service() {
             super.onSeekTo(pos)
             seek(pos)
         }
+
+        override fun onMediaButtonEvent(mediaButtonIntent: Intent): Boolean {
+            val keyCode = (mediaButtonIntent.extras?.get(Intent.EXTRA_KEY_EVENT) as? KeyEvent)?.keyCode
+            return when (keyCode) {
+                KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                    pause()
+                    true
+                }
+                KeyEvent.KEYCODE_MEDIA_PLAY -> {
+                    play()
+                    true
+                }
+                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+                    togglePlayPause()
+                    true
+                }
+                else -> super.onMediaButtonEvent(mediaButtonIntent)
+            }
+        }
     }
 
     private lateinit var player: SimpleExoPlayer
@@ -183,6 +208,12 @@ class PlayerService : Service() {
         override fun onTracksChanged(trackGroups: TrackGroupArray?,
                                      trackSelections: TrackSelectionArray?) {
             onCurrentPositionChanged?.invoke(currentPosition)
+            launch(parentJob) {
+                val song = currentSong ?: return@launch
+                val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
+                mediaSession.setMetadata(song.getMediaMetadata(albumTitle).await())
+                getNotification(song, albumTitle).await().show()
+            }
         }
 
         override fun onPlayerError(error: ExoPlaybackException?) {
@@ -210,10 +241,9 @@ class PlayerService : Service() {
         }
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
-            when (playbackState) {
-                Player.STATE_ENDED -> stop()
-            }
+            if (playbackState == Player.STATE_ENDED) stop()
             onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
+
         }
     }
 
@@ -250,8 +280,11 @@ class PlayerService : Service() {
 
     override fun onBind(intent: Intent?): IBinder? = binder
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int =
-            Service.START_NOT_STICKY
+    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+        mediaSessionCallback.onMediaButtonEvent(intent)
+        onNotificationAction(intent)
+        return Service.START_NOT_STICKY
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -276,6 +309,18 @@ class PlayerService : Service() {
         unregisterReceiver(headsetStateReceiver)
         parentJob.cancel()
         player.release()
+    }
+
+    private fun onNotificationAction(intent: Intent) {
+        if (intent.hasExtra(ARGS_KEY_CONTROL_COMMAND)) {
+            val key = intent.extras?.getInt(ARGS_KEY_CONTROL_COMMAND, -1) ?: return
+            val command = BottomSheetViewModel.PlaybackButton.values()[key]
+            when (command) {
+                BottomSheetViewModel.PlaybackButton.PREV -> headOrPrev()
+                BottomSheetViewModel.PlaybackButton.PLAY_OR_PAUSE -> togglePlayPause()
+                BottomSheetViewModel.PlaybackButton.NEXT -> next()
+            }
+        }
     }
 
     fun setOnQueueChangedListener(listener: (List<Song>) -> Unit) {
@@ -364,13 +409,6 @@ class PlayerService : Service() {
         }
 
         resume()
-
-        launch(parentJob) {
-            val song = currentSong ?: return@launch
-            val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
-            mediaSession.setMetadata(song.getMediaMetadata(albumTitle).await())
-            getNotification(song, albumTitle).await().show()
-        }
     }
 
     fun play(position: Int) {
@@ -388,7 +426,14 @@ class PlayerService : Service() {
             }
         }
 
-        player.playWhenReady = true
+        if (player.playWhenReady.not()) {
+            launch(parentJob) {
+                val song = currentSong ?: return@launch
+                val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
+                getNotification(song, albumTitle).await().show()
+            }
+            player.playWhenReady = true
+        }
     }
 
     fun pause() {
@@ -403,6 +448,11 @@ class PlayerService : Service() {
             } else {
                 abandonAudioFocus {}
             }
+        }
+        launch(parentJob) {
+            val song = currentSong ?: return@launch
+            val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
+            getNotification(song, albumTitle).await().show()
         }
         stopForeground(false)
     }
@@ -617,6 +667,41 @@ class PlayerService : Service() {
                                 App.REQUEST_CODE_OPEN_DEFAULT_ACTIVITY,
                                 MainActivity.createIntent(applicationContext),
                                 PendingIntent.FLAG_UPDATE_CURRENT))
+                        .setActions(Notification.Action.Builder(
+                                Icon.createWithResource(this@PlayerService,
+                                        R.drawable.ic_backward),
+                                getString(R.string.notification_action_prev),
+                                getCommandPendingIntent(
+                                        BottomSheetViewModel.PlaybackButton.PREV)).build(),
+                                if (player.playWhenReady) {
+                                    Notification.Action.Builder(
+                                            Icon.createWithResource(this@PlayerService,
+                                                    R.drawable.ic_pause),
+                                            getString(R.string.notification_action_pause),
+                                            getCommandPendingIntent(
+                                                    BottomSheetViewModel.PlaybackButton.PLAY_OR_PAUSE)).build()
+                                } else {
+                                    Notification.Action.Builder(
+                                            Icon.createWithResource(this@PlayerService,
+                                                    R.drawable.ic_play),
+                                            getString(R.string.notification_action_play),
+                                            getCommandPendingIntent(
+                                                    BottomSheetViewModel.PlaybackButton.PLAY_OR_PAUSE)).build()
+                                },
+                                Notification.Action.Builder(
+                                        Icon.createWithResource(this@PlayerService,
+                                                R.drawable.ic_forward),
+                                        getString(R.string.notification_action_next),
+                                        getCommandPendingIntent(
+                                                BottomSheetViewModel.PlaybackButton.NEXT)).build())
                         .build()
             }
+
+    private fun getCommandPendingIntent(command: BottomSheetViewModel.PlaybackButton): PendingIntent =
+            PendingIntent.getService(this, 0,
+                    createIntent(this).apply {
+                        action = command.name
+                        putExtra(ARGS_KEY_CONTROL_COMMAND, command.ordinal)
+                    },
+                    PendingIntent.FLAG_CANCEL_CURRENT)
 }

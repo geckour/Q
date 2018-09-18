@@ -9,6 +9,10 @@
 
     <string name="notification_channel_player">Player</string>
     <string name="notification_channel_description_player">Player information notification for keep player alive</string>
+    <string name="notification_action_prev">PREV</string>
+    <string name="notification_action_play">PLAY</string>
+    <string name="notification_action_pause">PAUSE</string>
+    <string name="notification_action_next">NEXT</string>
 
 
     <string name="nav_header_desc">Q - Queue oriented player</string>
