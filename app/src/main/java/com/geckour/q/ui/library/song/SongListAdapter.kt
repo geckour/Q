@@ -10,6 +10,7 @@ import com.geckour.q.databinding.ItemListSongBinding
 import com.geckour.q.domain.model.Song
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.MainViewModel
+import com.geckour.q.util.MediaRetrieveWorker
 import com.geckour.q.util.getArtworkUriFromAlbumId
 import timber.log.Timber
 
@@ -44,7 +45,9 @@ class SongListAdapter(private val viewModel: MainViewModel)
                             .sortedBy { it.first }
                             .flatMap { it.second }
                 } else {
-                    it.sortedBy { it.name }
+                    it.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {
+                        it.name ?: MediaRetrieveWorker.UNKNOWN
+                    })
                 }
             }
 

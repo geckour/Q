@@ -7,6 +7,7 @@ import com.bumptech.glide.Glide
 import com.geckour.q.databinding.ItemListAlbumBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.ui.MainViewModel
+import com.geckour.q.util.MediaRetrieveWorker
 import com.geckour.q.util.getArtworkUriFromAlbumId
 import timber.log.Timber
 
@@ -33,7 +34,10 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
     internal fun upsertItem(item: Album) {
         var index = items.indexOfFirst { it.id == item.id }
         if (index < 0) {
-            val tempList = ArrayList(items).apply { add(item) }.sortedBy { it.name }
+            val tempList = ArrayList(items).apply { add(item) }
+                    .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {
+                        it.name ?: MediaRetrieveWorker.UNKNOWN
+                    })
             index = tempList.indexOf(item)
             items.add(index, item)
             notifyItemInserted(index)
