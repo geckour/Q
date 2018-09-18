@@ -483,11 +483,10 @@ class PlayerService : Service() {
     }
 
     fun next() {
-        val index =
-                if (player.currentWindowIndex < source.size - 1)
-                    player.currentWindowIndex + 1
-                else source.size - 1
-        player.seekToDefaultPosition(index)
+        if (player.currentWindowIndex < source.size - 1) {
+            val index = source.size - 1
+            player.seekToDefaultPosition(index)
+        } else stop()
     }
 
     private fun prev() {
@@ -556,11 +555,18 @@ class PlayerService : Service() {
     }
 
     fun shuffle() {
-        if (this.queue.isEmpty()) return
-        val toHold = this.queue.subList(0, currentPosition + 1).toList()
-        val toShuffle = this.queue.subList(currentPosition + 1, this.queue.size).toList()
-        this.queue.clear()
-        this.queue.addAll(toHold + toShuffle.shuffled())
+        val startIndex = currentPosition + 1
+        if (source.size < 1 || startIndex == source.size) return
+
+        val shuffled = (startIndex until source.size).toList().shuffled()
+
+        (startIndex until source.size).forEach {
+            val moveTo = startIndex + shuffled.indexOf(it)
+            source.moveMediaSource(it, moveTo)
+            val toMove = this.queue[it]
+            this.queue.removeAt(it)
+            this.queue.add(moveTo, toMove)
+        }
 
         onQueueChanged?.invoke(this.queue)
         onCurrentPositionChanged?.invoke(currentPosition)
