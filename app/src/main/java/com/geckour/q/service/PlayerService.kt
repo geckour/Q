@@ -662,6 +662,7 @@ class PlayerService : Service() {
                         .setContentText(song.artist)
                         .setSubText(albumTitle)
                         .setStyle(Notification.MediaStyle()
+                                .setShowActionsInCompactView(0, 1, 2)
                                 .setMediaSession(mediaSession.sessionToken))
                         .setContentIntent(PendingIntent.getActivity(applicationContext,
                                 App.REQUEST_CODE_OPEN_DEFAULT_ACTIVITY,
