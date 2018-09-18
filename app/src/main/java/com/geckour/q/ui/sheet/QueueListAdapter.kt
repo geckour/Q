@@ -23,7 +23,11 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
     }
 
     internal fun getItem(index: Int?): Song? =
-            if (index in 0..items.lastIndex) items[requireNotNull(index)] else null
+            when (index) {
+                in 0..items.lastIndex -> items[requireNotNull(index)]
+                -1 -> items.firstOrNull()
+                else -> null
+            }
 
     internal fun setNowPlaying(index: Int?) {
         items = items.map { it.copy(nowPlaying = false) }

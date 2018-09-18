@@ -18,6 +18,7 @@ import android.media.session.PlaybackState
 import android.net.Uri
 import android.os.Binder
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
 import com.bumptech.glide.Glide
 import com.geckour.q.App
@@ -28,10 +29,7 @@ import com.geckour.q.ui.MainActivity
 import com.geckour.q.util.getArtworkUriFromAlbumId
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
-import com.google.android.exoplayer2.source.ConcatenatingMediaSource
-import com.google.android.exoplayer2.source.ExtractorMediaSource
-import com.google.android.exoplayer2.source.MediaSource
-import com.google.android.exoplayer2.source.TrackGroupArray
+import com.google.android.exoplayer2.source.*
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
@@ -39,6 +37,7 @@ import com.google.android.exoplayer2.util.Util
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
 import timber.log.Timber
+import java.io.IOException
 
 class PlayerService : Service() {
 
@@ -145,11 +144,18 @@ class PlayerService : Service() {
     }
 
     private lateinit var player: SimpleExoPlayer
-    private val queue: ArrayList<Song> = ArrayList()
-    private var currentPosition: Int = 0
+    private val currentPosition
+        get() = when (player.currentWindowIndex) {
+            -1 -> if (source.size > 0) 0 else -1
+            else -> player.currentWindowIndex
+        }
     private val currentSong: Song?
-        get() = if (currentPosition in queue.indices) queue[currentPosition] else null
+        get() = when (currentPosition) {
+            in queue.indices -> queue[currentPosition]
+            else -> null
+        }
 
+    private val queue: ArrayList<Song> = ArrayList()
     private var onQueueChanged: ((List<Song>) -> Unit)? = null
     private var onCurrentPositionChanged: ((Int) -> Unit)? = null
     private var onPlaybackStateChanged: ((Int, Boolean) -> Unit)? = null
@@ -176,7 +182,7 @@ class PlayerService : Service() {
 
         override fun onTracksChanged(trackGroups: TrackGroupArray?,
                                      trackSelections: TrackSelectionArray?) {
-
+            onCurrentPositionChanged?.invoke(currentPosition)
         }
 
         override fun onPlayerError(error: ExoPlaybackException?) {
@@ -204,12 +210,8 @@ class PlayerService : Service() {
         }
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
-            // TODO: Bottom Navigationのボタンに反映する
             when (playbackState) {
-                Player.STATE_ENDED -> {
-                    if (source.size > 0 && currentPosition == queue.lastIndex)
-                        stop()
-                }
+                Player.STATE_ENDED -> stop()
             }
             onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
         }
@@ -294,24 +296,16 @@ class PlayerService : Service() {
     }
 
     fun submitQueue(queue: InsertQueue) {
-        var needPrepare = this.queue.isEmpty()
+        var needPrepare = this.source.size == 0
 
         when (queue.metadata.actionType) {
             InsertActionType.NEXT -> {
-                if (this.queue.isEmpty()) {
-                    this.queue.addAll(queue.queue)
-                } else {
-                    this.queue.addAll(currentPosition + 1, queue.queue)
-                }
-                source.addMediaSources(player.currentPeriodIndex,
+                this.queue.addAll(currentPosition, queue.queue)
+                source.addMediaSources(currentPosition,
                         queue.queue.map { it.getMediaSource() })
             }
             InsertActionType.LAST -> {
-                if (this.queue.isEmpty()) {
-                    this.queue.addAll(queue.queue)
-                } else {
-                    this.queue.addAll(this.queue.size, queue.queue)
-                }
+                this.queue.addAll(this.queue.size, queue.queue)
                 source.addMediaSources(source.size,
                         queue.queue.map { it.getMediaSource() })
             }
@@ -322,24 +316,16 @@ class PlayerService : Service() {
                 needPrepare = true
             }
             InsertActionType.SHUFFLE_NEXT -> {
-                if (this.queue.isEmpty()) {
-                    this.queue.addAll(queue.queue.shuffleByClassType(queue.metadata.classType))
-                } else {
-                    this.queue.addAll(currentPosition + 1,
-                            queue.queue.shuffleByClassType(queue.metadata.classType))
-                }
-                source.addMediaSources(player.currentPeriodIndex,
+                this.queue.addAll(currentPosition,
+                        queue.queue.shuffleByClassType(queue.metadata.classType))
+                source.addMediaSources(currentPosition,
                         queue.queue
                                 .shuffleByClassType(queue.metadata.classType)
                                 .map { it.getMediaSource() })
             }
             InsertActionType.SHUFFLE_LAST -> {
-                if (this.queue.isEmpty()) {
-                    this.queue.addAll(queue.queue.shuffleByClassType(queue.metadata.classType))
-                } else {
-                    this.queue.addAll(this.queue.size,
-                            queue.queue.shuffleByClassType(queue.metadata.classType))
-                }
+                this.queue.addAll(this.queue.size,
+                        queue.queue.shuffleByClassType(queue.metadata.classType))
                 source.addMediaSources(source.size,
                         queue.queue
                                 .shuffleByClassType(queue.metadata.classType)
@@ -360,20 +346,11 @@ class PlayerService : Service() {
         if (needPrepare) player.prepare(source)
     }
 
-    private fun overrideSourceWithPosition(position: Int = currentPosition) {
-        source = ConcatenatingMediaSource(*this.queue
-                .subList(position, this.queue.size)
-                .map { it.getMediaSource() }
-                .toTypedArray())
-        player.prepare(source)
-    }
-
     fun forcePosition(position: Int) {
-        this.currentPosition = position
-        onCurrentPositionChanged?.invoke(position)
+        player.seekToDefaultPosition(position)
     }
 
-    fun play() {
+    private fun play() {
         Timber.d("qgeck play invoked")
         getSystemService(AudioManager::class.java).apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -397,11 +374,10 @@ class PlayerService : Service() {
     }
 
     fun play(position: Int) {
-        forcePosition(position)
-        overrideSourceWithPosition(position)
+        if (currentPosition != position) forcePosition(position)
     }
 
-    fun resume() {
+    private fun resume() {
         Timber.d("qgeck resume invoked")
         notifyPlaybackRatioJob?.cancel()
         notifyPlaybackRatioJob = launch(UI + parentJob) {
@@ -447,24 +423,26 @@ class PlayerService : Service() {
 
     fun clear() {
         stop()
-        currentPosition = 0
-        onCurrentPositionChanged?.invoke(currentPosition)
         this.queue.clear()
         source.clear()
+        onCurrentPositionChanged?.invoke(currentPosition)
         stopForeground(true)
     }
 
     fun next() {
-        currentSong?.duration?.let { seek(it) }
-        onCurrentPositionChanged?.invoke(++currentPosition)
-        play()
+        val index =
+                if (player.currentWindowIndex < source.size - 1)
+                    player.currentWindowIndex + 1
+                else source.size - 1
+        player.seekToDefaultPosition(index)
     }
 
-    fun prev() {
-        onCurrentPositionChanged?.invoke(--currentPosition)
-        overrideSourceWithPosition()
-        player.prepare(source)
-        play()
+    private fun prev() {
+        val index =
+                if (player.currentWindowIndex > 0)
+                    player.currentWindowIndex - 1
+                else 0
+        player.seekToDefaultPosition(index)
     }
 
     fun fastForward() {
@@ -502,7 +480,7 @@ class PlayerService : Service() {
         seekJob?.cancel()
     }
 
-    fun seekToHead() {
+    private fun seekToHead() {
         seek(0)
     }
 
@@ -564,7 +542,7 @@ class PlayerService : Service() {
         pause()
     }
 
-    fun Song.getMediaSource(): MediaSource =
+    private fun Song.getMediaSource(): MediaSource =
             mediaSourceFactory.createMediaSource(Uri.parse(sourcePath))
 
     private fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> =
