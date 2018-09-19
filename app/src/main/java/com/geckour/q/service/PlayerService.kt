@@ -694,11 +694,16 @@ class PlayerService : Service() {
 
     private fun getNotification(song: Song, albumTitle: String): Deferred<Notification> =
             async {
-                val artwork = Glide.with(this@PlayerService)
-                        .asBitmap()
-                        .load(getArtworkUriFromAlbumId(song.albumId))
-                        .submit()
-                        .get()
+                val artwork = try {
+                    Glide.with(this@PlayerService)
+                            .asBitmap()
+                            .load(getArtworkUriFromAlbumId(song.albumId))
+                            .submit()
+                            .get()
+                } catch (t: Throwable) {
+                    Timber.e(t)
+                    null
+                }
                 val builder =
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
                             Notification.Builder(applicationContext, NOTIFICATION_CHANNEL_ID_PLAYER)
