@@ -26,7 +26,7 @@ class ArtistListFragment : Fragment() {
         ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
     }
     private lateinit var binding: FragmentListLibraryBinding
-    private lateinit var adapter: ArtistListAdapter
+    private val adapter: ArtistListAdapter by lazy { ArtistListAdapter(mainViewModel) }
 
     private var parentJob = Job()
     private var latestDbTrackList: List<Track> = emptyList()
@@ -43,9 +43,8 @@ class ArtistListFragment : Fragment() {
 
         setHasOptionsMenu(true)
 
-        adapter = ArtistListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
-        if (savedInstanceState == null) fetchArtists()
+        if (adapter.itemCount == 0) fetchArtists()
     }
 
     override fun onStart() {
@@ -56,6 +55,11 @@ class ArtistListFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         mainViewModel.resumedFragmentId.value = R.id.nav_artist
+    }
+
+    override fun onPause() {
+        super.onPause()
+        onSaveInstanceState(Bundle())
     }
 
     override fun onStop() {

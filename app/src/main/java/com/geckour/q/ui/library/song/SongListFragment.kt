@@ -3,7 +3,6 @@ package com.geckour.q.ui.library.song
 import android.arch.lifecycle.Observer
 import android.arch.lifecycle.ViewModelProviders
 import android.os.Bundle
-import android.provider.MediaStore
 import android.support.v4.app.Fragment
 import android.view.*
 import com.geckour.q.R
@@ -13,14 +12,15 @@ import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
-import com.geckour.q.domain.model.Song
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.getSongListFromTrackId
 import com.geckour.q.util.getSongListFromTrackList
 import com.geckour.q.util.getTrackIds
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.delay
+import kotlinx.coroutines.experimental.launch
 
 class SongListFragment : Fragment() {
 
@@ -54,7 +54,7 @@ class SongListFragment : Fragment() {
         ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
     }
     private lateinit var binding: FragmentListLibraryBinding
-    private lateinit var adapter: SongListAdapter
+    private val adapter: SongListAdapter by lazy { SongListAdapter(mainViewModel) }
 
     private var parentJob = Job()
     private var latestDbTrackList: List<Track> = emptyList()
@@ -71,18 +71,18 @@ class SongListFragment : Fragment() {
 
         setHasOptionsMenu(true)
 
-        adapter = SongListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
+        if (adapter.itemCount == 0) {
+            val album = arguments?.getParcelable<Album>(ARGS_KEY_ALBUM)
+            val genre = arguments?.getParcelable<Genre>(ARGS_KEY_GENRE)
+            val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST)
 
-        val album = arguments?.getParcelable<Album>(ARGS_KEY_ALBUM)
-        val genre = arguments?.getParcelable<Genre>(ARGS_KEY_GENRE)
-        val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST)
-
-        when {
-            album != null -> fetchSongsWithAlbum(album)
-            genre != null -> fetchSongsWithGenre(genre)
-            playlist != null -> fetchSongsWithPlaylist(playlist)
-            else -> fetchSongs()
+            when {
+                album != null -> fetchSongsWithAlbum(album)
+                genre != null -> fetchSongsWithGenre(genre)
+                playlist != null -> fetchSongsWithPlaylist(playlist)
+                else -> fetchSongs()
+            }
         }
     }
 

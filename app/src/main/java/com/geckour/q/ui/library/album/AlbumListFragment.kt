@@ -34,7 +34,7 @@ class AlbumListFragment : Fragment() {
         ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
     }
     private lateinit var binding: FragmentListLibraryBinding
-    private lateinit var adapter: AlbumListAdapter
+    private val adapter: AlbumListAdapter by lazy { AlbumListAdapter(mainViewModel) }
 
     private var latestDbAlbumList: List<DbAlbum> = emptyList()
     private var chatteringCancelFlag: Boolean = false
@@ -51,10 +51,10 @@ class AlbumListFragment : Fragment() {
         super.onActivityCreated(savedInstanceState)
 
         setHasOptionsMenu(true)
-
-        adapter = AlbumListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
-        arguments?.getParcelable<Artist>(ARGS_KEY_ARTIST).apply { fetchAlbums(this) }
+        if (adapter.itemCount == 0) {
+            arguments?.getParcelable<Artist>(ARGS_KEY_ARTIST).apply { fetchAlbums(this) }
+        }
     }
 
     override fun onStart() {

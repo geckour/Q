@@ -1,6 +1,5 @@
 package com.geckour.q.ui.library.genre
 
-import android.Manifest
 import android.arch.lifecycle.ViewModelProviders
 import android.os.Bundle
 import android.provider.MediaStore
@@ -16,11 +15,7 @@ import com.geckour.q.util.getSong
 import com.geckour.q.util.getTrackIds
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.launch
-import permissions.dispatcher.NeedsPermission
-import permissions.dispatcher.OnPermissionDenied
-import permissions.dispatcher.RuntimePermissions
 
-@RuntimePermissions
 class GenreListFragment : Fragment() {
 
     companion object {
@@ -31,7 +26,7 @@ class GenreListFragment : Fragment() {
         ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
     }
     private lateinit var binding: FragmentListLibraryBinding
-    private lateinit var adapter: GenreListAdapter
+    private val adapter: GenreListAdapter by lazy { GenreListAdapter(mainViewModel) }
 
     private var parentJob = Job()
 
@@ -46,9 +41,8 @@ class GenreListFragment : Fragment() {
 
         setHasOptionsMenu(true)
 
-        adapter = GenreListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
-        fetchGenresWithPermissionCheck()
+        if (adapter.itemCount == 0) fetchGenres()
     }
 
     override fun onResume() {
@@ -98,12 +92,6 @@ class GenreListFragment : Fragment() {
         return true
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        onRequestPermissionsResult(requestCode, grantResults)
-    }
-
-    @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
     internal fun fetchGenres() {
         requireActivity().contentResolver.query(MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
                 arrayOf(
@@ -124,10 +112,5 @@ class GenreListFragment : Fragment() {
             }
             adapter.setItems(list.sortedBy { it.name })
         }
-    }
-
-    @OnPermissionDenied(Manifest.permission.READ_EXTERNAL_STORAGE)
-    internal fun onReadExternalStorageDenied() {
-        fetchGenresWithPermissionCheck()
     }
 }

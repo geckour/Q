@@ -1,6 +1,5 @@
 package com.geckour.q.ui.library.playlist
 
-import android.Manifest
 import android.arch.lifecycle.ViewModelProviders
 import android.os.Bundle
 import android.provider.MediaStore
@@ -11,17 +10,12 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.service.PlayerService
-import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.getSong
 import com.geckour.q.util.getTrackIds
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.launch
-import permissions.dispatcher.NeedsPermission
-import permissions.dispatcher.OnPermissionDenied
-import permissions.dispatcher.RuntimePermissions
 
-@RuntimePermissions
 class PlaylistListFragment : Fragment() {
 
     companion object {
@@ -32,7 +26,7 @@ class PlaylistListFragment : Fragment() {
         ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
     }
     private lateinit var binding: FragmentListLibraryBinding
-    private lateinit var adapter: PlaylistListAdapter
+    private val adapter: PlaylistListAdapter by lazy { PlaylistListAdapter(mainViewModel) }
 
     private var parentJob = Job()
 
@@ -47,9 +41,8 @@ class PlaylistListFragment : Fragment() {
 
         setHasOptionsMenu(true)
 
-        adapter = PlaylistListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
-        fetchPlaylistsWithPermissionCheck()
+        if (adapter.itemCount == 0) fetchPlaylists()
     }
 
     override fun onResume() {
@@ -98,12 +91,6 @@ class PlaylistListFragment : Fragment() {
         return true
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        onRequestPermissionsResult(requestCode, grantResults)
-    }
-
-    @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
     internal fun fetchPlaylists() {
         requireActivity().contentResolver.query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
                 arrayOf(
@@ -124,10 +111,5 @@ class PlaylistListFragment : Fragment() {
             }
             adapter.setItems(list.sortedBy { it.name })
         }
-    }
-
-    @OnPermissionDenied(Manifest.permission.READ_EXTERNAL_STORAGE)
-    internal fun onReadExternalStorageDenied() {
-        fetchPlaylistsWithPermissionCheck()
     }
 }
