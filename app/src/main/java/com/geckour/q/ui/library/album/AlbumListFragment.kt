@@ -10,7 +10,6 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Artist
-import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
@@ -79,10 +78,10 @@ class AlbumListFragment : Fragment() {
 
     override fun onOptionsItemSelected(item: MenuItem?): Boolean {
         when (item?.itemId) {
-            R.id.menu_insert_all_first -> Unit
+            R.id.menu_insert_all_next -> Unit
             R.id.menu_insert_all_last -> Unit
             R.id.menu_override_all -> Unit
-            R.id.menu_albums_insert_all_shuffle_first -> Unit
+            R.id.menu_albums_insert_all_shuffle_next -> Unit
             R.id.menu_albums_insert_all_shuffle_last -> Unit
             R.id.menu_albums_override_all_shuffle -> Unit
         }
@@ -91,7 +90,7 @@ class AlbumListFragment : Fragment() {
 
     private fun fetchAlbums(artist: Artist?) {
         DB.getInstance(requireContext()).also { db ->
-            db.albumDao().getAll().observe(this@AlbumListFragment, Observer { dbAlbumList ->
+            db.albumDao().getAllAsync().observe(this@AlbumListFragment, Observer { dbAlbumList ->
                 if (dbAlbumList == null) return@Observer
 
                 latestDbAlbumList = dbAlbumList

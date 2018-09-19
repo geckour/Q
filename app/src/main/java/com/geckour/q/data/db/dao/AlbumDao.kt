@@ -16,8 +16,8 @@ interface AlbumDao {
     fun upsert(album: Album)
 
     @Query("select * from album")
-    fun getAll(): LiveData<List<Album>>
+    fun getAllAsync(): LiveData<List<Album>>
 
-    @Query("select * from album where :id")
+    @Query("select * from album where id = :id")
     fun get(id: Long): Album
 }

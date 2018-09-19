@@ -3,9 +3,15 @@ package com.geckour.q.ui
 import android.Manifest
 import android.arch.lifecycle.Observer
 import android.arch.lifecycle.ViewModelProviders
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
 import android.databinding.DataBindingUtil
 import android.os.Bundle
+import android.os.IBinder
 import android.preference.PreferenceManager
+import android.support.design.widget.BottomSheetBehavior
 import android.support.v7.app.ActionBarDrawerToggle
 import android.support.v7.app.AppCompatActivity
 import android.view.MenuItem
@@ -17,12 +23,15 @@ import androidx.work.WorkRequest
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ActivityMainBinding
+import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.library.album.AlbumListFragment
 import com.geckour.q.ui.library.artist.ArtistListFragment
 import com.geckour.q.ui.library.genre.GenreListFragment
 import com.geckour.q.ui.library.playlist.PlaylistListFragment
 import com.geckour.q.ui.library.song.SongListFragment
+import com.geckour.q.ui.sheet.BottomSheetViewModel
 import com.geckour.q.util.MediaRetrieveWorker
+import com.google.android.exoplayer2.Player
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
@@ -37,14 +46,23 @@ class MainActivity : AppCompatActivity() {
 
     companion object {
         private const val PREF_KEY_LATEST_WORKER_ID = "pref_key_latest_worker_id"
+
+        fun createIntent(context: Context): Intent = Intent(context, MainActivity::class.java)
     }
 
     private val viewModel: MainViewModel by lazy {
         ViewModelProviders.of(this)[MainViewModel::class.java]
     }
+    private val bottomSheetViewModel: BottomSheetViewModel by lazy {
+        ViewModelProviders.of(this)[BottomSheetViewModel::class.java]
+    }
     internal lateinit var binding: ActivityMainBinding
     private lateinit var drawerToggle: ActionBarDrawerToggle
     private var parentJob = Job()
+
+    private var player: PlayerService? = null
+
+    private var isBoundedService = false
 
     private val onNavigationItemSelectedListener: ((MenuItem) -> Boolean) = {
         when (it.itemId) {
@@ -94,8 +112,49 @@ class MainActivity : AppCompatActivity() {
         true
     }
 
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            if (name == ComponentName(applicationContext, PlayerService::class.java)) {
+                isBoundedService = true
+                player = (service as? PlayerService.PlayerBinder)?.service?.apply {
+                    setOnQueueChangedListener {
+                        bottomSheetViewModel.currentQueue.value = it
+                    }
+                    setOnCurrentPositionChangedListener {
+                        bottomSheetViewModel.currentPosition.value = it
+                    }
+                    setOnPlaybackStateChangeListener { playbackState, playWhenReady ->
+                        bottomSheetViewModel.playing.value = when (playbackState) {
+                            Player.STATE_READY -> {
+                                playWhenReady
+                            }
+                            else -> false
+                        }
+                    }
+                    setOnPlaybackRatioChangedListener {
+                        bottomSheetViewModel.playbackRatio.value = it
+                    }
+                    setOnRepeatModeChangedListener {
+                        bottomSheetViewModel.repeatMode.value = it
+                    }
+
+                    publishStatus()
+                }
+            }
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            if (name == ComponentName(applicationContext, PlayerService::class.java)) {
+                player = null
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        startService(PlayerService.createIntent(this))
+
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
 
         setSupportActionBar(binding.coordinatorMain.contentMain.toolbar)
@@ -127,11 +186,30 @@ class MainActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         parentJob = Job()
+        if (isBoundedService.not()) {
+            bindService(PlayerService.createIntent(this),
+                    serviceConnection, Context.BIND_ADJUST_WITH_ACTIVITY)
+        }
     }
 
     override fun onStop() {
         super.onStop()
         parentJob.cancel()
+        if (isBoundedService) {
+            isBoundedService = false
+            unbindService(serviceConnection)
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        player?.onActivityDestroy()
+    }
+
+    override fun onBackPressed() {
+        if (bottomSheetViewModel.sheetState.value == BottomSheetBehavior.STATE_EXPANDED)
+            bottomSheetViewModel.sheetState.value = BottomSheetBehavior.STATE_COLLAPSED
+        else super.onBackPressed()
     }
 
     override fun onSaveInstanceState(outState: Bundle?) {
@@ -166,7 +244,7 @@ class MainActivity : AppCompatActivity() {
         launch(parentJob) {
             DB.getInstance(this@MainActivity)
                     .trackDao()
-                    .getAll()
+                    .getAllAsync()
                     .observe(this@MainActivity, Observer {
                         if (it?.isNotEmpty() == false) retrieveMediaWithPermissionCheck()
                     })
@@ -250,6 +328,58 @@ class MainActivity : AppCompatActivity() {
                     .replace(R.id.fragment_container, SongListFragment.newInstance(it), it.name)
                     .addToBackStack(null)
                     .commit()
+        })
+
+        viewModel.newQueue.observe(this, Observer {
+            if (it == null) return@Observer
+            player?.submitQueue(it)
+        })
+
+        viewModel.requestedPositionInQueue.observe(this, Observer {
+            if (it == null) return@Observer
+            player?.play(it)
+        })
+
+        viewModel.swappedQueuePositions.observe(this, Observer {
+            if (it == null) return@Observer
+            player?.swapQueuePosition(it.first, it.second)
+        })
+
+        bottomSheetViewModel.playbackButton.observe(this, Observer {
+            if (it == null) return@Observer
+            when (it) {
+                BottomSheetViewModel.PlaybackButton.PLAY_OR_PAUSE -> player?.togglePlayPause()
+                BottomSheetViewModel.PlaybackButton.NEXT -> player?.next()
+                BottomSheetViewModel.PlaybackButton.PREV -> player?.headOrPrev()
+                BottomSheetViewModel.PlaybackButton.FF -> player?.fastForward()
+                BottomSheetViewModel.PlaybackButton.REWIND -> player?.rewind()
+                BottomSheetViewModel.PlaybackButton.UNDEFINED -> player?.stopRunningButtonAction()
+            }
+        })
+
+        bottomSheetViewModel.newSeekBarProgress.observe(this, Observer {
+            if (it == null) return@Observer
+            player?.seek(it)
+        })
+
+        bottomSheetViewModel.shuffle.observe(this, Observer {
+            player?.shuffle()
+        })
+
+        bottomSheetViewModel.changeRepeatMode.observe(this, Observer {
+            player?.rotateRepeatMode()
+        })
+
+        bottomSheetViewModel.changedQueue.observe(this, Observer {
+            if (it == null) return@Observer
+            player?.submitQueue(PlayerService.InsertQueue(
+                    PlayerService.QueueMetadata(PlayerService.InsertActionType.OVERRIDE,
+                            PlayerService.OrientedClassType.SONG), it))
+        })
+
+        bottomSheetViewModel.changedPosition.observe(this, Observer {
+            if (it == null) return@Observer
+            player?.forcePosition(it)
         })
     }
 

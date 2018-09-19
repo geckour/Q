@@ -16,7 +16,10 @@ interface TrackDao {
     fun upsert(track: Track)
 
     @Query("select * from track")
-    fun getAll(): LiveData<List<Track>>
+    fun getAllAsync(): LiveData<List<Track>>
+
+    @Query("select * from track")
+    fun getAll(): List<Track>
 
     @Query("select * from track where id = :id")
     fun get(id: Long): Track?

@@ -33,7 +33,8 @@ class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Ada
     internal fun upsertItem(item: Artist) {
         var index = items.indexOfFirst { it.id == item.id }
         if (index < 0) {
-            val tempList = ArrayList(items).apply { add(item) }.sortedBy { it.name }
+            val tempList = ArrayList(items).apply { add(item) }
+                    .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
             index = tempList.indexOf(item)
             items.add(index, item)
             notifyItemInserted(index)
