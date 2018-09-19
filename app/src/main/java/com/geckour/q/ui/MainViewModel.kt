@@ -66,9 +66,11 @@ class MainViewModel : ViewModel() {
         currentOrientedClassType = PlayerService.OrientedClassType.PLAYLIST
     }
 
-    fun onNewQueue(songs: List<Song>, actionType: PlayerService.InsertActionType) {
+    fun onNewQueue(songs: List<Song>,
+                   actionType: PlayerService.InsertActionType,
+                   classType: PlayerService.OrientedClassType) {
         newQueue.value = PlayerService.InsertQueue(
-                PlayerService.QueueMetadata(actionType, PlayerService.OrientedClassType.SONG),
+                PlayerService.QueueMetadata(actionType, classType),
                 songs)
     }
 

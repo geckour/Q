@@ -74,7 +74,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
                             PlayerService.InsertActionType.OVERRIDE
                         }
                         else -> return@setOnMenuItemClickListener false
-                    })
+                    }, PlayerService.OrientedClassType.SONG)
                 } ?: return@setOnMenuItemClickListener false
 
                 return@setOnMenuItemClickListener true

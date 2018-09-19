@@ -51,7 +51,10 @@ class PlayerService : Service() {
         OVERRIDE,
         SHUFFLE_NEXT,
         SHUFFLE_LAST,
-        SHUFFLE_OVERRIDE
+        SHUFFLE_OVERRIDE,
+        SHUFFLE_SIMPLE_NEXT,
+        SHUFFLE_SIMPLE_LAST,
+        SHUFFLE_SIMPLE_OVERRIDE
     }
 
     enum class OrientedClassType {
@@ -369,27 +372,44 @@ class PlayerService : Service() {
                 needPrepare = true
             }
             InsertActionType.SHUFFLE_NEXT -> {
-                this.queue.addAll(currentPosition,
-                        queue.queue.shuffleByClassType(queue.metadata.classType))
-                source.addMediaSources(currentPosition,
-                        queue.queue
-                                .shuffleByClassType(queue.metadata.classType)
-                                .map { it.getMediaSource() })
+                val shuffled = queue.queue.shuffleByClassType(queue.metadata.classType)
+                this.queue.addAll(currentPosition, shuffled)
+                source.addMediaSources(currentPosition, shuffled.map { it.getMediaSource() })
             }
             InsertActionType.SHUFFLE_LAST -> {
-                this.queue.addAll(this.queue.size,
-                        queue.queue.shuffleByClassType(queue.metadata.classType))
-                source.addMediaSources(source.size,
-                        queue.queue
-                                .shuffleByClassType(queue.metadata.classType)
-                                .map { it.getMediaSource() })
+                val shuffled = queue.queue.shuffleByClassType(queue.metadata.classType)
+
+                this.queue.addAll(this.queue.size, shuffled)
+                source.addMediaSources(source.size, shuffled.map { it.getMediaSource() })
             }
             InsertActionType.SHUFFLE_OVERRIDE -> {
                 clear()
-                this.queue.addAll(queue.queue.shuffleByClassType(queue.metadata.classType))
-                source.addMediaSources(queue.queue
-                        .shuffleByClassType(queue.metadata.classType)
-                        .map { it.getMediaSource() })
+
+                val shuffled = queue.queue.shuffleByClassType(queue.metadata.classType)
+
+                this.queue.addAll(shuffled)
+                source.addMediaSources(shuffled.map { it.getMediaSource() })
+                needPrepare = true
+            }
+            InsertActionType.SHUFFLE_SIMPLE_NEXT -> {
+                val shuffled = queue.queue.shuffled()
+
+                this.queue.addAll(currentPosition, shuffled)
+                source.addMediaSources(currentPosition, shuffled.map { it.getMediaSource() })
+            }
+            InsertActionType.SHUFFLE_SIMPLE_LAST -> {
+                val shuffled = queue.queue.shuffled()
+
+                this.queue.addAll(this.queue.size, shuffled)
+                source.addMediaSources(source.size, shuffled.map { it.getMediaSource() })
+            }
+            InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
+                clear()
+
+                val shuffled = queue.queue.shuffled()
+
+                this.queue.addAll(shuffled)
+                source.addMediaSources(shuffled.map { it.getMediaSource() })
                 needPrepare = true
             }
         }

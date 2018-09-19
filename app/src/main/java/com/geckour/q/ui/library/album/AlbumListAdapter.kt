@@ -1,14 +1,21 @@
 package com.geckour.q.ui.library.album
 
+import android.content.Context
 import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import com.bumptech.glide.Glide
+import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemListAlbumBinding
 import com.geckour.q.domain.model.Album
+import com.geckour.q.domain.model.Song
+import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.MediaRetrieveWorker
 import com.geckour.q.util.getArtworkUriFromAlbumId
+import com.geckour.q.util.getSong
+import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
 
 class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adapter<AlbumListAdapter.ViewHolder>() {
@@ -30,6 +37,8 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             notifyItemInserted(position)
         }
     }
+
+    internal fun getItems(): List<Album> = items
 
     internal fun upsertItem(item: Album) {
         var index = items.indexOfFirst { it.id == item.id }
@@ -57,6 +66,12 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
     internal fun clearItems() {
         this.items.clear()
         notifyDataSetChanged()
+    }
+
+    internal fun onNewQueue(songs: List<Song>, actionType: PlayerService.InsertActionType) {
+        launch(UI) {
+            viewModel.onNewQueue(songs, actionType, PlayerService.OrientedClassType.ALBUM)
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =

@@ -78,7 +78,7 @@ class SongListAdapter(private val viewModel: MainViewModel)
     }
 
     internal fun onNewQueue(actionType: PlayerService.InsertActionType) {
-        viewModel.onNewQueue(items, actionType)
+        viewModel.onNewQueue(items, actionType, PlayerService.OrientedClassType.SONG)
     }
 
     private fun deleteSong(context: Context, song: Song?) {
@@ -122,7 +122,7 @@ class SongListAdapter(private val viewModel: MainViewModel)
                             PlayerService.InsertActionType.OVERRIDE
                         }
                         else -> return@setOnMenuItemClickListener false
-                    })
+                    }, PlayerService.OrientedClassType.SONG)
                 } ?: return@setOnMenuItemClickListener false
 
                 return@setOnMenuItemClickListener true

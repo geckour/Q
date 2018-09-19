@@ -28,11 +28,15 @@
     <string name="nav_sync">Sync library</string>
 
 
+    <string name="menu_delete_song">Delete from device</string>
+
     <string name="menu_insert_next">Insert to next</string>
     <string name="menu_insert_last">Insert to last</string>
     <string name="menu_override">Override</string>
 
-    <string name="menu_delete_song">Delete from device</string>
+    <string name="menu_insert_all_simple_shuffle_next">Shuffle simply to next</string>
+    <string name="menu_insert_all_simple_shuffle_last">Shuffle simply to last</string>
+    <string name="menu_override_all_simple_shuffle">Shuffle simply and override</string>
 
     <string name="menu_insert_all_next">Insert all to next</string>
     <string name="menu_insert_all_last">Insert all to last</string>

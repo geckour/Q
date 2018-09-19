@@ -14,15 +14,27 @@
         android:title="@string/menu_override_all"
         app:showAsAction="never" />
     <item
-        android:id="@+id/menu_genres_insert_all_shuffle_next"
+        android:id="@+id/menu_insert_all_shuffle_next"
         android:title="@string/menu_genres_insert_all_shuffle_next"
         app:showAsAction="never" />
     <item
-        android:id="@+id/menu_genres_insert_all_shuffle_last"
+        android:id="@+id/menu_insert_all_shuffle_last"
         android:title="@string/menu_genres_insert_all_shuffle_last"
         app:showAsAction="never" />
     <item
-        android:id="@+id/menu_genres_override_all_shuffle"
+        android:id="@+id/menu_override_all_shuffle"
         android:title="@string/menu_genres_override_all_shuffle"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_insert_all_simple_shuffle_next"
+        android:title="@string/menu_insert_all_simple_shuffle_next"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_insert_all_simple_shuffle_last"
+        android:title="@string/menu_insert_all_simple_shuffle_last"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_override_all_simple_shuffle"
+        android:title="@string/menu_override_all_simple_shuffle"
         app:showAsAction="never" />
 </menu>

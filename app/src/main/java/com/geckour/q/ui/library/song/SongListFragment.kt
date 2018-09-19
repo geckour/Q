@@ -16,6 +16,9 @@ import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.MainViewModel
+import com.geckour.q.util.getSongListFromTrackId
+import com.geckour.q.util.getSongListFromTrackList
+import com.geckour.q.util.getTrackIds
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
 
@@ -81,20 +84,18 @@ class SongListFragment : Fragment() {
             playlist != null -> fetchSongsWithPlaylist(playlist)
             else -> fetchSongs()
         }
-
-        observeEvents()
-    }
-
-    private fun observeEvents() {
-        mainViewModel.newQueue.observe(this, Observer {
-            if (it == null) return@Observer
-            // TODO: PlayerServiceにわたす
-        })
     }
 
     override fun onResume() {
         super.onResume()
         mainViewModel.resumedFragmentId.value = R.id.nav_song
+        parentJob.cancel()
+        parentJob = Job()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        parentJob.cancel()
     }
 
     override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
@@ -108,9 +109,9 @@ class SongListFragment : Fragment() {
             R.id.menu_insert_all_next -> PlayerService.InsertActionType.NEXT
             R.id.menu_insert_all_last -> PlayerService.InsertActionType.LAST
             R.id.menu_override_all -> PlayerService.InsertActionType.OVERRIDE
-            R.id.menu_songs_insert_all_shuffle_next -> PlayerService.InsertActionType.SHUFFLE_NEXT
-            R.id.menu_songs_insert_all_shuffle_last -> PlayerService.InsertActionType.SHUFFLE_LAST
-            R.id.menu_songs_override_all_shuffle -> PlayerService.InsertActionType.SHUFFLE_OVERRIDE
+            R.id.menu_insert_all_simple_shuffle_next -> PlayerService.InsertActionType.SHUFFLE_SIMPLE_NEXT
+            R.id.menu_insert_all_simple_shuffle_last -> PlayerService.InsertActionType.SHUFFLE_SIMPLE_LAST
+            R.id.menu_override_all_simple_shuffle -> PlayerService.InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
             else -> return false
         })
 
@@ -129,53 +130,30 @@ class SongListFragment : Fragment() {
     }
 
     private fun fetchSongsWithAlbum(album: Album) {
-        DB.getInstance(requireContext()).also { db ->
-            db.trackDao().getAllAsync().observe(this@SongListFragment, Observer { dbTrackList ->
-                if (dbTrackList == null) return@Observer
-
-                latestDbTrackList = dbTrackList.filter { it.albumId == album.id }
+        launch(parentJob) {
+            DB.getInstance(requireContext()).also { db ->
+                latestDbTrackList = db.trackDao().findByAlbum(album.id)
                 upsertSongListIfPossible(db)
-            })
+            }
         }
     }
 
     private fun fetchSongsWithGenre(genre: Genre) {
-        requireActivity().contentResolver.query(
-                MediaStore.Audio.Genres.Members.getContentUri("external", genre.id),
-                arrayOf(
-                        MediaStore.Audio.Genres.Members._ID),
-                null,
-                null,
-                null)?.use {
-            val db = DB.getInstance(requireContext())
-            val trackIdList: ArrayList<Long> = ArrayList()
-            while (it.moveToNext()) {
-                val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Genres.Members._ID))
-                trackIdList.add(id)
-            }
-            launch(UI + parentJob) {
-                adapter.upsertItems(getSongListFromTrackId(db, trackIdList, genreId = genre.id).await(), false)
-            }
+        launch(UI + parentJob) {
+            adapter.upsertItems(getSongListFromTrackId(DB.getInstance(requireContext()),
+                    genre.getTrackIds(requireContext()),
+                    genreId = genre.id)
+                    .await(),
+                    false)
         }
     }
 
     private fun fetchSongsWithPlaylist(playlist: Playlist) {
-        requireActivity().contentResolver.query(
-                MediaStore.Audio.Playlists.Members.getContentUri("external", playlist.id),
-                arrayOf(
-                        MediaStore.Audio.Playlists.Members.AUDIO_ID),
-                null,
-                null,
-                null)?.use {
-            val db = DB.getInstance(requireContext())
-            val trackIdList: ArrayList<Long> = ArrayList()
-            while (it.moveToNext()) {
-                val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists.Members.AUDIO_ID))
-                trackIdList.add(id)
-            }
-            launch(UI + parentJob) {
-                adapter.upsertItems(getSongListFromTrackId(db, trackIdList, playlistId = playlist.id).await())
-            }
+        launch(UI + parentJob) {
+            adapter.upsertItems(getSongListFromTrackId(DB.getInstance(requireContext()),
+                    playlist.getTrackIds(requireContext()),
+                    playlistId = playlist.id)
+                    .await())
         }
     }
 
@@ -190,29 +168,4 @@ class SongListFragment : Fragment() {
             }
         }
     }
-
-    private fun getSongListFromTrackList(db: DB, dbTrackList: List<Track>): Deferred<List<Song>> =
-            async(parentJob) { dbTrackList.mapNotNull { getSong(db, it).await() } }
-
-    private fun getSongListFromTrackId(db: DB,
-                                       dbTrackIdList: List<Long>,
-                                       genreId: Long? = null,
-                                       playlistId: Long? = null): Deferred<List<Song>> =
-            async(parentJob) {
-                dbTrackIdList.mapNotNull { getSong(db, it, genreId, playlistId).await() }
-            }
-
-    private fun getSong(db: DB, track: Track, genreId: Long? = null, playlistId: Long? = null): Deferred<Song?> =
-            async(parentJob) {
-                val artist = db.artistDao().get(track.artistId) ?: return@async null
-                Song(track.id, track.albumId, track.title, artist.title, track.duration,
-                        track.trackNum, track.trackTotal, track.discNum, track.discTotal,
-                        genreId, playlistId, track.sourcePath)
-            }
-
-    private fun getSong(db: DB, trackId: Long,
-                        genreId: Long? = null, playlistId: Long? = null): Deferred<Song?> =
-            async(parentJob) {
-                db.trackDao().get(trackId)?.let { getSong(db, it, genreId, playlistId).await() }
-            }
 }

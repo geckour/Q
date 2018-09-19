@@ -10,7 +10,9 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Artist
+import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.MainViewModel
+import com.geckour.q.util.getSong
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
 
@@ -67,15 +69,28 @@ class ArtistListFragment : Fragment() {
         inflater?.inflate(R.menu.artists, menu)
     }
 
-    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
-        when (item?.itemId) {
-            R.id.menu_insert_all_next -> Unit
-            R.id.menu_insert_all_last -> Unit
-            R.id.menu_override_all -> Unit
-            R.id.menu_artists_insert_all_shuffle_next -> Unit
-            R.id.menu_artists_insert_all_shuffle_last -> Unit
-            R.id.menu_artists_override_all_shuffle -> Unit
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        launch {
+            val songs = adapter.getItems().map {
+                DB.getInstance(requireContext()).let { db ->
+                    db.trackDao().findByArtist(it.id).mapNotNull { getSong(db, it).await() }
+                }
+            }.flatten()
+
+            adapter.onNewQueue(songs, when (item.itemId) {
+                R.id.menu_insert_all_next -> PlayerService.InsertActionType.NEXT
+                R.id.menu_insert_all_last -> PlayerService.InsertActionType.LAST
+                R.id.menu_override_all -> PlayerService.InsertActionType.OVERRIDE
+                R.id.menu_insert_all_shuffle_next -> PlayerService.InsertActionType.SHUFFLE_NEXT
+                R.id.menu_insert_all_shuffle_last -> PlayerService.InsertActionType.SHUFFLE_LAST
+                R.id.menu_override_all_shuffle -> PlayerService.InsertActionType.SHUFFLE_OVERRIDE
+                R.id.menu_insert_all_simple_shuffle_next -> PlayerService.InsertActionType.SHUFFLE_SIMPLE_NEXT
+                R.id.menu_insert_all_simple_shuffle_last -> PlayerService.InsertActionType.SHUFFLE_SIMPLE_LAST
+                R.id.menu_override_all_simple_shuffle -> PlayerService.InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
+                else -> return@launch
+            })
         }
+
         return true
     }
 
