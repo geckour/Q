@@ -615,7 +615,11 @@ class PlayerService : Service() {
     fun publishStatus() {
         onQueueChanged?.invoke(queue)
         onCurrentPositionChanged?.invoke(currentPosition)
+        currentSong?.apply {
+            onPlaybackRatioChanged?.invoke(player.currentPosition.toFloat() / this.duration)
+        }
         onPlaybackStateChanged?.invoke(player.playbackState, player.playWhenReady)
+        onRepeatModeChanged?.invoke(player.repeatMode)
     }
 
     fun onOutputSourceChange(outputSourceType: OutputSourceType) {

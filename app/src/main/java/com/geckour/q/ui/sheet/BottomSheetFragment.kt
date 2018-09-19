@@ -162,6 +162,7 @@ class BottomSheetFragment : Fragment() {
                 imageTintList = ColorStateList.valueOf(requireContext().getColor(
                         if (it == Player.REPEAT_MODE_OFF) R.color.colorTintInactive
                         else R.color.colorAccent))
+                visibility = View.VISIBLE
             }
         })
     }

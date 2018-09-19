@@ -133,6 +133,7 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:onClick="@{() -> viewModel.onClickRepeatButton()}"
             android:padding="4dp"
+            android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
             app:layout_constraintLeft_toRightOf="@id/button_controller_right"
             app:layout_constraintRight_toLeftOf="@id/button_shuffle"
@@ -150,11 +151,11 @@
             android:onClick="@{() -> viewModel.onClickShuffleButton()}"
             android:padding="4dp"
             android:src="@drawable/ic_shuffle"
-            android:tint="@{isQueueNotEmpty ? @color/colorPrimaryDark : @color/colorTintInactive}"
+            android:tint="@{isQueueNotEmpty ? @color/colorAccent : @color/colorTintInactive}"
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="@id/button_controller_center"
-            tools:tint="@color/colorPrimaryDark" />
+            tools:tint="@color/colorAccent" />
 
         <ImageView
             android:id="@+id/button_toggle_visible_queue"
