@@ -218,7 +218,7 @@
             android:onClick="@{() -> viewModel.onClickClearQueueButton()}"
             android:padding="4dp"
             android:src="@drawable/ic_remove"
-            android:tint="@{isQueueNotEmpty ? @color/colorPrimaryDark : @color/colorTintInactive}"
+            android:tint="@{isQueueNotEmpty ? @color/colorAccent : @color/colorTintInactive}"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toBottomOf="@id/guide_peek_height" />
 

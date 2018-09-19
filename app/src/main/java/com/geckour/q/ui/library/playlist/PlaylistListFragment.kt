@@ -91,7 +91,7 @@ class PlaylistListFragment : Fragment() {
         return true
     }
 
-    internal fun fetchPlaylists() {
+    private fun fetchPlaylists() {
         requireActivity().contentResolver.query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
                 arrayOf(
                         MediaStore.Audio.Playlists._ID,

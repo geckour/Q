@@ -16,6 +16,7 @@ class MainViewModel : ViewModel() {
     internal val newQueue: SingleLifeEvent<PlayerService.InsertQueue> = SingleLifeEvent()
     internal val requestedPositionInQueue: SingleLifeEvent<Int> = SingleLifeEvent()
     internal val swappedQueuePositions: SingleLifeEvent<Pair<Int, Int>> = SingleLifeEvent()
+    internal val removedQueueIndex: SingleLifeEvent<Int> = SingleLifeEvent()
 
     private var currentOrientedClassType: PlayerService.OrientedClassType? = null
 
@@ -76,5 +77,9 @@ class MainViewModel : ViewModel() {
 
     fun onQueueSwap(from: Int, to: Int) {
         swappedQueuePositions.value = Pair(from, to)
+    }
+
+    fun onQueueRemove(index: Int) {
+        removedQueueIndex.value = index
     }
 }

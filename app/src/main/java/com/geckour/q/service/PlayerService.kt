@@ -29,6 +29,8 @@ import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.sheet.BottomSheetViewModel
 import com.geckour.q.util.getArtworkUriFromAlbumId
+import com.geckour.q.util.move
+import com.geckour.q.util.swap
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource
@@ -243,7 +245,8 @@ class PlayerService : Service() {
         }
 
         override fun onTimelineChanged(timeline: Timeline?, manifest: Any?, reason: Int) {
-
+            onQueueChanged?.invoke(this@PlayerService.queue)
+            onCurrentPositionChanged?.invoke(currentPosition)
         }
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
@@ -414,8 +417,6 @@ class PlayerService : Service() {
             }
         }
 
-        onQueueChanged?.invoke(this.queue)
-        onCurrentPositionChanged?.invoke(currentPosition)
         onRepeatModeChanged?.invoke(player.repeatMode)
         if (needPrepare) player.prepare(source)
     }
@@ -423,7 +424,12 @@ class PlayerService : Service() {
     fun swapQueuePosition(from: Int, to: Int) {
         if (from !in 0 until source.size || to !in 0 until source.size) return
         source.moveMediaSource(from, to)
-        onCurrentPositionChanged?.invoke(currentPosition)
+        this.queue.move(from, to)
+    }
+
+    fun removeQueue(position: Int) {
+        source.removeMediaSource(position)
+        this.queue.removeAt(position)
     }
 
     fun forcePosition(position: Int) {
@@ -507,12 +513,26 @@ class PlayerService : Service() {
         seekToHead()
     }
 
-    fun clear() {
-        stop()
-        this.queue.clear()
-        source.clear()
-        onCurrentPositionChanged?.invoke(currentPosition)
-        stopForeground(true)
+    fun clear(keepCurrentIfPlaying: Boolean = false) {
+        if (keepCurrentIfPlaying
+                && player.playbackState == Player.STATE_READY
+                && player.playWhenReady) {
+            val current = currentPosition
+            val remain = source.size - current - 1
+            (0 until current).forEach {
+                source.removeMediaSource(0)
+                this.queue.removeAt(0)
+            }
+            (0 until remain).forEach {
+                source.removeMediaSource(1)
+                this.queue.removeAt(1)
+            }
+        } else {
+            stop()
+            this.queue.clear()
+            source.clear()
+            stopForeground(true)
+        }
     }
 
     fun next() {
@@ -607,9 +627,6 @@ class PlayerService : Service() {
             this.queue.removeAt(it)
             this.queue.add(moveTo, toMove)
         }
-
-        onQueueChanged?.invoke(this.queue)
-        onCurrentPositionChanged?.invoke(currentPosition)
     }
 
     fun rotateRepeatMode() {

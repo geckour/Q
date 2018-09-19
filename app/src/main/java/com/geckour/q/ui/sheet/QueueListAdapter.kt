@@ -3,6 +3,7 @@ package com.geckour.q.ui.sheet
 import android.support.v7.widget.PopupMenu
 import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import com.bumptech.glide.Glide
 import com.geckour.q.R
@@ -11,6 +12,7 @@ import com.geckour.q.domain.model.Song
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.getArtworkUriFromAlbumId
+import com.geckour.q.util.swapped
 import timber.log.Timber
 
 class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adapter<QueueListAdapter.ViewHolder>() {
@@ -18,8 +20,10 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
     private var items: List<Song> = emptyList()
 
     internal fun setItems(items: List<Song>) {
-        this.items = items
-        notifyDataSetChanged()
+        if (items.map { it.id } != this.items.map { it.id }) {
+            this.items = items
+            notifyDataSetChanged()
+        }
     }
 
     internal fun getItem(index: Int?): Song? =
@@ -47,6 +51,13 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
         if (from !in items.indices || to !in items.indices) return
         items = items.toMutableList().swapped(from, to)
         notifyItemMoved(from, to)
+    }
+
+    private fun remove(index: Int) {
+        if (index !in items.indices) return
+        items = items.toMutableList().apply { removeAt(index) }
+        notifyItemRemoved(index)
+        viewModel.onQueueRemove(index)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
@@ -92,6 +103,11 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
                 Timber.e(t)
             }
 
+            binding.option.apply {
+                visibility = View.VISIBLE
+                setOnClickListener { remove(position) }
+            }
+
             binding.root.setOnClickListener { onSongSelected(song, position) }
             binding.root.setOnLongClickListener { onSongLongTapped(song) }
         }
@@ -113,12 +129,5 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
         fun dismissPopupMenu() {
             popupMenu.dismiss()
         }
-    }
-
-    private fun <T> MutableList<T>.swapped(from: Int, to: Int): MutableList<T> {
-        val tmp = this[to]
-        this[to] = this[from]
-        this[from] = tmp
-        return this
     }
 }

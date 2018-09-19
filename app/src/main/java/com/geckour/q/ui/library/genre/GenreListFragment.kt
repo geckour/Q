@@ -92,7 +92,7 @@ class GenreListFragment : Fragment() {
         return true
     }
 
-    internal fun fetchGenres() {
+    private fun fetchGenres() {
         requireActivity().contentResolver.query(MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
                 arrayOf(
                         MediaStore.Audio.Genres._ID,

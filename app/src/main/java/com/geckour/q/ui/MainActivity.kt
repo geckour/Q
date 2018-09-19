@@ -338,6 +338,11 @@ class MainActivity : AppCompatActivity() {
             player?.swapQueuePosition(it.first, it.second)
         })
 
+        viewModel.removedQueueIndex.observe(this, Observer {
+            if (it == null) return@Observer
+            player?.removeQueue(it)
+        })
+
         bottomSheetViewModel.playbackButton.observe(this, Observer {
             if (it == null) return@Observer
             when (it) {
@@ -348,6 +353,10 @@ class MainActivity : AppCompatActivity() {
                 BottomSheetViewModel.PlaybackButton.REWIND -> player?.rewind()
                 BottomSheetViewModel.PlaybackButton.UNDEFINED -> player?.stopRunningButtonAction()
             }
+        })
+
+        bottomSheetViewModel.clearQueue.observe(this, Observer {
+            player?.clear(true)
         })
 
         bottomSheetViewModel.newSeekBarProgress.observe(this, Observer {

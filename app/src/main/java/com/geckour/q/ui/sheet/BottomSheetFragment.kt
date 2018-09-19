@@ -21,6 +21,7 @@ import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.getArtworkUriFromAlbumId
 import com.google.android.exoplayer2.Player
+import timber.log.Timber
 
 class BottomSheetFragment : Fragment() {
 
@@ -46,17 +47,36 @@ class BottomSheetFragment : Fragment() {
         adapter = QueueListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
         ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0) {
+            var from: Int? = null
+            var to: Int? = null
+
             override fun onMove(recyclerView: RecyclerView, fromHolder: RecyclerView.ViewHolder, toHolder: RecyclerView.ViewHolder): Boolean {
                 val from = fromHolder.adapterPosition
                 val to = toHolder.adapterPosition
+
+                if (this.from == null) this.from = from
+                this.to = to
+
                 adapter.move(from, to)
                 (fromHolder as QueueListAdapter.ViewHolder).dismissPopupMenu()
-                mainViewModel.onQueueSwap(from, to)
+
                 return true
             }
 
             override fun onSwiped(holder: RecyclerView.ViewHolder, position: Int) {
 
+            }
+
+            override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
+                super.onSelectedChanged(viewHolder, actionState)
+                val from = this.from
+                val to = this.to
+
+                if (viewHolder == null && from != null && to != null)
+                    mainViewModel.onQueueSwap(from, to)
+
+                this.from = null
+                this.to = null
             }
         }).attachToRecyclerView(binding.recyclerView)
     }
@@ -144,6 +164,7 @@ class BottomSheetFragment : Fragment() {
                                     R.color.colorTintInactive))
                         }
             }
+            viewModel.currentPosition.value = viewModel.currentPosition.value
         })
 
         viewModel.currentPosition.observe(this, Observer {
