@@ -43,6 +43,12 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
         }
     }
 
+    internal fun move(from: Int, to: Int) {
+        if (from !in items.indices || to !in items.indices) return
+        items = items.toMutableList().swapped(from, to)
+        notifyItemMoved(from, to)
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
             ViewHolder(ItemListSongBinding.inflate(LayoutInflater.from(parent.context), parent, false))
 
@@ -54,6 +60,27 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
 
     inner class ViewHolder(private val binding: ItemListSongBinding) :
             RecyclerView.ViewHolder(binding.root) {
+        val popupMenu = PopupMenu(binding.root.context, binding.root).apply {
+            setOnMenuItemClickListener {
+                viewModel.selectedSong?.apply {
+                    viewModel.onNewQueue(listOf(this), when (it.itemId) {
+                        R.id.menu_insert_all_next -> {
+                            PlayerService.InsertActionType.NEXT
+                        }
+                        R.id.menu_insert_all_last -> {
+                            PlayerService.InsertActionType.LAST
+                        }
+                        R.id.menu_override_all -> {
+                            PlayerService.InsertActionType.OVERRIDE
+                        }
+                        else -> return@setOnMenuItemClickListener false
+                    })
+                } ?: return@setOnMenuItemClickListener false
+
+                return@setOnMenuItemClickListener true
+            }
+        }
+
         fun onBind(song: Song, position: Int) {
             binding.data = song
             try {
@@ -75,30 +102,23 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
 
         private fun onSongLongTapped(song: Song): Boolean {
             viewModel.onRequestNavigate(song)
-            PopupMenu(binding.root.context, binding.root).apply {
-                setOnMenuItemClickListener {
-                    viewModel.selectedSong?.apply {
-                        viewModel.onNewQueue(listOf(this), when (it.itemId) {
-                            R.id.menu_insert_all_next -> {
-                                PlayerService.InsertActionType.NEXT
-                            }
-                            R.id.menu_insert_all_last -> {
-                                PlayerService.InsertActionType.LAST
-                            }
-                            R.id.menu_override_all -> {
-                                PlayerService.InsertActionType.OVERRIDE
-                            }
-                            else -> return@setOnMenuItemClickListener false
-                        })
-                    } ?: return@setOnMenuItemClickListener false
-
-                    return@setOnMenuItemClickListener true
-                }
+            popupMenu.apply {
                 inflate(R.menu.queue)
                 show()
             }
 
             return true
         }
+
+        fun dismissPopupMenu() {
+            popupMenu.dismiss()
+        }
+    }
+
+    private fun <T> MutableList<T>.swapped(from: Int, to: Int): MutableList<T> {
+        val tmp = this[to]
+        this[to] = this[from]
+        this[from] = tmp
+        return this
     }
 }

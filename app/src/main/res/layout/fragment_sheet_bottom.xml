@@ -23,7 +23,9 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@drawable/sheet_background"
+        android:clickable="true"
         android:elevation="24dp"
+        android:focusable="true"
         android:orientation="vertical"
         tools:ignore="Overdraw">
 

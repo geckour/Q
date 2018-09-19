@@ -7,6 +7,8 @@ import android.os.Bundle
 import android.support.design.widget.BottomSheetBehavior
 import android.support.v4.app.Fragment
 import android.support.v4.content.ContextCompat
+import android.support.v7.widget.RecyclerView
+import android.support.v7.widget.helper.ItemTouchHelper
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -43,6 +45,20 @@ class BottomSheetFragment : Fragment() {
 
         adapter = QueueListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
+        ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0) {
+            override fun onMove(recyclerView: RecyclerView, fromHolder: RecyclerView.ViewHolder, toHolder: RecyclerView.ViewHolder): Boolean {
+                val from = fromHolder.adapterPosition
+                val to = toHolder.adapterPosition
+                adapter.move(from, to)
+                (fromHolder as QueueListAdapter.ViewHolder).dismissPopupMenu()
+                mainViewModel.onQueueSwap(from, to)
+                return true
+            }
+
+            override fun onSwiped(holder: RecyclerView.ViewHolder, position: Int) {
+
+            }
+        }).attachToRecyclerView(binding.recyclerView)
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {

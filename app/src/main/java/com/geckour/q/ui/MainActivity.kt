@@ -340,6 +340,11 @@ class MainActivity : AppCompatActivity() {
             player?.play(it)
         })
 
+        viewModel.swappedQueuePositions.observe(this, Observer {
+            if (it == null) return@Observer
+            player?.swapQueuePosition(it.first, it.second)
+        })
+
         bottomSheetViewModel.playbackButton.observe(this, Observer {
             if (it == null) return@Observer
             when (it) {

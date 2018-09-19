@@ -400,6 +400,12 @@ class PlayerService : Service() {
         if (needPrepare) player.prepare(source)
     }
 
+    fun swapQueuePosition(from: Int, to: Int) {
+        if (from !in 0 until source.size || to !in 0 until source.size) return
+        source.moveMediaSource(from, to)
+        onCurrentPositionChanged?.invoke(currentPosition)
+    }
+
     fun forcePosition(position: Int) {
         player.seekToDefaultPosition(position)
     }
@@ -493,7 +499,7 @@ class PlayerService : Service() {
         if (player.repeatMode != Player.REPEAT_MODE_OFF) seekToTail()
         else {
             if (player.currentWindowIndex < source.size - 1) {
-                val index = source.size - 1
+                val index = player.currentWindowIndex + 1
                 player.seekToDefaultPosition(index)
             } else stop()
         }

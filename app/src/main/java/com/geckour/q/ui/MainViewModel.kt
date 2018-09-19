@@ -15,6 +15,7 @@ class MainViewModel : ViewModel() {
     internal val selectedPlaylist: SingleLifeEvent<Playlist> = SingleLifeEvent()
     internal val newQueue: SingleLifeEvent<PlayerService.InsertQueue> = SingleLifeEvent()
     internal val requestedPositionInQueue: SingleLifeEvent<Int> = SingleLifeEvent()
+    internal val swappedQueuePositions: SingleLifeEvent<Pair<Int, Int>> = SingleLifeEvent()
 
     private var currentOrientedClassType: PlayerService.OrientedClassType? = null
 
@@ -69,5 +70,9 @@ class MainViewModel : ViewModel() {
         newQueue.value = PlayerService.InsertQueue(
                 PlayerService.QueueMetadata(actionType, PlayerService.OrientedClassType.SONG),
                 songs)
+    }
+
+    fun onQueueSwap(from: Int, to: Int) {
+        swappedQueuePositions.value = Pair(from, to)
     }
 }
