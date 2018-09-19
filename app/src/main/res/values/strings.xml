@@ -32,6 +32,8 @@
     <string name="menu_insert_last">Insert to last</string>
     <string name="menu_override">Override</string>
 
+    <string name="menu_delete_song">Delete from device</string>
+
     <string name="menu_insert_all_next">Insert all to next</string>
     <string name="menu_insert_all_last">Insert all to last</string>
     <string name="menu_override_all">Override with all</string>

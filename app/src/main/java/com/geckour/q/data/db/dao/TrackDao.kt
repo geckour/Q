@@ -23,4 +23,7 @@ interface TrackDao {
 
     @Query("select * from track where id = :id")
     fun get(id: Long): Track?
+
+    @Query("delete from track where id = :id")
+    fun delete(id: Long)
 }
