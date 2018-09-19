@@ -130,7 +130,7 @@ class PlayerService : Service() {
 
         override fun onSkipToPrevious() {
             super.onSkipToPrevious()
-            prev()
+            headOrPrev()
         }
 
         override fun onFastForward() {
@@ -469,8 +469,8 @@ class PlayerService : Service() {
             val song = currentSong ?: return@launch
             val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
             getNotification(song, albumTitle).await().show()
+            stopForeground(false)
         }
-        stopForeground(false)
     }
 
     fun togglePlayPause() {
@@ -603,7 +603,7 @@ class PlayerService : Service() {
     }
 
     private fun Notification.show() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && player.playWhenReady) {
             startForeground(NOTIFICATION_ID_PLAYER, this)
         } else {
             getSystemService(NotificationManager::class.java)
@@ -713,6 +713,7 @@ class PlayerService : Service() {
                         .setContentTitle(song.name)
                         .setContentText(song.artist)
                         .setSubText(albumTitle)
+                        .setOngoing(player.playWhenReady)
                         .setStyle(Notification.MediaStyle()
                                 .setShowActionsInCompactView(0, 1, 2)
                                 .setMediaSession(mediaSession.sessionToken))
