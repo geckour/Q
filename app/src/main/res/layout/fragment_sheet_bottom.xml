@@ -188,7 +188,7 @@
             android:id="@+id/seek_bar"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
+            android:layout_marginBottom="12dp"
             android:max="10000"
             android:progressTint="@color/colorPrimary"
             android:thumbTint="@color/colorPrimaryDark"
