@@ -94,12 +94,15 @@ class SongListFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         mainViewModel.resumedFragmentId.value = R.id.nav_song
-        parentJob.cancel()
+    }
+
+    override fun onStart() {
+        super.onStart()
         parentJob = Job()
     }
 
-    override fun onPause() {
-        super.onPause()
+    override fun onStop() {
+        super.onStop()
         parentJob.cancel()
     }
 
@@ -145,20 +148,21 @@ class SongListFragment : Fragment() {
 
     private fun fetchSongsWithGenre(genre: Genre) {
         launch(UI + parentJob) {
-            adapter.upsertItems(getSongListFromTrackId(DB.getInstance(requireContext()),
-                    genre.getTrackIds(requireContext()),
-                    genreId = genre.id)
-                    .await(),
-                    false)
+            adapter.upsertItems(
+                    getSongListFromTrackId(DB.getInstance(requireContext()),
+                            genre.getTrackIds(requireContext()),
+                            genreId = genre.id), false)
         }
     }
 
     private fun fetchSongsWithPlaylist(playlist: Playlist) {
         launch(UI + parentJob) {
-            adapter.upsertItems(getSongListFromTrackId(DB.getInstance(requireContext()),
-                    playlist.getTrackIds(requireContext()),
-                    playlistId = playlist.id)
-                    .await())
+            adapter.addItems(
+                    getSongListFromTrackId(DB.getInstance(requireContext()),
+                            playlist.getTrackIds(requireContext()),
+                            playlistId = playlist.id,
+                            setTrackNumByIndex = true)
+            )
         }
     }
 
@@ -167,7 +171,7 @@ class SongListFragment : Fragment() {
             chatteringCancelFlag = true
             launch(UI + parentJob) {
                 delay(500)
-                val items = getSongListFromTrackList(db, latestDbTrackList).await()
+                val items = getSongListFromTrackList(db, latestDbTrackList)
                 adapter.upsertItems(items, sortByTrackOrder)
                 chatteringCancelFlag = false
             }

@@ -2,19 +2,19 @@ package com.geckour.q.ui.library.playlist
 
 import android.arch.lifecycle.ViewModelProviders
 import android.os.Bundle
-import android.provider.MediaStore
 import android.support.v4.app.Fragment
 import android.view.*
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
-import com.geckour.q.domain.model.Playlist
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.fetchPlaylists
 import com.geckour.q.util.getSong
 import com.geckour.q.util.getTrackIds
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.launch
+import timber.log.Timber
 
 class PlaylistListFragment : Fragment() {
 
@@ -39,7 +39,8 @@ class PlaylistListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        if (adapter.itemCount == 0) fetchPlaylists()
+        if (adapter.itemCount == 0)
+            adapter.setItems(fetchPlaylists(requireContext()).apply { Timber.d("qgeck playlist list: $this") }.sortedBy { it.name })
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -53,12 +54,15 @@ class PlaylistListFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         mainViewModel.resumedFragmentId.value = R.id.nav_playlist
-        parentJob.cancel()
+    }
+
+    override fun onStart() {
+        super.onStart()
         parentJob = Job()
     }
 
-    override fun onPause() {
-        super.onPause()
+    override fun onStop() {
+        super.onStop()
         parentJob.cancel()
     }
 
@@ -94,27 +98,5 @@ class PlaylistListFragment : Fragment() {
         }
 
         return true
-    }
-
-    private fun fetchPlaylists() {
-        requireActivity().contentResolver.query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
-                arrayOf(
-                        MediaStore.Audio.Playlists._ID,
-                        MediaStore.Audio.Playlists.NAME),
-                null,
-                null,
-                MediaStore.Audio.Playlists.DATE_MODIFIED)?.apply {
-            val list: ArrayList<Playlist> = ArrayList()
-            while (moveToNext()) {
-                val playlist = Playlist(
-                        getLong(getColumnIndex(MediaStore.Audio.Playlists._ID)),
-                        null,
-                        getString(getColumnIndex(MediaStore.Audio.Playlists.NAME)).let {
-                            if (it.isBlank()) "<unknown>" else it
-                        })
-                list.add(playlist)
-            }
-            adapter.setItems(list.sortedBy { it.name })
-        }
     }
 }

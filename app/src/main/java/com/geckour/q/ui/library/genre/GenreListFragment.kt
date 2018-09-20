@@ -2,15 +2,14 @@ package com.geckour.q.ui.library.genre
 
 import android.arch.lifecycle.ViewModelProviders
 import android.os.Bundle
-import android.provider.MediaStore
 import android.support.v4.app.Fragment
 import android.view.*
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
-import com.geckour.q.domain.model.Genre
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.fetchGenres
 import com.geckour.q.util.getSong
 import com.geckour.q.util.getTrackIds
 import kotlinx.coroutines.experimental.Job
@@ -39,7 +38,8 @@ class GenreListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        if (adapter.itemCount == 0) fetchGenres()
+        if (adapter.itemCount == 0)
+            adapter.setItems(fetchGenres(requireContext()).sortedBy { it.name })
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -53,12 +53,15 @@ class GenreListFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         mainViewModel.resumedFragmentId.value = R.id.nav_genre
-        parentJob.cancel()
+    }
+
+    override fun onStart() {
+        super.onStart()
         parentJob = Job()
     }
 
-    override fun onPause() {
-        super.onPause()
+    override fun onStop() {
+        super.onStop()
         parentJob.cancel()
     }
 
@@ -95,27 +98,5 @@ class GenreListFragment : Fragment() {
         }
 
         return true
-    }
-
-    private fun fetchGenres() {
-        requireActivity().contentResolver.query(MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
-                arrayOf(
-                        MediaStore.Audio.Genres._ID,
-                        MediaStore.Audio.Genres.NAME),
-                null,
-                null,
-                null)?.apply {
-            val list: ArrayList<Genre> = ArrayList()
-            while (moveToNext()) {
-                val genre = Genre(
-                        getLong(getColumnIndex(MediaStore.Audio.Genres._ID)),
-                        null,
-                        getString(getColumnIndex(MediaStore.Audio.Genres.NAME)).let {
-                            if (it.isBlank()) "<unknown>" else it
-                        })
-                list.add(genre)
-            }
-            adapter.setItems(list.sortedBy { it.name })
-        }
     }
 }

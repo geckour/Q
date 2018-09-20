@@ -8,5 +8,6 @@ import kotlinx.android.parcel.Parcelize
 data class Playlist(
         val id: Long,
         val thumb: Bitmap?,
-        val name: String
+        val name: String,
+        val memberCount: Int
 ) : Parcelable

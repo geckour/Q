@@ -20,6 +20,7 @@ class BottomSheetViewModel : ViewModel() {
     internal val playbackButton: SingleLifeEvent<PlaybackButton> = SingleLifeEvent()
     internal val currentQueue: SingleLifeEvent<List<Song>> = SingleLifeEvent()
     internal val currentPosition: SingleLifeEvent<Int> = SingleLifeEvent()
+    internal val addQueueToPlaylist: SingleLifeEvent<List<Song>> = SingleLifeEvent()
     internal val clearQueue: SingleLifeEvent<Unit> = SingleLifeEvent()
     internal val newSeekBarProgress: SingleLifeEvent<Float> = SingleLifeEvent()
     internal val shuffle: SingleLifeEvent<Unit> = SingleLifeEvent()
@@ -41,6 +42,10 @@ class BottomSheetViewModel : ViewModel() {
             BottomSheetBehavior.STATE_EXPANDED -> BottomSheetBehavior.STATE_COLLAPSED
             else -> BottomSheetBehavior.STATE_EXPANDED
         }
+    }
+
+    fun onClickAddQueueToPlaylistButton() {
+        addQueueToPlaylist.value = currentQueue.value
     }
 
     fun onClickClearQueueButton() {

@@ -1,16 +1,15 @@
 package com.geckour.q.ui
 
 import android.Manifest
+import android.app.AlertDialog
 import android.arch.lifecycle.Observer
 import android.arch.lifecycle.ViewModelProviders
-import android.content.ComponentName
-import android.content.Context
-import android.content.Intent
-import android.content.ServiceConnection
+import android.content.*
 import android.databinding.DataBindingUtil
 import android.os.Bundle
 import android.os.IBinder
 import android.preference.PreferenceManager
+import android.provider.MediaStore
 import android.support.design.widget.BottomSheetBehavior
 import android.support.v7.app.ActionBarDrawerToggle
 import android.support.v7.app.AppCompatActivity
@@ -23,7 +22,9 @@ import androidx.work.WorkRequest
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ActivityMainBinding
+import com.geckour.q.databinding.DialogAddQueuePlaylistBinding
 import com.geckour.q.service.PlayerService
+import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
 import com.geckour.q.ui.library.album.AlbumListFragment
 import com.geckour.q.ui.library.artist.ArtistListFragment
 import com.geckour.q.ui.library.genre.GenreListFragment
@@ -38,6 +39,7 @@ import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
+import timber.log.Timber
 import java.util.*
 
 @RuntimePermissions
@@ -351,6 +353,63 @@ class MainActivity : AppCompatActivity() {
                 BottomSheetViewModel.PlaybackButton.FF -> player?.fastForward()
                 BottomSheetViewModel.PlaybackButton.REWIND -> player?.rewind()
                 BottomSheetViewModel.PlaybackButton.UNDEFINED -> player?.stopRunningButtonAction()
+            }
+        })
+
+        bottomSheetViewModel.addQueueToPlaylist.observe(this, Observer { queue ->
+            if (queue == null) return@Observer
+            val playlists = fetchPlaylists(this)
+            val binding = DialogAddQueuePlaylistBinding.inflate(layoutInflater)
+            val dialog = AlertDialog.Builder(this)
+                    .setTitle(R.string.dialog_title_add_queue_to_playlist)
+                    .setMessage(R.string.dialog_desc_add_queue_to_playlist)
+                    .setView(binding.root)
+                    .setNegativeButton(R.string.dialog_ng) { dialog, _ ->
+                        dialog.dismiss()
+                    }
+                    .setPositiveButton(R.string.dialog_ok) { _, _ -> }
+                    .setCancelable(true)
+                    .create()
+            binding.recyclerView.adapter = QueueAddPlaylistListAdapter(playlists) {
+                queue.forEachIndexed { i, song ->
+                    contentResolver.insert(
+                            MediaStore.Audio.Playlists.Members
+                                    .getContentUri("external", it.id),
+                            ContentValues().apply {
+                                put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, it.memberCount.apply { Timber.d("qgeck member count: $this") } + i)
+                                put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.id)
+                            })
+                }
+                dialog.dismiss()
+            }
+            dialog.show()
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val title = binding.editText.text?.toString()
+                if (title.isNullOrBlank()) {
+                    // TODO: エラーメッセージ表示
+                } else {
+                    val playlistId = contentResolver.insert(
+                            MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
+                            ContentValues().apply {
+                                val now = System.currentTimeMillis()
+                                put(MediaStore.Audio.PlaylistsColumns.NAME, title)
+                                put(MediaStore.Audio.PlaylistsColumns.DATE_ADDED, now)
+                                put(MediaStore.Audio.PlaylistsColumns.DATE_MODIFIED, now)
+                            })?.let { ContentUris.parseId(it) } ?: kotlin.run {
+                        dialog.dismiss()
+                        return@setOnClickListener
+                    }
+                    queue.forEachIndexed { i, song ->
+                        contentResolver.insert(
+                                MediaStore.Audio.Playlists.Members
+                                        .getContentUri("external", playlistId),
+                                ContentValues().apply {
+                                    put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, i)
+                                    put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.id)
+                                })
+                    }
+                    dialog.dismiss()
+                }
             }
         })
 

@@ -73,6 +73,12 @@ class SongListAdapter(private val viewModel: MainViewModel)
         }
     }
 
+    internal fun addItems(items: List<Song>) {
+        val size = itemCount
+        this.items.addAll(items)
+        notifyItemRangeInserted(size, items.size)
+    }
+
     internal fun clearItems() {
         this.items.clear()
         notifyDataSetChanged()
