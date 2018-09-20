@@ -269,3 +269,7 @@ fun Notification.show(service: Service, playWhenReady: Boolean) {
                 .notify(NOTIFICATION_ID_PLAYER, this)
     }
 }
+
+fun Service.destroyNotification() {
+    this.stopForeground(true)
+}

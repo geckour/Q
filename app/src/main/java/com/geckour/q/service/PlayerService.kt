@@ -286,6 +286,7 @@ class PlayerService : Service() {
                 BottomSheetViewModel.PlaybackButton.PREV -> headOrPrev()
                 BottomSheetViewModel.PlaybackButton.PLAY_OR_PAUSE -> togglePlayPause()
                 BottomSheetViewModel.PlaybackButton.NEXT -> next()
+                else -> Unit
             }
         }
     }
@@ -499,7 +500,7 @@ class PlayerService : Service() {
             this.queue.clear()
             source.clear()
             notificationUpdateJob.cancel()
-            stopForeground(true)
+            this.destroyNotification()
         }
     }
 
@@ -606,7 +607,7 @@ class PlayerService : Service() {
 
     fun onActivityDestroy() {
         if (player.playWhenReady.not()) {
-            stopForeground(true)
+            this.destroyNotification()
             stopSelf()
         }
     }
