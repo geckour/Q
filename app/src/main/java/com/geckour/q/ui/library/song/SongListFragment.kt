@@ -19,7 +19,6 @@ import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.launch
-import timber.log.Timber
 
 class SongListFragment : Fragment() {
 
@@ -63,7 +62,7 @@ class SongListFragment : Fragment() {
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: SongListAdapter by lazy {
         SongListAdapter(mainViewModel,
-                arguments?.getSerializable(ARGS_KEY_CLASS_TYPE).apply { Timber.d("qgeck oriented class type: ${this as? OrientedClassType}") }
+                arguments?.getSerializable(ARGS_KEY_CLASS_TYPE)
                         as? OrientedClassType ?: OrientedClassType.SONG)
     }
 
@@ -141,14 +140,12 @@ class SongListFragment : Fragment() {
 
     private fun observeEvents() {
         mainViewModel.removeFromPlaylistPlayOrder.observe(this, Observer {
-            Timber.d("qgeck play order: $it")
             if (it == null) return@Observer
             val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST) ?: return@Observer
             val removed = context?.contentResolver
                     ?.delete(MediaStore.Audio.Playlists.Members.getContentUri("external", playlist.id),
                             "${MediaStore.Audio.Playlists.Members.PLAY_ORDER}=?",
                             arrayOf(it.toString()))?.equals(1) ?: return@Observer
-            Timber.d("qgeck removed: $removed")
             if (removed) adapter.removeByPlayOrder(it)
         })
     }
