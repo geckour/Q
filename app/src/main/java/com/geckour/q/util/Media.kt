@@ -73,19 +73,30 @@ suspend fun getSongListFromTrackId(db: DB,
             getSong(db, it, genreId, playlistId).await()
         }
 
+suspend fun getSongListFromTrackIdWithTrackNum(db: DB,
+                                               dbTrackIdWithTrackNumList: List<Pair<Long, Int>>,
+                                               genreId: Long? = null,
+                                               playlistId: Long? = null): List<Song> =
+        dbTrackIdWithTrackNumList.mapNotNull {
+            getSong(db, it.first, genreId, playlistId, trackNum = it.second).await()
+        }
+
 fun getSong(db: DB, trackId: Long,
-            genreId: Long? = null, playlistId: Long? = null): Deferred<Song?> =
+            genreId: Long? = null, playlistId: Long? = null,
+            trackNum: Int? = null): Deferred<Song?> =
         async {
             db.trackDao().get(trackId)?.let {
-                getSong(db, it, genreId, playlistId).await()
+                getSong(db, it, genreId, playlistId, trackNum = trackNum).await()
             }
         }
 
-fun getSong(db: DB, track: Track, genreId: Long? = null, playlistId: Long? = null): Deferred<Song?> =
+fun getSong(db: DB, track: Track,
+            genreId: Long? = null, playlistId: Long? = null,
+            trackNum: Int? = null): Deferred<Song?> =
         async {
             val artist = db.artistDao().get(track.artistId) ?: return@async null
             Song(track.id, track.albumId, track.title, artist.title, track.duration,
-                    track.trackNum, track.trackTotal, track.discNum, track.discTotal,
+                    trackNum ?: track.trackNum, track.trackTotal, track.discNum, track.discTotal,
                     genreId, playlistId, track.sourcePath)
         }
 
@@ -106,17 +117,18 @@ fun Genre.getTrackIds(context: Context): List<Long> =
             return@use trackIdList
         } ?: emptyList()
 
-fun Playlist.getTrackIds(context: Context): List<Long> =
+fun Playlist.getTrackIds(context: Context): List<Pair<Long, Int>> =
         context.contentResolver.query(
-                MediaStore.Audio.Playlists.Members.getContentUri("external", this.id.apply { Timber.d("qgeck playlist id: $this") }),
-                arrayOf(MediaStore.Audio.Playlists.Members.AUDIO_ID),
+                MediaStore.Audio.Playlists.Members.getContentUri("external", this.id),
+                arrayOf(MediaStore.Audio.Playlists.Members.AUDIO_ID, MediaStore.Audio.Playlists.Members.PLAY_ORDER),
                 null,
                 null,
                 MediaStore.Audio.Playlists.Members.PLAY_ORDER)?.use {
-            val trackIdList: ArrayList<Long> = ArrayList()
+            val trackIdList: ArrayList<Pair<Long, Int>> = ArrayList()
             while (it.moveToNext()) {
                 val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists.Members.AUDIO_ID))
-                trackIdList.add(id)
+                val order = it.getInt(it.getColumnIndex(MediaStore.Audio.Playlists.Members.PLAY_ORDER))
+                trackIdList.add(id to order)
             }
 
             return@use trackIdList

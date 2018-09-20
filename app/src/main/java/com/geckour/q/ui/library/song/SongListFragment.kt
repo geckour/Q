@@ -185,7 +185,7 @@ class SongListFragment : Fragment() {
     private fun fetchSongsWithPlaylist(playlist: Playlist) {
         launch(UI + parentJob) {
             adapter.addItems(
-                    getSongListFromTrackId(DB.getInstance(requireContext()),
+                    getSongListFromTrackIdWithTrackNum(DB.getInstance(requireContext()),
                             playlist.getTrackIds(requireContext()),
                             playlistId = playlist.id)
             )

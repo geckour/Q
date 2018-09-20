@@ -78,7 +78,7 @@ class PlaylistListFragment : Fragment() {
                 playlist.getTrackIds(requireContext())
                         .mapNotNull {
                             getSong(DB.getInstance(requireContext()),
-                                    it,
+                                    it.first,
                                     playlistId = playlist.id)
                                     .await()
                         }

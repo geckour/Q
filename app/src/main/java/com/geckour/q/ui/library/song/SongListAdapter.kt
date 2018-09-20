@@ -159,7 +159,7 @@ class SongListAdapter(private val viewModel: MainViewModel,
             if (classType == OrientedClassType.PLAYLIST) {
                 binding.option.visibility = View.VISIBLE
                 binding.option.setOnClickListener {
-                    removeFromPlaylist(adapterPosition + 1)
+                    song.trackNum?.apply { removeFromPlaylist(this) }
                 }
             }
         }
