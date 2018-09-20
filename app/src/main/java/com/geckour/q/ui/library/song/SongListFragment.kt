@@ -66,12 +66,9 @@ class SongListFragment : Fragment() {
         return binding.root
     }
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
-        setHasOptionsMenu(true)
-
-        binding.recyclerView.adapter = adapter
         if (adapter.itemCount == 0) {
             val album = arguments?.getParcelable<Album>(ARGS_KEY_ALBUM)
             val genre = arguments?.getParcelable<Genre>(ARGS_KEY_GENRE)
@@ -84,6 +81,14 @@ class SongListFragment : Fragment() {
                 else -> fetchSongs()
             }
         }
+    }
+
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        super.onActivityCreated(savedInstanceState)
+
+        setHasOptionsMenu(true)
+
+        binding.recyclerView.adapter = adapter
     }
 
     override fun onResume() {
