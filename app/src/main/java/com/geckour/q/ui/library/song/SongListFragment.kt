@@ -12,8 +12,8 @@ import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
-import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.MainViewModel
+import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.getSongListFromTrackId
 import com.geckour.q.util.getSongListFromTrackList
 import com.geckour.q.util.getTrackIds
@@ -111,12 +111,12 @@ class SongListFragment : Fragment() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         adapter.onNewQueue(when (item.itemId) {
-            R.id.menu_insert_all_next -> PlayerService.InsertActionType.NEXT
-            R.id.menu_insert_all_last -> PlayerService.InsertActionType.LAST
-            R.id.menu_override_all -> PlayerService.InsertActionType.OVERRIDE
-            R.id.menu_insert_all_simple_shuffle_next -> PlayerService.InsertActionType.SHUFFLE_SIMPLE_NEXT
-            R.id.menu_insert_all_simple_shuffle_last -> PlayerService.InsertActionType.SHUFFLE_SIMPLE_LAST
-            R.id.menu_override_all_simple_shuffle -> PlayerService.InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
+            R.id.menu_insert_all_next -> InsertActionType.NEXT
+            R.id.menu_insert_all_last -> InsertActionType.LAST
+            R.id.menu_override_all -> InsertActionType.OVERRIDE
+            R.id.menu_insert_all_simple_shuffle_next -> InsertActionType.SHUFFLE_SIMPLE_NEXT
+            R.id.menu_insert_all_simple_shuffle_last -> InsertActionType.SHUFFLE_SIMPLE_LAST
+            R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
             else -> return false
         })
 

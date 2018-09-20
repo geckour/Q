@@ -6,7 +6,7 @@ import android.app.NotificationManager
 import android.os.Build
 import android.support.annotation.RequiresApi
 import com.facebook.stetho.Stetho
-import com.geckour.q.service.PlayerService
+import com.geckour.q.util.NOTIFICATION_CHANNEL_ID_PLAYER
 import timber.log.Timber
 
 class App : Application() {
@@ -33,7 +33,7 @@ class App : Application() {
 
         val channel =
                 NotificationChannel(
-                        PlayerService.NOTIFICATION_CHANNEL_ID_PLAYER,
+                        NOTIFICATION_CHANNEL_ID_PLAYER,
                         name,
                         NotificationManager.IMPORTANCE_LOW
                 ).apply { this.description = description }

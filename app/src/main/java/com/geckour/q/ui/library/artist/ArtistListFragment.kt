@@ -10,8 +10,8 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Artist
-import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.MainViewModel
+import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.getSong
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
@@ -87,15 +87,15 @@ class ArtistListFragment : Fragment() {
             }.flatten()
 
             adapter.onNewQueue(songs, when (item.itemId) {
-                R.id.menu_insert_all_next -> PlayerService.InsertActionType.NEXT
-                R.id.menu_insert_all_last -> PlayerService.InsertActionType.LAST
-                R.id.menu_override_all -> PlayerService.InsertActionType.OVERRIDE
-                R.id.menu_insert_all_shuffle_next -> PlayerService.InsertActionType.SHUFFLE_NEXT
-                R.id.menu_insert_all_shuffle_last -> PlayerService.InsertActionType.SHUFFLE_LAST
-                R.id.menu_override_all_shuffle -> PlayerService.InsertActionType.SHUFFLE_OVERRIDE
-                R.id.menu_insert_all_simple_shuffle_next -> PlayerService.InsertActionType.SHUFFLE_SIMPLE_NEXT
-                R.id.menu_insert_all_simple_shuffle_last -> PlayerService.InsertActionType.SHUFFLE_SIMPLE_LAST
-                R.id.menu_override_all_simple_shuffle -> PlayerService.InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
+                R.id.menu_insert_all_next -> InsertActionType.NEXT
+                R.id.menu_insert_all_last -> InsertActionType.LAST
+                R.id.menu_override_all -> InsertActionType.OVERRIDE
+                R.id.menu_insert_all_shuffle_next -> InsertActionType.SHUFFLE_NEXT
+                R.id.menu_insert_all_shuffle_last -> InsertActionType.SHUFFLE_LAST
+                R.id.menu_override_all_shuffle -> InsertActionType.SHUFFLE_OVERRIDE
+                R.id.menu_insert_all_simple_shuffle_next -> InsertActionType.SHUFFLE_SIMPLE_NEXT
+                R.id.menu_insert_all_simple_shuffle_last -> InsertActionType.SHUFFLE_SIMPLE_LAST
+                R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
                 else -> return@launch
             })
         }

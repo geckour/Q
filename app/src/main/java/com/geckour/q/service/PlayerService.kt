@@ -1,8 +1,5 @@
 package com.geckour.q.service
 
-import android.app.Notification
-import android.app.NotificationManager
-import android.app.PendingIntent
 import android.app.Service
 import android.bluetooth.BluetoothHeadset
 import android.bluetooth.BluetoothProfile
@@ -10,76 +7,35 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.drawable.Icon
 import android.media.AudioFocusRequest
 import android.media.AudioManager
-import android.media.MediaMetadata
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
-import android.net.Uri
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.view.KeyEvent
-import com.bumptech.glide.Glide
-import com.geckour.q.App
-import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.Song
-import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.sheet.BottomSheetViewModel
-import com.geckour.q.util.getArtworkUriFromAlbumId
-import com.geckour.q.util.move
+import com.geckour.q.util.*
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource
 import com.google.android.exoplayer2.source.ExtractorMediaSource
-import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.TrackGroupArray
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.experimental.delay
+import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
 
 class PlayerService : Service() {
-
-    enum class InsertActionType {
-        NEXT,
-        LAST,
-        OVERRIDE,
-        SHUFFLE_NEXT,
-        SHUFFLE_LAST,
-        SHUFFLE_OVERRIDE,
-        SHUFFLE_SIMPLE_NEXT,
-        SHUFFLE_SIMPLE_LAST,
-        SHUFFLE_SIMPLE_OVERRIDE
-    }
-
-    enum class OrientedClassType {
-        ARTIST,
-        ALBUM,
-        SONG,
-        GENRE,
-        PLAYLIST
-    }
-
-    enum class OutputSourceType {
-        WIRED,
-        BLUETOOTH
-    }
-
-    data class QueueMetadata(
-            val actionType: InsertActionType,
-            val classType: OrientedClassType
-    )
-
-    data class InsertQueue(
-            val metadata: QueueMetadata,
-            val queue: List<Song>
-    )
 
     inner class PlayerBinder : Binder() {
         val service: PlayerService get() = this@PlayerService
@@ -90,14 +46,11 @@ class PlayerService : Service() {
 
         private val TAG: String = PlayerService::class.java.simpleName
 
-        private const val ARGS_KEY_CONTROL_COMMAND = "args_key_control_command"
+        const val ARGS_KEY_CONTROL_COMMAND = "args_key_control_command"
 
         private const val SOURCE_ACTION_WIRED_STATE = Intent.ACTION_HEADSET_PLUG
         private const val SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE =
                 BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED
-
-        const val NOTIFICATION_CHANNEL_ID_PLAYER = "notification_channel_id_player"
-        private const val NOTIFICATION_ID_PLAYER = 320
     }
 
     private val binder = PlayerBinder()
@@ -198,9 +151,6 @@ class PlayerService : Service() {
     }
     private var source = ConcatenatingMediaSource()
 
-    private var notifyPlaybackRatioJob: Job? = null
-    private var seekJob: Job? = null
-
     private val eventListener = object : Player.EventListener {
         override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters?) {
 
@@ -220,8 +170,11 @@ class PlayerService : Service() {
                 val albumTitle = async(parentJob) {
                     DB.getInstance(applicationContext).albumDao().get(song.albumId).title
                 }.await()
-                mediaSession.setMetadata(song.getMediaMetadata(albumTitle).await())
-                getNotification(song, albumTitle).await().show()
+                mediaSession.setMetadata(
+                        song.getMediaMetadata(this@PlayerService, albumTitle).await())
+                getNotification(this@PlayerService, mediaSession.sessionToken,
+                        song, albumTitle, player.playWhenReady).await()
+                        .show(this@PlayerService, player.playWhenReady)
             }
         }
 
@@ -291,6 +244,8 @@ class PlayerService : Service() {
 
     private var parentJob = Job()
     private var notificationUpdateJob = Job()
+    private var notifyPlaybackRatioJob: Job? = null
+    private var seekJob: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? = binder
 
@@ -363,29 +318,31 @@ class PlayerService : Service() {
             InsertActionType.NEXT -> {
                 this.queue.addAll(currentPosition, queue.queue)
                 source.addMediaSources(currentPosition,
-                        queue.queue.map { it.getMediaSource() })
+                        queue.queue.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.LAST -> {
                 this.queue.addAll(this.queue.size, queue.queue)
                 source.addMediaSources(source.size,
-                        queue.queue.map { it.getMediaSource() })
+                        queue.queue.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.OVERRIDE -> {
                 clear()
                 this.queue.addAll(queue.queue)
-                source.addMediaSources(queue.queue.map { it.getMediaSource() })
+                source.addMediaSources(queue.queue.map { it.getMediaSource(mediaSourceFactory) })
                 needPrepare = true
             }
             InsertActionType.SHUFFLE_NEXT -> {
                 val shuffled = queue.queue.shuffleByClassType(queue.metadata.classType)
                 this.queue.addAll(currentPosition, shuffled)
-                source.addMediaSources(currentPosition, shuffled.map { it.getMediaSource() })
+                source.addMediaSources(currentPosition,
+                        shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_LAST -> {
                 val shuffled = queue.queue.shuffleByClassType(queue.metadata.classType)
 
                 this.queue.addAll(this.queue.size, shuffled)
-                source.addMediaSources(source.size, shuffled.map { it.getMediaSource() })
+                source.addMediaSources(source.size,
+                        shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_OVERRIDE -> {
                 clear()
@@ -393,20 +350,22 @@ class PlayerService : Service() {
                 val shuffled = queue.queue.shuffleByClassType(queue.metadata.classType)
 
                 this.queue.addAll(shuffled)
-                source.addMediaSources(shuffled.map { it.getMediaSource() })
+                source.addMediaSources(shuffled.map { it.getMediaSource(mediaSourceFactory) })
                 needPrepare = true
             }
             InsertActionType.SHUFFLE_SIMPLE_NEXT -> {
                 val shuffled = queue.queue.shuffled()
 
                 this.queue.addAll(currentPosition, shuffled)
-                source.addMediaSources(currentPosition, shuffled.map { it.getMediaSource() })
+                source.addMediaSources(currentPosition,
+                        shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_SIMPLE_LAST -> {
                 val shuffled = queue.queue.shuffled()
 
                 this.queue.addAll(this.queue.size, shuffled)
-                source.addMediaSources(source.size, shuffled.map { it.getMediaSource() })
+                source.addMediaSources(source.size,
+                        shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
                 clear()
@@ -414,7 +373,7 @@ class PlayerService : Service() {
                 val shuffled = queue.queue.shuffled()
 
                 this.queue.addAll(shuffled)
-                source.addMediaSources(shuffled.map { it.getMediaSource() })
+                source.addMediaSources(shuffled.map { it.getMediaSource(mediaSourceFactory) })
                 needPrepare = true
             }
         }
@@ -475,7 +434,9 @@ class PlayerService : Service() {
             notificationUpdateJob = launch(parentJob) {
                 val song = currentSong ?: return@launch
                 val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
-                getNotification(song, albumTitle).await().show()
+                getNotification(this@PlayerService, mediaSession.sessionToken,
+                        song, albumTitle, player.playWhenReady).await()
+                        .show(this@PlayerService, player.playWhenReady)
             }
             player.playWhenReady = true
         }
@@ -498,7 +459,9 @@ class PlayerService : Service() {
         notificationUpdateJob = launch(parentJob) {
             val song = currentSong ?: return@launch
             val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
-            getNotification(song, albumTitle).await().show()
+            getNotification(this@PlayerService, mediaSession.sessionToken,
+                    song, albumTitle, player.playWhenReady).await()
+                    .show(this@PlayerService, player.playWhenReady)
             stopForeground(false)
         }
     }
@@ -641,15 +604,6 @@ class PlayerService : Service() {
         onRepeatModeChanged?.invoke(player.repeatMode)
     }
 
-    private fun Notification.show() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && player.playWhenReady) {
-            startForeground(NOTIFICATION_ID_PLAYER, this)
-        } else {
-            getSystemService(NotificationManager::class.java)
-                    .notify(NOTIFICATION_ID_PLAYER, this)
-        }
-    }
-
     fun onActivityDestroy() {
         if (player.playWhenReady.not()) {
             stopForeground(true)
@@ -667,134 +621,14 @@ class PlayerService : Service() {
         onRepeatModeChanged?.invoke(player.repeatMode)
     }
 
-    fun onOutputSourceChange(outputSourceType: OutputSourceType) {
+    private fun onOutputSourceChange(outputSourceType: OutputSourceType) {
         when (outputSourceType) {
             OutputSourceType.WIRED -> Unit
             OutputSourceType.BLUETOOTH -> Unit
         }
     }
 
-    fun onUnplugged() {
+    private fun onUnplugged() {
         pause()
     }
-
-    private fun Song.getMediaSource(): MediaSource =
-            mediaSourceFactory.createMediaSource(Uri.parse(sourcePath))
-
-    private fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> =
-            when (classType) {
-                OrientedClassType.ARTIST -> {
-                    val artists = this.map { it.artist }.distinct().shuffled()
-                    artists.map { artist ->
-                        this.filter { it.artist == artist }
-                    }.flatten()
-                }
-                OrientedClassType.ALBUM -> {
-                    val albumIds = this.map { it.albumId }.distinct().shuffled()
-                    albumIds.map { id ->
-                        this.filter { it.albumId == id }
-                    }.flatten()
-                }
-                OrientedClassType.SONG -> {
-                    this.shuffled()
-                }
-                OrientedClassType.GENRE -> {
-                    val genreIds = this.map { it.genreId }.distinct().shuffled()
-                    genreIds.map { id ->
-                        this.filter { it.genreId == id }
-                    }.flatten()
-                }
-                OrientedClassType.PLAYLIST -> {
-                    val playlistIds = this.map { it.playlistId }.distinct().shuffled()
-                    playlistIds.map { id ->
-                        this.filter { it.playlistId == id }
-                    }.flatten()
-                }
-            }
-
-    private fun Song.getMediaMetadata(albumTitle: String? = null): Deferred<MediaMetadata> = async {
-        val album = albumTitle
-                ?: DB.getInstance(this@PlayerService)
-                        .albumDao()
-                        .get(this@getMediaMetadata.albumId)
-                        .title
-
-        MediaMetadata.Builder()
-                .putString(MediaMetadata.METADATA_KEY_MEDIA_ID,
-                        this@getMediaMetadata.id.toString())
-                .putString(MediaMetadata.METADATA_KEY_TITLE, this@getMediaMetadata.name)
-                .putString(MediaMetadata.METADATA_KEY_ARTIST, this@getMediaMetadata.artist)
-                .putString(MediaMetadata.METADATA_KEY_ALBUM, album)
-                .putString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
-                        getArtworkUriFromAlbumId(this@getMediaMetadata.albumId).toString())
-                .putLong(MediaMetadata.METADATA_KEY_DURATION, this@getMediaMetadata.duration)
-                .build()
-    }
-
-    private fun getNotification(song: Song, albumTitle: String): Deferred<Notification> =
-            async {
-                val artwork = try {
-                    Glide.with(this@PlayerService)
-                            .asBitmap()
-                            .load(getArtworkUriFromAlbumId(song.albumId))
-                            .submit()
-                            .get()
-                } catch (t: Throwable) {
-                    Timber.e(t)
-                    null
-                }
-                val builder =
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                            Notification.Builder(applicationContext, NOTIFICATION_CHANNEL_ID_PLAYER)
-                        else Notification.Builder(applicationContext)
-                builder.setSmallIcon(R.drawable.ic_notification)
-                        .setLargeIcon(artwork)
-                        .setContentTitle(song.name)
-                        .setContentText(song.artist)
-                        .setSubText(albumTitle)
-                        .setOngoing(player.playWhenReady)
-                        .setStyle(Notification.MediaStyle()
-                                .setShowActionsInCompactView(0, 1, 2)
-                                .setMediaSession(mediaSession.sessionToken))
-                        .setContentIntent(PendingIntent.getActivity(applicationContext,
-                                App.REQUEST_CODE_OPEN_DEFAULT_ACTIVITY,
-                                MainActivity.createIntent(applicationContext),
-                                PendingIntent.FLAG_UPDATE_CURRENT))
-                        .setActions(Notification.Action.Builder(
-                                Icon.createWithResource(this@PlayerService,
-                                        R.drawable.ic_backward),
-                                getString(R.string.notification_action_prev),
-                                getCommandPendingIntent(
-                                        BottomSheetViewModel.PlaybackButton.PREV)).build(),
-                                if (player.playWhenReady) {
-                                    Notification.Action.Builder(
-                                            Icon.createWithResource(this@PlayerService,
-                                                    R.drawable.ic_pause),
-                                            getString(R.string.notification_action_pause),
-                                            getCommandPendingIntent(
-                                                    BottomSheetViewModel.PlaybackButton.PLAY_OR_PAUSE)).build()
-                                } else {
-                                    Notification.Action.Builder(
-                                            Icon.createWithResource(this@PlayerService,
-                                                    R.drawable.ic_play),
-                                            getString(R.string.notification_action_play),
-                                            getCommandPendingIntent(
-                                                    BottomSheetViewModel.PlaybackButton.PLAY_OR_PAUSE)).build()
-                                },
-                                Notification.Action.Builder(
-                                        Icon.createWithResource(this@PlayerService,
-                                                R.drawable.ic_forward),
-                                        getString(R.string.notification_action_next),
-                                        getCommandPendingIntent(
-                                                BottomSheetViewModel.PlaybackButton.NEXT)).build())
-                        .build()
-            }
-
-    private fun getCommandPendingIntent(command: BottomSheetViewModel.PlaybackButton): PendingIntent =
-            PendingIntent.getService(this, 0,
-                    createIntent(this).apply {
-                        action = command.name
-                        putExtra(ARGS_KEY_CONTROL_COMMAND, command.ordinal)
-                    },
-                    PendingIntent.FLAG_CANCEL_CURRENT)
 }

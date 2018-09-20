@@ -1,17 +1,15 @@
 package com.geckour.q.ui.library.genre
 
-import android.content.Context
 import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import com.bumptech.glide.Glide
-import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemListGenreBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Song
-import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.MainViewModel
-import com.geckour.q.util.getSong
+import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.OrientedClassType
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
@@ -43,9 +41,9 @@ class GenreListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
         notifyDataSetChanged()
     }
 
-    internal fun onNewQueue(songs: List<Song>, actionType: PlayerService.InsertActionType) {
+    internal fun onNewQueue(songs: List<Song>, actionType: InsertActionType) {
         launch(UI) {
-            viewModel.onNewQueue(songs, actionType, PlayerService.OrientedClassType.GENRE)
+            viewModel.onNewQueue(songs, actionType, OrientedClassType.GENRE)
         }
     }
 

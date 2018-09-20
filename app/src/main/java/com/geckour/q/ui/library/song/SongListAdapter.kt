@@ -11,9 +11,10 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemListSongBinding
 import com.geckour.q.domain.model.Song
-import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.MainViewModel
+import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.MediaRetrieveWorker
+import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.getArtworkUriFromAlbumId
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
@@ -77,8 +78,8 @@ class SongListAdapter(private val viewModel: MainViewModel)
         notifyDataSetChanged()
     }
 
-    internal fun onNewQueue(actionType: PlayerService.InsertActionType) {
-        viewModel.onNewQueue(items, actionType, PlayerService.OrientedClassType.SONG)
+    internal fun onNewQueue(actionType: InsertActionType) {
+        viewModel.onNewQueue(items, actionType, OrientedClassType.SONG)
     }
 
     private fun deleteSong(context: Context, song: Song?) {
@@ -113,16 +114,16 @@ class SongListAdapter(private val viewModel: MainViewModel)
                 viewModel.selectedSong?.apply {
                     viewModel.onNewQueue(listOf(this), when (it.itemId) {
                         R.id.menu_insert_all_next -> {
-                            PlayerService.InsertActionType.NEXT
+                            InsertActionType.NEXT
                         }
                         R.id.menu_insert_all_last -> {
-                            PlayerService.InsertActionType.LAST
+                            InsertActionType.LAST
                         }
                         R.id.menu_override_all -> {
-                            PlayerService.InsertActionType.OVERRIDE
+                            InsertActionType.OVERRIDE
                         }
                         else -> return@setOnMenuItemClickListener false
-                    }, PlayerService.OrientedClassType.SONG)
+                    }, OrientedClassType.SONG)
                 } ?: return@setOnMenuItemClickListener false
 
                 return@setOnMenuItemClickListener true

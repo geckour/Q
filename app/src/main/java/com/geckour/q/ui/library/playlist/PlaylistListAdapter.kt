@@ -7,8 +7,9 @@ import com.bumptech.glide.Glide
 import com.geckour.q.databinding.ItemListPlaylistBinding
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
-import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.MainViewModel
+import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.OrientedClassType
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
@@ -40,9 +41,9 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
         notifyDataSetChanged()
     }
 
-    internal fun onNewQueue(songs: List<Song>, actionType: PlayerService.InsertActionType) {
+    internal fun onNewQueue(songs: List<Song>, actionType: InsertActionType) {
         launch(UI) {
-            viewModel.onNewQueue(songs, actionType, PlayerService.OrientedClassType.PLAYLIST)
+            viewModel.onNewQueue(songs, actionType, OrientedClassType.PLAYLIST)
         }
     }
 

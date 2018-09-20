@@ -2,8 +2,7 @@ package com.geckour.q.ui
 
 import android.arch.lifecycle.ViewModel
 import com.geckour.q.domain.model.*
-import com.geckour.q.service.PlayerService
-import com.geckour.q.util.SingleLifeEvent
+import com.geckour.q.util.*
 
 class MainViewModel : ViewModel() {
 
@@ -13,12 +12,12 @@ class MainViewModel : ViewModel() {
     internal var selectedSong: Song? = null
     internal val selectedGenre: SingleLifeEvent<Genre> = SingleLifeEvent()
     internal val selectedPlaylist: SingleLifeEvent<Playlist> = SingleLifeEvent()
-    internal val newQueue: SingleLifeEvent<PlayerService.InsertQueue> = SingleLifeEvent()
+    internal val newQueue: SingleLifeEvent<InsertQueue> = SingleLifeEvent()
     internal val requestedPositionInQueue: SingleLifeEvent<Int> = SingleLifeEvent()
     internal val swappedQueuePositions: SingleLifeEvent<Pair<Int, Int>> = SingleLifeEvent()
     internal val removedQueueIndex: SingleLifeEvent<Int> = SingleLifeEvent()
 
-    private var currentOrientedClassType: PlayerService.OrientedClassType? = null
+    private var currentOrientedClassType: OrientedClassType? = null
 
     val isLoading: SingleLifeEvent<Boolean> = SingleLifeEvent()
 
@@ -28,7 +27,7 @@ class MainViewModel : ViewModel() {
         selectedArtist.value = artist
         selectedGenre.value = null
         selectedPlaylist.value = null
-        currentOrientedClassType = PlayerService.OrientedClassType.ARTIST
+        currentOrientedClassType = OrientedClassType.ARTIST
     }
 
     fun onRequestNavigate(album: Album) {
@@ -37,7 +36,7 @@ class MainViewModel : ViewModel() {
         selectedAlbum.value = album
         selectedGenre.value = null
         selectedPlaylist.value = null
-        currentOrientedClassType = PlayerService.OrientedClassType.ALBUM
+        currentOrientedClassType = OrientedClassType.ALBUM
     }
 
     fun onRequestNavigate(song: Song) {
@@ -46,7 +45,7 @@ class MainViewModel : ViewModel() {
         selectedSong = song
         selectedGenre.value = null
         selectedPlaylist.value = null
-        currentOrientedClassType = PlayerService.OrientedClassType.SONG
+        currentOrientedClassType = OrientedClassType.SONG
     }
 
     fun onRequestNavigate(genre: Genre) {
@@ -55,7 +54,7 @@ class MainViewModel : ViewModel() {
         selectedSong = null
         selectedGenre.value = genre
         selectedPlaylist.value = null
-        currentOrientedClassType = PlayerService.OrientedClassType.GENRE
+        currentOrientedClassType = OrientedClassType.GENRE
     }
 
     fun onRequestNavigate(playlist: Playlist) {
@@ -64,14 +63,14 @@ class MainViewModel : ViewModel() {
         selectedSong = null
         selectedGenre.value = null
         selectedPlaylist.value = playlist
-        currentOrientedClassType = PlayerService.OrientedClassType.PLAYLIST
+        currentOrientedClassType = OrientedClassType.PLAYLIST
     }
 
     fun onNewQueue(songs: List<Song>,
-                   actionType: PlayerService.InsertActionType,
-                   classType: PlayerService.OrientedClassType) {
-        newQueue.value = PlayerService.InsertQueue(
-                PlayerService.QueueMetadata(actionType, classType),
+                   actionType: InsertActionType,
+                   classType: OrientedClassType) {
+        newQueue.value = InsertQueue(
+                QueueMetadata(actionType, classType),
                 songs)
     }
 

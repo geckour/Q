@@ -30,7 +30,7 @@ import com.geckour.q.ui.library.genre.GenreListFragment
 import com.geckour.q.ui.library.playlist.PlaylistListFragment
 import com.geckour.q.ui.library.song.SongListFragment
 import com.geckour.q.ui.sheet.BottomSheetViewModel
-import com.geckour.q.util.MediaRetrieveWorker
+import com.geckour.q.util.*
 import com.google.android.exoplayer2.Player
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.UI
@@ -38,7 +38,6 @@ import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
-import timber.log.Timber
 import java.util.*
 
 @RuntimePermissions
@@ -374,9 +373,9 @@ class MainActivity : AppCompatActivity() {
 
         bottomSheetViewModel.changedQueue.observe(this, Observer {
             if (it == null) return@Observer
-            player?.submitQueue(PlayerService.InsertQueue(
-                    PlayerService.QueueMetadata(PlayerService.InsertActionType.OVERRIDE,
-                            PlayerService.OrientedClassType.SONG), it))
+            player?.submitQueue(InsertQueue(
+                    QueueMetadata(InsertActionType.OVERRIDE,
+                            OrientedClassType.SONG), it))
         })
 
         bottomSheetViewModel.changedPosition.observe(this, Observer {
