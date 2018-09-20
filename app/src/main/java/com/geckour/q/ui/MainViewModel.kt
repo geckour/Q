@@ -16,6 +16,7 @@ class MainViewModel : ViewModel() {
     internal val requestedPositionInQueue: SingleLifeEvent<Int> = SingleLifeEvent()
     internal val swappedQueuePositions: SingleLifeEvent<Pair<Int, Int>> = SingleLifeEvent()
     internal val removedQueueIndex: SingleLifeEvent<Int> = SingleLifeEvent()
+    internal val removeFromPlaylistPlayOrder: SingleLifeEvent<Int> = SingleLifeEvent()
 
     private var currentOrientedClassType: OrientedClassType? = null
 
@@ -80,5 +81,9 @@ class MainViewModel : ViewModel() {
 
     fun onQueueRemove(index: Int) {
         removedQueueIndex.value = index
+    }
+
+    fun onRequestRemoveSongFromPlaylist(playOrder: Int) {
+        removeFromPlaylistPlayOrder.value = playOrder
     }
 }

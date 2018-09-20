@@ -39,7 +39,6 @@ import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
-import timber.log.Timber
 import java.util.*
 
 @RuntimePermissions
@@ -376,7 +375,7 @@ class MainActivity : AppCompatActivity() {
                             MediaStore.Audio.Playlists.Members
                                     .getContentUri("external", it.id),
                             ContentValues().apply {
-                                put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, it.memberCount.apply { Timber.d("qgeck member count: $this") } + i)
+                                put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, it.memberCount + 1 + i)
                                 put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.id)
                             })
                 }
@@ -404,7 +403,7 @@ class MainActivity : AppCompatActivity() {
                                 MediaStore.Audio.Playlists.Members
                                         .getContentUri("external", playlistId),
                                 ContentValues().apply {
-                                    put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, i)
+                                    put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, i + 1)
                                     put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.id)
                                 })
                     }

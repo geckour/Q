@@ -3,6 +3,7 @@ package com.geckour.q.ui.library.song
 import android.arch.lifecycle.Observer
 import android.arch.lifecycle.ViewModelProviders
 import android.os.Bundle
+import android.provider.MediaStore
 import android.support.v4.app.Fragment
 import android.view.*
 import com.geckour.q.R
@@ -13,38 +14,44 @@ import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.ui.MainViewModel
-import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.getSongListFromTrackId
-import com.geckour.q.util.getSongListFromTrackList
-import com.geckour.q.util.getTrackIds
+import com.geckour.q.util.*
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.launch
+import timber.log.Timber
 
 class SongListFragment : Fragment() {
 
     companion object {
+        private const val ARGS_KEY_CLASS_TYPE = "args_key_class_type"
         private const val ARGS_KEY_ALBUM = "args_key_album"
         private const val ARGS_KEY_GENRE = "args_key_genre"
         private const val ARGS_KEY_PLAYLIST = "args_key_playlist"
 
-        fun newInstance(): SongListFragment = SongListFragment()
+        fun newInstance(): SongListFragment = SongListFragment().apply {
+            arguments = Bundle().apply {
+                putSerializable(ARGS_KEY_CLASS_TYPE, OrientedClassType.SONG)
+            }
+        }
 
         fun newInstance(album: Album): SongListFragment = SongListFragment().apply {
             arguments = Bundle().apply {
+                putSerializable(ARGS_KEY_CLASS_TYPE, OrientedClassType.ALBUM)
                 putParcelable(ARGS_KEY_ALBUM, album)
             }
         }
 
         fun newInstance(genre: Genre): SongListFragment = SongListFragment().apply {
             arguments = Bundle().apply {
+                putSerializable(ARGS_KEY_CLASS_TYPE, OrientedClassType.GENRE)
                 putParcelable(ARGS_KEY_GENRE, genre)
             }
         }
 
         fun newInstance(playlist: Playlist): SongListFragment = SongListFragment().apply {
             arguments = Bundle().apply {
+                putSerializable(ARGS_KEY_CLASS_TYPE, OrientedClassType.PLAYLIST)
                 putParcelable(ARGS_KEY_PLAYLIST, playlist)
             }
         }
@@ -54,7 +61,11 @@ class SongListFragment : Fragment() {
         ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
     }
     private lateinit var binding: FragmentListLibraryBinding
-    private val adapter: SongListAdapter by lazy { SongListAdapter(mainViewModel) }
+    private val adapter: SongListAdapter by lazy {
+        SongListAdapter(mainViewModel,
+                arguments?.getSerializable(ARGS_KEY_CLASS_TYPE).apply { Timber.d("qgeck oriented class type: ${this as? OrientedClassType}") }
+                        as? OrientedClassType ?: OrientedClassType.SONG)
+    }
 
     private var parentJob = Job()
     private var latestDbTrackList: List<Track> = emptyList()
@@ -89,6 +100,8 @@ class SongListFragment : Fragment() {
         setHasOptionsMenu(true)
 
         binding.recyclerView.adapter = adapter
+
+        observeEvents()
     }
 
     override fun onResume() {
@@ -126,6 +139,20 @@ class SongListFragment : Fragment() {
         return true
     }
 
+    private fun observeEvents() {
+        mainViewModel.removeFromPlaylistPlayOrder.observe(this, Observer {
+            Timber.d("qgeck play order: $it")
+            if (it == null) return@Observer
+            val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST) ?: return@Observer
+            val removed = context?.contentResolver
+                    ?.delete(MediaStore.Audio.Playlists.Members.getContentUri("external", playlist.id),
+                            "${MediaStore.Audio.Playlists.Members.PLAY_ORDER}=?",
+                            arrayOf(it.toString()))?.equals(1) ?: return@Observer
+            Timber.d("qgeck removed: $removed")
+            if (removed) adapter.removeByPlayOrder(it)
+        })
+    }
+
     private fun fetchSongs() {
         DB.getInstance(requireContext()).also { db ->
             db.trackDao().getAllAsync().observe(this@SongListFragment, Observer { dbTrackList ->
@@ -160,8 +187,7 @@ class SongListFragment : Fragment() {
             adapter.addItems(
                     getSongListFromTrackId(DB.getInstance(requireContext()),
                             playlist.getTrackIds(requireContext()),
-                            playlistId = playlist.id,
-                            setTrackNumByIndex = true)
+                            playlistId = playlist.id)
             )
         }
     }

@@ -5,6 +5,7 @@ import android.provider.MediaStore
 import android.support.v7.widget.PopupMenu
 import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import com.bumptech.glide.Glide
 import com.geckour.q.R
@@ -20,7 +21,8 @@ import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
 import java.io.File
 
-class SongListAdapter(private val viewModel: MainViewModel)
+class SongListAdapter(private val viewModel: MainViewModel,
+                      private val classType: OrientedClassType)
     : RecyclerView.Adapter<SongListAdapter.ViewHolder>() {
 
     private val items: ArrayList<Song> = ArrayList()
@@ -79,6 +81,13 @@ class SongListAdapter(private val viewModel: MainViewModel)
         notifyItemRangeInserted(size, items.size)
     }
 
+    internal fun removeByPlayOrder(playOrder: Int) {
+        val index = this.items.indexOfFirst { it.trackNum == playOrder }
+        if (index !in this.items.indices) return
+        this.items.removeAt(index)
+        notifyItemRemoved(index)
+    }
+
     internal fun clearItems() {
         this.items.clear()
         notifyDataSetChanged()
@@ -86,21 +95,6 @@ class SongListAdapter(private val viewModel: MainViewModel)
 
     internal fun onNewQueue(actionType: InsertActionType) {
         viewModel.onNewQueue(items, actionType, OrientedClassType.SONG)
-    }
-
-    private fun deleteSong(context: Context, song: Song?) {
-        if (song == null) return
-        File(song.sourcePath).apply { if (this.exists()) this.delete() }
-        context.contentResolver.delete(
-                MediaStore.Files.getContentUri("external"),
-                "${MediaStore.Files.FileColumns.DATA}=?",
-                arrayOf(song.sourcePath))
-        launch {
-            DB.getInstance(context).trackDao().delete(song.id)
-        }
-        val index = items.indexOf(song)
-        items.removeAt(index)
-        notifyItemRemoved(index)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
@@ -162,6 +156,31 @@ class SongListAdapter(private val viewModel: MainViewModel)
             }
             binding.root.setOnClickListener { onSongSelected(song) }
             binding.root.setOnLongClickListener { onSongLongTapped(song) }
+            if (classType == OrientedClassType.PLAYLIST) {
+                binding.option.visibility = View.VISIBLE
+                binding.option.setOnClickListener {
+                    removeFromPlaylist(adapterPosition + 1)
+                }
+            }
+        }
+
+        private fun deleteSong(context: Context, song: Song?) {
+            if (song == null) return
+            File(song.sourcePath).apply { if (this.exists()) this.delete() }
+            context.contentResolver.delete(
+                    MediaStore.Files.getContentUri("external"),
+                    "${MediaStore.Files.FileColumns.DATA}=?",
+                    arrayOf(song.sourcePath))
+            launch {
+                DB.getInstance(context).trackDao().delete(song.id)
+            }
+            val index = items.indexOf(song)
+            items.removeAt(index)
+            notifyItemRemoved(index)
+        }
+
+        private fun removeFromPlaylist(playOrder: Int) {
+            viewModel.onRequestRemoveSongFromPlaylist(playOrder)
         }
 
         private fun onSongSelected(song: Song) {

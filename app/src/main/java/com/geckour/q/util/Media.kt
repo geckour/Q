@@ -68,25 +68,24 @@ suspend fun getSongListFromTrackList(db: DB, dbTrackList: List<Track>): List<Son
 suspend fun getSongListFromTrackId(db: DB,
                                    dbTrackIdList: List<Long>,
                                    genreId: Long? = null,
-                                   playlistId: Long? = null,
-                                   setTrackNumByIndex: Boolean = false): List<Song> =
-        dbTrackIdList.mapIndexedNotNull { i, trackId ->
-            getSong(db, trackId, genreId, playlistId, trackNum = if (setTrackNumByIndex) i else null).await()
+                                   playlistId: Long? = null): List<Song> =
+        dbTrackIdList.mapNotNull {
+            getSong(db, it, genreId, playlistId).await()
         }
 
 fun getSong(db: DB, trackId: Long,
-            genreId: Long? = null, playlistId: Long? = null, trackNum: Int? = null): Deferred<Song?> =
+            genreId: Long? = null, playlistId: Long? = null): Deferred<Song?> =
         async {
             db.trackDao().get(trackId)?.let {
-                getSong(db, it, genreId, playlistId, trackNum = trackNum).await()
+                getSong(db, it, genreId, playlistId).await()
             }
         }
 
-fun getSong(db: DB, track: Track, genreId: Long? = null, playlistId: Long? = null, trackNum: Int? = null): Deferred<Song?> =
+fun getSong(db: DB, track: Track, genreId: Long? = null, playlistId: Long? = null): Deferred<Song?> =
         async {
             val artist = db.artistDao().get(track.artistId) ?: return@async null
             Song(track.id, track.albumId, track.title, artist.title, track.duration,
-                    trackNum ?: track.trackNum, track.trackTotal, track.discNum, track.discTotal,
+                    track.trackNum, track.trackTotal, track.discNum, track.discTotal,
                     genreId, playlistId, track.sourcePath)
         }
 
