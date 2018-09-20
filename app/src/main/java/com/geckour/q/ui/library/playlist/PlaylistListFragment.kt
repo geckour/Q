@@ -40,7 +40,7 @@ class PlaylistListFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         if (adapter.itemCount == 0)
-            adapter.setItems(fetchPlaylists(requireContext()).apply { Timber.d("qgeck playlist list: $this") }.sortedBy { it.name })
+            adapter.setItems(fetchPlaylists(requireContext()).sortedBy { it.name })
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {

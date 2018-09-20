@@ -30,6 +30,8 @@
 
     <string name="menu_delete_song">Delete from device</string>
 
+    <string name="menu_delete_playlist">Delete this playlist</string>
+
     <string name="menu_insert_next">Insert to next</string>
     <string name="menu_insert_last">Insert to last</string>
     <string name="menu_override">Override</string>

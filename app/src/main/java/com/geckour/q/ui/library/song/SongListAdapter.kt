@@ -166,16 +166,12 @@ class SongListAdapter(private val viewModel: MainViewModel)
 
         private fun onSongSelected(song: Song) {
             viewModel.onRequestNavigate(song)
-            shortPopupMenu.apply {
-                show()
-            }
+            shortPopupMenu.show()
         }
 
         private fun onSongLongTapped(song: Song): Boolean {
             viewModel.onRequestNavigate(song)
-            longPopupMenu.apply {
-                show()
-            }
+            longPopupMenu.show()
 
             return true
         }
