@@ -30,7 +30,6 @@ import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.sheet.BottomSheetViewModel
 import com.geckour.q.util.getArtworkUriFromAlbumId
 import com.geckour.q.util.move
-import com.geckour.q.util.swap
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource
@@ -214,7 +213,9 @@ class PlayerService : Service() {
         override fun onTracksChanged(trackGroups: TrackGroupArray?,
                                      trackSelections: TrackSelectionArray?) {
             onCurrentPositionChanged?.invoke(currentPosition)
-            launch(UI + parentJob) {
+
+            notificationUpdateJob.cancel()
+            notificationUpdateJob = launch(UI + parentJob) {
                 val song = currentSong ?: return@launch
                 val albumTitle = async(parentJob) {
                     DB.getInstance(applicationContext).albumDao().get(song.albumId).title
@@ -289,6 +290,7 @@ class PlayerService : Service() {
     }
 
     private var parentJob = Job()
+    private var notificationUpdateJob = Job()
 
     override fun onBind(intent: Intent?): IBinder? = binder
 
@@ -469,7 +471,8 @@ class PlayerService : Service() {
 
         if (player.playWhenReady.not()) {
             mediaSession.isActive = true
-            launch(parentJob) {
+            notificationUpdateJob.cancel()
+            notificationUpdateJob = launch(parentJob) {
                 val song = currentSong ?: return@launch
                 val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
                 getNotification(song, albumTitle).await().show()
@@ -491,7 +494,8 @@ class PlayerService : Service() {
                 abandonAudioFocus {}
             }
         }
-        launch(parentJob) {
+        notificationUpdateJob.cancel()
+        notificationUpdateJob = launch(parentJob) {
             val song = currentSong ?: return@launch
             val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
             getNotification(song, albumTitle).await().show()
@@ -531,6 +535,7 @@ class PlayerService : Service() {
             stop()
             this.queue.clear()
             source.clear()
+            notificationUpdateJob.cancel()
             stopForeground(true)
         }
     }
@@ -615,17 +620,14 @@ class PlayerService : Service() {
     }
 
     fun shuffle() {
-        val startIndex = currentPosition + 1
-        if (source.size < 1 || startIndex == source.size) return
+        if (source.size < 1) return
 
-        val shuffled = (startIndex until source.size).toList().shuffled()
+        val shuffled = (0 until source.size).toList().shuffled()
 
-        (startIndex until source.size).forEach {
-            val moveTo = startIndex + shuffled.indexOf(it)
+        (0 until source.size).forEach {
+            val moveTo = shuffled.indexOf(it)
             source.moveMediaSource(it, moveTo)
-            val toMove = this.queue[it]
-            this.queue.removeAt(it)
-            this.queue.add(moveTo, toMove)
+            this.queue.move(it, moveTo)
         }
     }
 
