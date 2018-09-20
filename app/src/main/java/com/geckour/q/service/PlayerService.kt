@@ -2,7 +2,6 @@ package com.geckour.q.service
 
 import android.app.Service
 import android.bluetooth.BluetoothHeadset
-import android.bluetooth.BluetoothProfile
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -219,23 +218,16 @@ class PlayerService : Service() {
                 SOURCE_ACTION_WIRED_STATE -> {
                     val state = intent.getIntExtra("state", -1)
                     Timber.d("qgeck wired state: $state")
-                    if (state > 0) {
-                        onOutputSourceChange(OutputSourceType.WIRED)
-                    } else {
+                    if (state <= 0)
                         onUnplugged()
-                    }
                 }
 
                 SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE -> {
-                    val state = intent.getIntExtra(BluetoothProfile.EXTRA_STATE, -1)
+                    val state = intent.getIntExtra(BluetoothHeadset.EXTRA_STATE, -1)
                     Timber.d("qgeck bl connection state: $state")
                     when (state) {
-                        BluetoothHeadset.STATE_CONNECTED -> {
-                            onOutputSourceChange(OutputSourceType.BLUETOOTH)
-                        }
-                        BluetoothHeadset.STATE_DISCONNECTED -> {
-                            onUnplugged()
-                        }
+                        BluetoothHeadset.STATE_CONNECTED -> Unit
+                        BluetoothHeadset.STATE_DISCONNECTED -> onUnplugged()
                     }
                 }
             }
@@ -620,13 +612,6 @@ class PlayerService : Service() {
         }
         onPlaybackStateChanged?.invoke(player.playbackState, player.playWhenReady)
         onRepeatModeChanged?.invoke(player.repeatMode)
-    }
-
-    private fun onOutputSourceChange(outputSourceType: OutputSourceType) {
-        when (outputSourceType) {
-            OutputSourceType.WIRED -> Unit
-            OutputSourceType.BLUETOOTH -> Unit
-        }
     }
 
     private fun onUnplugged() {

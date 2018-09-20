@@ -51,11 +51,6 @@ enum class OrientedClassType {
     PLAYLIST
 }
 
-enum class OutputSourceType {
-    WIRED,
-    BLUETOOTH
-}
-
 data class QueueMetadata(
         val actionType: InsertActionType,
         val classType: OrientedClassType
