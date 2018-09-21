@@ -19,4 +19,9 @@
         <!-- text -->
         <item name="android:textColorPrimary">@color/colorTextPrimary</item>
     </style>
+
+    <style name="DialogStyle" parent="Theme.AppCompat.Light.Dialog.Alert">
+        <item name="android:colorAccent">@color/colorAccent</item>
+        <item name="android:textColorPrimary">@color/colorTextSecondary</item>
+    </style>
 </resources>

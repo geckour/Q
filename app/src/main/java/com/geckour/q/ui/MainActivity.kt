@@ -39,7 +39,6 @@ import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
-import timber.log.Timber
 import java.util.*
 
 @RuntimePermissions
@@ -381,7 +380,7 @@ class MainActivity : AppCompatActivity() {
             if (queue == null) return@Observer
             val playlists = fetchPlaylists(this)
             val binding = DialogAddQueuePlaylistBinding.inflate(layoutInflater)
-            val dialog = AlertDialog.Builder(this)
+            val dialog = AlertDialog.Builder(this, R.style.DialogStyle)
                     .setTitle(R.string.dialog_title_add_queue_to_playlist)
                     .setMessage(R.string.dialog_desc_add_queue_to_playlist)
                     .setView(binding.root)
