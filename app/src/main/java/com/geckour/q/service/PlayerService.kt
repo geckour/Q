@@ -16,7 +16,6 @@ import android.os.IBinder
 import android.view.KeyEvent
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.Song
-import com.geckour.q.ui.sheet.BottomSheetViewModel
 import com.geckour.q.util.*
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
@@ -273,11 +272,12 @@ class PlayerService : Service() {
     private fun onNotificationAction(intent: Intent) {
         if (intent.hasExtra(ARGS_KEY_CONTROL_COMMAND)) {
             val key = intent.extras?.getInt(ARGS_KEY_CONTROL_COMMAND, -1) ?: return
-            val command = BottomSheetViewModel.PlaybackButton.values()[key]
+            val command = NotificationCommand.values()[key]
             when (command) {
-                BottomSheetViewModel.PlaybackButton.PREV -> headOrPrev()
-                BottomSheetViewModel.PlaybackButton.PLAY_OR_PAUSE -> togglePlayPause()
-                BottomSheetViewModel.PlaybackButton.NEXT -> next()
+                NotificationCommand.PREV -> headOrPrev()
+                NotificationCommand.PLAY_OR_PAUSE -> togglePlayPause()
+                NotificationCommand.NEXT -> next()
+                NotificationCommand.DESTROY -> onRequestedStop()
                 else -> Unit
             }
         }
@@ -606,7 +606,7 @@ class PlayerService : Service() {
         onRepeatModeChanged?.invoke(player.repeatMode)
     }
 
-    fun onActivityDestroy() {
+    fun onRequestedStop() {
         if (player.playWhenReady.not()) {
             this.destroyNotification()
             stopSelf()

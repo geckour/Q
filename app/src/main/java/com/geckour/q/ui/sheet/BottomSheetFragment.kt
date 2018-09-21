@@ -19,6 +19,7 @@ import com.geckour.q.R
 import com.geckour.q.databinding.FragmentSheetBottomBinding
 import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
+import com.geckour.q.util.PlaybackButton
 import com.geckour.q.util.getArtworkUriFromAlbumId
 import com.google.android.exoplayer2.Player
 import timber.log.Timber
@@ -104,8 +105,7 @@ class BottomSheetFragment : Fragment() {
             it.setOnTouchListener { _, event ->
                 when (event.action) {
                     MotionEvent.ACTION_UP -> {
-                        viewModel.playbackButton.value =
-                                BottomSheetViewModel.PlaybackButton.UNDEFINED
+                        viewModel.playbackButton.value = PlaybackButton.UNDEFINED
                     }
                 }
 

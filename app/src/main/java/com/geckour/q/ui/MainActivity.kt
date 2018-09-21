@@ -203,7 +203,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        player?.onActivityDestroy()
+        player?.onRequestedStop()
     }
 
     override fun onBackPressed() {
@@ -351,12 +351,12 @@ class MainActivity : AppCompatActivity() {
         bottomSheetViewModel.playbackButton.observe(this, Observer {
             if (it == null) return@Observer
             when (it) {
-                BottomSheetViewModel.PlaybackButton.PLAY_OR_PAUSE -> player?.togglePlayPause()
-                BottomSheetViewModel.PlaybackButton.NEXT -> player?.next()
-                BottomSheetViewModel.PlaybackButton.PREV -> player?.headOrPrev()
-                BottomSheetViewModel.PlaybackButton.FF -> player?.fastForward()
-                BottomSheetViewModel.PlaybackButton.REWIND -> player?.rewind()
-                BottomSheetViewModel.PlaybackButton.UNDEFINED -> player?.stopRunningButtonAction()
+                PlaybackButton.PLAY_OR_PAUSE -> player?.togglePlayPause()
+                PlaybackButton.NEXT -> player?.next()
+                PlaybackButton.PREV -> player?.headOrPrev()
+                PlaybackButton.FF -> player?.fastForward()
+                PlaybackButton.REWIND -> player?.rewind()
+                PlaybackButton.UNDEFINED -> player?.stopRunningButtonAction()
             }
         })
 

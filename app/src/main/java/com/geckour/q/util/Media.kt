@@ -21,7 +21,6 @@ import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.MainActivity
-import com.geckour.q.ui.sheet.BottomSheetViewModel
 import com.geckour.q.util.MediaRetrieveWorker.Companion.UNKNOWN
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ads.AdsMediaSource
@@ -50,6 +49,22 @@ enum class OrientedClassType {
     SONG,
     GENRE,
     PLAYLIST
+}
+
+enum class PlaybackButton {
+    PLAY_OR_PAUSE,
+    NEXT,
+    PREV,
+    FF,
+    REWIND,
+    UNDEFINED
+}
+
+enum class NotificationCommand {
+    PLAY_OR_PAUSE,
+    NEXT,
+    PREV,
+    DESTROY
 }
 
 data class QueueMetadata(
@@ -271,8 +286,7 @@ fun getNotification(context: Context, sessionToken: MediaSession.Token,
                                     Icon.createWithResource(context,
                                             R.drawable.ic_backward),
                                     context.getString(R.string.notification_action_prev),
-                                    getCommandPendingIntent(context,
-                                            BottomSheetViewModel.PlaybackButton.PREV)
+                                    getCommandPendingIntent(context, NotificationCommand.PREV)
                             ).build(),
                             if (playWhenReady) {
                                 Notification.Action.Builder(
@@ -280,7 +294,7 @@ fun getNotification(context: Context, sessionToken: MediaSession.Token,
                                                 R.drawable.ic_pause),
                                         context.getString(R.string.notification_action_pause),
                                         getCommandPendingIntent(context,
-                                                BottomSheetViewModel.PlaybackButton.PLAY_OR_PAUSE)
+                                                NotificationCommand.PLAY_OR_PAUSE)
                                 ).build()
                             } else {
                                 Notification.Action.Builder(
@@ -288,20 +302,20 @@ fun getNotification(context: Context, sessionToken: MediaSession.Token,
                                                 R.drawable.ic_play),
                                         context.getString(R.string.notification_action_play),
                                         getCommandPendingIntent(context,
-                                                BottomSheetViewModel.PlaybackButton.PLAY_OR_PAUSE)
+                                                NotificationCommand.PLAY_OR_PAUSE)
                                 ).build()
                             },
                             Notification.Action.Builder(
                                     Icon.createWithResource(context,
                                             R.drawable.ic_forward),
                                     context.getString(R.string.notification_action_next),
-                                    getCommandPendingIntent(context,
-                                            BottomSheetViewModel.PlaybackButton.NEXT)
+                                    getCommandPendingIntent(context, NotificationCommand.NEXT)
                             ).build())
+                    .setDeleteIntent(getCommandPendingIntent(context, NotificationCommand.DESTROY))
                     .build()
         }
 
-private fun getCommandPendingIntent(context: Context, command: BottomSheetViewModel.PlaybackButton): PendingIntent =
+private fun getCommandPendingIntent(context: Context, command: NotificationCommand): PendingIntent =
         PendingIntent.getService(context, 0,
                 PlayerService.createIntent(context).apply {
                     action = command.name

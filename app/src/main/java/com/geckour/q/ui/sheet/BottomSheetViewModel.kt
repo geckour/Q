@@ -3,18 +3,10 @@ package com.geckour.q.ui.sheet
 import android.arch.lifecycle.ViewModel
 import android.support.design.widget.BottomSheetBehavior
 import com.geckour.q.domain.model.Song
+import com.geckour.q.util.PlaybackButton
 import com.geckour.q.util.SingleLifeEvent
 
 class BottomSheetViewModel : ViewModel() {
-
-    enum class PlaybackButton {
-        PLAY_OR_PAUSE,
-        NEXT,
-        PREV,
-        FF,
-        REWIND,
-        UNDEFINED
-    }
 
     internal val sheetState: SingleLifeEvent<Int> = SingleLifeEvent()
     internal val playbackButton: SingleLifeEvent<PlaybackButton> = SingleLifeEvent()
