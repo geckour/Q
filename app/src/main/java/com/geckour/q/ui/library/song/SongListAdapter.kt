@@ -167,16 +167,26 @@ class SongListAdapter(private val viewModel: MainViewModel,
         private fun deleteSong(context: Context, song: Song?) {
             if (song == null) return
             File(song.sourcePath).apply { if (this.exists()) this.delete() }
-            context.contentResolver.delete(
+            val deleted = context.contentResolver.delete(
                     MediaStore.Files.getContentUri("external"),
                     "${MediaStore.Files.FileColumns.DATA}=?",
-                    arrayOf(song.sourcePath))
-            launch {
-                DB.getInstance(context).trackDao().delete(song.id)
+                    arrayOf(song.sourcePath)) == 1
+
+            if (deleted) {
+                launch {
+                    DB.getInstance(context).trackDao().delete(song.id)
+                }
+
+                viewModel.deletedSongId.value = song.id
+
+                items.asSequence()
+                        .mapIndexed { i, s -> i to s }
+                        .filter { it.second.id == song.id }.toList()
+                        .forEach {
+                            items.removeAt(it.first)
+                            notifyItemRemoved(it.first)
+                        }
             }
-            val index = items.indexOf(song)
-            items.removeAt(index)
-            notifyItemRemoved(index)
         }
 
         private fun removeFromPlaylist(playOrder: Int) {

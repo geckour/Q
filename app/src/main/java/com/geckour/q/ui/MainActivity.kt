@@ -343,6 +343,11 @@ class MainActivity : AppCompatActivity() {
             player?.removeQueue(it)
         })
 
+        viewModel.deletedSongId.observe(this, Observer {
+            if (it == null) return@Observer
+            player?.removeQueue(it)
+        })
+
         bottomSheetViewModel.playbackButton.observe(this, Observer {
             if (it == null) return@Observer
             when (it) {

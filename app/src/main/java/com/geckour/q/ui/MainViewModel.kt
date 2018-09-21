@@ -17,6 +17,7 @@ class MainViewModel : ViewModel() {
     internal val swappedQueuePositions: SingleLifeEvent<Pair<Int, Int>> = SingleLifeEvent()
     internal val removedQueueIndex: SingleLifeEvent<Int> = SingleLifeEvent()
     internal val removeFromPlaylistPlayOrder: SingleLifeEvent<Int> = SingleLifeEvent()
+    internal val deletedSongId: SingleLifeEvent<Long> = SingleLifeEvent()
 
     private var currentOrientedClassType: OrientedClassType? = null
 
