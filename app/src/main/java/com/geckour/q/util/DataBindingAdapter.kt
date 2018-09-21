@@ -1,9 +1,9 @@
 package com.geckour.q.util
 
-import android.databinding.BindingAdapter
 import android.graphics.Bitmap
 import android.net.Uri
 import android.widget.ImageView
+import androidx.databinding.BindingAdapter
 
 @BindingAdapter("app:srcBitmap")
 fun loadImage(imageView: ImageView, bitmap: Bitmap?) {

@@ -1,6 +1,6 @@
 package com.geckour.q.ui
 
-import android.arch.lifecycle.ViewModel
+import androidx.lifecycle.ViewModel
 import com.geckour.q.domain.model.*
 import com.geckour.q.util.*
 

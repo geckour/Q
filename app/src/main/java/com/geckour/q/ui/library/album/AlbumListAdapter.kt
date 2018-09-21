@@ -1,8 +1,8 @@
 package com.geckour.q.ui.library.album
 
-import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.databinding.ItemListAlbumBinding
 import com.geckour.q.domain.model.Album

@@ -1,9 +1,9 @@
 package com.geckour.q.ui.library.playlist
 
-import android.arch.lifecycle.ViewModelProviders
 import android.os.Bundle
-import android.support.v4.app.Fragment
 import android.view.*
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
@@ -14,7 +14,6 @@ import com.geckour.q.util.getSong
 import com.geckour.q.util.getTrackIds
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.launch
-import timber.log.Timber
 
 class PlaylistListFragment : Fragment() {
 

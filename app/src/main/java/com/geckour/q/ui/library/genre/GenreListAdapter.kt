@@ -1,8 +1,8 @@
 package com.geckour.q.ui.library.genre
 
-import android.support.v7.widget.RecyclerView
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.databinding.ItemListGenreBinding
 import com.geckour.q.domain.model.Genre

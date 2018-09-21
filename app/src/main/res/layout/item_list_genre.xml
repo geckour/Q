@@ -7,10 +7,10 @@
 
         <variable
             name="data"
-            type="com.geckour.q.domain.model.Genre"/>
+            type="com.geckour.q.domain.model.Genre" />
     </data>
 
-    <android.support.constraint.ConstraintLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="?android:attr/selectableItemBackground">
@@ -29,7 +29,7 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            tools:src="@tools:sample/avatars"/>
+            tools:src="@tools:sample/avatars" />
 
         <TextView
             android:layout_width="0dp"
@@ -45,7 +45,7 @@
             app:layout_constraintEnd_toStartOf="@id/option"
             app:layout_constraintStart_toStartOf="@id/thumb"
             app:layout_constraintTop_toTopOf="@id/option"
-            tools:text="ジャンル名"/>
+            tools:text="ジャンル名" />
 
         <ImageView
             android:id="@+id/option"
@@ -60,6 +60,6 @@
             android:tint="@color/colorTintOption"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="@id/thumb"
-            app:layout_constraintTop_toBottomOf="@id/thumb"/>
-    </android.support.constraint.ConstraintLayout>
+            app:layout_constraintTop_toBottomOf="@id/thumb" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

@@ -1,12 +1,10 @@
 package com.geckour.q.ui.library.playlist
 
 import android.provider.MediaStore
-import android.support.v7.widget.PopupMenu
-import android.support.v7.widget.RecyclerView
-import android.view.GestureDetector
 import android.view.LayoutInflater
-import android.view.MotionEvent
 import android.view.ViewGroup
+import androidx.appcompat.widget.PopupMenu
+import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.databinding.ItemListPlaylistBinding

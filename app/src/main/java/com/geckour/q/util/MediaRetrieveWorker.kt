@@ -2,10 +2,13 @@ package com.geckour.q.util
 
 import android.Manifest
 import android.content.ContentUris
+import android.content.Context
 import android.content.pm.PackageManager
 import android.media.MediaMetadataRetriever
 import android.provider.MediaStore
+import androidx.work.Data
 import androidx.work.Worker
+import androidx.work.WorkerParameters
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
@@ -13,8 +16,20 @@ import com.geckour.q.data.db.model.Track
 import com.geckour.q.ui.MainActivity
 import timber.log.Timber
 import java.io.File
+import java.util.*
 
-class MediaRetrieveWorker : Worker() {
+class MediaRetrieveWorker(context: Context, parameters: WorkerParameters? = null) :
+        Worker(context.applicationContext,
+                parameters ?: WorkerParameters(UUID.randomUUID(),
+                        Data.EMPTY, emptyList<String>(),
+                        WorkerParameters.RuntimeExtras(),
+                        0,
+                        {},
+                        { appContext, workerClassName, workerParameters ->
+                            if (workerClassName == MediaRetrieveWorker::class.java.name)
+                                MediaRetrieveWorker(appContext, workerParameters)
+                            else null
+                        })) {
 
     companion object {
         const val WORK_NAME = "media_retrieve_work"

@@ -2,20 +2,22 @@ package com.geckour.q.ui
 
 import android.Manifest
 import android.app.AlertDialog
-import android.arch.lifecycle.Observer
-import android.arch.lifecycle.ViewModelProviders
 import android.content.*
-import android.databinding.DataBindingUtil
 import android.os.Bundle
 import android.os.IBinder
 import android.provider.MediaStore
-import android.support.design.widget.BottomSheetBehavior
-import android.support.v4.widget.DrawerLayout
-import android.support.v7.app.ActionBarDrawerToggle
-import android.support.v7.app.AppCompatActivity
 import android.view.MenuItem
 import android.view.View
-import androidx.work.*
+import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.appcompat.app.AppCompatActivity
+import androidx.databinding.DataBindingUtil
+import androidx.drawerlayout.widget.DrawerLayout
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProviders
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.State
+import androidx.work.WorkManager
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ActivityMainBinding
@@ -30,7 +32,7 @@ import com.geckour.q.ui.library.song.SongListFragment
 import com.geckour.q.ui.sheet.BottomSheetViewModel
 import com.geckour.q.util.*
 import com.google.android.exoplayer2.Player
-import com.google.gson.Gson
+import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
@@ -248,7 +250,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun retrieveMediaIfEmpty() {
-        launch(parentJob) {
+        launch(UI + parentJob) {
             DB.getInstance(this@MainActivity)
                     .trackDao()
                     .getAllAsync()
@@ -259,7 +261,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun WorkManager.invokeRetrieveMediaWorker() {
-        beginUniqueWork(MediaRetrieveWorker.WORK_NAME, ExistingWorkPolicy.APPEND,
+        beginUniqueWork(MediaRetrieveWorker.WORK_NAME, ExistingWorkPolicy.KEEP,
                 OneTimeWorkRequestBuilder<MediaRetrieveWorker>().build()).enqueue()
         viewModel.isLoading.value = true
         monitorSyncState()
@@ -268,7 +270,8 @@ class MainActivity : AppCompatActivity() {
     private fun WorkManager.monitorSyncState() {
         getStatusesForUniqueWork(MediaRetrieveWorker.WORK_NAME)
                 .observe(this@MainActivity, Observer {
-                    viewModel.isLoading.value = it?.firstOrNull()?.state == State.RUNNING
+                    viewModel.isLoading.value =
+                            it?.firstOrNull { it.state == State.RUNNING } != null
                 })
     }
 

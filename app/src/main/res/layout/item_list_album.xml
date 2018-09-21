@@ -7,10 +7,10 @@
 
         <variable
             name="data"
-            type="com.geckour.q.domain.model.Album"/>
+            type="com.geckour.q.domain.model.Album" />
     </data>
 
-    <android.support.constraint.ConstraintLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="?android:attr/selectableItemBackground">
@@ -26,7 +26,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            tools:src="@tools:sample/avatars"/>
+            tools:src="@tools:sample/avatars" />
 
         <TextView
             android:id="@+id/text_album"
@@ -45,7 +45,7 @@
             app:layout_constraintStart_toEndOf="@id/thumb"
             app:layout_constraintTop_toTopOf="@id/thumb"
             app:layout_constraintVertical_chainStyle="packed"
-            tools:text="アルバム名"/>
+            tools:text="アルバム名" />
 
         <TextView
             android:id="@+id/text_artist"
@@ -63,7 +63,7 @@
             app:layout_constraintEnd_toStartOf="@id/option"
             app:layout_constraintStart_toEndOf="@id/thumb"
             app:layout_constraintTop_toBottomOf="@id/text_album"
-            tools:text="アーティスト名"/>
+            tools:text="アーティスト名" />
 
         <ImageView
             android:id="@+id/option"
@@ -76,6 +76,6 @@
             android:tint="@color/colorTintOption"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toTopOf="parent"/>
-    </android.support.constraint.ConstraintLayout>
+            app:layout_constraintTop_toTopOf="parent" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

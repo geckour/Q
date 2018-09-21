@@ -1,7 +1,7 @@
 package com.geckour.q.data.db.dao
 
-import android.arch.lifecycle.LiveData
-import android.arch.persistence.room.*
+import androidx.lifecycle.LiveData
+import androidx.room.*
 import com.geckour.q.data.db.model.Album
 
 @Dao

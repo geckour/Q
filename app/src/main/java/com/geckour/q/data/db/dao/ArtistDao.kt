@@ -1,6 +1,6 @@
 package com.geckour.q.data.db.dao
 
-import android.arch.persistence.room.*
+import androidx.room.*
 import com.geckour.q.data.db.model.Artist
 
 @Dao

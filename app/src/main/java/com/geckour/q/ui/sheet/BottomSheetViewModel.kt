@@ -1,10 +1,10 @@
 package com.geckour.q.ui.sheet
 
-import android.arch.lifecycle.ViewModel
-import android.support.design.widget.BottomSheetBehavior
+import androidx.lifecycle.ViewModel
 import com.geckour.q.domain.model.Song
 import com.geckour.q.util.PlaybackButton
 import com.geckour.q.util.SingleLifeEvent
+import com.google.android.material.bottomsheet.BottomSheetBehavior
 
 class BottomSheetViewModel : ViewModel() {
 

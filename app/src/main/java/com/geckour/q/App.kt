@@ -4,7 +4,7 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
-import android.support.annotation.RequiresApi
+import androidx.annotation.RequiresApi
 import com.facebook.stetho.Stetho
 import com.geckour.q.util.NOTIFICATION_CHANNEL_ID_PLAYER
 import timber.log.Timber
@@ -28,6 +28,7 @@ class App : Application() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannel() {
+
         val name = getString(R.string.notification_channel_player)
         val description = getString(R.string.notification_channel_description_player)
 

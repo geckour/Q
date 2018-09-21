@@ -1,19 +1,18 @@
 package com.geckour.q.ui.sheet
 
-import android.arch.lifecycle.Observer
-import android.arch.lifecycle.ViewModelProviders
 import android.content.res.ColorStateList
 import android.os.Bundle
-import android.support.design.widget.BottomSheetBehavior
-import android.support.v4.app.Fragment
-import android.support.v4.content.ContextCompat
-import android.support.v7.widget.RecyclerView
-import android.support.v7.widget.helper.ItemTouchHelper
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
+import androidx.core.content.ContextCompat
+import androidx.fragment.app.Fragment
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProviders
+import androidx.recyclerview.widget.ItemTouchHelper
+import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentSheetBottomBinding
@@ -22,7 +21,7 @@ import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.PlaybackButton
 import com.geckour.q.util.getArtworkUriFromAlbumId
 import com.google.android.exoplayer2.Player
-import timber.log.Timber
+import com.google.android.material.bottomsheet.BottomSheetBehavior
 
 class BottomSheetFragment : Fragment() {
 
