@@ -33,28 +33,41 @@
                 tools:layout="@layout/fragment_sheet_bottom" />
         </android.support.design.widget.CoordinatorLayout>
 
-        <LinearLayout
-            android:id="@+id/indicator_loading"
+        <RelativeLayout
+            android:id="@+id/indicator_syncing"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="@color/colorBackgroundInactive"
             android:clickable="true"
             android:focusable="true"
-            android:gravity="center"
-            android:orientation="vertical"
             android:visibility="gone">
 
             <ProgressBar
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content" />
-
-            <TextView
+                android:id="@+id/progress_bar"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_centerInParent="true" />
+
+            <TextView
+                android:id="@+id/desc_syncing"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/progress_bar"
+                android:layout_centerHorizontal="true"
                 android:layout_marginTop="4dp"
                 android:text="@string/syncing"
                 android:textColor="@color/colorTextSecondary"
                 android:textSize="14sp" />
-        </LinearLayout>
+
+            <TextView
+                android:id="@+id/progress_sync"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/desc_syncing"
+                android:layout_centerHorizontal="true"
+                android:layout_marginTop="4dp"
+                android:textColor="@color/colorTextSecondary"
+                android:textSize="12sp" />
+        </RelativeLayout>
     </FrameLayout>
 </layout>

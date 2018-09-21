@@ -10,12 +10,14 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Track
+import com.geckour.q.ui.MainActivity
 import timber.log.Timber
 import java.io.File
 
 class MediaRetrieveWorker : Worker() {
 
     companion object {
+        const val WORK_NAME = "media_retrieve_work"
         const val UNKNOWN: String = "UNKNOWN"
     }
 
@@ -34,7 +36,10 @@ class MediaRetrieveWorker : Worker() {
                             "${MediaStore.Audio.Media.IS_MUSIC}!=0",
                             null,
                             "${MediaStore.Audio.Media.TITLE} ASC")?.use { cursor ->
+                        val total = cursor.count
+
                         while (cursor.moveToNext()) {
+                            val current = cursor.position
                             val trackId = cursor.getLong(
                                     cursor.getColumnIndex(MediaStore.Audio.Media._ID))
                             val albumId = cursor.getLong(
@@ -43,16 +48,15 @@ class MediaRetrieveWorker : Worker() {
                                     cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST_ID))
                             val trackPath = cursor.getString(
                                     cursor.getColumnIndex(MediaStore.Audio.Media.DATA))
-                            pushMedia(trackId, albumId, artistId, trackPath)
+                            pushMedia(current to total, trackId, albumId, artistId, trackPath)
                         }
                         Timber.d("qgeck media retrieve worker completed")
-
                         Result.SUCCESS
                     } ?: Result.FAILURE
         }
     }
 
-    private fun pushMedia(trackId: Long, albumId: Long, artistId: Long, trackPath: String) {
+    private fun pushMedia(progress: Pair<Int, Int>, trackId: Long, albumId: Long, artistId: Long, trackPath: String) {
         val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackId)
 
         if (File(trackPath).exists().not()) {
@@ -98,6 +102,7 @@ class MediaRetrieveWorker : Worker() {
                 val track = Track(trackId, title, albumId, artistId, albumArtistId, duration,
                         trackNum, trackTotal, discNum, discTotal, trackPath)
                 DB.getInstance(applicationContext).trackDao().upsert(track)
+                applicationContext.sendBroadcast(MainActivity.createProgressIntent(progress))
             } catch (t: Throwable) {
                 Timber.e(t)
             }

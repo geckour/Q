@@ -8,17 +8,14 @@ import android.content.*
 import android.databinding.DataBindingUtil
 import android.os.Bundle
 import android.os.IBinder
-import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.support.design.widget.BottomSheetBehavior
+import android.support.v4.widget.DrawerLayout
 import android.support.v7.app.ActionBarDrawerToggle
 import android.support.v7.app.AppCompatActivity
 import android.view.MenuItem
 import android.view.View
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.State
-import androidx.work.WorkManager
-import androidx.work.WorkRequest
+import androidx.work.*
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ActivityMainBinding
@@ -33,21 +30,26 @@ import com.geckour.q.ui.library.song.SongListFragment
 import com.geckour.q.ui.sheet.BottomSheetViewModel
 import com.geckour.q.util.*
 import com.google.android.exoplayer2.Player
+import com.google.gson.Gson
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
-import java.util.*
 
 @RuntimePermissions
 class MainActivity : AppCompatActivity() {
 
     companion object {
-        private const val PREF_KEY_LATEST_WORKER_ID = "pref_key_latest_worker_id"
+        private const val ACTION_PROGRESS_SYNCING = "action_progress_syncing"
+        private const val EXTRA_PROGRESS_SYNCING = "extra_progress_syncing"
 
         fun createIntent(context: Context): Intent = Intent(context, MainActivity::class.java)
+
+        fun createProgressIntent(progress: Pair<Int, Int>) = Intent(ACTION_PROGRESS_SYNCING).apply {
+            putExtra(EXTRA_PROGRESS_SYNCING, progress)
+        }
     }
 
     private val viewModel: MainViewModel by lazy {
@@ -63,6 +65,15 @@ class MainActivity : AppCompatActivity() {
     private var player: PlayerService? = null
 
     private var isBoundService = false
+
+    private val syncingProgressReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            (intent?.extras?.get(EXTRA_PROGRESS_SYNCING) as? Pair<Int, Int>)?.apply {
+                binding.coordinatorMain.progressSync.text =
+                        getString(R.string.progress_sync, this.first, this.second)
+            }
+        }
+    }
 
     private val onNavigationItemSelectedListener: ((MenuItem) -> Boolean) = {
         when (it.itemId) {
@@ -168,18 +179,14 @@ class MainActivity : AppCompatActivity() {
         observeEvents()
 
         retrieveMediaIfEmpty()
+
+        registerReceiver(syncingProgressReceiver, IntentFilter(ACTION_PROGRESS_SYNCING))
     }
 
     override fun onResume() {
         super.onResume()
 
-        getLatestWorkerId()?.apply {
-            WorkManager.getInstance()
-                    .getStatusById(this)
-                    .observe(this@MainActivity, Observer {
-                        viewModel.isLoading.value = it?.state == State.RUNNING
-                    })
-        }
+        WorkManager.getInstance().monitorSyncState()
 
         if (player == null) {
             bottomSheetViewModel.currentQueue.value = emptyList()
@@ -202,6 +209,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         player?.onRequestedStop()
+        unregisterReceiver(syncingProgressReceiver)
     }
 
     override fun onBackPressed() {
@@ -236,17 +244,7 @@ class MainActivity : AppCompatActivity() {
 
     @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
     internal fun retrieveMedia() {
-        WorkManager.getInstance().also { workManager ->
-            val work = OneTimeWorkRequestBuilder<MediaRetrieveWorker>().build()
-            getLatestWorkerId()?.apply {
-                workManager.getStatusById(this).observe(this@MainActivity, Observer {
-                    if (it?.state != State.RUNNING) {
-                        workManager.cancelWorkById(this)
-                        workManager.invokeRetrieveMediaWorker(work)
-                    }
-                })
-            } ?: workManager.invokeRetrieveMediaWorker(work)
-        }
+        WorkManager.getInstance().invokeRetrieveMediaWorker()
     }
 
     private fun retrieveMediaIfEmpty() {
@@ -260,29 +258,23 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun WorkManager.invokeRetrieveMediaWorker(work: WorkRequest) {
-        setLatestWorkerId(work.id)
-        enqueue(work)
+    private fun WorkManager.invokeRetrieveMediaWorker() {
+        beginUniqueWork(MediaRetrieveWorker.WORK_NAME, ExistingWorkPolicy.APPEND,
+                OneTimeWorkRequestBuilder<MediaRetrieveWorker>().build()).enqueue()
         viewModel.isLoading.value = true
-        getStatusById(work.id).observe(this@MainActivity, Observer {
-            viewModel.isLoading.value = it?.state == State.RUNNING
-        })
+        monitorSyncState()
+    }
+
+    private fun WorkManager.monitorSyncState() {
+        getStatusesForUniqueWork(MediaRetrieveWorker.WORK_NAME)
+                .observe(this@MainActivity, Observer {
+                    viewModel.isLoading.value = it?.firstOrNull()?.state == State.RUNNING
+                })
     }
 
     @OnPermissionDenied(Manifest.permission.READ_EXTERNAL_STORAGE)
     internal fun onReadExternalStorageDenied() {
         retrieveMediaWithPermissionCheck()
-    }
-
-    private fun getLatestWorkerId(): UUID? =
-            PreferenceManager.getDefaultSharedPreferences(this)
-                    .getString(PREF_KEY_LATEST_WORKER_ID, null)?.let { UUID.fromString(it) }
-
-    private fun setLatestWorkerId(id: UUID) {
-        PreferenceManager.getDefaultSharedPreferences(this)
-                .edit()
-                .putString(PREF_KEY_LATEST_WORKER_ID, id.toString())
-                .apply()
     }
 
 
@@ -303,8 +295,12 @@ class MainActivity : AppCompatActivity() {
             }
         })
         viewModel.isLoading.observe(this, Observer {
-            binding.coordinatorMain.indicatorLoading.visibility =
-                    if (it == true) View.VISIBLE else View.GONE
+            if (it == null) return@Observer
+            binding.coordinatorMain.indicatorSyncing.visibility =
+                    if (it) View.VISIBLE else View.GONE
+            binding.drawerLayout.setDrawerLockMode(
+                    if (it) DrawerLayout.LOCK_MODE_LOCKED_CLOSED
+                    else DrawerLayout.LOCK_MODE_UNLOCKED)
         })
 
         viewModel.selectedArtist.observe(this, Observer {
