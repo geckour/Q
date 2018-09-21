@@ -54,7 +54,7 @@ class PlayerService : Service() {
     private val binder = PlayerBinder()
 
     private val mediaSession: MediaSession by lazy {
-        MediaSession(applicationContext, TAG).apply {
+        MediaSession(this, TAG).apply {
             setPlaybackState(PlaybackState.Builder()
                     .setActions(PlaybackState.ACTION_PLAY_PAUSE or
                             PlaybackState.ACTION_SKIP_TO_NEXT or
@@ -141,6 +141,7 @@ class PlayerService : Service() {
     private var onPlaybackStateChanged: ((Int, Boolean) -> Unit)? = null
     private var onPlaybackRatioChanged: ((Float) -> Unit)? = null
     private var onRepeatModeChanged: ((Int) -> Unit)? = null
+    private var onDestroyed: (() -> Unit)? = null
 
     private val mediaSourceFactory: ExtractorMediaSource.Factory by lazy {
         ExtractorMediaSource.Factory(DefaultDataSourceFactory(applicationContext,
@@ -266,7 +267,9 @@ class PlayerService : Service() {
 
         unregisterReceiver(headsetStateReceiver)
         parentJob.cancel()
+        player.stop(true)
         player.release()
+        onDestroyed?.invoke()
     }
 
     private fun onNotificationAction(intent: Intent) {
@@ -302,6 +305,10 @@ class PlayerService : Service() {
 
     fun setOnRepeatModeChangedListener(listener: (Int) -> Unit) {
         this.onRepeatModeChanged = listener
+    }
+
+    fun setOnDestroyedListener(listener: () -> Unit) {
+        this.onDestroyed = listener
     }
 
     fun submitQueue(queue: InsertQueue) {

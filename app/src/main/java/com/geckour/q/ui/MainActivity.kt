@@ -39,6 +39,7 @@ import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
+import timber.log.Timber
 import java.util.*
 
 @RuntimePermissions
@@ -62,7 +63,7 @@ class MainActivity : AppCompatActivity() {
 
     private var player: PlayerService? = null
 
-    private var isBoundedService = false
+    private var isBoundService = false
 
     private val onNavigationItemSelectedListener: ((MenuItem) -> Boolean) = {
         when (it.itemId) {
@@ -115,7 +116,7 @@ class MainActivity : AppCompatActivity() {
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             if (name == ComponentName(applicationContext, PlayerService::class.java)) {
-                isBoundedService = true
+                isBoundService = true
                 player = (service as? PlayerService.PlayerBinder)?.service?.apply {
                     setOnQueueChangedListener {
                         bottomSheetViewModel.currentQueue.value = it
@@ -137,6 +138,7 @@ class MainActivity : AppCompatActivity() {
                     setOnRepeatModeChangedListener {
                         bottomSheetViewModel.repeatMode.value = it
                     }
+                    setOnDestroyedListener { onDestroyPlayer() }
 
                     publishStatus()
                 }
@@ -152,8 +154,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        startService(PlayerService.createIntent(this))
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
 
@@ -181,24 +181,23 @@ class MainActivity : AppCompatActivity() {
                         viewModel.isLoading.value = it?.state == State.RUNNING
                     })
         }
+
+        if (player == null) {
+            bottomSheetViewModel.currentQueue.value = emptyList()
+            startService(PlayerService.createIntent(this))
+        }
     }
 
     override fun onStart() {
         super.onStart()
         parentJob = Job()
-        if (isBoundedService.not()) {
-            bindService(PlayerService.createIntent(this),
-                    serviceConnection, Context.BIND_ADJUST_WITH_ACTIVITY)
-        }
+        bindPlayer()
     }
 
     override fun onStop() {
         super.onStop()
         parentJob.cancel()
-        if (isBoundedService) {
-            isBoundedService = false
-            unbindService(serviceConnection)
-        }
+        unbindPlayer()
     }
 
     override fun onDestroy() {
@@ -216,6 +215,24 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
         onRequestPermissionsResult(requestCode, grantResults)
+    }
+
+    private fun bindPlayer() {
+        if (isBoundService.not()) {
+            bindService(PlayerService.createIntent(this),
+                    serviceConnection, Context.BIND_AUTO_CREATE)
+        }
+    }
+
+    private fun unbindPlayer() {
+        if (isBoundService) {
+            isBoundService = false
+            unbindService(serviceConnection)
+        }
+    }
+
+    private fun onDestroyPlayer() {
+        player = null
     }
 
     @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE)

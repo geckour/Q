@@ -164,7 +164,7 @@ class BottomSheetFragment : Fragment() {
                                     R.color.colorTintInactive))
                         }
             }
-            viewModel.currentPosition.value = viewModel.currentPosition.value
+            viewModel.currentPosition.value = if (state) viewModel.currentPosition.value else 0
         })
 
         viewModel.currentPosition.observe(this, Observer {
@@ -175,7 +175,10 @@ class BottomSheetFragment : Fragment() {
                     .into(binding.artwork)
             binding.textSong.text = song?.name
             binding.textArtist.text = song?.artist
-            if (song == null) binding.textTimeLeft.text = null
+            if (song == null) {
+                binding.textTimeLeft.text = null
+                binding.seekBar.progress = 0
+            }
             binding.textTimeRight.text = song?.duration?.getTimeString()
             adapter.setNowPlaying(it)
         })

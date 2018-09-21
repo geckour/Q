@@ -45,7 +45,7 @@ dependencies {
     def exo_ver = '2.8.4'
     def exo_ext_ver = '2.7.0-1'
 
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'com.android.support.constraint:constraint-layout:1.1.3'
     implementation "com.android.support:support-core-ui:$support_ver"
