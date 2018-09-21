@@ -15,6 +15,9 @@
     <string name="notification_action_next">NEXT</string>
 
 
+    <string name="syncing">Syncing library…</string>
+
+
     <string name="nav_header_desc">Q - Queue oriented player</string>
 
     <string name="nav_category_others">Others</string>
