@@ -24,7 +24,8 @@ class MainViewModel : ViewModel() {
 
     private var currentOrientedClassType: OrientedClassType? = null
 
-    val isLoading: SingleLiveEvent<Boolean> = SingleLiveEvent()
+    val syncing: SingleLiveEvent<Boolean> = SingleLiveEvent()
+    val loading: SingleLiveEvent<Boolean> = SingleLiveEvent()
 
     fun onRequestNavigate(artist: Artist) {
         selectedAlbum.value = null

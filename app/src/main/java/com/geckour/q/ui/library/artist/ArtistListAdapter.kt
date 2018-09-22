@@ -1,5 +1,7 @@
 package com.geckour.q.ui.library.artist
 
+import android.content.Context
+import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
@@ -14,6 +16,7 @@ import com.geckour.q.util.getArtworkUriFromAlbumId
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
+import java.io.File
 
 class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adapter<ArtistListAdapter.ViewHolder>() {
 
@@ -44,7 +47,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Ada
         notifyItemRemoved(index)
     }
 
-    internal fun upsertItem(item: Artist) {
+    internal fun upsertItem(context: Context, item: Artist) {
         var index = items.indexOfFirst { it.id == item.id }
         if (index < 0) {
             val tempList = ArrayList(items).apply { add(item) }
@@ -53,15 +56,23 @@ class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Ada
             items.add(index, item)
             notifyItemInserted(index)
         } else {
-            items[index] = item
-            notifyItemChanged(index)
+            val artworkUri = getArtworkUriFromAlbumId(item.albumId)
+            context.contentResolver.query(artworkUri, arrayOf(MediaStore.MediaColumns.DATA),
+                    null, null, null).use {
+                val exists = it.moveToFirst()
+                        && File(it.getString(it.getColumnIndex(MediaStore.MediaColumns.DATA))).exists()
+                if (exists) {
+                    items[index] = item
+                    notifyItemChanged(index)
+                }
+            }
         }
     }
 
-    internal fun upsertItems(items: List<Artist>) {
+    internal fun upsertItems(context: Context, items: List<Artist>) {
         val increased = items - this.items
         val decreased = this.items - items
-        increased.forEach { upsertItem(it) }
+        increased.forEach { upsertItem(context, it) }
         decreased.forEach { removeItem(it) }
     }
 

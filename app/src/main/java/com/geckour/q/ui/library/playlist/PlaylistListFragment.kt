@@ -39,8 +39,11 @@ class PlaylistListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        if (adapter.itemCount == 0)
+        if (adapter.itemCount == 0) {
+            mainViewModel.loading.value = true
             adapter.setItems(fetchPlaylists(requireContext()).sortedBy { it.name })
+            mainViewModel.loading.value = false
+        }
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -66,6 +69,7 @@ class PlaylistListFragment : Fragment() {
     override fun onStop() {
         super.onStop()
         parentJob.cancel()
+        mainViewModel.loading.value = false
     }
 
     override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {

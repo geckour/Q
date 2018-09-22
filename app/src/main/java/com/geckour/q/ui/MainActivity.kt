@@ -39,6 +39,7 @@ import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
+import timber.log.Timber
 
 @RuntimePermissions
 class MainActivity : AppCompatActivity() {
@@ -265,14 +266,14 @@ class MainActivity : AppCompatActivity() {
     private fun WorkManager.invokeRetrieveMediaWorker() {
         beginUniqueWork(MediaRetrieveWorker.WORK_NAME, ExistingWorkPolicy.KEEP,
                 OneTimeWorkRequestBuilder<MediaRetrieveWorker>().build()).enqueue()
-        viewModel.isLoading.value = true
+        viewModel.syncing.value = true
         monitorSyncState()
     }
 
     private fun WorkManager.monitorSyncState() {
         getStatusesForUniqueWork(MediaRetrieveWorker.WORK_NAME)
                 .observe(this@MainActivity, Observer {
-                    viewModel.isLoading.value =
+                    viewModel.syncing.value =
                             it?.firstOrNull { it.state == State.RUNNING } != null
                 })
     }
@@ -303,13 +304,16 @@ class MainActivity : AppCompatActivity() {
                 supportActionBar?.title = this
             }
         })
-        viewModel.isLoading.observe(this, Observer {
+
+        viewModel.syncing.observe(this, Observer {
             if (it == null) return@Observer
-            binding.coordinatorMain.indicatorSyncing.visibility =
-                    if (it) View.VISIBLE else View.GONE
-            binding.drawerLayout.setDrawerLockMode(
-                    if (it) DrawerLayout.LOCK_MODE_LOCKED_CLOSED
-                    else DrawerLayout.LOCK_MODE_UNLOCKED)
+            toggleIndicateSync(it)
+        })
+
+        viewModel.loading.observe(this, Observer {
+            Timber.d("qgeck loading: $it, syncing: ${viewModel.syncing.value}")
+            if (it == null || viewModel.syncing.value == true) return@Observer
+            toggleIndicateLoad(it)
         })
 
         viewModel.selectedArtist.observe(this, Observer {
@@ -479,5 +483,28 @@ class MainActivity : AppCompatActivity() {
         binding.drawerLayout.addDrawerListener(drawerToggle)
         drawerToggle.syncState()
         binding.navigationView.setNavigationItemSelectedListener(onNavigationItemSelected)
+    }
+
+    private fun toggleIndicateSync(syncing: Boolean) {
+        toggleIndicateLock(syncing)
+        binding.coordinatorMain.descLocking.text = getString(R.string.syncing)
+        binding.coordinatorMain.progressSync.visibility = View.VISIBLE
+        binding.coordinatorMain.buttonCancelSync.visibility = View.VISIBLE
+
+    }
+
+    private fun toggleIndicateLoad(loading: Boolean) {
+        toggleIndicateLock(loading)
+        binding.coordinatorMain.descLocking.text = getString(R.string.loading)
+        binding.coordinatorMain.progressSync.visibility = View.GONE
+        binding.coordinatorMain.buttonCancelSync.visibility = View.GONE
+    }
+
+    private fun toggleIndicateLock(locking: Boolean) {
+        binding.coordinatorMain.indicatorLocking.visibility =
+                if (locking) View.VISIBLE else View.GONE
+        binding.drawerLayout.setDrawerLockMode(
+                if (locking) DrawerLayout.LOCK_MODE_LOCKED_CLOSED
+                else DrawerLayout.LOCK_MODE_UNLOCKED)
     }
 }

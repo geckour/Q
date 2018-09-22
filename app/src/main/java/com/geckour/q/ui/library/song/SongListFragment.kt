@@ -116,6 +116,7 @@ class SongListFragment : Fragment() {
     override fun onStop() {
         super.onStop()
         parentJob.cancel()
+        mainViewModel.loading.value = false
     }
 
     override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
@@ -159,6 +160,7 @@ class SongListFragment : Fragment() {
             db.trackDao().getAllAsync().observe(this@SongListFragment, Observer { dbTrackList ->
                 if (dbTrackList == null) return@Observer
 
+                mainViewModel.loading.value = true
                 latestDbTrackList = dbTrackList
                 upsertSongListIfPossible(db, false)
             })
@@ -166,6 +168,7 @@ class SongListFragment : Fragment() {
     }
 
     private fun fetchSongsWithAlbum(album: Album) {
+        mainViewModel.loading.value = true
         launch(parentJob) {
             DB.getInstance(requireContext()).also { db ->
                 latestDbTrackList = db.trackDao().findByAlbum(album.id)
@@ -175,21 +178,27 @@ class SongListFragment : Fragment() {
     }
 
     private fun fetchSongsWithGenre(genre: Genre) {
+        mainViewModel.loading.value = true
         launch(UI + parentJob) {
             adapter.upsertItems(
                     getSongListFromTrackId(DB.getInstance(requireContext()),
                             genre.getTrackIds(requireContext()),
                             genreId = genre.id), false)
+            binding.recyclerView.smoothScrollToPosition(0)
+            mainViewModel.loading.value = false
         }
     }
 
     private fun fetchSongsWithPlaylist(playlist: Playlist) {
+        mainViewModel.loading.value = true
         launch(UI + parentJob) {
             adapter.addItems(
                     getSongListFromTrackIdWithTrackNum(DB.getInstance(requireContext()),
                             playlist.getTrackIds(requireContext()),
                             playlistId = playlist.id)
             )
+            binding.recyclerView.smoothScrollToPosition(0)
+            mainViewModel.loading.value = false
         }
     }
 
@@ -200,6 +209,8 @@ class SongListFragment : Fragment() {
                 delay(500)
                 val items = getSongListFromTrackList(db, latestDbTrackList)
                 adapter.upsertItems(items, sortByTrackOrder)
+                binding.recyclerView.smoothScrollToPosition(0)
+                mainViewModel.loading.value = false
                 chatteringCancelFlag = false
             }
         }

@@ -64,14 +64,10 @@ class ArtistListFragment : Fragment() {
         mainViewModel.resumedFragmentId.value = R.id.nav_artist
     }
 
-    override fun onPause() {
-        super.onPause()
-        onSaveInstanceState(Bundle())
-    }
-
     override fun onStop() {
         super.onStop()
         parentJob.cancel()
+        mainViewModel.loading.value = false
     }
 
     override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
@@ -116,6 +112,7 @@ class ArtistListFragment : Fragment() {
             db.trackDao().getAllAsync().observe(this@ArtistListFragment, Observer { dbTrackList ->
                 if (dbTrackList == null) return@Observer
 
+                mainViewModel.loading.value = true
                 latestDbTrackList = dbTrackList
                 upsertArtistListIfPossible(db)
             })
@@ -128,7 +125,9 @@ class ArtistListFragment : Fragment() {
             launch(UI + parentJob) {
                 delay(500)
                 val items = getAllAlbumArtist(db, latestDbTrackList).await()
-                adapter.upsertItems(items)
+                adapter.upsertItems(requireContext(), items)
+                binding.recyclerView.smoothScrollToPosition(0)
+                mainViewModel.loading.value = false
                 chatteringCancelFlag = false
             }
         }
@@ -139,17 +138,9 @@ class ArtistListFragment : Fragment() {
                 dbTrackList.distinctBy {
                     it.albumId
                 }.mapNotNull {
-                    if (it.albumArtistId != null) {
-                        val dbArtist = db.artistDao().get(it.albumArtistId
-                                ?: throw IllegalStateException())
-                                ?: return@mapNotNull null
-                        val albumId = it.albumId
-                        Artist(dbArtist.id, dbArtist.title, albumId)
-                    } else {
-                        val dbArtist = it.artistId.let { db.artistDao().get(it) }
-                                ?: return@mapNotNull null
-                        Artist(dbArtist.id, dbArtist.title, it.albumId)
-                    }
+                    val dbArtist = db.artistDao().get(it.albumArtistId ?: it.artistId)
+                            ?: return@mapNotNull null
+                    Artist(dbArtist.id, dbArtist.title, it.albumId)
                 }
             }
 }

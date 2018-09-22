@@ -76,6 +76,7 @@ class AlbumListFragment : Fragment() {
     override fun onStop() {
         super.onStop()
         parentJob.cancel()
+        mainViewModel.loading.value = false
     }
 
     override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
@@ -120,6 +121,7 @@ class AlbumListFragment : Fragment() {
             db.albumDao().getAllAsync().observe(this@AlbumListFragment, Observer { dbAlbumList ->
                 if (dbAlbumList == null) return@Observer
 
+                mainViewModel.loading.value = true
                 latestDbAlbumList = dbAlbumList
                 upsertArtistListIfPossible(db, artist)
             })
@@ -133,6 +135,8 @@ class AlbumListFragment : Fragment() {
                 delay(500)
                 val items = getAlbumList(db, artist).await()
                 adapter.upsertItems(items)
+                binding.recyclerView.smoothScrollToPosition(0)
+                mainViewModel.loading.value = false
                 chatteringCancelFlag = false
             }
         }
