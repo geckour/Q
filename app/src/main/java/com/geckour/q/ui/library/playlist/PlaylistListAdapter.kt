@@ -57,7 +57,7 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
     override fun getItemCount(): Int = items.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(items[holder.adapterPosition])
+        holder.bind()
     }
 
     inner class ViewHolder(private val binding: ItemListPlaylistBinding)
@@ -76,7 +76,8 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
             inflate(R.menu.playlist_long)
         }
 
-        fun bind(playlist: Playlist) {
+        fun bind() {
+            val playlist = items[adapterPosition]
             binding.data = playlist
             try {
                 Glide.with(binding.thumb).load(playlist.thumb).into(binding.thumb)

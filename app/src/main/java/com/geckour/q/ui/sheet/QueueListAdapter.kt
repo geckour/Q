@@ -67,7 +67,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
     override fun getItemCount(): Int = items.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.onBind(items[holder.adapterPosition], holder.adapterPosition)
+        holder.bind()
     }
 
     inner class ViewHolder(private val binding: ItemListSongBinding) :
@@ -94,8 +94,10 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             inflate(R.menu.queue)
         }
 
-        fun onBind(song: Song, position: Int) {
+        fun bind() {
+            val song = items[adapterPosition]
             binding.data = song
+            binding.duration.text = song.durationString
             try {
                 Glide.with(binding.thumb)
                         .load(getArtworkUriFromAlbumId(song.albumId))

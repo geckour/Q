@@ -335,3 +335,10 @@ fun Notification.show(service: Service, playWhenReady: Boolean) {
 fun Service.destroyNotification() {
     this.stopForeground(true)
 }
+
+fun Long.getTimeString(): String {
+    val hour = this / 3600000
+    val minute = (this / 60000) % 3600
+    val second = (this / 1000) % 60
+    return if (hour > 0) String.format("%02d", hour) else "" + String.format("%02d:%02d", minute, second)
+}

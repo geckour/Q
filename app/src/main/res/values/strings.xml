@@ -20,6 +20,9 @@
     <string name="button_cancel_sync">Cancel</string>
 
 
+    <string name="bottom_sheet_time_total">Total %1$s</string>
+
+
     <string name="nav_header_desc">Q - Queue oriented player</string>
 
     <string name="nav_category_others">Others</string>

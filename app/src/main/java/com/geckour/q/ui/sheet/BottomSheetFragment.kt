@@ -20,6 +20,7 @@ import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.PlaybackButton
 import com.geckour.q.util.getArtworkUriFromAlbumId
+import com.geckour.q.util.getTimeString
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 
@@ -147,21 +148,13 @@ class BottomSheetFragment : Fragment() {
             )
         })
 
-        viewModel.currentQueue.observe(this, Observer {
+        viewModel.currentQueue.observe(this, Observer { it ->
             adapter.setItems(it ?: emptyList())
             val state = it?.isNotEmpty() ?: false
             binding.isQueueNotEmpty = state
-            binding.seekBar.apply {
-                thumbTintList =
-                        if (state) {
-                            setOnTouchListener(null)
-                            ColorStateList.valueOf(ContextCompat.getColor(requireContext(),
-                                    R.color.colorPrimaryDark))
-                        } else {
-                            setOnTouchListener { _, _ -> true }
-                            ColorStateList.valueOf(ContextCompat.getColor(requireContext(),
-                                    R.color.colorTintInactive))
-                        }
+            val totalTime = it?.asSequence()?.map { it.duration }?.sum()
+            binding.textTimeTotal.text = totalTime?.let {
+                getString(R.string.bottom_sheet_time_total, it.getTimeString())
             }
             viewModel.currentPosition.value = if (state) viewModel.currentPosition.value else 0
         })
@@ -174,11 +167,24 @@ class BottomSheetFragment : Fragment() {
                     .into(binding.artwork)
             binding.textSong.text = song?.name
             binding.textArtist.text = song?.artist
+            binding.seekBar.apply {
+                thumbTintList =
+                        if (song != null) {
+                            setOnTouchListener(null)
+                            ColorStateList.valueOf(ContextCompat.getColor(requireContext(),
+                                    R.color.colorPrimaryDark))
+                        } else {
+                            setOnTouchListener { _, _ -> true }
+                            ColorStateList.valueOf(ContextCompat.getColor(requireContext(),
+                                    R.color.colorTintInactive))
+                        }
+            }
             if (song == null) {
                 binding.textTimeLeft.text = null
                 binding.seekBar.progress = 0
+                binding.textTimeTotal.text = null
             }
-            binding.textTimeRight.text = song?.duration?.getTimeString()
+            binding.textTimeRight.text = song?.durationString
             adapter.setNowPlaying(it)
         })
 
@@ -205,12 +211,5 @@ class BottomSheetFragment : Fragment() {
                 visibility = View.VISIBLE
             }
         })
-    }
-
-    private fun Long.getTimeString(): String {
-        val hour = this / 3600000
-        val minute = (this / 60000) % 3600
-        val second = (this / 1000) % 60
-        return if (hour > 0) String.format("%02d", hour) else "" + String.format("%02d:%02d", minute, second)
     }
 }

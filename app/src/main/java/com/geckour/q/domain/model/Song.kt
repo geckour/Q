@@ -1,5 +1,7 @@
 package com.geckour.q.domain.model
 
+import com.geckour.q.util.getTimeString
+
 data class Song(
         val id: Long,
         val albumId: Long,
@@ -14,4 +16,6 @@ data class Song(
         val playlistId: Long?,
         val sourcePath: String,
         val nowPlaying: Boolean = false
-)
+) {
+    val durationString: String get() = duration.getTimeString()
+}

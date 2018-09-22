@@ -104,7 +104,7 @@ class SongListAdapter(private val viewModel: MainViewModel,
     override fun getItemCount(): Int = items.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(items[holder.adapterPosition])
+        holder.bind()
     }
 
     inner class ViewHolder(private val binding: ItemListSongBinding)
@@ -145,8 +145,10 @@ class SongListAdapter(private val viewModel: MainViewModel,
             inflate(R.menu.song_long)
         }
 
-        fun bind(song: Song) {
+        fun bind() {
+            val song = items[adapterPosition]
             binding.data = song
+            binding.duration.text = song.durationString
             try {
                 Glide.with(binding.thumb)
                         .load(getArtworkUriFromAlbumId(song.albumId))

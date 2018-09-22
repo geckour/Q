@@ -79,13 +79,14 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
     override fun getItemCount(): Int = items.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(items[holder.adapterPosition])
+        holder.bind()
     }
 
 
     inner class ViewHolder(private val binding: ItemListAlbumBinding)
         : RecyclerView.ViewHolder(binding.root) {
-        fun bind(album: Album) {
+        fun bind() {
+            val album = items[adapterPosition]
             binding.data = album
             try {
                 Glide.with(binding.thumb)

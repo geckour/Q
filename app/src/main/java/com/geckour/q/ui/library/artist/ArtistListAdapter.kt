@@ -76,13 +76,14 @@ class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Ada
     override fun getItemCount(): Int = items.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(items[holder.adapterPosition])
+        holder.bind()
     }
 
 
     inner class ViewHolder(private val binding: ItemListArtistBinding)
         : RecyclerView.ViewHolder(binding.root) {
-        fun bind(artist: Artist) {
+        fun bind() {
+            val artist = items[adapterPosition]
             binding.data = artist
             try {
                 Glide.with(binding.thumb)

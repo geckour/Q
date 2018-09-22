@@ -3,7 +3,6 @@ package com.geckour.q.ui
 import androidx.lifecycle.ViewModel
 import com.geckour.q.domain.model.*
 import com.geckour.q.util.*
-import timber.log.Timber
 
 class MainViewModel : ViewModel() {
 

@@ -17,12 +17,12 @@ class QueueAddPlaylistListAdapter(private val items: List<Playlist>,
     override fun getItemCount(): Int = items.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.onBind(items[holder.adapterPosition])
+        holder.bind(items[holder.adapterPosition])
     }
 
     inner class ViewHolder(private val binding: ItemListSimplePlaylistBinding)
         : RecyclerView.ViewHolder(binding.root) {
-        fun onBind(playlist: Playlist) {
+        fun bind(playlist: Playlist) {
             binding.data = playlist
             binding.root.setOnClickListener { onSelectPlaylist(playlist) }
         }

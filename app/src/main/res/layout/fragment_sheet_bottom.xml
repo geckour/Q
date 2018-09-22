@@ -38,16 +38,14 @@
 
         <ImageView
             android:id="@+id/artwork"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="0dp"
-            android:layout_marginBottom="8dp"
             android:layout_marginLeft="16dp"
-            android:layout_marginRight="8dp"
             android:layout_marginTop="16dp"
+            android:adjustViewBounds="true"
             android:scaleType="fitCenter"
-            app:layout_constraintBottom_toTopOf="@id/seek_bar"
+            app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
             app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toLeftOf="@id/button_controller_left"
             app:layout_constraintTop_toTopOf="parent"
             tools:src="@tools:sample/avatars" />
 
@@ -82,7 +80,7 @@
             android:id="@+id/button_controller_left"
             android:layout_width="44dp"
             android:layout_height="44dp"
-            android:layout_marginRight="44dp"
+            android:layout_marginRight="24dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:clickable="@{isQueueNotEmpty}"
             android:onClick="@{() -> viewModel.onPrev()}"
@@ -115,7 +113,7 @@
             android:id="@+id/button_controller_right"
             android:layout_width="44dp"
             android:layout_height="44dp"
-            android:layout_marginLeft="44dp"
+            android:layout_marginLeft="24dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:clickable="@{isQueueNotEmpty}"
             android:onClick="@{() -> viewModel.onNext()}"
@@ -131,15 +129,14 @@
             android:id="@+id/button_repeat"
             android:layout_width="28dp"
             android:layout_height="28dp"
-            android:layout_marginTop="4dp"
+            android:layout_marginRight="16dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:onClick="@{() -> viewModel.onClickRepeatButton()}"
             android:padding="4dp"
             android:visibility="gone"
-            app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
-            app:layout_constraintLeft_toRightOf="@id/button_controller_right"
+            app:layout_constraintBottom_toBottomOf="@id/button_shuffle"
             app:layout_constraintRight_toLeftOf="@id/button_shuffle"
-            app:layout_constraintTop_toTopOf="@id/button_controller_center"
+            app:layout_constraintTop_toTopOf="@id/button_shuffle"
             tools:src="@drawable/ic_repeat"
             tools:tint="@color/colorTintInactive" />
 
@@ -195,7 +192,7 @@
             app:layout_constraintBottom_toTopOf="@id/guide_peek_height"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintWidth_percent="0.8"
+            app:layout_constraintWidth_percent="0.75"
             tools:progress="2000" />
 
         <TextView
@@ -208,6 +205,17 @@
             app:layout_constraintLeft_toRightOf="@id/seek_bar"
             app:layout_constraintTop_toTopOf="@id/seek_bar"
             tools:text="3:12" />
+
+        <TextView
+            android:id="@+id/text_time_total"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/colorTextPrimary"
+            android:textSize="12sp"
+            app:layout_constraintBottom_toBottomOf="@id/button_clear_queue"
+            app:layout_constraintLeft_toLeftOf="@id/artwork"
+            app:layout_constraintTop_toTopOf="@id/button_clear_queue"
+            tools:text="Total 34:28" />
 
         <ImageView
             android:id="@+id/button_add_queue_to_playlist"

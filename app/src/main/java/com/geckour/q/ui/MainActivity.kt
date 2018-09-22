@@ -39,7 +39,6 @@ import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
-import timber.log.Timber
 
 @RuntimePermissions
 class MainActivity : AppCompatActivity() {

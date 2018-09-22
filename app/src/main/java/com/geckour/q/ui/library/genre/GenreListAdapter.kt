@@ -54,13 +54,14 @@ class GenreListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
     override fun getItemCount(): Int = items.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-        holder.bind(items[holder.adapterPosition])
+        holder.bind()
     }
 
 
     inner class ViewHolder(private val binding: ItemListGenreBinding)
         : RecyclerView.ViewHolder(binding.root) {
-        fun bind(genre: Genre) {
+        fun bind() {
+            val genre = items[adapterPosition]
             binding.data = genre
             try {
                 Glide.with(binding.thumb).load(genre.thumb).into(binding.thumb)
