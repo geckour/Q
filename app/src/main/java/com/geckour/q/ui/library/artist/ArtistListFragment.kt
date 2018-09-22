@@ -106,7 +106,7 @@ class ArtistListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        mainViewModel.toolbarClicked.observe(this, Observer {
+        mainViewModel.requireScrollTop.observe(this, Observer {
             binding.recyclerView.smoothScrollToPosition(0)
         })
     }

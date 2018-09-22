@@ -3,27 +3,28 @@ package com.geckour.q.ui
 import androidx.lifecycle.ViewModel
 import com.geckour.q.domain.model.*
 import com.geckour.q.util.*
+import timber.log.Timber
 
 class MainViewModel : ViewModel() {
 
-    internal val resumedFragmentId: SingleLifeEvent<Int> = SingleLifeEvent()
-    internal val selectedArtist: SingleLifeEvent<Artist> = SingleLifeEvent()
-    internal val selectedAlbum: SingleLifeEvent<Album> = SingleLifeEvent()
+    internal val resumedFragmentId: SingleLiveEvent<Int> = SingleLiveEvent()
+    internal val selectedArtist: SingleLiveEvent<Artist> = SingleLiveEvent()
+    internal val selectedAlbum: SingleLiveEvent<Album> = SingleLiveEvent()
     internal var selectedSong: Song? = null
-    internal val selectedGenre: SingleLifeEvent<Genre> = SingleLifeEvent()
-    internal val selectedPlaylist: SingleLifeEvent<Playlist> = SingleLifeEvent()
-    internal val newQueue: SingleLifeEvent<InsertQueue> = SingleLifeEvent()
-    internal val requestedPositionInQueue: SingleLifeEvent<Int> = SingleLifeEvent()
-    internal val swappedQueuePositions: SingleLifeEvent<Pair<Int, Int>> = SingleLifeEvent()
-    internal val removedQueueIndex: SingleLifeEvent<Int> = SingleLifeEvent()
-    internal val removeFromPlaylistPlayOrder: SingleLifeEvent<Int> = SingleLifeEvent()
-    internal val deletedSongId: SingleLifeEvent<Long> = SingleLifeEvent()
-    internal val cancelSync: SingleLifeEvent<Unit> = SingleLifeEvent()
-    internal val toolbarClicked: SingleLifeEvent<Unit> = SingleLifeEvent()
+    internal val selectedGenre: SingleLiveEvent<Genre> = SingleLiveEvent()
+    internal val selectedPlaylist: SingleLiveEvent<Playlist> = SingleLiveEvent()
+    internal val newQueue: SingleLiveEvent<InsertQueue> = SingleLiveEvent()
+    internal val requestedPositionInQueue: SingleLiveEvent<Int> = SingleLiveEvent()
+    internal val swappedQueuePositions: SingleLiveEvent<Pair<Int, Int>> = SingleLiveEvent()
+    internal val removedQueueIndex: SingleLiveEvent<Int> = SingleLiveEvent()
+    internal val removeFromPlaylistPlayOrder: SingleLiveEvent<Int> = SingleLiveEvent()
+    internal val deletedSongId: SingleLiveEvent<Long> = SingleLiveEvent()
+    internal val cancelSync: SingleLiveEvent<Unit> = SingleLiveEvent()
+    internal val requireScrollTop: SingleLiveEvent<Unit> = SingleLiveEvent()
 
     private var currentOrientedClassType: OrientedClassType? = null
 
-    val isLoading: SingleLifeEvent<Boolean> = SingleLifeEvent()
+    val isLoading: SingleLiveEvent<Boolean> = SingleLiveEvent()
 
     fun onRequestNavigate(artist: Artist) {
         selectedAlbum.value = null
@@ -95,6 +96,6 @@ class MainViewModel : ViewModel() {
     }
 
     fun onToolbarClick() {
-        toolbarClicked.call()
+        requireScrollTop.call()
     }
 }

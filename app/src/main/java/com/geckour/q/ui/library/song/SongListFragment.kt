@@ -149,7 +149,7 @@ class SongListFragment : Fragment() {
             if (removed) adapter.removeByPlayOrder(it)
         })
 
-        mainViewModel.toolbarClicked.observe(this, Observer {
+        mainViewModel.requireScrollTop.observe(this, Observer {
             binding.recyclerView.smoothScrollToPosition(0)
         })
     }

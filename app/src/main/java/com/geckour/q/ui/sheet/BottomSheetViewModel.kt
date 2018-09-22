@@ -3,27 +3,27 @@ package com.geckour.q.ui.sheet
 import androidx.lifecycle.ViewModel
 import com.geckour.q.domain.model.Song
 import com.geckour.q.util.PlaybackButton
-import com.geckour.q.util.SingleLifeEvent
+import com.geckour.q.util.SingleLiveEvent
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 
 class BottomSheetViewModel : ViewModel() {
 
-    internal val sheetState: SingleLifeEvent<Int> = SingleLifeEvent()
-    internal val playbackButton: SingleLifeEvent<PlaybackButton> = SingleLifeEvent()
-    internal val currentQueue: SingleLifeEvent<List<Song>> = SingleLifeEvent()
-    internal val currentPosition: SingleLifeEvent<Int> = SingleLifeEvent()
-    internal val addQueueToPlaylist: SingleLifeEvent<List<Song>> = SingleLifeEvent()
-    internal val clearQueue: SingleLifeEvent<Unit> = SingleLifeEvent()
-    internal val newSeekBarProgress: SingleLifeEvent<Float> = SingleLifeEvent()
-    internal val shuffle: SingleLifeEvent<Unit> = SingleLifeEvent()
-    internal val changedQueue: SingleLifeEvent<List<Song>> = SingleLifeEvent()
-    internal val changedPosition: SingleLifeEvent<Int> = SingleLifeEvent()
+    internal val sheetState: SingleLiveEvent<Int> = SingleLiveEvent()
+    internal val playbackButton: SingleLiveEvent<PlaybackButton> = SingleLiveEvent()
+    internal val currentQueue: SingleLiveEvent<List<Song>> = SingleLiveEvent()
+    internal val currentPosition: SingleLiveEvent<Int> = SingleLiveEvent()
+    internal val addQueueToPlaylist: SingleLiveEvent<List<Song>> = SingleLiveEvent()
+    internal val clearQueue: SingleLiveEvent<Unit> = SingleLiveEvent()
+    internal val newSeekBarProgress: SingleLiveEvent<Float> = SingleLiveEvent()
+    internal val shuffle: SingleLiveEvent<Unit> = SingleLiveEvent()
+    internal val changedQueue: SingleLiveEvent<List<Song>> = SingleLiveEvent()
+    internal val changedPosition: SingleLiveEvent<Int> = SingleLiveEvent()
 
-    internal val playing: SingleLifeEvent<Boolean> = SingleLifeEvent()
-    internal val playbackRatio: SingleLifeEvent<Float> = SingleLifeEvent()
+    internal val playing: SingleLiveEvent<Boolean> = SingleLiveEvent()
+    internal val playbackRatio: SingleLiveEvent<Float> = SingleLiveEvent()
 
-    internal val repeatMode: SingleLifeEvent<Int> = SingleLifeEvent()
-    internal val changeRepeatMode: SingleLifeEvent<Unit> = SingleLifeEvent()
+    internal val repeatMode: SingleLiveEvent<Int> = SingleLiveEvent()
+    internal val changeRepeatMode: SingleLiveEvent<Unit> = SingleLiveEvent()
 
     init {
         sheetState.value = BottomSheetBehavior.STATE_COLLAPSED

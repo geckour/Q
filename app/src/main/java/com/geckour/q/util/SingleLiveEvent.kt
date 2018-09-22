@@ -6,25 +6,17 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import java.util.concurrent.atomic.AtomicBoolean
 
-class SingleLifeEvent<T> : MutableLiveData<T>() {
+class SingleLiveEvent<T> : MutableLiveData<T>() {
 
     private val pending = AtomicBoolean(false)
-    private val observers = mutableSetOf<Observer<in T>>()
-
-    private val internalObserver = Observer<T> { t ->
-        if (pending.compareAndSet(true, false)) {
-            observers.forEach { observer ->
-                observer.onChanged(t)
-            }
-        }
-    }
 
     @MainThread
     override fun observe(owner: LifecycleOwner, observer: Observer<in T>) {
-        observers.add(observer)
-
         // Observe the internal MutableLiveData
-        if (!hasObservers()) super.observe(owner, internalObserver)
+        super.observe(owner, Observer<T> { t ->
+            if (pending.compareAndSet(true, false))
+                observer.onChanged(t)
+        })
     }
 
     @MainThread
