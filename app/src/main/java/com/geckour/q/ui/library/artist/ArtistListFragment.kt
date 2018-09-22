@@ -136,21 +136,19 @@ class ArtistListFragment : Fragment() {
 
     private fun getAllAlbumArtist(db: DB, dbTrackList: List<Track>): Deferred<List<Artist>> =
             async(parentJob) {
-                dbTrackList.groupBy {
+                dbTrackList.distinctBy {
                     it.albumId
                 }.mapNotNull {
-                    val track = it.value.firstOrNull { it.albumArtistId != null }
-                    if (track != null) {
-                        val dbArtist = db.artistDao().get(track.albumArtistId
+                    if (it.albumArtistId != null) {
+                        val dbArtist = db.artistDao().get(it.albumArtistId
                                 ?: throw IllegalStateException())
                                 ?: return@mapNotNull null
-                        val albumId = track.albumId
+                        val albumId = it.albumId
                         Artist(dbArtist.id, dbArtist.title, albumId)
                     } else {
-                        val dbArtist = (it.value.maxBy { it.artistId }
-                                ?: it.value.first()).let { db.artistDao().get(it.artistId) }
+                        val dbArtist = it.artistId.let { db.artistDao().get(it) }
                                 ?: return@mapNotNull null
-                        Artist(dbArtist.id, dbArtist.title, it.key)
+                        Artist(dbArtist.id, dbArtist.title, it.albumId)
                     }
                 }
             }

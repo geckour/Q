@@ -19,13 +19,13 @@ class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Ada
 
     private val items: ArrayList<Artist> = ArrayList()
 
-    internal fun setItems(items: List<Artist>) {
+    internal fun addItems(items: List<Artist>) {
         this.items.clear()
         this.items.addAll(items)
         notifyDataSetChanged()
     }
 
-    internal fun setItem(item: Artist, position: Int = itemCount) {
+    internal fun addItem(item: Artist, position: Int = itemCount) {
         if (items.lastIndex < position) {
             items.add(item)
             notifyItemInserted(items.lastIndex)
@@ -36,6 +36,13 @@ class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Ada
     }
 
     internal fun getItems(): List<Artist> = items
+
+    internal fun removeItem(item: Artist) {
+        val index = items.indexOfFirst { it.id == item.id }
+        if (index < 0) return
+        items.removeAt(index)
+        notifyItemRemoved(index)
+    }
 
     internal fun upsertItem(item: Artist) {
         var index = items.indexOfFirst { it.id == item.id }
@@ -52,10 +59,10 @@ class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Ada
     }
 
     internal fun upsertItems(items: List<Artist>) {
-        val changed = items - this.items
-        changed.forEach {
-            upsertItem(it)
-        }
+        val increased = items - this.items
+        val decreased = this.items - items
+        increased.forEach { upsertItem(it) }
+        decreased.forEach { removeItem(it) }
     }
 
     internal fun clearItems() {
