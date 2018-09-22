@@ -10,35 +10,14 @@
             type="com.geckour.q.ui.MainViewModel" />
     </data>
 
-    <FrameLayout
+    <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        tools:context=".view.activity.MainActivity">
 
-        <androidx.coordinatorlayout.widget.CoordinatorLayout
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            tools:context=".view.activity.MainActivity">
-
-            <include
-                android:id="@+id/content_main"
-                layout="@layout/content_main" />
-
-            <fragment
-                android:id="@+id/bottom_sheet"
-                android:name="com.geckour.q.ui.sheet.BottomSheetFragment"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_gravity="bottom"
-                android:layout_marginBottom="20dp"
-                android:nestedScrollingEnabled="false"
-                android:orientation="vertical"
-                android:scrollbarStyle="outsideOverlay"
-                android:scrollbars="vertical"
-                app:behavior_peekHeight="@dimen/bottom_sheet_peek_height"
-                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-                app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
-                tools:layout="@layout/fragment_sheet_bottom" />
-        </androidx.coordinatorlayout.widget.CoordinatorLayout>
+        <include
+            android:id="@+id/content_main"
+            layout="@layout/content_main" />
 
         <RelativeLayout
             android:id="@+id/indicator_locking"
@@ -86,5 +65,21 @@
                 android:text="@string/button_cancel_sync"
                 android:textColor="@android:color/white" />
         </RelativeLayout>
-    </FrameLayout>
+
+        <fragment
+            android:id="@+id/bottom_sheet"
+            android:name="com.geckour.q.ui.sheet.BottomSheetFragment"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="bottom"
+            android:layout_marginBottom="20dp"
+            android:nestedScrollingEnabled="false"
+            android:orientation="vertical"
+            android:scrollbarStyle="outsideOverlay"
+            android:scrollbars="vertical"
+            app:behavior_peekHeight="@dimen/bottom_sheet_peek_height"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
+            tools:layout="@layout/fragment_sheet_bottom" />
+    </androidx.coordinatorlayout.widget.CoordinatorLayout>
 </layout>
