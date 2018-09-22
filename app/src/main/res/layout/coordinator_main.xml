@@ -25,7 +25,8 @@
             android:layout_height="match_parent"
             android:background="@color/colorBackgroundInactive"
             android:clickable="true"
-            android:focusable="true">
+            android:focusable="true"
+            android:visibility="gone">
 
             <ProgressBar
                 android:id="@+id/progress_bar"
@@ -65,6 +66,13 @@
                 android:text="@string/button_cancel_sync"
                 android:textColor="@android:color/white" />
         </RelativeLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:background="@drawable/shadow_sheet_bottom"
+            app:layout_anchor="@id/bottom_sheet"
+            app:layout_anchorGravity="top"/>
 
         <fragment
             android:id="@+id/bottom_sheet"
