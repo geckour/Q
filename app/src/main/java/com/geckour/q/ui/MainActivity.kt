@@ -303,6 +303,7 @@ class MainActivity : AppCompatActivity() {
             }?.tag?.apply {
                 supportActionBar?.title = this
             }
+            binding.navigationView.setCheckedItem(navId)
         })
 
         viewModel.syncing.observe(this, Observer {
