@@ -39,7 +39,6 @@ import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
-import timber.log.Timber
 
 @RuntimePermissions
 class MainActivity : AppCompatActivity() {
@@ -312,7 +311,6 @@ class MainActivity : AppCompatActivity() {
         })
 
         viewModel.loading.observe(this, Observer {
-            Timber.d("qgeck loading: $it, syncing: ${viewModel.syncing.value}")
             if (it == null || viewModel.syncing.value == true) return@Observer
             toggleIndicateLoad(it)
         })

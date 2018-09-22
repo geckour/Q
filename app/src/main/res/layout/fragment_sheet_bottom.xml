@@ -217,7 +217,7 @@
             app:layout_constraintBottom_toBottomOf="@id/button_clear_queue"
             app:layout_constraintLeft_toLeftOf="@id/artwork"
             app:layout_constraintTop_toTopOf="@id/button_clear_queue"
-            tools:text="Total 34:28" />
+            tools:text="Total・1:34:28" />
 
         <ImageView
             android:id="@+id/button_add_queue_to_playlist"
