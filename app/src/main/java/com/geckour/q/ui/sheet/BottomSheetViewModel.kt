@@ -18,6 +18,7 @@ class BottomSheetViewModel : ViewModel() {
     internal val shuffle: SingleLiveEvent<Unit> = SingleLiveEvent()
     internal val changedQueue: SingleLiveEvent<List<Song>> = SingleLiveEvent()
     internal val changedPosition: SingleLiveEvent<Int> = SingleLiveEvent()
+    internal val scrollToCurrent: SingleLiveEvent<Unit> = SingleLiveEvent()
 
     internal val playing: SingleLiveEvent<Boolean> = SingleLiveEvent()
     internal val playbackRatio: SingleLiveEvent<Float> = SingleLiveEvent()
@@ -46,6 +47,10 @@ class BottomSheetViewModel : ViewModel() {
 
     fun onClickShuffleButton() {
         shuffle.call()
+    }
+
+    fun onClickScrollToCurrentButton() {
+        scrollToCurrent.call()
     }
 
     fun onClickRepeatButton() {

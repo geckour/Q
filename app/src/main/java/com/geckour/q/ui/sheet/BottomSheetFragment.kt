@@ -215,5 +215,9 @@ class BottomSheetFragment : Fragment() {
                 visibility = View.VISIBLE
             }
         })
+
+        viewModel.scrollToCurrent.observe(this, Observer {
+            binding.recyclerView.smoothScrollToPosition(viewModel.currentPosition.value ?: 0)
+        })
     }
 }

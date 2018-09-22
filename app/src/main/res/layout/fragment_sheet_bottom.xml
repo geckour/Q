@@ -208,15 +208,29 @@
             app:layout_constraintTop_toTopOf="@id/seek_bar"
             tools:text="3:12" />
 
+        <ImageView
+            android:id="@+id/button_scroll_to_current"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:onClick="@{() -> viewModel.onClickScrollToCurrentButton()}"
+            android:padding="4dp"
+            android:src="@drawable/ic_scroll"
+            android:tint="@{isQueueNotEmpty ? @color/colorAccent : @color/colorTintInactive}"
+            app:layout_constraintLeft_toLeftOf="@id/artwork"
+            app:layout_constraintTop_toBottomOf="@id/guide_peek_height"
+            tools:tint="@color/colorAccent" />
+
         <TextView
             android:id="@+id/text_time_total"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginLeft="8dp"
             android:textColor="@color/colorTextPrimary"
             android:textSize="12sp"
-            app:layout_constraintBottom_toBottomOf="@id/button_clear_queue"
-            app:layout_constraintLeft_toLeftOf="@id/artwork"
-            app:layout_constraintTop_toTopOf="@id/button_clear_queue"
+            app:layout_constraintBottom_toBottomOf="@id/button_scroll_to_current"
+            app:layout_constraintLeft_toRightOf="@id/button_scroll_to_current"
+            app:layout_constraintTop_toTopOf="@id/button_scroll_to_current"
             tools:text="Total・1:34:28" />
 
         <ImageView
