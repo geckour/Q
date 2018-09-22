@@ -186,6 +186,10 @@ class BottomSheetFragment : Fragment() {
             }
             binding.textTimeRight.text = song?.durationString
             adapter.setNowPlaying(it)
+
+            if (song != null && viewModel.sheetState.value != BottomSheetBehavior.STATE_EXPANDED) {
+                binding.recyclerView.smoothScrollToPosition(it)
+            }
         })
 
         viewModel.playing.observe(this, Observer {
