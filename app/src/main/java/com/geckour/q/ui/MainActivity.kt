@@ -169,6 +169,7 @@ class MainActivity : AppCompatActivity() {
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
         binding.coordinatorMain.viewModel = viewModel
+        binding.coordinatorMain.contentMain.viewModel = viewModel
 
         setSupportActionBar(binding.coordinatorMain.contentMain.toolbar)
 

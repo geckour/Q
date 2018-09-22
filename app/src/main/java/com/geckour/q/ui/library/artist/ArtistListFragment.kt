@@ -50,6 +50,8 @@ class ArtistListFragment : Fragment() {
         setHasOptionsMenu(true)
 
         binding.recyclerView.adapter = adapter
+
+        observeEvents()
     }
 
     override fun onStart() {
@@ -101,6 +103,12 @@ class ArtistListFragment : Fragment() {
         }
 
         return true
+    }
+
+    private fun observeEvents() {
+        mainViewModel.toolbarClicked.observe(this, Observer {
+            binding.recyclerView.smoothScrollToPosition(0)
+        })
     }
 
     private fun fetchArtists() {

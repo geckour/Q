@@ -148,6 +148,10 @@ class SongListFragment : Fragment() {
                             arrayOf(it.toString()))?.equals(1) ?: return@Observer
             if (removed) adapter.removeByPlayOrder(it)
         })
+
+        mainViewModel.toolbarClicked.observe(this, Observer {
+            binding.recyclerView.smoothScrollToPosition(0)
+        })
     }
 
     private fun fetchSongs() {

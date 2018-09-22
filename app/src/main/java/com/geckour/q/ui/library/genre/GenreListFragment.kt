@@ -3,6 +3,7 @@ package com.geckour.q.ui.library.genre
 import android.os.Bundle
 import android.view.*
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -48,6 +49,8 @@ class GenreListFragment : Fragment() {
         setHasOptionsMenu(true)
 
         binding.recyclerView.adapter = adapter
+
+        observeEvents()
     }
 
     override fun onResume() {
@@ -98,5 +101,11 @@ class GenreListFragment : Fragment() {
         }
 
         return true
+    }
+
+    private fun observeEvents() {
+        mainViewModel.toolbarClicked.observe(this, Observer {
+            binding.recyclerView.smoothScrollToPosition(0)
+        })
     }
 }

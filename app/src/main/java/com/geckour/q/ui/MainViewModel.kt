@@ -19,6 +19,7 @@ class MainViewModel : ViewModel() {
     internal val removeFromPlaylistPlayOrder: SingleLifeEvent<Int> = SingleLifeEvent()
     internal val deletedSongId: SingleLifeEvent<Long> = SingleLifeEvent()
     internal val cancelSync: SingleLifeEvent<Unit> = SingleLifeEvent()
+    internal val toolbarClicked: SingleLifeEvent<Unit> = SingleLifeEvent()
 
     private var currentOrientedClassType: OrientedClassType? = null
 
@@ -91,5 +92,9 @@ class MainViewModel : ViewModel() {
 
     fun onCancelSync() {
         cancelSync.call()
+    }
+
+    fun onToolbarClick() {
+        toolbarClicked.call()
     }
 }
