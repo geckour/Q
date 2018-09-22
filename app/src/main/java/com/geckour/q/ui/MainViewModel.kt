@@ -3,6 +3,7 @@ package com.geckour.q.ui
 import androidx.lifecycle.ViewModel
 import com.geckour.q.domain.model.*
 import com.geckour.q.util.*
+import timber.log.Timber
 
 class MainViewModel : ViewModel() {
 
@@ -18,6 +19,7 @@ class MainViewModel : ViewModel() {
     internal val removedQueueIndex: SingleLifeEvent<Int> = SingleLifeEvent()
     internal val removeFromPlaylistPlayOrder: SingleLifeEvent<Int> = SingleLifeEvent()
     internal val deletedSongId: SingleLifeEvent<Long> = SingleLifeEvent()
+    internal val cancelSync: SingleLifeEvent<Unit> = SingleLifeEvent()
 
     private var currentOrientedClassType: OrientedClassType? = null
 
@@ -86,5 +88,9 @@ class MainViewModel : ViewModel() {
 
     fun onRequestRemoveSongFromPlaylist(playOrder: Int) {
         removeFromPlaylistPlayOrder.value = playOrder
+    }
+
+    fun onCancelSync() {
+        cancelSync.call()
     }
 }

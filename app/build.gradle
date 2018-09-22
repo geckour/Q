@@ -34,11 +34,12 @@ repositories {
 }
 
 dependencies {
-    def aac_ver = '2.0.0-alpha1'
     def support_ver = '1.0.0'
+    def aac_lifecycle_ver = '2.0.0-beta01'
+    def aac_room_ver = '2.0.0-beta01'
+    def aac_work_ver = '1.0.0-alpha09'
     def coroutines_ver = '0.25.0'
     def permission_dispatcher_ver = '3.3.1'
-    def aac_work_ver = '1.0.0-alpha09'
     def stetho_ver = '1.5.0'
     def glide_ver = '4.7.1'
     def exo_ver = '2.8.4'
@@ -68,17 +69,17 @@ dependencies {
 
     // AAC ViewModel
     implementation 'androidx.lifecycle:lifecycle-extensions:2.0.0'
-    kapt "androidx.lifecycle:lifecycle-compiler:$aac_ver"
-    implementation "androidx.lifecycle:lifecycle-common-java8:$aac_ver"
+    kapt "androidx.lifecycle:lifecycle-compiler:$aac_lifecycle_ver"
+    implementation "androidx.lifecycle:lifecycle-common-java8:$aac_lifecycle_ver"
 
     // AAC WorkManager
     implementation "android.arch.work:work-runtime:$aac_work_ver"
     implementation "android.arch.work:work-runtime-ktx:$aac_work_ver"
 
     // AAC Room
-    implementation "androidx.room:room-runtime:2.0.0-rc01"
-    kapt "androidx.room:room-compiler:$aac_ver"
-    androidTestImplementation "androidx.room:room-testing:$aac_ver"
+    implementation "androidx.room:room-runtime:$aac_room_ver"
+    kapt "androidx.room:room-compiler:$aac_room_ver"
+    androidTestImplementation "androidx.room:room-testing:$aac_room_ver"
 
     // Permission
     implementation "com.github.hotchemi:permissionsdispatcher:$permission_dispatcher_ver"

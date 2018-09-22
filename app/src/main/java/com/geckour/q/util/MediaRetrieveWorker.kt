@@ -36,6 +36,8 @@ class MediaRetrieveWorker(context: Context, parameters: WorkerParameters? = null
         const val UNKNOWN: String = "UNKNOWN"
     }
 
+    private var forceStop = false
+
     override fun doWork(): Result {
         return if (applicationContext.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -53,7 +55,7 @@ class MediaRetrieveWorker(context: Context, parameters: WorkerParameters? = null
                             "${MediaStore.Audio.Media.TITLE} ASC")?.use { cursor ->
                         val total = cursor.count
 
-                        while (cursor.moveToNext()) {
+                        while (forceStop.not() && cursor.moveToNext()) {
                             val current = cursor.position
                             val trackId = cursor.getLong(
                                     cursor.getColumnIndex(MediaStore.Audio.Media._ID))
@@ -65,10 +67,16 @@ class MediaRetrieveWorker(context: Context, parameters: WorkerParameters? = null
                                     cursor.getColumnIndex(MediaStore.Audio.Media.DATA))
                             pushMedia(current to total, trackId, albumId, artistId, trackPath)
                         }
-                        Timber.d("qgeck media retrieve worker completed")
-                        Result.SUCCESS
+                        Timber.d("qgeck media retrieve worker completed, successfully: ${forceStop.not()}")
+                        if (forceStop) Result.FAILURE else Result.SUCCESS
                     } ?: Result.FAILURE
         }
+    }
+
+    override fun onStopped(cancelled: Boolean) {
+        super.onStopped(cancelled)
+
+        if (cancelled) forceStop = true
     }
 
     private fun pushMedia(progress: Pair<Int, Int>, trackId: Long, albumId: Long, artistId: Long, trackPath: String) {

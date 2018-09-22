@@ -17,6 +17,7 @@
 
     <string name="syncing">Syncing library…</string>
     <string name="progress_sync">%1$s / %2$s</string>
+    <string name="button_cancel_sync">Cancel</string>
 
 
     <string name="nav_header_desc">Q - Queue oriented player</string>

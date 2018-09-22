@@ -39,6 +39,7 @@ import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
+import timber.log.Timber
 
 @RuntimePermissions
 class MainActivity : AppCompatActivity() {
@@ -77,7 +78,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val onNavigationItemSelectedListener: ((MenuItem) -> Boolean) = {
+    private val onNavigationItemSelected: (MenuItem) -> Boolean = {
         when (it.itemId) {
             R.id.nav_artist -> {
                 supportFragmentManager.beginTransaction()
@@ -168,6 +169,7 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
+        binding.coordinatorMain.viewModel = viewModel
 
         setSupportActionBar(binding.coordinatorMain.contentMain.toolbar)
 
@@ -175,7 +177,7 @@ class MainActivity : AppCompatActivity() {
 
         // TODO: 設定画面でどの画面を初期画面にするか設定できるようにする
         val navId = R.id.nav_artist
-        onNavigationItemSelectedListener(binding.navigationView.menu.findItem(navId))
+        onNavigationItemSelected(binding.navigationView.menu.findItem(navId))
         binding.navigationView.setCheckedItem(navId)
 
         observeEvents()
@@ -275,6 +277,10 @@ class MainActivity : AppCompatActivity() {
                 })
     }
 
+    private fun WorkManager.cancelSync() {
+        cancelUniqueWork(MediaRetrieveWorker.WORK_NAME)
+    }
+
     @OnPermissionDenied(Manifest.permission.READ_EXTERNAL_STORAGE)
     internal fun onReadExternalStorageDenied() {
         retrieveMediaWithPermissionCheck()
@@ -361,6 +367,10 @@ class MainActivity : AppCompatActivity() {
         viewModel.deletedSongId.observe(this, Observer {
             if (it == null) return@Observer
             player?.removeQueue(it)
+        })
+
+        viewModel.cancelSync.observe(this, Observer {
+            WorkManager.getInstance().cancelSync()
         })
 
         bottomSheetViewModel.playbackButton.observe(this, Observer {
@@ -468,6 +478,6 @@ class MainActivity : AppCompatActivity() {
                 R.string.drawer_open, R.string.drawer_close)
         binding.drawerLayout.addDrawerListener(drawerToggle)
         drawerToggle.syncState()
-        binding.navigationView.setNavigationItemSelectedListener(onNavigationItemSelectedListener)
+        binding.navigationView.setNavigationItemSelectedListener(onNavigationItemSelected)
     }
 }
