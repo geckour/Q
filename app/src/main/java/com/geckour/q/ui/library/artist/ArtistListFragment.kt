@@ -1,20 +1,24 @@
 package com.geckour.q.ui.library.artist
 
 import android.os.Bundle
+import android.provider.MediaStore
 import android.view.*
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.Track
+import com.geckour.q.data.db.model.Album
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.UNKNOWN
+import com.geckour.q.util.getArtworkUriFromId
 import com.geckour.q.util.getSong
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
+import java.io.File
 
 class ArtistListFragment : Fragment() {
 
@@ -29,7 +33,7 @@ class ArtistListFragment : Fragment() {
     private val adapter: ArtistListAdapter by lazy { ArtistListAdapter(mainViewModel) }
 
     private var parentJob = Job()
-    private var latestDbTrackList: List<Track> = emptyList()
+    private var latestDbAlbumList: List<Album> = emptyList()
     private var chatteringCancelFlag: Boolean = false
 
     override fun onCreateView(inflater: LayoutInflater,
@@ -105,11 +109,11 @@ class ArtistListFragment : Fragment() {
 
     private fun fetchArtists() {
         DB.getInstance(requireContext()).also { db ->
-            db.trackDao().getAllAsync().observe(this@ArtistListFragment, Observer { dbTrackList ->
-                if (dbTrackList == null) return@Observer
+            db.albumDao().getAllAsync().observe(this@ArtistListFragment, Observer { dbAlbumList ->
+                if (dbAlbumList == null) return@Observer
 
                 mainViewModel.loading.value = true
-                latestDbTrackList = dbTrackList
+                latestDbAlbumList = dbAlbumList
                 upsertArtistListIfPossible(db)
             })
         }
@@ -120,8 +124,8 @@ class ArtistListFragment : Fragment() {
             chatteringCancelFlag = true
             launch(UI + parentJob) {
                 delay(500)
-                val items = getAllAlbumArtist(db, latestDbTrackList).await()
-                adapter.upsertItems(requireContext(), items)
+                val items = getAllArtist(db, latestDbAlbumList).await()
+                adapter.upsertItems(items)
                 binding.recyclerView.smoothScrollToPosition(0)
                 mainViewModel.loading.value = false
                 chatteringCancelFlag = false
@@ -129,14 +133,27 @@ class ArtistListFragment : Fragment() {
         }
     }
 
-    private fun getAllAlbumArtist(db: DB, dbTrackList: List<Track>): Deferred<List<Artist>> =
+    private fun getAllArtist(db: DB, dbAlbumList: List<Album>): Deferred<List<Artist>> =
             async(parentJob) {
-                dbTrackList.distinctBy {
-                    it.albumId
-                }.mapNotNull {
-                    val dbArtist = db.artistDao().get(it.albumArtistId ?: it.artistId)
-                            ?: return@mapNotNull null
-                    Artist(dbArtist.id, dbArtist.title, it.albumId)
-                }
+                dbAlbumList.asSequence()
+                        .groupBy { it.artistId }
+                        .map {
+                            val albumId = it.value.lastOrNull { existArtwork(db, it.id) }?.id
+                                    ?: it.value.first().id
+                            val artistName = db.artistDao().get(it.key)?.title
+                                    ?: UNKNOWN
+                            Artist(it.key, artistName, albumId)
+                        }
             }
+
+    private suspend fun existArtwork(db: DB, albumId: Long): Boolean =
+            db.getArtworkUriFromId(albumId).await()?.let {
+                requireContext().contentResolver.query(it,
+                        arrayOf(MediaStore.MediaColumns.DATA),
+                        null, null, null)?.use {
+                    it.moveToFirst()
+                            && File(it.getString(it.getColumnIndex(MediaStore.MediaColumns.DATA))).exists()
+                }
+            } ?: false
+
 }

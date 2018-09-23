@@ -15,14 +15,17 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
+import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentSheetBottomBinding
 import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.PlaybackButton
-import com.geckour.q.util.getArtworkUriFromAlbumId
+import com.geckour.q.util.getArtworkUriFromId
 import com.geckour.q.util.getTimeString
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
+import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.launch
 
 class BottomSheetFragment : Fragment() {
 
@@ -162,9 +165,14 @@ class BottomSheetFragment : Fragment() {
         viewModel.currentPosition.observe(this, Observer {
             val song = adapter.getItem(it)
 
-            Glide.with(binding.artwork)
-                    .load(song?.albumId?.let { getArtworkUriFromAlbumId(it) })
-                    .into(binding.artwork)
+            launch(UI) {
+                val uri = song?.albumId?.let {
+                    DB.getInstance(requireContext()).getArtworkUriFromId(it).await()
+                }
+                Glide.with(binding.artwork)
+                        .load(uri)
+                        .into(binding.artwork)
+            }
             binding.textSong.text = song?.name
             binding.textArtist.text = song?.artist
             binding.seekBar.apply {

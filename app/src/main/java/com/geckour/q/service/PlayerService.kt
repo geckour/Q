@@ -167,7 +167,8 @@ class PlayerService : Service() {
             notificationUpdateJob = launch(UI + parentJob) {
                 val song = currentSong ?: return@launch
                 val albumTitle = async(parentJob) {
-                    DB.getInstance(applicationContext).albumDao().get(song.albumId).title
+                    DB.getInstance(applicationContext).albumDao().get(song.albumId)?.title
+                            ?: UNKNOWN
                 }.await()
                 mediaSession.setMetadata(
                         song.getMediaMetadata(this@PlayerService, albumTitle).await())
@@ -439,7 +440,9 @@ class PlayerService : Service() {
             notificationUpdateJob.cancel()
             notificationUpdateJob = launch(parentJob) {
                 val song = currentSong ?: return@launch
-                val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
+                val albumTitle =
+                        DB.getInstance(applicationContext).albumDao().get(song.albumId)?.title
+                                ?: UNKNOWN
                 getNotification(this@PlayerService, mediaSession.sessionToken,
                         song, albumTitle, player.playWhenReady).await()
                         .show(this@PlayerService, player.playWhenReady)
@@ -464,7 +467,8 @@ class PlayerService : Service() {
         notificationUpdateJob.cancel()
         notificationUpdateJob = launch(parentJob) {
             val song = currentSong ?: return@launch
-            val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId).title
+            val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId)?.title
+                    ?: UNKNOWN
             getNotification(this@PlayerService, mediaSession.sessionToken,
                     song, albumTitle, player.playWhenReady).await()
                     .show(this@PlayerService, player.playWhenReady)

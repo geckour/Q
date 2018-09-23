@@ -12,7 +12,7 @@ import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.fetchPlaylists
 import com.geckour.q.util.getSong
-import com.geckour.q.util.getTrackIds
+import com.geckour.q.util.getTrackMeidaIds
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.launch
 
@@ -77,7 +77,7 @@ class PlaylistListFragment : Fragment() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         launch(parentJob) {
             val songs = adapter.getItems().map { playlist ->
-                playlist.getTrackIds(requireContext())
+                playlist.getTrackMeidaIds(requireContext())
                         .mapNotNull {
                             getSong(DB.getInstance(requireContext()),
                                     it.first,

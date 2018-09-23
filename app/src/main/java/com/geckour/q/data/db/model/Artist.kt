@@ -5,6 +5,7 @@ import androidx.room.PrimaryKey
 
 @Entity
 data class Artist(
-        @PrimaryKey var id: Long,
-        var title: String
+        @PrimaryKey(autoGenerate = true) var id: Long,
+        var mediaId: Long?,
+        var title: String?
 )

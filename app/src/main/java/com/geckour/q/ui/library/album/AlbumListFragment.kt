@@ -142,8 +142,8 @@ class AlbumListFragment : Fragment() {
             async(parentJob) {
                 (if (artist == null) latestDbAlbumList
                 else latestDbAlbumList.filter { it.artistId == artist.id }).mapNotNull {
-                    val artistForAlbum = db.artistDao().get(it.artistId) ?: return@mapNotNull null
-                    Album(it.id, it.title, artistForAlbum.title)
+                    val artistName = db.artistDao().get(it.artistId)?.title ?: return@mapNotNull null
+                    Album(it.id, it.mediaId, it.title, artistName)
                 }
             }
 }

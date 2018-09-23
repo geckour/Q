@@ -4,6 +4,7 @@ import com.geckour.q.util.getTimeString
 
 data class Song(
         val id: Long,
+        val mediaId: Long,
         val albumId: Long,
         val name: String?,
         val artist: String,

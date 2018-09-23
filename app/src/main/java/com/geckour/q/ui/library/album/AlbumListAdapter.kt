@@ -8,10 +8,7 @@ import com.geckour.q.databinding.ItemListAlbumBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainViewModel
-import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.MediaRetrieveWorker
-import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.getArtworkUriFromAlbumId
+import com.geckour.q.util.*
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
@@ -43,7 +40,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
         if (index < 0) {
             val tempList = ArrayList(items).apply { add(item) }
                     .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {
-                        it.name ?: MediaRetrieveWorker.UNKNOWN
+                        it.name ?: UNKNOWN
                     })
             index = tempList.indexOf(item)
             items.add(index, item)
@@ -90,7 +87,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             binding.data = album
             try {
                 Glide.with(binding.thumb)
-                        .load(getArtworkUriFromAlbumId(album.id))
+                        .load(album.getArtworkUri())
                         .into(binding.thumb)
             } catch (t: Throwable) {
                 Timber.e(t)

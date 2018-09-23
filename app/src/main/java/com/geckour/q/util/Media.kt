@@ -21,13 +21,14 @@ import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.MainActivity
-import com.geckour.q.util.MediaRetrieveWorker.Companion.UNKNOWN
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ads.AdsMediaSource
 import kotlinx.coroutines.experimental.Deferred
 import kotlinx.coroutines.experimental.async
 import timber.log.Timber
 
+
+const val UNKNOWN: String = "UNKNOWN"
 const val NOTIFICATION_CHANNEL_ID_PLAYER = "notification_channel_id_player"
 private const val NOTIFICATION_ID_PLAYER = 320
 
@@ -80,27 +81,27 @@ data class InsertQueue(
 suspend fun getSongListFromTrackList(db: DB, dbTrackList: List<Track>): List<Song> =
         dbTrackList.mapNotNull { getSong(db, it).await() }
 
-suspend fun getSongListFromTrackId(db: DB,
-                                   dbTrackIdList: List<Long>,
-                                   genreId: Long? = null,
-                                   playlistId: Long? = null): List<Song> =
+suspend fun getSongListFromTrackMediaId(db: DB,
+                                        dbTrackIdList: List<Long>,
+                                        genreId: Long? = null,
+                                        playlistId: Long? = null): List<Song> =
         dbTrackIdList.mapNotNull {
             getSong(db, it, genreId, playlistId).await()
         }
 
-suspend fun getSongListFromTrackIdWithTrackNum(db: DB,
-                                               dbTrackIdWithTrackNumList: List<Pair<Long, Int>>,
-                                               genreId: Long? = null,
-                                               playlistId: Long? = null): List<Song> =
-        dbTrackIdWithTrackNumList.mapNotNull {
+suspend fun getSongListFromTrackMediaIdWithTrackNum(db: DB,
+                                                    dbTrackMediaIdWithTrackNumList: List<Pair<Long, Int>>,
+                                                    genreId: Long? = null,
+                                                    playlistId: Long? = null): List<Song> =
+        dbTrackMediaIdWithTrackNumList.mapNotNull {
             getSong(db, it.first, genreId, playlistId, trackNum = it.second).await()
         }
 
-fun getSong(db: DB, trackId: Long,
+fun getSong(db: DB, trackMediaId: Long,
             genreId: Long? = null, playlistId: Long? = null,
             trackNum: Int? = null): Deferred<Song?> =
         async {
-            db.trackDao().get(trackId)?.let {
+            db.trackDao().getByMediaId(trackMediaId)?.let {
                 getSong(db, it, genreId, playlistId, trackNum = trackNum).await()
             }
         }
@@ -109,13 +110,14 @@ fun getSong(db: DB, track: Track,
             genreId: Long? = null, playlistId: Long? = null,
             trackNum: Int? = null): Deferred<Song?> =
         async {
-            val artist = db.artistDao().get(track.artistId) ?: return@async null
-            Song(track.id, track.albumId, track.title, artist.title, track.duration,
+            val artistName = db.artistDao().get(track.artistId)?.title ?: UNKNOWN
+            Song(track.id, track.mediaId, track.albumId, track.title,
+                    artistName, track.duration,
                     trackNum ?: track.trackNum, track.trackTotal, track.discNum, track.discTotal,
                     genreId, playlistId, track.sourcePath)
         }
 
-fun Genre.getTrackIds(context: Context): List<Long> =
+fun Genre.getTrackMeidaIds(context: Context): List<Long> =
         context.contentResolver.query(
                 MediaStore.Audio.Genres.Members.getContentUri("external", this.id),
                 arrayOf(
@@ -123,30 +125,30 @@ fun Genre.getTrackIds(context: Context): List<Long> =
                 null,
                 null,
                 null)?.use {
-            val trackIdList: ArrayList<Long> = ArrayList()
+            val trackMediaIdList: ArrayList<Long> = ArrayList()
             while (it.moveToNext()) {
                 val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Genres.Members._ID))
-                trackIdList.add(id)
+                trackMediaIdList.add(id)
             }
 
-            return@use trackIdList
+            return@use trackMediaIdList
         } ?: emptyList()
 
-fun Playlist.getTrackIds(context: Context): List<Pair<Long, Int>> =
+fun Playlist.getTrackMeidaIds(context: Context): List<Pair<Long, Int>> =
         context.contentResolver.query(
                 MediaStore.Audio.Playlists.Members.getContentUri("external", this.id),
                 arrayOf(MediaStore.Audio.Playlists.Members.AUDIO_ID, MediaStore.Audio.Playlists.Members.PLAY_ORDER),
                 null,
                 null,
                 MediaStore.Audio.Playlists.Members.PLAY_ORDER)?.use {
-            val trackIdList: ArrayList<Pair<Long, Int>> = ArrayList()
+            val trackMediaIdList: ArrayList<Pair<Long, Int>> = ArrayList()
             while (it.moveToNext()) {
                 val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists.Members.AUDIO_ID))
                 val order = it.getInt(it.getColumnIndex(MediaStore.Audio.Playlists.Members.PLAY_ORDER))
-                trackIdList.add(id to order)
+                trackMediaIdList.add(id to order)
             }
 
-            return@use trackIdList
+            return@use trackMediaIdList
         } ?: emptyList()
 
 fun Song.getMediaSource(mediaSourceFactory: AdsMediaSource.MediaSourceFactory): MediaSource =
@@ -185,20 +187,19 @@ fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> =
 
 fun Song.getMediaMetadata(context: Context, albumTitle: String? = null): Deferred<MediaMetadata> =
         async {
+            val db = DB.getInstance(context)
             val album = albumTitle
-                    ?: DB.getInstance(context)
-                            .albumDao()
-                            .get(this@getMediaMetadata.albumId)
-                            .title
+                    ?: db.albumDao().get(this@getMediaMetadata.albumId)?.title
+                    ?: UNKNOWN
 
             MediaMetadata.Builder()
                     .putString(MediaMetadata.METADATA_KEY_MEDIA_ID,
-                            this@getMediaMetadata.id.toString())
+                            this@getMediaMetadata.mediaId.toString())
                     .putString(MediaMetadata.METADATA_KEY_TITLE, this@getMediaMetadata.name)
                     .putString(MediaMetadata.METADATA_KEY_ARTIST, this@getMediaMetadata.artist)
                     .putString(MediaMetadata.METADATA_KEY_ALBUM, album)
                     .putString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
-                            getArtworkUriFromAlbumId(this@getMediaMetadata.albumId).toString())
+                            db.getArtworkUriFromId(this@getMediaMetadata.albumId).await().toString())
                     .putLong(MediaMetadata.METADATA_KEY_DURATION, this@getMediaMetadata.duration)
                     .build()
         }
@@ -257,7 +258,7 @@ fun getNotification(context: Context, sessionToken: MediaSession.Token,
             val artwork = try {
                 Glide.with(context)
                         .asBitmap()
-                        .load(getArtworkUriFromAlbumId(song.albumId))
+                        .load(DB.getInstance(context).getArtworkUriFromId(song.albumId).await())
                         .submit()
                         .get()
             } catch (t: Throwable) {

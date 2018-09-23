@@ -7,13 +7,16 @@ import androidx.appcompat.widget.PopupMenu
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
+import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemListSongBinding
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.getArtworkUriFromAlbumId
+import com.geckour.q.util.getArtworkUriFromId
 import com.geckour.q.util.swapped
+import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
 
 class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adapter<QueueListAdapter.ViewHolder>() {
@@ -99,9 +102,12 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             binding.data = song
             binding.duration.text = song.durationString
             try {
-                Glide.with(binding.thumb)
-                        .load(getArtworkUriFromAlbumId(song.albumId))
-                        .into(binding.thumb)
+                launch(UI) {
+                    Glide.with(binding.thumb)
+                            .load(DB.getInstance(binding.root.context)
+                                    .getArtworkUriFromId(song.albumId).await())
+                            .into(binding.thumb)
+                }
             } catch (t: Throwable) {
                 Timber.e(t)
             }

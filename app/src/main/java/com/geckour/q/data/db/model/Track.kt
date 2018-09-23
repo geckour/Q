@@ -5,8 +5,9 @@ import androidx.room.PrimaryKey
 
 @Entity
 data class Track(
-        @PrimaryKey var id: Long,
-        var title: String,
+        @PrimaryKey(autoGenerate = true) var id: Long,
+        var mediaId: Long,
+        var title: String?,
         var albumId: Long,
         var artistId: Long,
         var albumArtistId: Long?,

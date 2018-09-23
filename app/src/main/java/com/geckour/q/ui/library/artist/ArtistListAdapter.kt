@@ -1,22 +1,20 @@
 package com.geckour.q.ui.library.artist
 
-import android.content.Context
-import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemListArtistBinding
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.getArtworkUriFromAlbumId
+import com.geckour.q.util.getArtworkUriFromId
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
-import java.io.File
 
 class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adapter<ArtistListAdapter.ViewHolder>() {
 
@@ -47,7 +45,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Ada
         notifyItemRemoved(index)
     }
 
-    internal fun upsertItem(context: Context, item: Artist) {
+    internal fun upsertItem(item: Artist) {
         var index = items.indexOfFirst { it.id == item.id }
         if (index < 0) {
             val tempList = ArrayList(items).apply { add(item) }
@@ -56,23 +54,15 @@ class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Ada
             items.add(index, item)
             notifyItemInserted(index)
         } else {
-            val artworkUri = getArtworkUriFromAlbumId(item.albumId)
-            context.contentResolver.query(artworkUri, arrayOf(MediaStore.MediaColumns.DATA),
-                    null, null, null).use {
-                val exists = it.moveToFirst()
-                        && File(it.getString(it.getColumnIndex(MediaStore.MediaColumns.DATA))).exists()
-                if (exists) {
-                    items[index] = item
-                    notifyItemChanged(index)
-                }
-            }
+            items[index] = item
+            notifyItemChanged(index)
         }
     }
 
-    internal fun upsertItems(context: Context, items: List<Artist>) {
+    internal fun upsertItems(items: List<Artist>) {
         val increased = items - this.items
         val decreased = this.items - items
-        increased.forEach { upsertItem(context, it) }
+        increased.forEach { upsertItem(it) }
         decreased.forEach { removeItem(it) }
     }
 
@@ -103,14 +93,17 @@ class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Ada
         fun bind() {
             val artist = items[adapterPosition]
             binding.data = artist
+            binding.root.setOnClickListener { viewModel.onRequestNavigate(artist) }
             try {
-                Glide.with(binding.thumb)
-                        .load(getArtworkUriFromAlbumId(artist.albumId))
-                        .into(binding.thumb)
+                launch(UI) {
+                    Glide.with(binding.thumb)
+                            .load(DB.getInstance(binding.root.context)
+                                    .getArtworkUriFromId(artist.albumId).await())
+                            .into(binding.thumb)
+                }
             } catch (t: Throwable) {
                 Timber.e(t)
             }
-            binding.root.setOnClickListener { viewModel.onRequestNavigate(artist) }
         }
     }
 }

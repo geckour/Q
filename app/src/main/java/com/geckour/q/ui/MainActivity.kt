@@ -95,11 +95,13 @@ class MainActivity : AppCompatActivity() {
         if (fragment != null) {
             supportFragmentManager.beginTransaction()
                     .apply {
-                        if (supportFragmentManager.backStackEntryCount > 0) {
+                        if (binding.coordinatorMain.contentMain.fragmentContainer.childCount == 0)
+                            add(R.id.fragment_container, fragment, getString(R.string.nav_artist))
+                        else {
                             replace(R.id.fragment_container,
                                     fragment, getString(R.string.nav_artist))
                             addToBackStack(null)
-                        } else add(R.id.fragment_container, fragment, getString(R.string.nav_artist))
+                        }
                     }
                     .commit()
         }
@@ -237,13 +239,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun retrieveMediaIfEmpty() {
-        launch(UI + parentJob) {
-            DB.getInstance(this@MainActivity)
-                    .trackDao()
-                    .getAllAsync()
-                    .observe(this@MainActivity, Observer {
-                        if (it?.isNotEmpty() == false) retrieveMediaWithPermissionCheck()
-                    })
+        launch(parentJob) {
+            if (DB.getInstance(this@MainActivity).trackDao().count() == 0)
+                retrieveMediaWithPermissionCheck()
         }
     }
 
@@ -409,7 +407,7 @@ class MainActivity : AppCompatActivity() {
                                     .getContentUri("external", it.id),
                             ContentValues().apply {
                                 put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, it.memberCount + 1 + i)
-                                put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.id)
+                                put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
                             })
                 }
                 dialog.dismiss()
@@ -437,7 +435,7 @@ class MainActivity : AppCompatActivity() {
                                         .getContentUri("external", playlistId),
                                 ContentValues().apply {
                                     put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, i + 1)
-                                    put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.id)
+                                    put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
                                 })
                     }
                     dialog.dismiss()

@@ -10,6 +10,7 @@ import androidx.work.Data
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.dao.upsert
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Track
@@ -33,7 +34,6 @@ class MediaRetrieveWorker(context: Context, parameters: WorkerParameters? = null
 
     companion object {
         const val WORK_NAME = "media_retrieve_work"
-        const val UNKNOWN: String = "UNKNOWN"
     }
 
     private var forceStop = false
@@ -44,6 +44,7 @@ class MediaRetrieveWorker(context: Context, parameters: WorkerParameters? = null
             Result.FAILURE
         } else {
             Timber.d("qgeck media retrieve worker started")
+            val db = DB.getInstance(applicationContext)
             applicationContext.contentResolver
                     .query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                             arrayOf(MediaStore.Audio.Media._ID,
@@ -65,8 +66,9 @@ class MediaRetrieveWorker(context: Context, parameters: WorkerParameters? = null
                                     cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST_ID))
                             val trackPath = cursor.getString(
                                     cursor.getColumnIndex(MediaStore.Audio.Media.DATA))
-                            pushMedia(current to total, trackId, albumId, artistId, trackPath)
+                            pushMedia(db, current to total, trackId, albumId, artistId, trackPath)
                         }
+                        Timber.d("qgeck track in db count: ${db.trackDao().count()}")
                         Timber.d("qgeck media retrieve worker completed, successfully: ${forceStop.not()}")
                         if (forceStop) Result.FAILURE else Result.SUCCESS
                     } ?: Result.FAILURE
@@ -79,8 +81,8 @@ class MediaRetrieveWorker(context: Context, parameters: WorkerParameters? = null
         if (cancelled) forceStop = true
     }
 
-    private fun pushMedia(progress: Pair<Int, Int>, trackId: Long, albumId: Long, artistId: Long, trackPath: String) {
-        val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackId)
+    private fun pushMedia(db: DB, progress: Pair<Int, Int>, trackMediaId: Long, albumMediaId: Long, artistMediaId: Long, trackPath: String) {
+        val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackMediaId)
 
         if (File(trackPath).exists().not()) {
             applicationContext.contentResolver.delete(uri, null, null)
@@ -92,7 +94,6 @@ class MediaRetrieveWorker(context: Context, parameters: WorkerParameters? = null
                 retriever.setDataSource(applicationContext, uri)
 
                 val title = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-                        ?: UNKNOWN
                 val duration = retriever.extractMetadata(
                         MediaMetadataRetriever.METADATA_KEY_DURATION).toLong()
                 val trackSplit = retriever.extractMetadata(
@@ -104,27 +105,28 @@ class MediaRetrieveWorker(context: Context, parameters: WorkerParameters? = null
                 val discNum = discSplit?.first()?.toInt()
                 val discTotal = discSplit?.last()?.toInt()
                 val albumTitle = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-                        ?: UNKNOWN
                 val artistTitle = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-                        ?: UNKNOWN
-                val albumArtist = retriever.extractMetadata(
+                val albumArtistTitle = retriever.extractMetadata(
                         MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
-                val artworkUriString =
-                        getArtworkUriFromAlbumId(albumId).toString()
+                val artworkUriString = albumMediaId.getArtworkUriFromMediaId().toString()
 
-                val artist = Artist(artistId, artistTitle)
-                DB.getInstance(applicationContext).artistDao().upsert(artist)
+                val artistId = Artist(0, artistMediaId, artistTitle).upsert(db) ?: return@also
+                val albumArtistId =
+                        if (albumArtistTitle == null) null
+                        else Artist(0, null, albumArtistTitle).upsert(db)
 
-                val albumArtistId = albumArtist?.let {
-                    DB.getInstance(applicationContext).artistDao()
-                            .findArtist(albumArtist).firstOrNull()?.id
+                val albumId = db.albumDao().getByMediaId(albumMediaId).let {
+                    if (it == null || it.hasAlbumArtist.not()) {
+                        val album = Album(0, albumMediaId, albumTitle,
+                                albumArtistId ?: artistId,
+                                artworkUriString, albumArtistId != null)
+                        album.upsert(db)
+                    } else it.id
                 }
-                val album = Album(albumId, albumTitle, albumArtistId ?: artistId, artworkUriString)
-                DB.getInstance(applicationContext).albumDao().upsert(album)
 
-                val track = Track(trackId, title, albumId, artistId, albumArtistId, duration,
+                val track = Track(0, trackMediaId, title, albumId, artistId, albumArtistId, duration,
                         trackNum, trackTotal, discNum, discTotal, trackPath)
-                DB.getInstance(applicationContext).trackDao().upsert(track)
+                track.upsert(db)
                 applicationContext.sendBroadcast(MainActivity.createProgressIntent(progress))
             } catch (t: Throwable) {
                 Timber.e(t)

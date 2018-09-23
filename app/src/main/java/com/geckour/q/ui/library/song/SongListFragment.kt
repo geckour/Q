@@ -67,7 +67,6 @@ class SongListFragment : Fragment() {
     }
 
     private var parentJob = Job()
-    private var latestDbTrackList: List<Track> = emptyList()
     private var chatteringCancelFlag: Boolean = false
 
     override fun onCreateView(inflater: LayoutInflater,
@@ -162,8 +161,7 @@ class SongListFragment : Fragment() {
                 if (dbTrackList == null) return@Observer
 
                 mainViewModel.loading.value = true
-                latestDbTrackList = dbTrackList
-                upsertSongListIfPossible(db, false)
+                upsertSongListIfPossible(db, dbTrackList, false)
             })
         }
     }
@@ -172,8 +170,7 @@ class SongListFragment : Fragment() {
         mainViewModel.loading.value = true
         launch(parentJob) {
             DB.getInstance(requireContext()).also { db ->
-                latestDbTrackList = db.trackDao().findByAlbum(album.id)
-                upsertSongListIfPossible(db)
+                upsertSongListIfPossible(db, db.trackDao().findByAlbum(album.id))
             }
         }
     }
@@ -182,8 +179,8 @@ class SongListFragment : Fragment() {
         mainViewModel.loading.value = true
         launch(UI + parentJob) {
             adapter.upsertItems(
-                    getSongListFromTrackId(DB.getInstance(requireContext()),
-                            genre.getTrackIds(requireContext()),
+                    getSongListFromTrackMediaId(DB.getInstance(requireContext()),
+                            genre.getTrackMeidaIds(requireContext()),
                             genreId = genre.id), false)
             binding.recyclerView.smoothScrollToPosition(0)
             mainViewModel.loading.value = false
@@ -194,8 +191,8 @@ class SongListFragment : Fragment() {
         mainViewModel.loading.value = true
         launch(UI + parentJob) {
             adapter.addItems(
-                    getSongListFromTrackIdWithTrackNum(DB.getInstance(requireContext()),
-                            playlist.getTrackIds(requireContext()),
+                    getSongListFromTrackMediaIdWithTrackNum(DB.getInstance(requireContext()),
+                            playlist.getTrackMeidaIds(requireContext()),
                             playlistId = playlist.id)
             )
             binding.recyclerView.smoothScrollToPosition(0)
@@ -203,12 +200,12 @@ class SongListFragment : Fragment() {
         }
     }
 
-    private fun upsertSongListIfPossible(db: DB, sortByTrackOrder: Boolean = true) {
+    private fun upsertSongListIfPossible(db: DB, dbTrackList: List<Track>, sortByTrackOrder: Boolean = true) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
             launch(UI + parentJob) {
                 delay(500)
-                val items = getSongListFromTrackList(db, latestDbTrackList)
+                val items = getSongListFromTrackList(db, dbTrackList)
                 adapter.upsertItems(items, sortByTrackOrder)
                 binding.recyclerView.smoothScrollToPosition(0)
                 mainViewModel.loading.value = false
