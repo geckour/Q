@@ -217,9 +217,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onBackPressed() {
-        if (bottomSheetViewModel.sheetState.value == BottomSheetBehavior.STATE_EXPANDED)
-            bottomSheetViewModel.sheetState.value = BottomSheetBehavior.STATE_COLLAPSED
-        else super.onBackPressed()
+        when {
+            binding.drawerLayout.isDrawerOpen(binding.navigationView) ->
+                binding.drawerLayout.closeDrawer(binding.navigationView)
+            bottomSheetViewModel.sheetState.value == BottomSheetBehavior.STATE_EXPANDED ->
+                bottomSheetViewModel.sheetState.value = BottomSheetBehavior.STATE_COLLAPSED
+            else -> super.onBackPressed()
+        }
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
