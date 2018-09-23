@@ -76,8 +76,14 @@ class SongListFragment : Fragment() {
         return binding.root
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        super.onActivityCreated(savedInstanceState)
+
+        setHasOptionsMenu(true)
+
+        binding.recyclerView.adapter = adapter
+
+        observeEvents()
 
         if (adapter.itemCount == 0) {
             val album = arguments?.getParcelable<Album>(ARGS_KEY_ALBUM)
@@ -91,16 +97,6 @@ class SongListFragment : Fragment() {
                 else -> fetchSongs()
             }
         }
-    }
-
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
-
-        setHasOptionsMenu(true)
-
-        binding.recyclerView.adapter = adapter
-
-        observeEvents()
     }
 
     override fun onResume() {
@@ -152,6 +148,11 @@ class SongListFragment : Fragment() {
 
         mainViewModel.requireScrollTop.observe(this, Observer {
             binding.recyclerView.smoothScrollToPosition(0)
+        })
+
+        mainViewModel.songIdDeleted.observe(this, Observer {
+            if (it == null) return@Observer
+            adapter.onSongDeleted(it)
         })
     }
 

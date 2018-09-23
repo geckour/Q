@@ -47,13 +47,6 @@ class AlbumListFragment : Fragment() {
         return binding.root
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
-        if (adapter.itemCount == 0)
-            arguments?.getParcelable<Artist>(ARGS_KEY_ARTIST).apply { fetchAlbums(this) }
-    }
-
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
@@ -61,6 +54,9 @@ class AlbumListFragment : Fragment() {
         binding.recyclerView.adapter = adapter
 
         observeEvents()
+
+        if (adapter.itemCount == 0)
+            arguments?.getParcelable<Artist>(ARGS_KEY_ARTIST).apply { fetchAlbums(this) }
     }
 
     override fun onStart() {

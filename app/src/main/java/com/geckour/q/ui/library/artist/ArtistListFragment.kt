@@ -38,12 +38,6 @@ class ArtistListFragment : Fragment() {
         return binding.root
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
-        if (adapter.itemCount == 0) fetchArtists()
-    }
-
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
@@ -52,6 +46,8 @@ class ArtistListFragment : Fragment() {
         binding.recyclerView.adapter = adapter
 
         observeEvents()
+
+        if (adapter.itemCount == 0) fetchArtists()
     }
 
     override fun onStart() {

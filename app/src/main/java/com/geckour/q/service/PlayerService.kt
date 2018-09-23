@@ -394,12 +394,9 @@ class PlayerService : Service() {
     }
 
     fun removeQueue(trackId: Long) {
-        this.queue.asSequence()
-                .mapIndexed { i, song -> i to song }
+        this.queue.mapIndexed { i, song -> i to song }
                 .filter { it.second.id == trackId }
-                .forEach {
-                    removeQueue(it.first)
-                }
+                .forEach { removeQueue(it.first) }
     }
 
     fun forcePosition(position: Int) {

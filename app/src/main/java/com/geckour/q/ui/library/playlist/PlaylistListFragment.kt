@@ -36,16 +36,6 @@ class PlaylistListFragment : Fragment() {
         return binding.root
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
-
-        if (adapter.itemCount == 0) {
-            mainViewModel.loading.value = true
-            adapter.setItems(fetchPlaylists(requireContext()).sortedBy { it.name })
-            mainViewModel.loading.value = false
-        }
-    }
-
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
@@ -54,6 +44,12 @@ class PlaylistListFragment : Fragment() {
         binding.recyclerView.adapter = adapter
 
         observeEvents()
+
+        if (adapter.itemCount == 0) {
+            mainViewModel.loading.value = true
+            adapter.setItems(fetchPlaylists(requireContext()).sortedBy { it.name })
+            mainViewModel.loading.value = false
+        }
     }
 
     override fun onResume() {

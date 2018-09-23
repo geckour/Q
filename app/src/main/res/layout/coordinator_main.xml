@@ -26,6 +26,7 @@
             android:background="@color/colorBackgroundInactive"
             android:clickable="true"
             android:focusable="true"
+            android:paddingBottom="@dimen/bottom_sheet_peek_height"
             android:visibility="gone">
 
             <ProgressBar
@@ -60,7 +61,7 @@
                 android:layout_height="wrap_content"
                 android:layout_alignParentBottom="true"
                 android:layout_centerHorizontal="true"
-                android:layout_marginBottom="36dp"
+                android:layout_marginBottom="16dp"
                 android:backgroundTint="@color/colorAccent"
                 android:onClick="@{() -> viewModel.onCancelSync()}"
                 android:text="@string/button_cancel_sync"
@@ -72,7 +73,7 @@
             android:layout_height="24dp"
             android:background="@drawable/shadow_sheet_bottom"
             app:layout_anchor="@id/bottom_sheet"
-            app:layout_anchorGravity="top"/>
+            app:layout_anchorGravity="top" />
 
         <fragment
             android:id="@+id/bottom_sheet"

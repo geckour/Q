@@ -1,7 +1,5 @@
 package com.geckour.q.ui.library.song
 
-import android.content.Context
-import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -9,7 +7,6 @@ import androidx.appcompat.widget.PopupMenu
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
-import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemListSongBinding
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainViewModel
@@ -17,9 +14,7 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.MediaRetrieveWorker
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.getArtworkUriFromAlbumId
-import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
-import java.io.File
 
 class SongListAdapter(private val viewModel: MainViewModel,
                       private val classType: OrientedClassType)
@@ -97,6 +92,16 @@ class SongListAdapter(private val viewModel: MainViewModel,
         viewModel.onNewQueue(items, actionType, OrientedClassType.SONG)
     }
 
+    internal fun onSongDeleted(id: Long) {
+        items.asSequence()
+                .mapIndexed { i, s -> i to s }
+                .filter { it.second.id == id }.toList()
+                .forEach {
+                    items.removeAt(it.first)
+                    notifyItemRemoved(it.first)
+                }
+    }
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
             ViewHolder(ItemListSongBinding.inflate(LayoutInflater.from(parent.context),
                     parent, false))
@@ -135,7 +140,7 @@ class SongListAdapter(private val viewModel: MainViewModel,
             setOnMenuItemClickListener {
                 when (it.itemId) {
                     R.id.menu_delete_song -> {
-                        deleteSong(binding.root.context, viewModel.selectedSong)
+                        deleteSong(viewModel.selectedSong)
                     }
                     else -> return@setOnMenuItemClickListener false
                 }
@@ -166,29 +171,9 @@ class SongListAdapter(private val viewModel: MainViewModel,
             }
         }
 
-        private fun deleteSong(context: Context, song: Song?) {
+        private fun deleteSong(song: Song?) {
             if (song == null) return
-            File(song.sourcePath).apply { if (this.exists()) this.delete() }
-            val deleted = context.contentResolver.delete(
-                    MediaStore.Files.getContentUri("external"),
-                    "${MediaStore.Files.FileColumns.DATA}=?",
-                    arrayOf(song.sourcePath)) == 1
-
-            if (deleted) {
-                launch {
-                    DB.getInstance(context).trackDao().delete(song.id)
-                }
-
-                viewModel.deletedSongId.value = song.id
-
-                items.asSequence()
-                        .mapIndexed { i, s -> i to s }
-                        .filter { it.second.id == song.id }.toList()
-                        .forEach {
-                            items.removeAt(it.first)
-                            notifyItemRemoved(it.first)
-                        }
-            }
+            viewModel.songToDelete.value = song
         }
 
         private fun removeFromPlaylist(playOrder: Int) {

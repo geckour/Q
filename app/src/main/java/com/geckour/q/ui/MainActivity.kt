@@ -39,6 +39,7 @@ import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
+import java.io.File
 
 @RuntimePermissions
 class MainActivity : AppCompatActivity() {
@@ -78,48 +79,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val onNavigationItemSelected: (MenuItem) -> Boolean = {
-        when (it.itemId) {
-            R.id.nav_artist -> {
-                supportFragmentManager.beginTransaction()
-                        .replace(R.id.fragment_container,
-                                ArtistListFragment.newInstance(), getString(R.string.nav_artist))
-                        .addToBackStack(null)
-                        .commit()
-            }
-            R.id.nav_album -> {
-                supportFragmentManager.beginTransaction()
-                        .replace(R.id.fragment_container,
-                                AlbumListFragment.newInstance(), getString(R.string.nav_album))
-                        .addToBackStack(null)
-                        .commit()
-            }
-            R.id.nav_song -> {
-                supportFragmentManager.beginTransaction()
-                        .replace(R.id.fragment_container,
-                                SongListFragment.newInstance(), getString(R.string.nav_song))
-                        .addToBackStack(null)
-                        .commit()
-            }
-            R.id.nav_genre -> {
-                supportFragmentManager.beginTransaction()
-                        .replace(R.id.fragment_container,
-                                GenreListFragment.newInstance(), getString(R.string.nav_genre))
-                        .addToBackStack(null)
-                        .commit()
-            }
-            R.id.nav_playlist -> {
-                supportFragmentManager.beginTransaction()
-                        .replace(R.id.fragment_container,
-                                PlaylistListFragment.newInstance(),
-                                getString(R.string.nav_playlist))
-                        .addToBackStack(null)
-                        .commit()
-            }
-            R.id.nav_setting -> {
-            }
+        val fragment = when (it.itemId) {
+            R.id.nav_artist -> ArtistListFragment.newInstance()
+            R.id.nav_album -> AlbumListFragment.newInstance()
+            R.id.nav_song -> SongListFragment.newInstance()
+            R.id.nav_genre -> GenreListFragment.newInstance()
+            R.id.nav_playlist -> PlaylistListFragment.newInstance()
+            R.id.nav_setting -> null
             R.id.nav_sync -> {
                 retrieveMediaWithPermissionCheck()
+                null
             }
+            else -> null
+        }
+        if (fragment != null) {
+            supportFragmentManager.beginTransaction()
+                    .apply {
+                        if (supportFragmentManager.backStackEntryCount > 0) {
+                            replace(R.id.fragment_container,
+                                    fragment, getString(R.string.nav_artist))
+                            addToBackStack(null)
+                        } else add(R.id.fragment_container, fragment, getString(R.string.nav_artist))
+                    }
+                    .commit()
         }
         launch(UI + parentJob) { binding.drawerLayout.closeDrawers() }
         true
@@ -178,7 +160,6 @@ class MainActivity : AppCompatActivity() {
         // TODO: 設定画面でどの画面を初期画面にするか設定できるようにする
         val navId = R.id.nav_artist
         onNavigationItemSelected(binding.navigationView.menu.findItem(navId))
-        binding.navigationView.setCheckedItem(navId)
 
         observeEvents()
 
@@ -371,9 +352,24 @@ class MainActivity : AppCompatActivity() {
             player?.removeQueue(it)
         })
 
-        viewModel.deletedSongId.observe(this, Observer {
+        viewModel.songToDelete.observe(this, Observer {
             if (it == null) return@Observer
-            player?.removeQueue(it)
+
+            File(it.sourcePath).apply {
+                if (this.exists()) {
+                    player?.removeQueue(it.id)
+                    this.delete()
+                }
+            }
+            val deleted = contentResolver.delete(
+                    MediaStore.Files.getContentUri("external"),
+                    "${MediaStore.Files.FileColumns.DATA}=?",
+                    arrayOf(it.sourcePath)) == 1
+
+            if (deleted) {
+                launch { DB.getInstance(this@MainActivity).trackDao().delete(it.id) }
+                viewModel.songIdDeleted.value = it.id
+            }
         })
 
         viewModel.cancelSync.observe(this, Observer {
