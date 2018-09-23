@@ -96,10 +96,9 @@ class MainActivity : AppCompatActivity() {
             supportFragmentManager.beginTransaction()
                     .apply {
                         if (binding.coordinatorMain.contentMain.fragmentContainer.childCount == 0)
-                            add(R.id.fragment_container, fragment, getString(R.string.nav_artist))
+                            add(R.id.fragment_container, fragment)
                         else {
-                            replace(R.id.fragment_container,
-                                    fragment, getString(R.string.nav_artist))
+                            replace(R.id.fragment_container, fragment)
                             addToBackStack(null)
                         }
                     }
@@ -273,7 +272,8 @@ class MainActivity : AppCompatActivity() {
     private fun observeEvents() {
         viewModel.resumedFragmentId.observe(this, Observer { navId ->
             if (navId == null) return@Observer
-            supportFragmentManager.fragments.firstOrNull {
+            binding.navigationView.setCheckedItem(navId)
+            val title = supportFragmentManager.fragments.firstOrNull {
                 when (navId) {
                     R.id.nav_artist -> it is ArtistListFragment
                     R.id.nav_album -> it is AlbumListFragment
@@ -282,10 +282,15 @@ class MainActivity : AppCompatActivity() {
                     R.id.nav_playlist -> it is PlaylistListFragment
                     else -> false
                 }
-            }?.tag?.apply {
-                supportActionBar?.title = this
-            }
-            binding.navigationView.setCheckedItem(navId)
+            }?.tag ?: getString(when (navId) {
+                R.id.nav_artist -> R.string.nav_artist
+                R.id.nav_album -> R.string.nav_album
+                R.id.nav_song -> R.string.nav_song
+                R.id.nav_genre -> R.string.nav_genre
+                R.id.nav_playlist -> R.string.nav_playlist
+                else -> return@Observer
+            })
+            supportActionBar?.title = title
         })
 
         viewModel.syncing.observe(this, Observer {
