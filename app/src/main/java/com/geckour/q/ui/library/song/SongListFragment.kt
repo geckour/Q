@@ -85,7 +85,7 @@ class SongListFragment : Fragment() {
 
         observeEvents()
 
-        if (adapter.itemCount == 0) {
+        if (savedInstanceState == null && adapter.itemCount == 0) {
             val album = arguments?.getParcelable<Album>(ARGS_KEY_ALBUM)
             val genre = arguments?.getParcelable<Genre>(ARGS_KEY_GENRE)
             val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST)

@@ -45,7 +45,7 @@ class GenreListFragment : Fragment() {
 
         observeEvents()
 
-        if (adapter.itemCount == 0) {
+        if (savedInstanceState == null && adapter.itemCount == 0) {
             mainViewModel.loading.value = true
             adapter.setItems(fetchGenres(requireContext()).sortedBy { it.name })
             mainViewModel.loading.value = false

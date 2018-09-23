@@ -55,7 +55,7 @@ class AlbumListFragment : Fragment() {
 
         observeEvents()
 
-        if (adapter.itemCount == 0)
+        if (savedInstanceState == null && adapter.itemCount == 0)
             arguments?.getParcelable<Artist>(ARGS_KEY_ARTIST).apply { fetchAlbums(this) }
     }
 

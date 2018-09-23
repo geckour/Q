@@ -47,7 +47,7 @@ class ArtistListFragment : Fragment() {
 
         observeEvents()
 
-        if (adapter.itemCount == 0) fetchArtists()
+        if (savedInstanceState == null && adapter.itemCount == 0) fetchArtists()
     }
 
     override fun onStart() {
