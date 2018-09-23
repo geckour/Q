@@ -1,5 +1,7 @@
 package com.geckour.q.service
 
+import android.app.Notification
+import android.app.NotificationManager
 import android.app.Service
 import android.bluetooth.BluetoothHeadset
 import android.content.BroadcastReceiver
@@ -43,6 +45,9 @@ class PlayerService : Service() {
         fun createIntent(context: Context): Intent = Intent(context, PlayerService::class.java)
 
         private val TAG: String = PlayerService::class.java.simpleName
+
+        const val NOTIFICATION_CHANNEL_ID_PLAYER = "notification_channel_id_player"
+        private const val NOTIFICATION_ID_PLAYER = 320
 
         const val ARGS_KEY_CONTROL_COMMAND = "args_key_control_command"
 
@@ -148,7 +153,7 @@ class PlayerService : Service() {
                 Util.getUserAgent(applicationContext, packageName)))
                 .setExtractorsFactory(DefaultExtractorsFactory())
     }
-    private var source = ConcatenatingMediaSource()
+    private val source = ConcatenatingMediaSource()
 
     private val eventListener = object : Player.EventListener {
         override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters?) {
@@ -174,7 +179,7 @@ class PlayerService : Service() {
                         song.getMediaMetadata(this@PlayerService, albumTitle).await())
                 getNotification(this@PlayerService, mediaSession.sessionToken,
                         song, albumTitle, player.playWhenReady).await()
-                        .show(this@PlayerService, player.playWhenReady)
+                        .show(player.playWhenReady)
             }
         }
 
@@ -201,6 +206,7 @@ class PlayerService : Service() {
         override fun onTimelineChanged(timeline: Timeline?, manifest: Any?, reason: Int) {
             onQueueChanged?.invoke(this@PlayerService.queue)
             onCurrentPositionChanged?.invoke(currentPosition)
+            if (source.size < 1) destroyNotification()
         }
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
@@ -281,7 +287,7 @@ class PlayerService : Service() {
                 NotificationCommand.PREV -> headOrPrev()
                 NotificationCommand.PLAY_OR_PAUSE -> togglePlayPause()
                 NotificationCommand.NEXT -> next()
-                NotificationCommand.DESTROY -> onRequestedStop()
+                NotificationCommand.DESTROY -> onRequestedStopService()
                 else -> Unit
             }
         }
@@ -445,7 +451,7 @@ class PlayerService : Service() {
                                 ?: UNKNOWN
                 getNotification(this@PlayerService, mediaSession.sessionToken,
                         song, albumTitle, player.playWhenReady).await()
-                        .show(this@PlayerService, player.playWhenReady)
+                        .show(player.playWhenReady)
             }
             player.playWhenReady = true
         }
@@ -471,7 +477,7 @@ class PlayerService : Service() {
                     ?: UNKNOWN
             getNotification(this@PlayerService, mediaSession.sessionToken,
                     song, albumTitle, player.playWhenReady).await()
-                    .show(this@PlayerService, player.playWhenReady)
+                    .show(player.playWhenReady)
             stopForeground(false)
         }
     }
@@ -506,10 +512,9 @@ class PlayerService : Service() {
             }
         } else {
             stop()
+            notificationUpdateJob.cancel()
             this.queue.clear()
             source.clear()
-            notificationUpdateJob.cancel()
-            this.destroyNotification()
         }
     }
 
@@ -614,9 +619,9 @@ class PlayerService : Service() {
         onRepeatModeChanged?.invoke(player.repeatMode)
     }
 
-    fun onRequestedStop() {
+    fun onRequestedStopService() {
         if (player.playWhenReady.not()) {
-            this.destroyNotification()
+            clear()
             stopSelf()
         }
     }
@@ -633,5 +638,19 @@ class PlayerService : Service() {
 
     private fun onUnplugged() {
         pause()
+    }
+
+    private fun Notification.show(playWhenReady: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && playWhenReady) {
+            startForeground(NOTIFICATION_ID_PLAYER, this)
+        } else {
+            getSystemService(NotificationManager::class.java)
+                    .notify(NOTIFICATION_ID_PLAYER, this)
+        }
+    }
+
+    private fun destroyNotification() {
+        stopForeground(true)
+        getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID_PLAYER)
     }
 }

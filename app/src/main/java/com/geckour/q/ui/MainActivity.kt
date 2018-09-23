@@ -194,7 +194,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        player?.onRequestedStop()
+        player?.onRequestedStopService()
         unregisterReceiver(syncingProgressReceiver)
     }
 

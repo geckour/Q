@@ -1,9 +1,7 @@
 package com.geckour.q.util
 
 import android.app.Notification
-import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.Service
 import android.content.Context
 import android.graphics.drawable.Icon
 import android.media.MediaMetadata
@@ -20,6 +18,7 @@ import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.service.PlayerService
+import com.geckour.q.service.PlayerService.Companion.NOTIFICATION_CHANNEL_ID_PLAYER
 import com.geckour.q.ui.MainActivity
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ads.AdsMediaSource
@@ -29,8 +28,6 @@ import timber.log.Timber
 
 
 const val UNKNOWN: String = "UNKNOWN"
-const val NOTIFICATION_CHANNEL_ID_PLAYER = "notification_channel_id_player"
-private const val NOTIFICATION_ID_PLAYER = 320
 
 enum class InsertActionType {
     NEXT,
@@ -323,19 +320,6 @@ private fun getCommandPendingIntent(context: Context, command: NotificationComma
                     putExtra(PlayerService.ARGS_KEY_CONTROL_COMMAND, command.ordinal)
                 },
                 PendingIntent.FLAG_CANCEL_CURRENT)
-
-fun Notification.show(service: Service, playWhenReady: Boolean) {
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && playWhenReady) {
-        service.startForeground(NOTIFICATION_ID_PLAYER, this)
-    } else {
-        service.getSystemService(NotificationManager::class.java)
-                .notify(NOTIFICATION_ID_PLAYER, this)
-    }
-}
-
-fun Service.destroyNotification() {
-    this.stopForeground(true)
-}
 
 fun Long.getTimeString(): String {
     val hour = this / 3600000
