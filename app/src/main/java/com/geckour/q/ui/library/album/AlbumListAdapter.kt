@@ -87,7 +87,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             binding.data = album
             try {
                 Glide.with(binding.thumb)
-                        .load(album.getArtworkUri())
+                        .load(album.thumbUriString)
                         .into(binding.thumb)
             } catch (t: Throwable) {
                 Timber.e(t)

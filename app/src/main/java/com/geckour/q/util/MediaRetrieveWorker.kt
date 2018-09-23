@@ -5,6 +5,7 @@ import android.content.ContentUris
 import android.content.Context
 import android.content.pm.PackageManager
 import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.provider.MediaStore
 import androidx.work.Data
 import androidx.work.Worker
@@ -108,7 +109,7 @@ class MediaRetrieveWorker(context: Context, parameters: WorkerParameters? = null
                 val artistTitle = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
                 val albumArtistTitle = retriever.extractMetadata(
                         MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
-                val artworkUriString = albumMediaId.getArtworkUriFromMediaId().toString()
+                val artworkUriString = albumMediaId.getArtworkUriIfExist()?.toString()
 
                 val artistId = Artist(0, artistMediaId, artistTitle).upsert(db) ?: return@also
                 val albumArtistId =
@@ -133,4 +134,16 @@ class MediaRetrieveWorker(context: Context, parameters: WorkerParameters? = null
             }
         }
     }
+
+    private fun Long.getArtworkUriIfExist(): Uri? =
+            this.getArtworkUriFromMediaId().let { uri ->
+                applicationContext.contentResolver.query(uri,
+                        arrayOf(MediaStore.MediaColumns.DATA),
+                        null, null, null)?.use {
+                    if (it.moveToFirst()
+                            && File(it.getString(it.getColumnIndex(MediaStore.MediaColumns.DATA))).exists())
+                        uri
+                    else null
+                }
+            }
 }

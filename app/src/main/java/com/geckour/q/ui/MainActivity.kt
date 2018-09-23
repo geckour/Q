@@ -39,6 +39,7 @@ import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
+import timber.log.Timber
 import java.io.File
 
 @RuntimePermissions
@@ -154,19 +155,17 @@ class MainActivity : AppCompatActivity() {
         binding.coordinatorMain.viewModel = viewModel
         binding.coordinatorMain.contentMain.viewModel = viewModel
 
-        setSupportActionBar(binding.coordinatorMain.contentMain.toolbar)
+        observeEvents()
+        registerReceiver(syncingProgressReceiver, IntentFilter(ACTION_PROGRESS_SYNCING))
 
+        setSupportActionBar(binding.coordinatorMain.contentMain.toolbar)
         setupDrawer()
+
+        retrieveMediaIfEmpty()
 
         // TODO: 設定画面でどの画面を初期画面にするか設定できるようにする
         val navId = R.id.nav_artist
         onNavigationItemSelected(binding.navigationView.menu.findItem(navId))
-
-        observeEvents()
-
-        retrieveMediaIfEmpty()
-
-        registerReceiver(syncingProgressReceiver, IntentFilter(ACTION_PROGRESS_SYNCING))
     }
 
     override fun onResume() {

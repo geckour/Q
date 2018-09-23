@@ -108,8 +108,9 @@ fun getSong(db: DB, track: Track,
             trackNum: Int? = null): Deferred<Song?> =
         async {
             val artistName = db.artistDao().get(track.artistId)?.title ?: UNKNOWN
+            val artwork = db.albumDao().get(track.albumId)?.artworkUriString
             Song(track.id, track.mediaId, track.albumId, track.title,
-                    artistName, track.duration,
+                    artistName, artwork, track.duration,
                     trackNum ?: track.trackNum, track.trackTotal, track.discNum, track.discTotal,
                     genreId, playlistId, track.sourcePath)
         }

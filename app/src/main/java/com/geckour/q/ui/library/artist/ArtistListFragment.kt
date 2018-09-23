@@ -14,10 +14,12 @@ import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.UNKNOWN
-import com.geckour.q.util.getArtworkUriFromId
+import com.geckour.q.util.getArtworkUriFromMediaId
 import com.geckour.q.util.getSong
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.delay
+import kotlinx.coroutines.experimental.launch
 import java.io.File
 
 class ArtistListFragment : Fragment() {
@@ -122,38 +124,27 @@ class ArtistListFragment : Fragment() {
     private fun upsertArtistListIfPossible(db: DB) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
-            launch(UI + parentJob) {
+            launch(parentJob) {
                 delay(500)
-                val items = getAllArtist(db, latestDbAlbumList).await()
-                adapter.upsertItems(items)
-                binding.recyclerView.smoothScrollToPosition(0)
-                mainViewModel.loading.value = false
-                chatteringCancelFlag = false
+                val items = latestDbAlbumList.getArtistList(db)
+                launch(UI + parentJob) {
+                    adapter.upsertItems(items)
+                    binding.recyclerView.smoothScrollToPosition(0)
+                    mainViewModel.loading.value = false
+                    chatteringCancelFlag = false
+                }
             }
         }
     }
 
-    private fun getAllArtist(db: DB, dbAlbumList: List<Album>): Deferred<List<Artist>> =
-            async(parentJob) {
-                dbAlbumList.asSequence()
-                        .groupBy { it.artistId }
-                        .map {
-                            val albumId = it.value.lastOrNull { existArtwork(db, it.id) }?.id
-                                    ?: it.value.first().id
-                            val artistName = db.artistDao().get(it.key)?.title
-                                    ?: UNKNOWN
-                            Artist(it.key, artistName, albumId)
-                        }
-            }
-
-    private suspend fun existArtwork(db: DB, albumId: Long): Boolean =
-            db.getArtworkUriFromId(albumId).await()?.let {
-                requireContext().contentResolver.query(it,
-                        arrayOf(MediaStore.MediaColumns.DATA),
-                        null, null, null)?.use {
-                    it.moveToFirst()
-                            && File(it.getString(it.getColumnIndex(MediaStore.MediaColumns.DATA))).exists()
-                }
-            } ?: false
+    private fun List<Album>.getArtistList(db: DB): List<Artist> =
+            this.asSequence()
+                    .groupBy { it.artistId }
+                    .map {
+                        val artwork = it.value.firstOrNull { it.artworkUriString != null }
+                                ?.artworkUriString
+                        val artistName = db.artistDao().get(it.key)?.title ?: UNKNOWN
+                        Artist(it.key, artistName, artwork)
+                    }
 
 }

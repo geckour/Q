@@ -97,8 +97,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Ada
             try {
                 launch(UI) {
                     Glide.with(binding.thumb)
-                            .load(DB.getInstance(binding.root.context)
-                                    .getArtworkUriFromId(artist.albumId).await())
+                            .load(artist.thumbUriString)
                             .into(binding.thumb)
                 }
             } catch (t: Throwable) {

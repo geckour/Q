@@ -143,7 +143,7 @@ class AlbumListFragment : Fragment() {
                 (if (artist == null) latestDbAlbumList
                 else latestDbAlbumList.filter { it.artistId == artist.id }).mapNotNull {
                     val artistName = db.artistDao().get(it.artistId)?.title ?: return@mapNotNull null
-                    Album(it.id, it.mediaId, it.title, artistName)
+                    Album(it.id, it.mediaId, it.title, artistName, it.artworkUriString)
                 }
             }
 }
