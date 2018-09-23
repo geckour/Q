@@ -1,6 +1,6 @@
 <resources>
-    <string name="app_name">Q</string>
-    <string name="title_activity_main">Q</string>
+    <string name="app_name" translatable="false">Q</string>
+    <string name="title_activity_main" translatable="false">Q</string>
 
 
     <string name="drawer_open">Open</string>
@@ -17,7 +17,7 @@
 
     <string name="syncing">Syncing library…</string>
     <string name="loading">Loading items…</string>
-    <string name="progress_sync">%1$s / %2$s</string>
+    <string name="progress_sync" translatable="false">%1$s / %2$s</string>
     <string name="button_cancel_sync">Cancel</string>
 
 
@@ -60,10 +60,6 @@
     <string name="menu_albums_insert_all_shuffle_next">Shuffle with albums to next</string>
     <string name="menu_albums_insert_all_shuffle_last">Shuffle with albums to last</string>
     <string name="menu_albums_override_all_shuffle">Shuffle and override with albums</string>
-
-    <string name="menu_songs_insert_all_shuffle_next">Shuffle with songs to next</string>
-    <string name="menu_songs_insert_all_shuffle_last">Shuffle with songs to last</string>
-    <string name="menu_songs_override_all_shuffle">Shuffle and override with songs</string>
 
     <string name="menu_genres_insert_all_shuffle_next">Shuffle with genres to next</string>
     <string name="menu_genres_insert_all_shuffle_last">Shuffle with genres to last</string>
