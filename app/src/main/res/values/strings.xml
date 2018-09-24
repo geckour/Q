@@ -35,6 +35,7 @@
     <string name="nav_playlist">Playlist</string>
     <string name="nav_setting">Settings</string>
     <string name="nav_sync">Sync library</string>
+    <string name="nav_pay">Donate</string>
 
 
     <string name="menu_delete_song">Delete from device</string>
@@ -78,4 +79,8 @@
     <string name="dialog_content_label_exist_playlist">Add to existing:</string>
     <string name="dialog_content_label_new_playlist">Create new playlist:</string>
     <string name="dialog_content_hint_playlist_name">Enter playlist name</string>
+
+    <string name="payment_desc">Available donation with Kyash</string>
+    <string name="payment_save_success">Succeeded</string>
+    <string name="payment_save_failure">Failure to save</string>
 </resources>

@@ -30,10 +30,13 @@ import com.geckour.q.ui.library.artist.ArtistListFragment
 import com.geckour.q.ui.library.genre.GenreListFragment
 import com.geckour.q.ui.library.playlist.PlaylistListFragment
 import com.geckour.q.ui.library.song.SongListFragment
+import com.geckour.q.ui.pay.PaymentFragment
+import com.geckour.q.ui.pay.PaymentViewModel
 import com.geckour.q.ui.sheet.BottomSheetViewModel
 import com.geckour.q.util.*
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
+import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
@@ -62,6 +65,9 @@ class MainActivity : AppCompatActivity() {
     }
     private val bottomSheetViewModel: BottomSheetViewModel by lazy {
         ViewModelProviders.of(this)[BottomSheetViewModel::class.java]
+    }
+    private val paymentViewModel: PaymentViewModel by lazy {
+        ViewModelProviders.of(this)[PaymentViewModel::class.java]
     }
     internal lateinit var binding: ActivityMainBinding
     private lateinit var drawerToggle: ActionBarDrawerToggle
@@ -95,6 +101,7 @@ class MainActivity : AppCompatActivity() {
                 retrieveMediaWithPermissionCheck()
                 null
             }
+            R.id.nav_pay -> PaymentFragment.newInstance()
             else -> null
         }
         if (fragment != null) {
@@ -493,6 +500,14 @@ class MainActivity : AppCompatActivity() {
         bottomSheetViewModel.changedPosition.observe(this, Observer {
             if (it == null) return@Observer
             player?.forcePosition(it)
+        })
+
+        paymentViewModel.saveSuccess.observe(this, Observer {
+            if (it == null) return@Observer
+            Snackbar.make(binding.root,
+                    if (it) R.string.payment_save_success
+                    else R.string.payment_save_failure,
+                    Snackbar.LENGTH_SHORT).show()
         })
     }
 
