@@ -12,6 +12,7 @@
             android:id="@+id/drawer_head_icon"
             android:layout_width="80dp"
             android:layout_height="80dp"
+            android:foreground="?android:attr/selectableItemBackgroundBorderless"
             android:src="@drawable/head_icon"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />

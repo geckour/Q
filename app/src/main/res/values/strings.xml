@@ -83,4 +83,6 @@
     <string name="payment_desc">Available donation with Kyash</string>
     <string name="payment_save_success">Succeeded</string>
     <string name="payment_save_failure">Failure to save</string>
+
+    <string name="easter_egg_title">Today\'s song</string>
 </resources>

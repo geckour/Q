@@ -25,6 +25,7 @@ import com.geckour.q.databinding.DialogAddQueuePlaylistBinding
 import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
+import com.geckour.q.ui.easteregg.EasterEggFragment
 import com.geckour.q.ui.library.album.AlbumListFragment
 import com.geckour.q.ui.library.artist.ArtistListFragment
 import com.geckour.q.ui.library.genre.GenreListFragment
@@ -43,6 +44,7 @@ import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
+import timber.log.Timber
 import java.io.File
 
 @RuntimePermissions
@@ -361,6 +363,7 @@ class MainActivity : AppCompatActivity() {
         })
 
         viewModel.newQueue.observe(this, Observer {
+            Timber.d("qgeck new queue: $it")
             if (it == null) return@Observer
             player?.submitQueue(it)
         })
@@ -518,6 +521,11 @@ class MainActivity : AppCompatActivity() {
         binding.drawerLayout.addDrawerListener(drawerToggle)
         drawerToggle.syncState()
         binding.navigationView.setNavigationItemSelectedListener(onNavigationItemSelected)
+        binding.navigationView.getHeaderView(0).findViewById<View>(R.id.drawer_head_icon)?.setOnLongClickListener {
+            requestedTransaction = RequestedTransaction(EasterEggFragment.TAG)
+            tryTransaction()
+            true
+        }
     }
 
     private fun toggleIndicateSync(syncing: Boolean) {
@@ -582,6 +590,13 @@ class MainActivity : AppCompatActivity() {
                                     .addToBackStack(null)
                                     .commit()
                         }
+                    }
+                    EasterEggFragment.TAG -> {
+                        supportFragmentManager.beginTransaction()
+                                .replace(R.id.fragment_container, EasterEggFragment.newInstance())
+                                .addToBackStack(null)
+                                .commit()
+                        binding.drawerLayout.closeDrawer(binding.navigationView)
                     }
                 }
                 requestedTransaction = null

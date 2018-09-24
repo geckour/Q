@@ -78,4 +78,6 @@
     <string name="payment_desc">Kyashを利用した投げ銭を受け付けています</string>
     <string name="payment_save_success">保存しました</string>
     <string name="payment_save_failure">エラー: 保存できませんでした</string>
+
+    <string name="easter_egg_title">今日の一曲</string>
 </resources>
