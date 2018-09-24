@@ -363,7 +363,6 @@ class MainActivity : AppCompatActivity() {
         })
 
         viewModel.newQueue.observe(this, Observer {
-            Timber.d("qgeck new queue: $it")
             if (it == null) return@Observer
             player?.submitQueue(it)
         })

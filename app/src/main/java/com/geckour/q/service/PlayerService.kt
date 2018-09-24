@@ -58,19 +58,7 @@ class PlayerService : Service() {
 
     private val binder = PlayerBinder()
 
-    private val mediaSession: MediaSession by lazy {
-        MediaSession(this, TAG).apply {
-            setPlaybackState(PlaybackState.Builder()
-                    .setActions(PlaybackState.ACTION_PLAY_PAUSE or
-                            PlaybackState.ACTION_SKIP_TO_NEXT or
-                            PlaybackState.ACTION_SKIP_TO_PREVIOUS or
-                            PlaybackState.ACTION_FAST_FORWARD or
-                            PlaybackState.ACTION_REWIND or
-                            PlaybackState.ACTION_SEEK_TO)
-                    .build())
-            setCallback(mediaSessionCallback)
-        }
-    }
+    private lateinit var mediaSession: MediaSession
 
     private val mediaSessionCallback = object : MediaSession.Callback() {
         override fun onPlay() {
@@ -128,7 +116,11 @@ class PlayerService : Service() {
         }
     }
 
-    private lateinit var player: SimpleExoPlayer
+    private val player: SimpleExoPlayer by lazy {
+        ExoPlayerFactory.newSimpleInstance(this, DefaultTrackSelector()).apply {
+            addListener(eventListener)
+        }
+    }
     private val currentPosition
         get() = when (player.currentWindowIndex) {
             -1 -> if (source.size > 0) 0 else -1
@@ -148,11 +140,7 @@ class PlayerService : Service() {
     private var onRepeatModeChanged: ((Int) -> Unit)? = null
     private var onDestroyed: (() -> Unit)? = null
 
-    private val mediaSourceFactory: ExtractorMediaSource.Factory by lazy {
-        ExtractorMediaSource.Factory(DefaultDataSourceFactory(applicationContext,
-                Util.getUserAgent(applicationContext, packageName)))
-                .setExtractorsFactory(DefaultExtractorsFactory())
-    }
+    private lateinit var mediaSourceFactory: ExtractorMediaSource.Factory
     private val source = ConcatenatingMediaSource()
 
     private val eventListener = object : Player.EventListener {
@@ -210,7 +198,8 @@ class PlayerService : Service() {
         }
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
-            if (playbackState == Player.STATE_ENDED
+            if (currentPosition == source.size - 1
+                    && playbackState == Player.STATE_ENDED
                     && player.repeatMode == Player.REPEAT_MODE_OFF) {
                 pause()
                 seekToHead()
@@ -259,10 +248,21 @@ class PlayerService : Service() {
 
         parentJob = Job()
 
-        player = ExoPlayerFactory.newSimpleInstance(this, DefaultTrackSelector()).apply {
-            addListener(eventListener)
-            prepare(source)
+        mediaSession = MediaSession(this, TAG).apply {
+            setPlaybackState(PlaybackState.Builder()
+                    .setActions(PlaybackState.ACTION_PLAY_PAUSE or
+                            PlaybackState.ACTION_SKIP_TO_NEXT or
+                            PlaybackState.ACTION_SKIP_TO_PREVIOUS or
+                            PlaybackState.ACTION_FAST_FORWARD or
+                            PlaybackState.ACTION_REWIND or
+                            PlaybackState.ACTION_SEEK_TO)
+                    .build())
+            setCallback(mediaSessionCallback)
         }
+
+        mediaSourceFactory = ExtractorMediaSource.Factory(DefaultDataSourceFactory(applicationContext,
+                Util.getUserAgent(applicationContext, packageName)))
+                .setExtractorsFactory(DefaultExtractorsFactory())
 
         registerReceiver(headsetStateReceiver, IntentFilter().apply {
             addAction(SOURCE_ACTION_WIRED_STATE)
@@ -289,7 +289,6 @@ class PlayerService : Service() {
                 NotificationCommand.PLAY_OR_PAUSE -> togglePlayPause()
                 NotificationCommand.NEXT -> next()
                 NotificationCommand.DESTROY -> onRequestedStopService()
-                else -> Unit
             }
         }
     }
@@ -320,6 +319,7 @@ class PlayerService : Service() {
     }
 
     fun submitQueue(queue: InsertQueue) {
+        val needPrepare = source.size == 0
         when (queue.metadata.actionType) {
             InsertActionType.NEXT -> {
                 val position = if (currentPosition < 1) 0 else currentPosition + 1
@@ -386,7 +386,7 @@ class PlayerService : Service() {
             }
         }
 
-        onRepeatModeChanged?.invoke(player.repeatMode)
+        if (needPrepare) player.prepare(source)
     }
 
     fun swapQueuePosition(from: Int, to: Int) {
@@ -442,6 +442,7 @@ class PlayerService : Service() {
         }
 
         if (player.playWhenReady.not()) {
+            player.playWhenReady = true
             mediaSession.isActive = true
             notificationUpdateJob.cancel()
             notificationUpdateJob = launch(parentJob) {
@@ -453,7 +454,6 @@ class PlayerService : Service() {
                         song, albumTitle, player.playWhenReady).await()
                         .show(player.playWhenReady)
             }
-            player.playWhenReady = true
         }
     }
 
