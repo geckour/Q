@@ -235,6 +235,8 @@ class PlayerService : Service() {
     private var notifyPlaybackRatioJob: Job? = null
     private var seekJob: Job? = null
 
+    val playing: Boolean get() = player.playWhenReady
+
     override fun onBind(intent: Intent?): IBinder? = binder
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
@@ -318,7 +320,7 @@ class PlayerService : Service() {
         this.onDestroyed = listener
     }
 
-    fun submitQueue(queue: InsertQueue) {
+    fun submitQueue(queue: InsertQueue, force: Boolean = false) {
         val needPrepare = source.size == 0
         when (queue.metadata.actionType) {
             InsertActionType.NEXT -> {
@@ -334,7 +336,7 @@ class PlayerService : Service() {
                         queue.queue.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.OVERRIDE -> {
-                clear(true)
+                clear(force.not())
                 this.queue.addAll(queue.queue)
                 source.addMediaSources(queue.queue.map { it.getMediaSource(mediaSourceFactory) })
             }
@@ -354,7 +356,7 @@ class PlayerService : Service() {
                         shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_OVERRIDE -> {
-                clear(true)
+                clear(force.not())
 
                 val shuffled = queue.queue.shuffleByClassType(queue.metadata.classType)
 
@@ -377,7 +379,7 @@ class PlayerService : Service() {
                         shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
-                clear(true)
+                clear(force.not())
 
                 val shuffled = queue.queue.shuffled()
 

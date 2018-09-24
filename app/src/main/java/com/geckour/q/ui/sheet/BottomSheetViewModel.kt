@@ -72,9 +72,4 @@ class BottomSheetViewModel : ViewModel() {
         playbackButton.value = PlaybackButton.REWIND
         return true
     }
-
-    internal fun restoreState() {
-        currentQueue.value = currentQueue.value
-        currentPosition.value = currentPosition.value
-    }
 }

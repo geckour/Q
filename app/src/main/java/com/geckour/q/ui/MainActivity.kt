@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.content.*
 import android.os.Bundle
 import android.os.IBinder
+import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.view.MenuItem
 import android.view.View
@@ -22,6 +23,7 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogAddQueuePlaylistBinding
+import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
@@ -38,6 +40,7 @@ import com.geckour.q.util.*
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.snackbar.Snackbar
+import com.google.gson.Gson
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
@@ -54,6 +57,7 @@ class MainActivity : AppCompatActivity() {
         private const val ACTION_PROGRESS_SYNCING = "action_progress_syncing"
         private const val EXTRA_PROGRESS_SYNCING = "extra_progress_syncing"
         private const val STATE_KEY_REQUESTED_TRANSACTION = "state_key_requested_transaction"
+        private const val PREF_KEY_PLAYER_STATE = "pref_key_player_state"
 
         fun createIntent(context: Context): Intent = Intent(context, MainActivity::class.java)
 
@@ -148,9 +152,17 @@ class MainActivity : AppCompatActivity() {
                         bottomSheetViewModel.repeatMode.value = it
                     }
                     setOnDestroyedListener { onDestroyPlayer() }
-
-                    publishStatus()
                 }
+                PreferenceManager.getDefaultSharedPreferences(this@MainActivity).apply {
+                    if (player?.playing == false) {
+                        getString(PREF_KEY_PLAYER_STATE, null)?.let {
+                            Gson().fromJson(it, PlayerState::class.java)
+                        }?.setToPlayer()
+                    }
+
+                    edit().remove(PREF_KEY_PLAYER_STATE)
+                }
+                player?.publishStatus()
             }
         }
 
@@ -196,7 +208,7 @@ class MainActivity : AppCompatActivity() {
 
         if (player == null) {
             bottomSheetViewModel.currentQueue.value = emptyList()
-            startService(PlayerService.createIntent(this))
+            bindPlayer()
         }
 
         tryTransaction()
@@ -205,7 +217,7 @@ class MainActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         parentJob = Job()
-        bindPlayer()
+        startService(PlayerService.createIntent(this))
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -223,6 +235,16 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStop() {
         super.onStop()
+
+        val state = PlayerState(
+                bottomSheetViewModel.currentQueue.value ?: emptyList(),
+                bottomSheetViewModel.currentPosition.value ?: 0,
+                bottomSheetViewModel.playbackRatio.value ?: 0f,
+                bottomSheetViewModel.playing.value == true
+        )
+        PreferenceManager.getDefaultSharedPreferences(this).edit()
+                .putString(PREF_KEY_PLAYER_STATE, Gson().toJson(state))
+                .apply()
         parentJob.cancel()
         unbindPlayer()
     }
@@ -265,6 +287,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun onDestroyPlayer() {
         player = null
+    }
+
+    private fun PlayerState.setToPlayer() {
+        val insertQueue =
+                InsertQueue(QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.SONG),
+                        queue)
+        player?.submitQueue(insertQueue, true)
+        player?.forcePosition(currentPosition)
+        player?.seek(progress)
     }
 
     @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE)

@@ -309,5 +309,5 @@ fun Long.getTimeString(): String {
     val hour = this / 3600000
     val minute = (this % 3600000) / 60000
     val second = (this % 60000) / 1000
-    return (if (hour > 0) String.format("%02d:", hour) else "") + String.format("%02d:%02d", minute, second)
+    return (if (hour > 0) String.format("%d:", hour) else "") + String.format("%02d:%02d", minute, second)
 }

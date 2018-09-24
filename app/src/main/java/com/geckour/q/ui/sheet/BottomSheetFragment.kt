@@ -141,7 +141,6 @@ class BottomSheetFragment : Fragment() {
         super.onResume()
 
         observeEvents()
-        viewModel.restoreState()
     }
 
     private fun observeEvents() {
