@@ -84,7 +84,7 @@ class SongListFragment : Fragment() {
 
         observeEvents()
 
-        if (savedInstanceState == null && adapter.itemCount == 0) {
+        if (adapter.itemCount == 0) {
             val album = arguments?.getParcelable<Album>(ARGS_KEY_ALBUM)
             val genre = arguments?.getParcelable<Genre>(ARGS_KEY_GENRE)
             val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST)
@@ -156,47 +156,55 @@ class SongListFragment : Fragment() {
     }
 
     private fun fetchSongs() {
-        DB.getInstance(requireContext()).also { db ->
-            db.trackDao().getAllAsync().observe(this@SongListFragment, Observer { dbTrackList ->
-                if (dbTrackList == null) return@Observer
+        context?.apply {
+            DB.getInstance(this).also { db ->
+                db.trackDao().getAllAsync().observe(this@SongListFragment, Observer { dbTrackList ->
+                    if (dbTrackList == null) return@Observer
 
-                mainViewModel.loading.value = true
-                upsertSongListIfPossible(db, dbTrackList, false)
-            })
+                    mainViewModel.loading.value = true
+                    upsertSongListIfPossible(db, dbTrackList, false)
+                })
+            }
         }
     }
 
     private fun fetchSongsWithAlbum(album: Album) {
         mainViewModel.loading.value = true
-        launch(parentJob) {
-            DB.getInstance(requireContext()).also { db ->
-                upsertSongListIfPossible(db, db.trackDao().findByAlbum(album.id))
+        context?.also {
+            launch(parentJob) {
+                DB.getInstance(it).also { db ->
+                    upsertSongListIfPossible(db, db.trackDao().findByAlbum(album.id))
+                }
             }
         }
     }
 
     private fun fetchSongsWithGenre(genre: Genre) {
         mainViewModel.loading.value = true
-        launch(UI + parentJob) {
-            adapter.upsertItems(
-                    getSongListFromTrackMediaId(DB.getInstance(requireContext()),
-                            genre.getTrackMeidaIds(requireContext()),
-                            genreId = genre.id), false)
-            binding.recyclerView.smoothScrollToPosition(0)
-            mainViewModel.loading.value = false
+        context?.also {
+            launch(UI + parentJob) {
+                adapter.upsertItems(
+                        getSongListFromTrackMediaId(DB.getInstance(it),
+                                genre.getTrackMediaIds(it),
+                                genreId = genre.id), false)
+                binding.recyclerView.smoothScrollToPosition(0)
+                mainViewModel.loading.value = false
+            }
         }
     }
 
     private fun fetchSongsWithPlaylist(playlist: Playlist) {
         mainViewModel.loading.value = true
-        launch(UI + parentJob) {
-            adapter.addItems(
-                    getSongListFromTrackMediaIdWithTrackNum(DB.getInstance(requireContext()),
-                            playlist.getTrackMeidaIds(requireContext()),
-                            playlistId = playlist.id)
-            )
-            binding.recyclerView.smoothScrollToPosition(0)
-            mainViewModel.loading.value = false
+        context?.also {
+            launch(UI + parentJob) {
+                adapter.addItems(
+                        getSongListFromTrackMediaIdWithTrackNum(DB.getInstance(it),
+                                playlist.getTrackMediaIds(it),
+                                playlistId = playlist.id)
+                )
+                binding.recyclerView.smoothScrollToPosition(0)
+                mainViewModel.loading.value = false
+            }
         }
     }
 

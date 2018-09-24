@@ -15,7 +15,8 @@ import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
 
-class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adapter<ArtistListAdapter.ViewHolder>() {
+class ArtistListAdapter(private val viewModel: MainViewModel)
+    : RecyclerView.Adapter<ArtistListAdapter.ViewHolder>() {
 
     private val items: ArrayList<Artist> = ArrayList()
 

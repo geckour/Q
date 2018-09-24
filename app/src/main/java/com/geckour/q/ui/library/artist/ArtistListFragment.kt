@@ -23,6 +23,7 @@ import kotlinx.coroutines.experimental.launch
 class ArtistListFragment : Fragment() {
 
     companion object {
+        val TAG: String = ArtistListFragment::class.java.simpleName
         fun newInstance(): ArtistListFragment = ArtistListFragment()
     }
 
@@ -51,7 +52,7 @@ class ArtistListFragment : Fragment() {
 
         observeEvents()
 
-        if (savedInstanceState == null && adapter.itemCount == 0) fetchArtists()
+        if (adapter.itemCount == 0) fetchArtists()
     }
 
     override fun onStart() {
@@ -77,35 +78,37 @@ class ArtistListFragment : Fragment() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        launch {
-            val sortByTrackOrder = item.itemId.let {
-                it == R.id.menu_insert_all_simple_shuffle_next
-                        || it == R.id.menu_insert_all_simple_shuffle_last
-                        || it == R.id.menu_override_all_simple_shuffle
-            }
-            val artistAlbumMap = latestDbAlbumList.groupBy { it.artistId }
-            val songs = adapter.getItems().mapNotNull {
-                artistAlbumMap[it.id]?.map {
-                    DB.getInstance(requireContext()).let { db ->
-                        db.trackDao().findByAlbum(it.id)
-                                .mapNotNull { getSong(db, it).await() }
-                                .let { if (sortByTrackOrder) it.sortByTrackOrder() else it }
-                    }
-                }?.flatten()
-            }.flatten()
+        context?.also { context ->
+            launch(parentJob) {
+                val sortByTrackOrder = item.itemId.let {
+                    it == R.id.menu_insert_all_simple_shuffle_next
+                            || it == R.id.menu_insert_all_simple_shuffle_last
+                            || it == R.id.menu_override_all_simple_shuffle
+                }
+                val artistAlbumMap = latestDbAlbumList.groupBy { it.artistId }
+                val songs = adapter.getItems().mapNotNull {
+                    artistAlbumMap[it.id]?.map {
+                        DB.getInstance(context).let { db ->
+                            db.trackDao().findByAlbum(it.id)
+                                    .mapNotNull { getSong(db, it).await() }
+                                    .let { if (sortByTrackOrder) it.sortByTrackOrder() else it }
+                        }
+                    }?.flatten()
+                }.flatten()
 
-            adapter.onNewQueue(songs, when (item.itemId) {
-                R.id.menu_insert_all_next -> InsertActionType.NEXT
-                R.id.menu_insert_all_last -> InsertActionType.LAST
-                R.id.menu_override_all -> InsertActionType.OVERRIDE
-                R.id.menu_insert_all_shuffle_next -> InsertActionType.SHUFFLE_NEXT
-                R.id.menu_insert_all_shuffle_last -> InsertActionType.SHUFFLE_LAST
-                R.id.menu_override_all_shuffle -> InsertActionType.SHUFFLE_OVERRIDE
-                R.id.menu_insert_all_simple_shuffle_next -> InsertActionType.SHUFFLE_SIMPLE_NEXT
-                R.id.menu_insert_all_simple_shuffle_last -> InsertActionType.SHUFFLE_SIMPLE_LAST
-                R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
-                else -> return@launch
-            })
+                adapter.onNewQueue(songs, when (item.itemId) {
+                    R.id.menu_insert_all_next -> InsertActionType.NEXT
+                    R.id.menu_insert_all_last -> InsertActionType.LAST
+                    R.id.menu_override_all -> InsertActionType.OVERRIDE
+                    R.id.menu_insert_all_shuffle_next -> InsertActionType.SHUFFLE_NEXT
+                    R.id.menu_insert_all_shuffle_last -> InsertActionType.SHUFFLE_LAST
+                    R.id.menu_override_all_shuffle -> InsertActionType.SHUFFLE_OVERRIDE
+                    R.id.menu_insert_all_simple_shuffle_next -> InsertActionType.SHUFFLE_SIMPLE_NEXT
+                    R.id.menu_insert_all_simple_shuffle_last -> InsertActionType.SHUFFLE_SIMPLE_LAST
+                    R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
+                    else -> return@launch
+                })
+            }
         }
 
         return true
@@ -118,14 +121,16 @@ class ArtistListFragment : Fragment() {
     }
 
     private fun fetchArtists() {
-        DB.getInstance(requireContext()).also { db ->
-            db.albumDao().getAllAsync().observe(this@ArtistListFragment, Observer { dbAlbumList ->
-                if (dbAlbumList == null) return@Observer
+        context?.apply {
+            DB.getInstance(this).also { db ->
+                db.albumDao().getAllAsync().observe(this@ArtistListFragment, Observer { dbAlbumList ->
+                    if (dbAlbumList == null) return@Observer
 
-                mainViewModel.loading.value = true
-                latestDbAlbumList = dbAlbumList
-                upsertArtistListIfPossible(db)
-            })
+                    mainViewModel.loading.value = true
+                    latestDbAlbumList = dbAlbumList
+                    upsertArtistListIfPossible(db)
+                })
+            }
         }
     }
 

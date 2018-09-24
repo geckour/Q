@@ -12,13 +12,14 @@ import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.fetchPlaylists
 import com.geckour.q.util.getSong
-import com.geckour.q.util.getTrackMeidaIds
+import com.geckour.q.util.getTrackMediaIds
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.launch
 
 class PlaylistListFragment : Fragment() {
 
     companion object {
+        val TAG: String = PlaylistListFragment::class.java.simpleName
         fun newInstance(): PlaylistListFragment = PlaylistListFragment()
     }
 
@@ -45,9 +46,9 @@ class PlaylistListFragment : Fragment() {
 
         observeEvents()
 
-        if (savedInstanceState == null && adapter.itemCount == 0) {
+        if (adapter.itemCount == 0) {
             mainViewModel.loading.value = true
-            adapter.setItems(fetchPlaylists(requireContext()).sortedBy { it.name })
+            context?.apply { adapter.setItems(fetchPlaylists(this).sortedBy { it.name }) }
             mainViewModel.loading.value = false
         }
     }
@@ -75,28 +76,30 @@ class PlaylistListFragment : Fragment() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        launch(parentJob) {
-            val songs = adapter.getItems().map { playlist ->
-                playlist.getTrackMeidaIds(requireContext())
-                        .mapNotNull {
-                            getSong(DB.getInstance(requireContext()),
-                                    it.first,
-                                    playlistId = playlist.id)
-                                    .await()
-                        }
-            }.flatten()
-            adapter.onNewQueue(songs, when (item.itemId) {
-                R.id.menu_insert_all_next -> InsertActionType.NEXT
-                R.id.menu_insert_all_last -> InsertActionType.LAST
-                R.id.menu_override_all -> InsertActionType.OVERRIDE
-                R.id.menu_insert_all_shuffle_next -> InsertActionType.SHUFFLE_NEXT
-                R.id.menu_insert_all_shuffle_last -> InsertActionType.SHUFFLE_LAST
-                R.id.menu_override_all_shuffle -> InsertActionType.SHUFFLE_OVERRIDE
-                R.id.menu_insert_all_simple_shuffle_next -> InsertActionType.SHUFFLE_SIMPLE_NEXT
-                R.id.menu_insert_all_simple_shuffle_last -> InsertActionType.SHUFFLE_SIMPLE_LAST
-                R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
-                else -> return@launch
-            })
+        context?.also { context ->
+            launch(parentJob) {
+                val songs = adapter.getItems().map { playlist ->
+                    playlist.getTrackMediaIds(context)
+                            .mapNotNull {
+                                getSong(DB.getInstance(context),
+                                        it.first,
+                                        playlistId = playlist.id)
+                                        .await()
+                            }
+                }.flatten()
+                adapter.onNewQueue(songs, when (item.itemId) {
+                    R.id.menu_insert_all_next -> InsertActionType.NEXT
+                    R.id.menu_insert_all_last -> InsertActionType.LAST
+                    R.id.menu_override_all -> InsertActionType.OVERRIDE
+                    R.id.menu_insert_all_shuffle_next -> InsertActionType.SHUFFLE_NEXT
+                    R.id.menu_insert_all_shuffle_last -> InsertActionType.SHUFFLE_LAST
+                    R.id.menu_override_all_shuffle -> InsertActionType.SHUFFLE_OVERRIDE
+                    R.id.menu_insert_all_simple_shuffle_next -> InsertActionType.SHUFFLE_SIMPLE_NEXT
+                    R.id.menu_insert_all_simple_shuffle_last -> InsertActionType.SHUFFLE_SIMPLE_LAST
+                    R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
+                    else -> return@launch
+                })
+            }
         }
 
         return true

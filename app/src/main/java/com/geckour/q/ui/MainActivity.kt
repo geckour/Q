@@ -22,6 +22,7 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogAddQueuePlaylistBinding
+import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
 import com.geckour.q.ui.library.album.AlbumListFragment
@@ -39,7 +40,6 @@ import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
-import timber.log.Timber
 import java.io.File
 
 @RuntimePermissions
@@ -48,6 +48,7 @@ class MainActivity : AppCompatActivity() {
     companion object {
         private const val ACTION_PROGRESS_SYNCING = "action_progress_syncing"
         private const val EXTRA_PROGRESS_SYNCING = "extra_progress_syncing"
+        private const val STATE_KEY_REQUESTED_TRANSACTION = "state_key_requested_transaction"
 
         fun createIntent(context: Context): Intent = Intent(context, MainActivity::class.java)
 
@@ -65,6 +66,9 @@ class MainActivity : AppCompatActivity() {
     internal lateinit var binding: ActivityMainBinding
     private lateinit var drawerToggle: ActionBarDrawerToggle
     private var parentJob = Job()
+
+    private var requestedTransaction: RequestedTransaction? = null
+    private var paused = true
 
     private var player: PlayerService? = null
 
@@ -161,15 +165,23 @@ class MainActivity : AppCompatActivity() {
         setSupportActionBar(binding.coordinatorMain.contentMain.toolbar)
         setupDrawer()
 
-        retrieveMediaIfEmpty()
+        if (savedInstanceState == null) {
+            retrieveMediaIfEmpty()
 
-        // TODO: 設定画面でどの画面を初期画面にするか設定できるようにする
-        val navId = R.id.nav_artist
-        onNavigationItemSelected(binding.navigationView.menu.findItem(navId))
+            // TODO: 設定画面でどの画面を初期画面にするか設定できるようにする
+            val navId = R.id.nav_artist
+            onNavigationItemSelected(binding.navigationView.menu.findItem(navId))
+        } else if (savedInstanceState.containsKey(STATE_KEY_REQUESTED_TRANSACTION)) {
+            requestedTransaction =
+                    savedInstanceState.getParcelable(STATE_KEY_REQUESTED_TRANSACTION)
+                            as RequestedTransaction
+        }
     }
 
     override fun onResume() {
         super.onResume()
+
+        paused = false
 
         WorkManager.getInstance().monitorSyncState()
 
@@ -177,12 +189,27 @@ class MainActivity : AppCompatActivity() {
             bottomSheetViewModel.currentQueue.value = emptyList()
             startService(PlayerService.createIntent(this))
         }
+
+        tryTransaction()
     }
 
     override fun onStart() {
         super.onStart()
         parentJob = Job()
         bindPlayer()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+
+        requestedTransaction?.apply {
+            outState.putParcelable(STATE_KEY_REQUESTED_TRANSACTION, this)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        paused = true
     }
 
     override fun onStop() {
@@ -304,34 +331,26 @@ class MainActivity : AppCompatActivity() {
 
         viewModel.selectedArtist.observe(this, Observer {
             if (it == null) return@Observer
-            supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, AlbumListFragment.newInstance(it), it.name)
-                    .addToBackStack(null)
-                    .commit()
+            requestedTransaction = RequestedTransaction(ArtistListFragment.TAG, artist = it)
+            tryTransaction()
         })
 
         viewModel.selectedAlbum.observe(this, Observer {
             if (it == null) return@Observer
-            supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, SongListFragment.newInstance(it), it.name)
-                    .addToBackStack(null)
-                    .commit()
+            requestedTransaction = RequestedTransaction(AlbumListFragment.TAG, album = it)
+            tryTransaction()
         })
 
         viewModel.selectedGenre.observe(this, Observer {
             if (it == null) return@Observer
-            supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, SongListFragment.newInstance(it), it.name)
-                    .addToBackStack(null)
-                    .commit()
+            requestedTransaction = RequestedTransaction(GenreListFragment.TAG, genre = it)
+            tryTransaction()
         })
 
         viewModel.selectedPlaylist.observe(this, Observer {
             if (it == null) return@Observer
-            supportFragmentManager.beginTransaction()
-                    .replace(R.id.fragment_container, SongListFragment.newInstance(it), it.name)
-                    .addToBackStack(null)
-                    .commit()
+            requestedTransaction = RequestedTransaction(PlaylistListFragment.TAG, playlist = it)
+            tryTransaction()
         })
 
         viewModel.newQueue.observe(this, Observer {
@@ -507,5 +526,51 @@ class MainActivity : AppCompatActivity() {
         binding.drawerLayout.setDrawerLockMode(
                 if (locking) DrawerLayout.LOCK_MODE_LOCKED_CLOSED
                 else DrawerLayout.LOCK_MODE_UNLOCKED)
+    }
+
+    private fun tryTransaction() {
+        if (paused.not()) {
+            requestedTransaction?.apply {
+                when (this.tag) {
+                    ArtistListFragment.TAG -> {
+                        if (artist != null) {
+                            supportFragmentManager.beginTransaction()
+                                    .replace(R.id.fragment_container,
+                                            AlbumListFragment.newInstance(artist), artist.name)
+                                    .addToBackStack(null)
+                                    .commit()
+                        }
+                    }
+                    AlbumListFragment.TAG -> {
+                        if (album != null) {
+                            supportFragmentManager.beginTransaction()
+                                    .replace(R.id.fragment_container,
+                                            SongListFragment.newInstance(album), album.name)
+                                    .addToBackStack(null)
+                                    .commit()
+                        }
+                    }
+                    GenreListFragment.TAG -> {
+                        if (genre != null) {
+                            supportFragmentManager.beginTransaction()
+                                    .replace(R.id.fragment_container,
+                                            SongListFragment.newInstance(genre), genre.name)
+                                    .addToBackStack(null)
+                                    .commit()
+                        }
+                    }
+                    PlaylistListFragment.TAG -> {
+                        if (playlist != null) {
+                            supportFragmentManager.beginTransaction()
+                                    .replace(R.id.fragment_container,
+                                            SongListFragment.newInstance(playlist), playlist.name)
+                                    .addToBackStack(null)
+                                    .commit()
+                        }
+                    }
+                }
+                requestedTransaction = null
+            }
+        }
     }
 }

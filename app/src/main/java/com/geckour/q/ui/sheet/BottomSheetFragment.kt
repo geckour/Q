@@ -157,7 +157,7 @@ class BottomSheetFragment : Fragment() {
             binding.isQueueNotEmpty = state
             val totalTime = it?.asSequence()?.map { it.duration }?.sum()
             binding.textTimeTotal.text = totalTime?.let {
-                getString(R.string.bottom_sheet_time_total, it.getTimeString())
+                context?.getString(R.string.bottom_sheet_time_total, it.getTimeString())
             }
             viewModel.currentPosition.value = if (state) viewModel.currentPosition.value else 0
         })
@@ -165,28 +165,32 @@ class BottomSheetFragment : Fragment() {
         viewModel.currentPosition.observe(this, Observer {
             val song = adapter.getItem(it)
 
-            launch(UI) {
-                val model = song?.albumId?.let {
-                    DB.getInstance(requireContext())
-                            .getArtworkUriStringFromId(it).await() ?: R.drawable.ic_empty
+            context?.let { context ->
+                launch(UI) {
+                    val model = song?.albumId?.let {
+                        DB.getInstance(context)
+                                .getArtworkUriStringFromId(it).await() ?: R.drawable.ic_empty
+                    }
+                    Glide.with(binding.artwork)
+                            .load(model)
+                            .into(binding.artwork)
                 }
-                Glide.with(binding.artwork)
-                        .load(model)
-                        .into(binding.artwork)
             }
             binding.textSong.text = song?.name
             binding.textArtist.text = song?.artist
             binding.seekBar.apply {
-                thumbTintList =
-                        if (song != null) {
-                            setOnTouchListener(null)
-                            ColorStateList.valueOf(ContextCompat.getColor(requireContext(),
-                                    R.color.colorPrimaryDark))
-                        } else {
-                            setOnTouchListener { _, _ -> true }
-                            ColorStateList.valueOf(ContextCompat.getColor(requireContext(),
-                                    R.color.colorTintInactive))
-                        }
+                context?.also {
+                    thumbTintList =
+                            if (song != null) {
+                                setOnTouchListener(null)
+                                ColorStateList.valueOf(ContextCompat.getColor(it,
+                                        R.color.colorPrimaryDark))
+                            } else {
+                                setOnTouchListener { _, _ -> true }
+                                ColorStateList.valueOf(ContextCompat.getColor(it,
+                                        R.color.colorTintInactive))
+                            }
+                }
             }
             if (song == null) {
                 binding.textTimeLeft.text = null
@@ -218,9 +222,11 @@ class BottomSheetFragment : Fragment() {
                 setImageResource(
                         if (it == Player.REPEAT_MODE_ONE) R.drawable.ic_repeat_one
                         else R.drawable.ic_repeat)
-                imageTintList = ColorStateList.valueOf(requireContext().getColor(
-                        if (it == Player.REPEAT_MODE_OFF) R.color.colorTintInactive
-                        else R.color.colorAccent))
+                context?.also { context ->
+                    imageTintList = ColorStateList.valueOf(context.getColor(
+                            if (it == Player.REPEAT_MODE_OFF) R.color.colorTintInactive
+                            else R.color.colorAccent))
+                }
                 visibility = View.VISIBLE
             }
         })
