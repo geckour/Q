@@ -13,6 +13,7 @@ import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.getSong
+import com.geckour.q.util.sortByTrackOrder
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
 import com.geckour.q.data.db.model.Album as DbAlbum
@@ -83,9 +84,16 @@ class AlbumListFragment : Fragment() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         launch {
+            val sortByTrackOrder = item.itemId.let {
+                it == R.id.menu_insert_all_simple_shuffle_next
+                        || it == R.id.menu_insert_all_simple_shuffle_last
+                        || it == R.id.menu_override_all_simple_shuffle
+            }
             val songs = adapter.getItems().map {
                 DB.getInstance(requireContext()).let { db ->
-                    db.trackDao().findByAlbum(it.id).mapNotNull { getSong(db, it).await() }
+                    db.trackDao().findByAlbum(it.id)
+                            .mapNotNull { getSong(db, it).await() }
+                            .let { if (sortByTrackOrder) it.sortByTrackOrder() else it }
                 }
             }.flatten()
 
@@ -142,7 +150,8 @@ class AlbumListFragment : Fragment() {
             async(parentJob) {
                 (if (artist == null) latestDbAlbumList
                 else latestDbAlbumList.filter { it.artistId == artist.id }).mapNotNull {
-                    val artistName = db.artistDao().get(it.artistId)?.title ?: return@mapNotNull null
+                    val artistName = db.artistDao().get(it.artistId)?.title
+                            ?: return@mapNotNull null
                     Album(it.id, it.mediaId, it.title, artistName, it.artworkUriString)
                 }
             }

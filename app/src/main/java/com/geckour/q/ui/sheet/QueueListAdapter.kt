@@ -13,7 +13,7 @@ import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.getArtworkUriFromId
+import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.swapped
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
@@ -105,7 +105,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
                 launch(UI) {
                     Glide.with(binding.thumb)
                             .load(DB.getInstance(binding.root.context)
-                                    .getArtworkUriFromId(song.albumId).await())
+                                    .getArtworkUriStringFromId(song.albumId).await() ?: R.drawable.ic_empty)
                             .into(binding.thumb)
                 }
             } catch (t: Throwable) {

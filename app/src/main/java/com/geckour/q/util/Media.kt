@@ -152,6 +152,12 @@ fun Playlist.getTrackMeidaIds(context: Context): List<Pair<Long, Int>> =
 fun Song.getMediaSource(mediaSourceFactory: AdsMediaSource.MediaSourceFactory): MediaSource =
         mediaSourceFactory.createMediaSource(Uri.parse(sourcePath))
 
+fun List<Song>.sortByTrackOrder(): List<Song> = this.asSequence()
+        .groupBy { it.discNum }
+        .map { it.key to it.value.sortedBy { it.trackNum } }
+        .sortedBy { it.first }.toList()
+        .flatMap { it.second }
+
 fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> =
         when (classType) {
             OrientedClassType.ARTIST -> {
@@ -197,7 +203,7 @@ fun Song.getMediaMetadata(context: Context, albumTitle: String? = null): Deferre
                     .putString(MediaMetadata.METADATA_KEY_ARTIST, this@getMediaMetadata.artist)
                     .putString(MediaMetadata.METADATA_KEY_ALBUM, album)
                     .putString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
-                            db.getArtworkUriFromId(this@getMediaMetadata.albumId).await().toString())
+                            db.getArtworkUriStringFromId(this@getMediaMetadata.albumId).await().toString())
                     .putLong(MediaMetadata.METADATA_KEY_DURATION, this@getMediaMetadata.duration)
                     .build()
         }
@@ -256,7 +262,9 @@ fun getNotification(context: Context, sessionToken: MediaSession.Token,
             val artwork = try {
                 Glide.with(context)
                         .asBitmap()
-                        .load(DB.getInstance(context).getArtworkUriFromId(song.albumId).await())
+                        .load(DB.getInstance(context)
+                                .getArtworkUriStringFromId(song.albumId).await()
+                                ?: R.drawable.ic_empty)
                         .submit()
                         .get()
             } catch (t: Throwable) {

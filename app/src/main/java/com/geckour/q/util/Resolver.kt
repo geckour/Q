@@ -9,14 +9,10 @@ import kotlinx.coroutines.experimental.async
 import com.geckour.q.data.db.model.Album as DBAlbum
 import com.geckour.q.domain.model.Album as DomainAlbum
 
-fun DB.getArtworkUriFromId(albumId: Long, parentJob: Job? = null): Deferred<Uri?> =
+fun DB.getArtworkUriStringFromId(albumId: Long, parentJob: Job? = null): Deferred<String?> =
         if (parentJob != null) async(parentJob) {
-            this@getArtworkUriFromId.albumDao().get(albumId)?.getArtworkUri()
-        } else async { this@getArtworkUriFromId.albumDao().get(albumId)?.getArtworkUri() }
-
-fun DomainAlbum.getArtworkUri(): Uri = mediaId.getArtworkUriFromMediaId()
-
-fun DBAlbum.getArtworkUri(): Uri = mediaId.getArtworkUriFromMediaId()
+            this@getArtworkUriStringFromId.albumDao().get(albumId)?.artworkUriString
+        } else async { this@getArtworkUriStringFromId.albumDao().get(albumId)?.artworkUriString }
 
 fun Long.getArtworkUriFromMediaId(): Uri =
         ContentUris.withAppendedId(

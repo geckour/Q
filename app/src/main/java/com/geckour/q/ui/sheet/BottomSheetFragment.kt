@@ -20,7 +20,7 @@ import com.geckour.q.databinding.FragmentSheetBottomBinding
 import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.PlaybackButton
-import com.geckour.q.util.getArtworkUriFromId
+import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.getTimeString
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -166,11 +166,12 @@ class BottomSheetFragment : Fragment() {
             val song = adapter.getItem(it)
 
             launch(UI) {
-                val uri = song?.albumId?.let {
-                    DB.getInstance(requireContext()).getArtworkUriFromId(it).await()
+                val model = song?.albumId?.let {
+                    DB.getInstance(requireContext())
+                            .getArtworkUriStringFromId(it).await() ?: R.drawable.ic_empty
                 }
                 Glide.with(binding.artwork)
-                        .load(uri)
+                        .load(model)
                         .into(binding.artwork)
             }
             binding.textSong.text = song?.name

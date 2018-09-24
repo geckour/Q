@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.geckour.q.R
 import com.geckour.q.databinding.ItemListAlbumBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Song
@@ -87,7 +88,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             binding.data = album
             try {
                 Glide.with(binding.thumb)
-                        .load(album.thumbUriString)
+                        .load(album.thumbUriString ?: R.drawable.ic_empty)
                         .into(binding.thumb)
             } catch (t: Throwable) {
                 Timber.e(t)

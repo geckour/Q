@@ -4,14 +4,13 @@ import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.geckour.q.data.db.DB
+import com.geckour.q.R
 import com.geckour.q.databinding.ItemListArtistBinding
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.getArtworkUriFromId
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
@@ -97,7 +96,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Ada
             try {
                 launch(UI) {
                     Glide.with(binding.thumb)
-                            .load(artist.thumbUriString)
+                            .load(artist.thumbUriString ?: R.drawable.ic_empty)
                             .into(binding.thumb)
                 }
             } catch (t: Throwable) {

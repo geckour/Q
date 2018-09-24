@@ -1,7 +1,6 @@
 package com.geckour.q.ui.library.artist
 
 import android.os.Bundle
-import android.provider.MediaStore
 import android.view.*
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
@@ -14,13 +13,12 @@ import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.UNKNOWN
-import com.geckour.q.util.getArtworkUriFromMediaId
 import com.geckour.q.util.getSong
+import com.geckour.q.util.sortByTrackOrder
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.delay
 import kotlinx.coroutines.experimental.launch
-import java.io.File
 
 class ArtistListFragment : Fragment() {
 
@@ -80,10 +78,20 @@ class ArtistListFragment : Fragment() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         launch {
-            val songs = adapter.getItems().map {
-                DB.getInstance(requireContext()).let { db ->
-                    db.trackDao().findByArtist(it.id).mapNotNull { getSong(db, it).await() }
-                }
+            val sortByTrackOrder = item.itemId.let {
+                it == R.id.menu_insert_all_simple_shuffle_next
+                        || it == R.id.menu_insert_all_simple_shuffle_last
+                        || it == R.id.menu_override_all_simple_shuffle
+            }
+            val artistAlbumMap = latestDbAlbumList.groupBy { it.artistId }
+            val songs = adapter.getItems().mapNotNull {
+                artistAlbumMap[it.id]?.map {
+                    DB.getInstance(requireContext()).let { db ->
+                        db.trackDao().findByAlbum(it.id)
+                                .mapNotNull { getSong(db, it).await() }
+                                .let { if (sortByTrackOrder) it.sortByTrackOrder() else it }
+                    }
+                }?.flatten()
             }.flatten()
 
             adapter.onNewQueue(songs, when (item.itemId) {
