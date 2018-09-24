@@ -261,6 +261,7 @@ class PlayerService : Service() {
 
         player = ExoPlayerFactory.newSimpleInstance(this, DefaultTrackSelector()).apply {
             addListener(eventListener)
+            prepare(source)
         }
 
         registerReceiver(headsetStateReceiver, IntentFilter().apply {
@@ -319,8 +320,6 @@ class PlayerService : Service() {
     }
 
     fun submitQueue(queue: InsertQueue) {
-        var needPrepare = this.source.size == 0
-
         when (queue.metadata.actionType) {
             InsertActionType.NEXT -> {
                 val position = if (currentPosition < 1) 0 else currentPosition + 1
@@ -335,10 +334,9 @@ class PlayerService : Service() {
                         queue.queue.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.OVERRIDE -> {
-                clear()
+                clear(true)
                 this.queue.addAll(queue.queue)
                 source.addMediaSources(queue.queue.map { it.getMediaSource(mediaSourceFactory) })
-                needPrepare = true
             }
             InsertActionType.SHUFFLE_NEXT -> {
                 val position = if (currentPosition < 1) 0 else currentPosition + 1
@@ -356,13 +354,12 @@ class PlayerService : Service() {
                         shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_OVERRIDE -> {
-                clear()
+                clear(true)
 
                 val shuffled = queue.queue.shuffleByClassType(queue.metadata.classType)
 
                 this.queue.addAll(shuffled)
                 source.addMediaSources(shuffled.map { it.getMediaSource(mediaSourceFactory) })
-                needPrepare = true
             }
             InsertActionType.SHUFFLE_SIMPLE_NEXT -> {
                 val position = if (currentPosition < 1) 0 else currentPosition + 1
@@ -380,18 +377,16 @@ class PlayerService : Service() {
                         shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
-                clear()
+                clear(true)
 
                 val shuffled = queue.queue.shuffled()
 
                 this.queue.addAll(shuffled)
                 source.addMediaSources(shuffled.map { it.getMediaSource(mediaSourceFactory) })
-                needPrepare = true
             }
         }
 
         onRepeatModeChanged?.invoke(player.repeatMode)
-        if (needPrepare) player.prepare(source)
     }
 
     fun swapQueuePosition(from: Int, to: Int) {
