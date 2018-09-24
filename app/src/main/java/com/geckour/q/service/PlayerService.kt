@@ -146,7 +146,7 @@ class PlayerService : Service() {
     private var onDestroyed: (() -> Unit)? = null
 
     private lateinit var mediaSourceFactory: ExtractorMediaSource.Factory
-    private val source = ConcatenatingMediaSource()
+    private var source = ConcatenatingMediaSource()
 
     private val eventListener = object : Player.EventListener {
         override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters?) {
@@ -359,6 +359,7 @@ class PlayerService : Service() {
             }
             InsertActionType.OVERRIDE -> {
                 clear(force.not())
+
                 this.queue.addAll(queue.queue)
                 source.addMediaSources(queue.queue.map { it.getMediaSource(mediaSourceFactory) })
             }
@@ -516,8 +517,8 @@ class PlayerService : Service() {
 
     fun stop() {
         pause()
-        mediaSession.isActive = false
         seekToHead()
+        mediaSession.isActive = false
     }
 
     fun clear(keepCurrentIfPlaying: Boolean = false) {
@@ -539,6 +540,8 @@ class PlayerService : Service() {
             notificationUpdateJob.cancel()
             this.queue.clear()
             source.clear()
+            source = ConcatenatingMediaSource()
+            player.prepare(source)
         }
     }
 
