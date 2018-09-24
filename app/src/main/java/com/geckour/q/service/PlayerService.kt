@@ -15,8 +15,10 @@ import android.media.session.PlaybackState
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.preference.PreferenceManager
 import android.view.KeyEvent
 import com.geckour.q.data.db.DB
+import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.Song
 import com.geckour.q.util.*
 import com.google.android.exoplayer2.*
@@ -28,6 +30,7 @@ import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
+import com.google.gson.Gson
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.async
@@ -50,6 +53,8 @@ class PlayerService : Service() {
         private const val NOTIFICATION_ID_PLAYER = 320
 
         const val ARGS_KEY_CONTROL_COMMAND = "args_key_control_command"
+
+        const val PREF_KEY_PLAYER_STATE = "pref_key_player_state"
 
         private const val SOURCE_ACTION_WIRED_STATE = Intent.ACTION_HEADSET_PLUG
         private const val SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE =
@@ -235,8 +240,6 @@ class PlayerService : Service() {
     private var notifyPlaybackRatioJob: Job? = null
     private var seekJob: Job? = null
 
-    val playing: Boolean get() = player.playWhenReady
-
     override fun onBind(intent: Intent?): IBinder? = binder
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
@@ -270,6 +273,16 @@ class PlayerService : Service() {
             addAction(SOURCE_ACTION_WIRED_STATE)
             addAction(SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE)
         })
+
+        PreferenceManager.getDefaultSharedPreferences(this).apply {
+            if (player.playWhenReady.not()) {
+                getString(PREF_KEY_PLAYER_STATE, null)?.let {
+                    Gson().fromJson(it, PlayerState::class.java)
+                }?.set()
+            }
+
+            edit().remove(PREF_KEY_PLAYER_STATE).apply()
+        }
     }
 
     override fun onDestroy() {
@@ -318,6 +331,15 @@ class PlayerService : Service() {
 
     fun setOnDestroyedListener(listener: () -> Unit) {
         this.onDestroyed = listener
+    }
+
+    private fun PlayerState.set() {
+        val insertQueue =
+                InsertQueue(QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.SONG),
+                        queue)
+        submitQueue(insertQueue, true)
+        forcePosition(currentPosition)
+        seek(progress)
     }
 
     fun submitQueue(queue: InsertQueue, force: Boolean = false) {
@@ -623,6 +645,16 @@ class PlayerService : Service() {
 
     fun onRequestedStopService() {
         if (player.playWhenReady.not()) {
+            val state = PlayerState(
+                    queue,
+                    currentPosition,
+                    player.currentPosition,
+                    player.playWhenReady
+            )
+            PreferenceManager.getDefaultSharedPreferences(this).edit()
+                    .putString(PREF_KEY_PLAYER_STATE, Gson().toJson(state))
+                    .apply()
+
             clear()
             stopSelf()
         }

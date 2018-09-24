@@ -1,10 +1,13 @@
 package com.geckour.q.ui.library.album
 
+import android.content.Context
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.appcompat.widget.PopupMenu
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
+import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemListAlbumBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Song
@@ -64,9 +67,10 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
         notifyDataSetChanged()
     }
 
-    internal fun onNewQueue(songs: List<Song>, actionType: InsertActionType) {
+    internal fun onNewQueue(songs: List<Song>, actionType: InsertActionType,
+                            classType: OrientedClassType = OrientedClassType.ALBUM) {
         launch(UI) {
-            viewModel.onNewQueue(songs, actionType, OrientedClassType.ALBUM)
+            viewModel.onNewQueue(songs, actionType, classType)
         }
     }
 
@@ -83,9 +87,20 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
 
     inner class ViewHolder(private val binding: ItemListAlbumBinding)
         : RecyclerView.ViewHolder(binding.root) {
+
+        private val popupMenu = PopupMenu(binding.root.context, binding.root).apply {
+            setOnMenuItemClickListener {
+                return@setOnMenuItemClickListener onOptionSelected(binding.root.context,
+                        it.itemId, binding.data)
+            }
+            inflate(R.menu.songs)
+        }
+
         fun bind() {
             val album = items[adapterPosition]
             binding.data = album
+            binding.root.setOnClickListener { viewModel.onRequestNavigate(album) }
+            binding.option.setOnClickListener { popupMenu.show() }
             try {
                 Glide.with(binding.thumb)
                         .load(album.thumbUriString ?: R.drawable.ic_empty)
@@ -93,7 +108,37 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             } catch (t: Throwable) {
                 Timber.e(t)
             }
-            binding.root.setOnClickListener { viewModel.onRequestNavigate(album) }
+        }
+
+        private fun onOptionSelected(context: Context, id: Int, album: Album?): Boolean {
+            if (album == null) return false
+
+            val actionType = when (id) {
+                R.id.menu_insert_all_next -> InsertActionType.NEXT
+                R.id.menu_insert_all_last -> InsertActionType.LAST
+                R.id.menu_override_all -> InsertActionType.OVERRIDE
+                R.id.menu_insert_all_simple_shuffle_next -> InsertActionType.SHUFFLE_SIMPLE_NEXT
+                R.id.menu_insert_all_simple_shuffle_last -> InsertActionType.SHUFFLE_SIMPLE_LAST
+                R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
+                else -> return false
+            }
+
+            launch {
+                val sortByTrackOrder = id.let {
+                    it != R.id.menu_insert_all_simple_shuffle_next
+                            || it != R.id.menu_insert_all_simple_shuffle_last
+                            || it != R.id.menu_override_all_simple_shuffle
+                }
+                val songs = DB.getInstance(context).let { db ->
+                    db.trackDao().findByAlbum(album.id)
+                            .mapNotNull { getSong(db, it).await() }
+                            .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
+                }
+
+                onNewQueue(songs, actionType, OrientedClassType.SONG)
+            }
+
+            return true
         }
     }
 }

@@ -13,10 +13,10 @@ import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.getSong
-import com.geckour.q.util.sortByTrackOrder
+import com.geckour.q.util.sortedByTrackOrder
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
-import com.geckour.q.data.db.model.Album as DbAlbum
+import com.geckour.q.data.db.model.Album as DBAlbum
 
 class AlbumListFragment : Fragment() {
 
@@ -38,7 +38,7 @@ class AlbumListFragment : Fragment() {
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: AlbumListAdapter by lazy { AlbumListAdapter(mainViewModel) }
 
-    private var latestDbAlbumList: List<DbAlbum> = emptyList()
+    private var latestDbAlbumList: List<DBAlbum> = emptyList()
     private var chatteringCancelFlag: Boolean = false
 
     private var parentJob = Job()
@@ -95,7 +95,7 @@ class AlbumListFragment : Fragment() {
                     DB.getInstance(context).let { db ->
                         db.trackDao().findByAlbum(it.id)
                                 .mapNotNull { getSong(db, it).await() }
-                                .let { if (sortByTrackOrder) it.sortByTrackOrder() else it }
+                                .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                     }
                 }.flatten()
 
@@ -126,23 +126,36 @@ class AlbumListFragment : Fragment() {
     private fun fetchAlbums(artist: Artist?) {
         context?.apply {
             DB.getInstance(this).also { db ->
-                db.albumDao().getAllAsync().observe(this@AlbumListFragment, Observer { dbAlbumList ->
-                    if (dbAlbumList == null) return@Observer
+                if (artist == null) {
+                    db.albumDao().getAllAsync().observe(this@AlbumListFragment, Observer { dbAlbumList ->
+                        if (dbAlbumList == null) return@Observer
 
-                    mainViewModel.loading.value = true
-                    latestDbAlbumList = dbAlbumList
-                    upsertArtistListIfPossible(db, artist)
-                })
+                        mainViewModel.loading.value = true
+                        latestDbAlbumList = dbAlbumList
+                        upsertAlbumListIfPossible(db)
+                    })
+                } else {
+                    launch(parentJob) {
+                        val items = db.albumDao().findByArtistId(artist.id).getAlbumList(db).await()
+                        upsertAlbumListIfPossible(items)
+                    }
+                }
             }
         }
     }
 
-    private fun upsertArtistListIfPossible(db: DB, artist: Artist?) {
+    private fun upsertAlbumListIfPossible(db: DB) {
+        launch(UI) {
+            val items = latestDbAlbumList.getAlbumList(db).await()
+            upsertAlbumListIfPossible(items)
+        }
+    }
+
+    private fun upsertAlbumListIfPossible(items: List<Album>) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
             launch(UI) {
                 delay(500)
-                val items = getAlbumList(db, artist).await()
                 adapter.upsertItems(items)
                 binding.recyclerView.smoothScrollToPosition(0)
                 mainViewModel.loading.value = false
@@ -151,10 +164,9 @@ class AlbumListFragment : Fragment() {
         }
     }
 
-    private fun getAlbumList(db: DB, artist: Artist?): Deferred<List<Album>> =
+    private fun List<DBAlbum>.getAlbumList(db: DB): Deferred<List<Album>> =
             async(parentJob) {
-                (if (artist == null) latestDbAlbumList
-                else latestDbAlbumList.filter { it.artistId == artist.id }).mapNotNull {
+                this@getAlbumList.mapNotNull {
                     val artistName = db.artistDao().get(it.artistId)?.title
                             ?: return@mapNotNull null
                     Album(it.id, it.mediaId, it.title, artistName, it.artworkUriString)

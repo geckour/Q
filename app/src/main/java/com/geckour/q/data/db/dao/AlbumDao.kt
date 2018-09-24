@@ -24,6 +24,9 @@ interface AlbumDao {
 
     @Query("select * from album where mediaId = :albumId")
     fun getByMediaId(albumId: Long): Album?
+
+    @Query("select * from album where artistId = :id")
+    fun findByArtistId(id: Long): List<Album>
 }
 
 fun Album.upsert(db: DB): Long =

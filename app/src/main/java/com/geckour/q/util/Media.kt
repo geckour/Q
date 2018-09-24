@@ -174,7 +174,7 @@ fun Playlist.getTrackMediaIds(context: Context): List<Pair<Long, Int>> =
 fun Song.getMediaSource(mediaSourceFactory: AdsMediaSource.MediaSourceFactory): MediaSource =
         mediaSourceFactory.createMediaSource(Uri.parse(sourcePath))
 
-fun List<Song>.sortByTrackOrder(): List<Song> = this.asSequence()
+fun List<Song>.sortedByTrackOrder(): List<Song> = this.asSequence()
         .groupBy { it.discNum }
         .map { it.key to it.value.sortedBy { it.trackNum } }
         .sortedBy { it.first }.toList()

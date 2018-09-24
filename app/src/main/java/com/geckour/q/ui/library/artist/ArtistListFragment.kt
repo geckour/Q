@@ -14,7 +14,7 @@ import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.getSong
-import com.geckour.q.util.sortByTrackOrder
+import com.geckour.q.util.sortedByTrackOrder
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.delay
@@ -91,7 +91,7 @@ class ArtistListFragment : Fragment() {
                         DB.getInstance(context).let { db ->
                             db.trackDao().findByAlbum(it.id)
                                     .mapNotNull { getSong(db, it).await() }
-                                    .let { if (sortByTrackOrder) it.sortByTrackOrder() else it }
+                                    .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                         }
                     }?.flatten()
                 }.flatten()

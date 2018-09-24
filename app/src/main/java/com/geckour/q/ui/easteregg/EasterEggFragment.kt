@@ -8,6 +8,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.bumptech.glide.Glide
+import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentEasterEggBinding
 import com.geckour.q.domain.model.Song
@@ -58,7 +59,7 @@ class EasterEggFragment : Fragment() {
                 binding.song = song
                 launch(UI + parentJob) {
                     Glide.with(binding.artwork)
-                            .load(song?.thumbUriString)
+                            .load(song?.thumbUriString ?: R.drawable.ic_empty)
                             .into(binding.artwork)
                 }
             }

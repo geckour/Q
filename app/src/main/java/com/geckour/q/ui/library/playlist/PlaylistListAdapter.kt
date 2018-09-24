@@ -1,5 +1,6 @@
 package com.geckour.q.ui.library.playlist
 
+import android.content.Context
 import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -7,12 +8,15 @@ import androidx.appcompat.widget.PopupMenu
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
+import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemListPlaylistBinding
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.getSong
+import com.geckour.q.util.getTrackMediaIds
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
@@ -44,9 +48,10 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
         notifyDataSetChanged()
     }
 
-    internal fun onNewQueue(songs: List<Song>, actionType: InsertActionType) {
+    internal fun onNewQueue(songs: List<Song>, actionType: InsertActionType,
+                            classType: OrientedClassType = OrientedClassType.PLAYLIST) {
         launch(UI) {
-            viewModel.onNewQueue(songs, actionType, OrientedClassType.PLAYLIST)
+            viewModel.onNewQueue(songs, actionType, classType)
         }
     }
 
@@ -62,6 +67,7 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
 
     inner class ViewHolder(private val binding: ItemListPlaylistBinding)
         : RecyclerView.ViewHolder(binding.root) {
+
         private val popupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener {
                 binding.data?.apply {
@@ -76,18 +82,27 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
             inflate(R.menu.playlist_long)
         }
 
+        private val optionPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
+            setOnMenuItemClickListener {
+                return@setOnMenuItemClickListener onOptionSelected(binding.root.context,
+                        it.itemId, binding.data)
+            }
+            inflate(R.menu.songs)
+        }
+
         fun bind() {
             val playlist = items[adapterPosition]
             binding.data = playlist
-            try {
-                Glide.with(binding.thumb).load(playlist.thumb).into(binding.thumb)
-            } catch (t: Throwable) {
-                Timber.e(t)
-            }
             binding.root.setOnClickListener { viewModel.onRequestNavigate(playlist) }
             binding.root.setOnLongClickListener {
                 popupMenu.show()
                 return@setOnLongClickListener true
+            }
+            binding.option.setOnClickListener { optionPopupMenu.show() }
+            try {
+                Glide.with(binding.thumb).load(playlist.thumb).into(binding.thumb)
+            } catch (t: Throwable) {
+                Timber.e(t)
             }
         }
 
@@ -100,6 +115,33 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
                 items.removeAt(adapterPosition)
                 notifyItemRemoved(adapterPosition)
             }
+        }
+
+        private fun onOptionSelected(context: Context, id: Int, playlist: Playlist?): Boolean {
+            if (playlist == null) return false
+
+            val actionType = when (id) {
+                R.id.menu_insert_all_next -> InsertActionType.NEXT
+                R.id.menu_insert_all_last -> InsertActionType.LAST
+                R.id.menu_override_all -> InsertActionType.OVERRIDE
+                R.id.menu_insert_all_simple_shuffle_next -> InsertActionType.SHUFFLE_SIMPLE_NEXT
+                R.id.menu_insert_all_simple_shuffle_last -> InsertActionType.SHUFFLE_SIMPLE_LAST
+                R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
+                else -> return false
+            }
+
+            launch {
+                val songs = playlist.getTrackMediaIds(context)
+                        .sortedBy { it.second }
+                        .mapNotNull {
+                            getSong(DB.getInstance(context), it.first, playlistId = playlist.id)
+                                    .await()
+                        }.toList()
+
+                onNewQueue(songs, actionType, OrientedClassType.SONG)
+            }
+
+            return true
         }
     }
 }

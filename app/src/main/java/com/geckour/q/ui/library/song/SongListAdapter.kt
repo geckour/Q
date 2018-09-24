@@ -42,7 +42,7 @@ class SongListAdapter(private val viewModel: MainViewModel,
         var index = items.indexOfFirst { it.id == item.id }
         if (index < 0) {
             val tempList = (items + item).let {
-                if (sortByTrackOrder) it.sortByTrackOrder()
+                if (sortByTrackOrder) it.sortedByTrackOrder()
                 else it.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {
                     it.name ?: UNKNOWN
                 })
