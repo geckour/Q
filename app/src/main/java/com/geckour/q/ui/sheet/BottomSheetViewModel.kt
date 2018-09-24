@@ -8,7 +8,8 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 
 class BottomSheetViewModel : ViewModel() {
 
-    internal val sheetState: SingleLiveEvent<Int> = SingleLiveEvent()
+    internal var sheetState: Int = BottomSheetBehavior.STATE_COLLAPSED
+    internal val toggleSheetState: SingleLiveEvent<Unit> = SingleLiveEvent()
     internal val playbackButton: SingleLiveEvent<PlaybackButton> = SingleLiveEvent()
     internal val currentQueue: SingleLiveEvent<List<Song>> = SingleLiveEvent()
     internal val currentPosition: SingleLiveEvent<Int> = SingleLiveEvent()
@@ -26,15 +27,8 @@ class BottomSheetViewModel : ViewModel() {
     internal val repeatMode: SingleLiveEvent<Int> = SingleLiveEvent()
     internal val changeRepeatMode: SingleLiveEvent<Unit> = SingleLiveEvent()
 
-    init {
-        sheetState.value = BottomSheetBehavior.STATE_COLLAPSED
-    }
-
     fun onClickQueueButton() {
-        sheetState.value = when (sheetState.value) {
-            BottomSheetBehavior.STATE_EXPANDED -> BottomSheetBehavior.STATE_COLLAPSED
-            else -> BottomSheetBehavior.STATE_EXPANDED
-        }
+        toggleSheetState.call()
     }
 
     fun onClickAddQueueToPlaylistButton() {
@@ -80,7 +74,6 @@ class BottomSheetViewModel : ViewModel() {
     }
 
     internal fun restoreState() {
-        sheetState.value = sheetState.value
         currentQueue.value = currentQueue.value
         currentPosition.value = currentPosition.value
     }

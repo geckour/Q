@@ -323,8 +323,10 @@ class PlayerService : Service() {
 
         when (queue.metadata.actionType) {
             InsertActionType.NEXT -> {
-                this.queue.addAll(currentPosition, queue.queue)
-                source.addMediaSources(currentPosition,
+                val position = if (currentPosition < 1) 0 else currentPosition + 1
+
+                this.queue.addAll(position, queue.queue)
+                source.addMediaSources(position,
                         queue.queue.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.LAST -> {
@@ -339,9 +341,11 @@ class PlayerService : Service() {
                 needPrepare = true
             }
             InsertActionType.SHUFFLE_NEXT -> {
+                val position = if (currentPosition < 1) 0 else currentPosition + 1
                 val shuffled = queue.queue.shuffleByClassType(queue.metadata.classType)
-                this.queue.addAll(currentPosition, shuffled)
-                source.addMediaSources(currentPosition,
+
+                this.queue.addAll(position, shuffled)
+                source.addMediaSources(position,
                         shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_LAST -> {
@@ -361,10 +365,11 @@ class PlayerService : Service() {
                 needPrepare = true
             }
             InsertActionType.SHUFFLE_SIMPLE_NEXT -> {
+                val position = if (currentPosition < 1) 0 else currentPosition + 1
                 val shuffled = queue.queue.shuffled()
 
-                this.queue.addAll(currentPosition, shuffled)
-                source.addMediaSources(currentPosition,
+                this.queue.addAll(position, shuffled)
+                source.addMediaSources(position,
                         shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_SIMPLE_LAST -> {

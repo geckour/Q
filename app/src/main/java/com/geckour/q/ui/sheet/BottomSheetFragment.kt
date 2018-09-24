@@ -124,11 +124,15 @@ class BottomSheetFragment : Fragment() {
             }
 
             override fun onStateChanged(v: View, state: Int) {
-                viewModel.sheetState.value = state
+                viewModel.sheetState = state
+                binding.buttonToggleVisibleQueue.setImageResource(
+                        when (state) {
+                            BottomSheetBehavior.STATE_EXPANDED -> R.drawable.ic_collapse
+                            else -> R.drawable.ic_queue
+                        }
+                )
             }
         })
-
-        observeEvents()
 
         viewModel.currentQueue.value = emptyList()
     }
@@ -136,19 +140,16 @@ class BottomSheetFragment : Fragment() {
     override fun onResume() {
         super.onResume()
 
+        observeEvents()
         viewModel.restoreState()
     }
 
     private fun observeEvents() {
-        viewModel.sheetState.observe(this, Observer {
-            if (it == null) return@Observer
-            behavior.state = it
-            binding.buttonToggleVisibleQueue.setImageResource(
-                    when (it) {
-                        BottomSheetBehavior.STATE_EXPANDED -> R.drawable.ic_collapse
-                        else -> R.drawable.ic_queue
-                    }
-            )
+        viewModel.toggleSheetState.observe(this, Observer {
+            behavior.state = when (behavior.state) {
+                BottomSheetBehavior.STATE_EXPANDED -> BottomSheetBehavior.STATE_COLLAPSED
+                else -> BottomSheetBehavior.STATE_EXPANDED
+            }
         })
 
         viewModel.currentQueue.observe(this, Observer { it ->
@@ -200,7 +201,7 @@ class BottomSheetFragment : Fragment() {
             binding.textTimeRight.text = song?.durationString
             adapter.setNowPlaying(it)
 
-            if (song != null && viewModel.sheetState.value != BottomSheetBehavior.STATE_EXPANDED) {
+            if (song != null && behavior.state != BottomSheetBehavior.STATE_EXPANDED) {
                 binding.recyclerView.smoothScrollToPosition(it)
             }
         })

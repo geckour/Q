@@ -87,9 +87,9 @@ class AlbumListFragment : Fragment() {
         context?.also { context ->
             launch(parentJob) {
                 val sortByTrackOrder = item.itemId.let {
-                    it == R.id.menu_insert_all_simple_shuffle_next
-                            || it == R.id.menu_insert_all_simple_shuffle_last
-                            || it == R.id.menu_override_all_simple_shuffle
+                    it != R.id.menu_insert_all_simple_shuffle_next
+                            || it != R.id.menu_insert_all_simple_shuffle_last
+                            || it != R.id.menu_override_all_simple_shuffle
                 }
                 val songs = adapter.getItems().map {
                     DB.getInstance(context).let { db ->

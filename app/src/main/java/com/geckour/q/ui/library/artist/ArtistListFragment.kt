@@ -81,9 +81,9 @@ class ArtistListFragment : Fragment() {
         context?.also { context ->
             launch(parentJob) {
                 val sortByTrackOrder = item.itemId.let {
-                    it == R.id.menu_insert_all_simple_shuffle_next
-                            || it == R.id.menu_insert_all_simple_shuffle_last
-                            || it == R.id.menu_override_all_simple_shuffle
+                    it != R.id.menu_insert_all_simple_shuffle_next
+                            || it != R.id.menu_insert_all_simple_shuffle_last
+                            || it != R.id.menu_override_all_simple_shuffle
                 }
                 val artistAlbumMap = latestDbAlbumList.groupBy { it.artistId }
                 val songs = adapter.getItems().mapNotNull {

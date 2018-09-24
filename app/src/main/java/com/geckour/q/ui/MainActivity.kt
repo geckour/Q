@@ -228,8 +228,8 @@ class MainActivity : AppCompatActivity() {
         when {
             binding.drawerLayout.isDrawerOpen(binding.navigationView) ->
                 binding.drawerLayout.closeDrawer(binding.navigationView)
-            bottomSheetViewModel.sheetState.value == BottomSheetBehavior.STATE_EXPANDED ->
-                bottomSheetViewModel.sheetState.value = BottomSheetBehavior.STATE_COLLAPSED
+            bottomSheetViewModel.sheetState == BottomSheetBehavior.STATE_EXPANDED ->
+                bottomSheetViewModel.toggleSheetState.call()
             else -> super.onBackPressed()
         }
     }
