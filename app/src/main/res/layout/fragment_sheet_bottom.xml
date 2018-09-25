@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        xmlns:tools="http://schemas.android.com/tools">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <data>
 
@@ -41,8 +41,8 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_marginLeft="16dp"
-            android:layout_marginRight="16dp"
             android:layout_marginTop="16dp"
+            android:layout_marginRight="16dp"
             android:adjustViewBounds="true"
             android:scaleType="fitStart"
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
@@ -130,8 +130,9 @@
             android:layout_height="28dp"
             android:layout_marginRight="16dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> isQueueNotEmpty ? viewModel.onClickRepeatButton() : null}"
+            android:onClick="@{() -> viewModel.onClickRepeatButton()}"
             android:padding="4dp"
+            android:tint="@color/colorAccent"
             android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="@id/button_shuffle"
             app:layout_constraintRight_toLeftOf="@id/button_shuffle"
@@ -143,8 +144,8 @@
             android:id="@+id/button_shuffle"
             android:layout_width="28dp"
             android:layout_height="28dp"
-            android:layout_marginRight="8dp"
             android:layout_marginTop="4dp"
+            android:layout_marginRight="8dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:onClick="@{() -> isQueueNotEmpty ? viewModel.onClickShuffleButton() : null}"
             android:padding="4dp"
@@ -159,10 +160,10 @@
             android:id="@+id/button_toggle_visible_queue"
             android:layout_width="28dp"
             android:layout_height="28dp"
-            android:layout_marginRight="8dp"
             android:layout_marginTop="4dp"
+            android:layout_marginRight="8dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> isQueueNotEmpty ? viewModel.onClickQueueButton() : null}"
+            android:onClick="@{() -> viewModel.onClickQueueButton()}"
             android:padding="4dp"
             android:src="@drawable/ic_queue"
             android:tint="@color/colorAccent"
@@ -209,12 +210,13 @@
             android:id="@+id/button_scroll_to_current"
             android:layout_width="28dp"
             android:layout_height="28dp"
+            android:layout_marginLeft="8dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:onClick="@{() -> isQueueNotEmpty ? viewModel.onClickScrollToCurrentButton() : null}"
             android:padding="4dp"
-            android:src="@drawable/ic_scroll"
+            android:src="@drawable/ic_current"
             android:tint="@{isQueueNotEmpty ? @color/colorAccent : @color/colorTintInactive}"
-            app:layout_constraintLeft_toLeftOf="@id/artwork"
+            app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintTop_toBottomOf="@id/guide_peek_height"
             tools:tint="@color/colorAccent" />
 

@@ -219,14 +219,11 @@ class BottomSheetFragment : Fragment() {
         viewModel.repeatMode.observe(this, Observer {
             if (it == null) return@Observer
             binding.buttonRepeat.apply {
-                setImageResource(
-                        if (it == Player.REPEAT_MODE_ONE) R.drawable.ic_repeat_one
-                        else R.drawable.ic_repeat)
-                context?.also { context ->
-                    imageTintList = ColorStateList.valueOf(context.getColor(
-                            if (it == Player.REPEAT_MODE_OFF) R.color.colorTintInactive
-                            else R.color.colorAccent))
-                }
+                setImageResource(when (it) {
+                    Player.REPEAT_MODE_ALL -> R.drawable.ic_repeat
+                    Player.REPEAT_MODE_ONE -> R.drawable.ic_repeat_one
+                    else -> R.drawable.ic_repeat_off
+                })
                 visibility = View.VISIBLE
             }
         })
