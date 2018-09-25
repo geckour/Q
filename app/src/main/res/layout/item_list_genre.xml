@@ -42,10 +42,22 @@
             android:textColor="@color/colorTextPrimary"
             android:textSize="16sp"
             app:layout_constraintBottom_toBottomOf="@id/option"
-            app:layout_constraintEnd_toStartOf="@id/option"
+            app:layout_constraintEnd_toStartOf="@id/duration"
             app:layout_constraintStart_toStartOf="@id/thumb"
             app:layout_constraintTop_toTopOf="@id/option"
             tools:text="ジャンル名" />
+
+        <TextView
+            android:id="@+id/duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:textColor="@color/colorTextPrimary"
+            android:textSize="12sp"
+            app:layout_constraintBottom_toBottomOf="@id/option"
+            app:layout_constraintEnd_toStartOf="@id/option"
+            app:layout_constraintTop_toTopOf="@id/option"
+            tools:text="1:03:55" />
 
         <ImageView
             android:id="@+id/option"

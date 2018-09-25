@@ -12,10 +12,7 @@ import com.geckour.q.databinding.ItemListArtistBinding
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainViewModel
-import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.getSong
-import com.geckour.q.util.sortedByTrackOrder
+import com.geckour.q.util.*
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
@@ -108,6 +105,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
         fun bind() {
             val artist = items[adapterPosition]
             binding.data = artist
+            binding.duration.text = artist.totalDuration.getTimeString()
             binding.root.setOnClickListener { viewModel.onRequestNavigate(artist) }
             binding.option.setOnClickListener { popupMenu.show() }
             try {

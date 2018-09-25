@@ -156,8 +156,11 @@ class ArtistListFragment : Fragment() {
                     .map {
                         val artwork = it.value.firstOrNull { it.artworkUriString != null }
                                 ?.artworkUriString
+                        val totalDuration = it.value
+                                .map { db.trackDao().findByAlbum(it.id) }.flatten()
+                                .map { it.duration }.sum()
                         val artistName = db.artistDao().get(it.key)?.title ?: UNKNOWN
-                        Artist(it.key, artistName, artwork)
+                        Artist(it.key, artistName, artwork, totalDuration)
                     }
 
 }

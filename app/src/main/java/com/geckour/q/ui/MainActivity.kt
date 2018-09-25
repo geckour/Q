@@ -22,7 +22,6 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogAddQueuePlaylistBinding
-import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
@@ -420,57 +419,59 @@ class MainActivity : AppCompatActivity() {
 
         bottomSheetViewModel.addQueueToPlaylist.observe(this, Observer { queue ->
             if (queue == null) return@Observer
-            val playlists = fetchPlaylists(this)
-            val binding = DialogAddQueuePlaylistBinding.inflate(layoutInflater)
-            val dialog = AlertDialog.Builder(this, R.style.DialogStyle)
-                    .setTitle(R.string.dialog_title_add_queue_to_playlist)
-                    .setMessage(R.string.dialog_desc_add_queue_to_playlist)
-                    .setView(binding.root)
-                    .setNegativeButton(R.string.dialog_ng) { dialog, _ ->
-                        dialog.dismiss()
-                    }
-                    .setPositiveButton(R.string.dialog_ok) { _, _ -> }
-                    .setCancelable(true)
-                    .create()
-            binding.recyclerView.adapter = QueueAddPlaylistListAdapter(playlists) {
-                queue.forEachIndexed { i, song ->
-                    contentResolver.insert(
-                            MediaStore.Audio.Playlists.Members
-                                    .getContentUri("external", it.id),
-                            ContentValues().apply {
-                                put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, it.memberCount + 1 + i)
-                                put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
-                            })
-                }
-                dialog.dismiss()
-            }
-            dialog.show()
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                val title = binding.editText.text?.toString()
-                if (title.isNullOrBlank()) {
-                    // TODO: エラーメッセージ表示
-                } else {
-                    val playlistId = contentResolver.insert(
-                            MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
-                            ContentValues().apply {
-                                val now = System.currentTimeMillis()
-                                put(MediaStore.Audio.PlaylistsColumns.NAME, title)
-                                put(MediaStore.Audio.PlaylistsColumns.DATE_ADDED, now)
-                                put(MediaStore.Audio.PlaylistsColumns.DATE_MODIFIED, now)
-                            })?.let { ContentUris.parseId(it) } ?: kotlin.run {
-                        dialog.dismiss()
-                        return@setOnClickListener
-                    }
+            launch(UI + parentJob) {
+                val playlists = fetchPlaylists(this@MainActivity).await()
+                val binding = DialogAddQueuePlaylistBinding.inflate(layoutInflater)
+                val dialog = AlertDialog.Builder(this@MainActivity, R.style.DialogStyle)
+                        .setTitle(R.string.dialog_title_add_queue_to_playlist)
+                        .setMessage(R.string.dialog_desc_add_queue_to_playlist)
+                        .setView(binding.root)
+                        .setNegativeButton(R.string.dialog_ng) { dialog, _ ->
+                            dialog.dismiss()
+                        }
+                        .setPositiveButton(R.string.dialog_ok) { _, _ -> }
+                        .setCancelable(true)
+                        .create()
+                binding.recyclerView.adapter = QueueAddPlaylistListAdapter(playlists) {
                     queue.forEachIndexed { i, song ->
                         contentResolver.insert(
                                 MediaStore.Audio.Playlists.Members
-                                        .getContentUri("external", playlistId),
+                                        .getContentUri("external", it.id),
                                 ContentValues().apply {
-                                    put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, i + 1)
+                                    put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, it.memberCount + 1 + i)
                                     put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
                                 })
                     }
                     dialog.dismiss()
+                }
+                dialog.show()
+                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                    val title = binding.editText.text?.toString()
+                    if (title.isNullOrBlank()) {
+                        // TODO: エラーメッセージ表示
+                    } else {
+                        val playlistId = contentResolver.insert(
+                                MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
+                                ContentValues().apply {
+                                    val now = System.currentTimeMillis()
+                                    put(MediaStore.Audio.PlaylistsColumns.NAME, title)
+                                    put(MediaStore.Audio.PlaylistsColumns.DATE_ADDED, now)
+                                    put(MediaStore.Audio.PlaylistsColumns.DATE_MODIFIED, now)
+                                })?.let { ContentUris.parseId(it) } ?: kotlin.run {
+                            dialog.dismiss()
+                            return@setOnClickListener
+                        }
+                        queue.forEachIndexed { i, song ->
+                            contentResolver.insert(
+                                    MediaStore.Audio.Playlists.Members
+                                            .getContentUri("external", playlistId),
+                                    ContentValues().apply {
+                                        put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, i + 1)
+                                        put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
+                                    })
+                        }
+                        dialog.dismiss()
+                    }
                 }
             }
         })

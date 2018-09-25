@@ -9,5 +9,6 @@ data class Playlist(
         val id: Long,
         val thumb: Bitmap?,
         val name: String,
-        val memberCount: Int
+        val memberCount: Int,
+        val totalDuration: Long
 ) : Parcelable

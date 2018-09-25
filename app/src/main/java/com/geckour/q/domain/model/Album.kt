@@ -9,5 +9,6 @@ data class Album(
         val mediaId: Long,
         val name: String?,
         val artist: String?,
-        val thumbUriString: String?
+        val thumbUriString: String?,
+        val totalDuration: Long
 ) : Parcelable

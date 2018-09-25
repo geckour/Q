@@ -99,6 +99,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
         fun bind() {
             val album = items[adapterPosition]
             binding.data = album
+            binding.duration.text = album.totalDuration.getTimeString()
             binding.root.setOnClickListener { viewModel.onRequestNavigate(album) }
             binding.option.setOnClickListener { popupMenu.show() }
             try {

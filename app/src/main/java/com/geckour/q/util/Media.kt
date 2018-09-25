@@ -115,34 +115,41 @@ fun getSong(db: DB, track: Track,
                     genreId, playlistId, track.sourcePath)
         }
 
-fun fetchPlaylists(context: Context): List<Playlist> =
-        context.contentResolver.query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
-                arrayOf(
-                        MediaStore.Audio.Playlists._ID,
-                        MediaStore.Audio.Playlists.NAME),
-                null,
-                null,
-                MediaStore.Audio.Playlists.DATE_MODIFIED)?.use {
-            val list: ArrayList<Playlist> = ArrayList()
-            while (it.moveToNext()) {
-                val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists._ID))
-                val name = it.getString(it.getColumnIndex(MediaStore.Audio.Playlists.NAME)).let {
-                    if (it.isBlank()) UNKNOWN else it
-                }
-                val count = context.contentResolver
-                        .query(MediaStore.Audio.Playlists.Members.getContentUri("external", id),
-                                null, null, null, null)
-                        ?.use { it.count } ?: 0
-                val playlist = Playlist(id, null, name, count)
-                list.add(playlist)
+fun fetchPlaylists(context: Context): Deferred<List<Playlist>> = async {
+    context.contentResolver.query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
+            arrayOf(
+                    MediaStore.Audio.Playlists._ID,
+                    MediaStore.Audio.Playlists.NAME),
+            null,
+            null,
+            MediaStore.Audio.Playlists.DATE_MODIFIED)?.use {
+        val db = DB.getInstance(context)
+        val list: ArrayList<Playlist> = ArrayList()
+        while (it.moveToNext()) {
+            val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists._ID))
+            val totalDuration = getTrackMediaIdByPlaylistId(context, id)
+                    .mapNotNull { db.trackDao().getByMediaId(it.first)?.duration }.sum()
+            val name = it.getString(it.getColumnIndex(MediaStore.Audio.Playlists.NAME)).let {
+                if (it.isBlank()) UNKNOWN else it
             }
+            val count = context.contentResolver
+                    .query(MediaStore.Audio.Playlists.Members.getContentUri("external", id),
+                            null, null, null, null)
+                    ?.use { it.count } ?: 0
+            val playlist = Playlist(id, null, name, count, totalDuration)
+            list.add(playlist)
+        }
 
-            return@use list
-        } ?: emptyList()
+        return@use list.toList()
+    } ?: emptyList()
+}
 
 fun Genre.getTrackMediaIds(context: Context): List<Long> =
+        getTrackMediaIdsByGenreId(context, this.id)
+
+fun getTrackMediaIdsByGenreId(context: Context, genreId: Long): List<Long> =
         context.contentResolver.query(
-                MediaStore.Audio.Genres.Members.getContentUri("external", this.id),
+                MediaStore.Audio.Genres.Members.getContentUri("external", genreId),
                 arrayOf(MediaStore.Audio.Genres.Members._ID),
                 null, null, null)?.use {
             val trackMediaIdList: ArrayList<Long> = ArrayList()
@@ -155,8 +162,11 @@ fun Genre.getTrackMediaIds(context: Context): List<Long> =
         } ?: emptyList()
 
 fun Playlist.getTrackMediaIds(context: Context): List<Pair<Long, Int>> =
+        getTrackMediaIdByPlaylistId(context, this.id)
+
+fun getTrackMediaIdByPlaylistId(context: Context, playlistId: Long): List<Pair<Long, Int>> =
         context.contentResolver.query(
-                MediaStore.Audio.Playlists.Members.getContentUri("external", this.id),
+                MediaStore.Audio.Playlists.Members.getContentUri("external", playlistId),
                 arrayOf(MediaStore.Audio.Playlists.Members.AUDIO_ID, MediaStore.Audio.Playlists.Members.PLAY_ORDER),
                 null,
                 null,

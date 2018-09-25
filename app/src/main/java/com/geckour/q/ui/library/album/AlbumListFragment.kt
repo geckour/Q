@@ -169,7 +169,9 @@ class AlbumListFragment : Fragment() {
                 this@getAlbumList.mapNotNull {
                     val artistName = db.artistDao().get(it.artistId)?.title
                             ?: return@mapNotNull null
-                    Album(it.id, it.mediaId, it.title, artistName, it.artworkUriString)
+                    val totalDuration = db.trackDao().findByAlbum(it.id).map { it.duration }.sum()
+                    Album(it.id, it.mediaId,
+                            it.title, artistName, it.artworkUriString, totalDuration)
                 }
             }
 }

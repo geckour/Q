@@ -12,10 +12,7 @@ import com.geckour.q.databinding.ItemListGenreBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainViewModel
-import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.getSong
-import com.geckour.q.util.getTrackMediaIds
+import com.geckour.q.util.*
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
@@ -78,6 +75,7 @@ class GenreListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
         fun bind() {
             val genre = items[adapterPosition]
             binding.data = genre
+            binding.duration.text = genre.totalDuration.getTimeString()
             binding.root.setOnClickListener { viewModel.onRequestNavigate(genre) }
             binding.option.setOnClickListener { popupMenu.show() }
             try {

@@ -14,6 +14,7 @@ import com.geckour.q.util.fetchPlaylists
 import com.geckour.q.util.getSong
 import com.geckour.q.util.getTrackMediaIds
 import kotlinx.coroutines.experimental.Job
+import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
 
 class PlaylistListFragment : Fragment() {
@@ -47,9 +48,11 @@ class PlaylistListFragment : Fragment() {
         observeEvents()
 
         if (adapter.itemCount == 0) {
-            mainViewModel.loading.value = true
-            context?.apply { adapter.setItems(fetchPlaylists(this).sortedBy { it.name }) }
-            mainViewModel.loading.value = false
+            launch(UI + parentJob) {
+                mainViewModel.loading.value = true
+                context?.apply { adapter.setItems(fetchPlaylists(this).await().sortedBy { it.name }) }
+                mainViewModel.loading.value = false
+            }
         }
     }
 

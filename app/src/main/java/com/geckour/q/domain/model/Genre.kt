@@ -8,5 +8,6 @@ import kotlinx.android.parcel.Parcelize
 data class Genre(
         val id: Long,
         val thumb: Bitmap?,
-        val name: String
+        val name: String,
+        val totalDuration: Long
 ) : Parcelable

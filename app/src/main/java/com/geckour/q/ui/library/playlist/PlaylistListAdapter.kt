@@ -13,10 +13,7 @@ import com.geckour.q.databinding.ItemListPlaylistBinding
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainViewModel
-import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.getSong
-import com.geckour.q.util.getTrackMediaIds
+import com.geckour.q.util.*
 import kotlinx.coroutines.experimental.android.UI
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
@@ -93,6 +90,7 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
         fun bind() {
             val playlist = items[adapterPosition]
             binding.data = playlist
+            binding.duration.text = playlist.totalDuration.getTimeString()
             binding.root.setOnClickListener { viewModel.onRequestNavigate(playlist) }
             binding.root.setOnLongClickListener {
                 popupMenu.show()

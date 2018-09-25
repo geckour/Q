@@ -11,11 +11,11 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.ui.MainViewModel
-import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.UNKNOWN
-import com.geckour.q.util.getSong
-import com.geckour.q.util.getTrackMediaIds
+import com.geckour.q.util.*
+import kotlinx.coroutines.experimental.Deferred
 import kotlinx.coroutines.experimental.Job
+import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.async
 import kotlinx.coroutines.experimental.launch
 
 class GenreListFragment : Fragment() {
@@ -49,9 +49,11 @@ class GenreListFragment : Fragment() {
         observeEvents()
 
         if (adapter.itemCount == 0) {
-            mainViewModel.loading.value = true
-            adapter.setItems(fetchGenres().sortedBy { it.name })
-            mainViewModel.loading.value = false
+            launch(UI + parentJob) {
+                mainViewModel.loading.value = true
+                adapter.setItems(fetchGenres().await().sortedBy { it.name })
+                mainViewModel.loading.value = false
+            }
         }
     }
 
@@ -110,21 +112,26 @@ class GenreListFragment : Fragment() {
         })
     }
 
-    private fun fetchGenres(): List<Genre> =
-            context?.contentResolver?.query(MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
+    private fun fetchGenres(): Deferred<List<Genre>> = async(parentJob) {
+        context?.let { context ->
+            context.contentResolver?.query(MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
                     arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME),
                     null, null, null)?.use {
+                val db = DB.getInstance(context)
                 val list: ArrayList<Genre> = ArrayList()
                 while (it.moveToNext()) {
-                    val genre = Genre(
-                            it.getLong(it.getColumnIndex(MediaStore.Audio.Genres._ID)),
-                            null,
+                    val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Genres._ID))
+                    val totalDuration = getTrackMediaIdsByGenreId(context, id)
+                            .mapNotNull { db.trackDao().getByMediaId(it)?.duration }.sum()
+                    val genre = Genre(id, null,
                             it.getString(it.getColumnIndex(MediaStore.Audio.Genres.NAME)).let {
                                 if (it.isBlank()) UNKNOWN else it
-                            })
+                            }, totalDuration)
                     list.add(genre)
                 }
 
-                return@use list
-            } ?: emptyList()
+                return@use list.toList()
+            }
+        } ?: emptyList()
+    }
 }
