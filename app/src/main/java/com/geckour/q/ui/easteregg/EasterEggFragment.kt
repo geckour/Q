@@ -53,17 +53,18 @@ class EasterEggFragment : Fragment() {
             if (song == null) {
                 val db = DB.getInstance(requireContext())
                 val max = db.trackDao().count()
-                val trackId = Random(Calendar.getInstance(TimeZone.getDefault()).get(Calendar.DATE).toLong()).nextInt(max)
+                val seed = Calendar.getInstance(TimeZone.getDefault())
+                        .let { it.get(Calendar.DAY_OF_YEAR) + it.get(Calendar.YEAR) }
+                val trackId = Random(seed.toLong()).nextInt(max)
                 song = db.trackDao().get(trackId.toLong())?.let { getSong(db, it).await() }
-
-                binding.song = song
-                launch(UI + parentJob) {
-                    Glide.with(binding.artwork)
-                            .load(song?.thumbUriString ?: R.drawable.ic_empty)
-                            .into(binding.artwork)
-                }
+                setSong()
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        setSong()
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
@@ -81,6 +82,15 @@ class EasterEggFragment : Fragment() {
     override fun onStop() {
         super.onStop()
         parentJob.cancel()
+    }
+
+    private fun setSong() {
+        binding.song = song
+        launch(UI + parentJob) {
+            Glide.with(binding.artwork)
+                    .load(song?.thumbUriString ?: R.drawable.ic_empty)
+                    .into(binding.artwork)
+        }
     }
 
     private fun observeEvents() {
