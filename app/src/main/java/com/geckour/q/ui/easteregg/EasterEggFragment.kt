@@ -54,7 +54,7 @@ class EasterEggFragment : Fragment() {
                 val db = DB.getInstance(requireContext())
                 val max = db.trackDao().count()
                 val seed = Calendar.getInstance(TimeZone.getDefault())
-                        .let { it.get(Calendar.DAY_OF_YEAR) + it.get(Calendar.YEAR) }
+                        .let { it.get(Calendar.DAY_OF_YEAR) * 1000 + it.get(Calendar.YEAR) }
                 val trackId = Random(seed.toLong()).nextInt(max)
                 song = db.trackDao().get(trackId.toLong())?.let { getSong(db, it).await() }
                 setSong()
