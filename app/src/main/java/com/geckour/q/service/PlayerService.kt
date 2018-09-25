@@ -347,7 +347,7 @@ class PlayerService : Service() {
         val needPrepare = source.size == 0
         when (queue.metadata.actionType) {
             InsertActionType.NEXT -> {
-                val position = if (currentPosition < 1) 0 else currentPosition + 1
+                val position = if (source.size < 1) 0 else currentPosition + 1
 
                 this.queue.addAll(position, queue.queue)
                 source.addMediaSources(position,
@@ -360,7 +360,7 @@ class PlayerService : Service() {
             }
             InsertActionType.OVERRIDE -> override(queue.queue)
             InsertActionType.SHUFFLE_NEXT -> {
-                val position = if (currentPosition < 1) 0 else currentPosition + 1
+                val position = if (source.size < 1) 0 else currentPosition + 1
                 val shuffled = queue.queue.shuffleByClassType(queue.metadata.classType)
 
                 this.queue.addAll(position, shuffled)
@@ -380,7 +380,7 @@ class PlayerService : Service() {
                 override(shuffled)
             }
             InsertActionType.SHUFFLE_SIMPLE_NEXT -> {
-                val position = if (currentPosition < 1) 0 else currentPosition + 1
+                val position = if (source.size < 1) 0 else currentPosition + 1
                 val shuffled = queue.queue.shuffled()
 
                 this.queue.addAll(position, shuffled)
@@ -521,7 +521,13 @@ class PlayerService : Service() {
     }
 
     private fun clear(before: Int) {
-        if (before >= source.size) stop()
+        if (before >= source.size) {
+            stop()
+            destroyNotification()
+            source.clear()
+            this.queue.clear()
+            return
+        }
         val after = source.size - 1 - before
 
         (0 until before).forEach { _ ->
