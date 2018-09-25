@@ -1,13 +1,18 @@
 package com.geckour.q.ui.library.genre
 
+import android.content.Context
+import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.*
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
+import androidx.recyclerview.widget.DividerItemDecoration
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.ui.MainViewModel
@@ -45,6 +50,8 @@ class GenreListFragment : Fragment() {
         setHasOptionsMenu(true)
 
         binding.recyclerView.adapter = adapter
+        binding.recyclerView.addItemDecoration(
+                DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL))
 
         observeEvents()
 
@@ -121,9 +128,10 @@ class GenreListFragment : Fragment() {
                 val list: ArrayList<Genre> = ArrayList()
                 while (it.moveToNext()) {
                     val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Genres._ID))
-                    val totalDuration = getTrackMediaIdsByGenreId(context, id)
-                            .mapNotNull { db.trackDao().getByMediaId(it)?.duration }.sum()
-                    val genre = Genre(id, null,
+                    val tracks = getTrackMediaIdsByGenreId(context, id)
+                            .mapNotNull { db.trackDao().getByMediaId(it) }
+                    val totalDuration = tracks.map { it.duration }.sum()
+                    val genre = Genre(id, tracks.getGenreThumb(context).await(),
                             it.getString(it.getColumnIndex(MediaStore.Audio.Genres.NAME)).let {
                                 if (it.isBlank()) UNKNOWN else it
                             }, totalDuration)
@@ -133,5 +141,15 @@ class GenreListFragment : Fragment() {
                 return@use list.toList()
             }
         } ?: emptyList()
+    }
+
+    private fun List<Track>.getGenreThumb(context: Context): Deferred<Bitmap?> = async {
+        val db = DB.getInstance(context)
+        this@getGenreThumb.distinctBy { it.albumId }.takeOrFillNull(5)
+                .map {
+                    it?.let { db.getArtworkUriStringFromId(it.albumId).await()?.let { Uri.parse(it) } }
+                }
+                .getThumb(context)
+                .await()
     }
 }

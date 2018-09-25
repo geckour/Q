@@ -5,6 +5,7 @@ import android.view.*
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
+import androidx.recyclerview.widget.DividerItemDecoration
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
@@ -44,6 +45,8 @@ class PlaylistListFragment : Fragment() {
         setHasOptionsMenu(true)
 
         binding.recyclerView.adapter = adapter
+        binding.recyclerView.addItemDecoration(
+                DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL))
 
         observeEvents()
 

@@ -3,6 +3,9 @@ package com.geckour.q.util
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
 import android.graphics.drawable.Icon
 import android.media.MediaMetadata
 import android.media.session.MediaSession
@@ -127,8 +130,9 @@ fun fetchPlaylists(context: Context): Deferred<List<Playlist>> = async {
         val list: ArrayList<Playlist> = ArrayList()
         while (it.moveToNext()) {
             val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists._ID))
-            val totalDuration = getTrackMediaIdByPlaylistId(context, id)
-                    .mapNotNull { db.trackDao().getByMediaId(it.first)?.duration }.sum()
+            val tracks = getTrackMediaIdByPlaylistId(context, id)
+                    .mapNotNull { db.trackDao().getByMediaId(it.first) }
+            val totalDuration = tracks.map { it.duration }.sum()
             val name = it.getString(it.getColumnIndex(MediaStore.Audio.Playlists.NAME)).let {
                 if (it.isBlank()) UNKNOWN else it
             }
@@ -136,12 +140,42 @@ fun fetchPlaylists(context: Context): Deferred<List<Playlist>> = async {
                     .query(MediaStore.Audio.Playlists.Members.getContentUri("external", id),
                             null, null, null, null)
                     ?.use { it.count } ?: 0
-            val playlist = Playlist(id, null, name, count, totalDuration)
+            val playlist = Playlist(id, tracks.getPlaylistThumb(context).await(), name, count, totalDuration)
             list.add(playlist)
         }
 
         return@use list.toList()
     } ?: emptyList()
+}
+
+private fun List<Track>.getPlaylistThumb(context: Context): Deferred<Bitmap?> = async {
+    val db = DB.getInstance(context)
+    this@getPlaylistThumb.takeOrFillNull(6)
+            .map {
+                it?.let { db.getArtworkUriStringFromId(it.albumId).await()?.let { Uri.parse(it) } }
+            }
+            .getThumb(context)
+            .await()
+}
+
+fun <T> List<T>.takeOrFillNull(n: Int): List<T?> =
+        this.take(n).let { it + List(n - it.size) { null } }
+
+fun List<Uri?>.getThumb(context: Context): Deferred<Bitmap?> = async {
+    if (this@getThumb.isEmpty()) return@async null
+    val unit = 100
+    val bitmap = Bitmap.createBitmap(((this@getThumb.size * 0.9 - 0.1) * unit).toInt(), unit, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    this@getThumb.reversed().forEachIndexed { i, uri ->
+        val b = Glide.with(context).asBitmap()
+                .load(uri ?: return@forEachIndexed)
+                .submit().get()?.let {
+                    Bitmap.createScaledBitmap(
+                            it, unit, (it.height * unit.toFloat() / it.width).toInt(), false)
+                } ?: return@forEachIndexed
+        canvas.drawBitmap(b, bitmap.width - (i + 1) * unit * 0.9f, (unit - b.height) / 2f, Paint())
+    }
+    bitmap
 }
 
 fun Genre.getTrackMediaIds(context: Context): List<Long> =
