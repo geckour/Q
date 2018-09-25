@@ -137,8 +137,9 @@
             app:layout_constraintBottom_toBottomOf="@id/button_shuffle"
             app:layout_constraintRight_toLeftOf="@id/button_shuffle"
             app:layout_constraintTop_toTopOf="@id/button_shuffle"
-            tools:src="@drawable/ic_repeat"
-            tools:tint="@color/colorTintInactive" />
+            tools:src="@drawable/ic_repeat_off"
+            tools:visibility="visible"
+            tools:tint="@color/colorAccent" />
 
         <ImageView
             android:id="@+id/button_shuffle"
