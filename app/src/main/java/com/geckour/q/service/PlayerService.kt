@@ -340,6 +340,7 @@ class PlayerService : Service() {
         submitQueue(insertQueue, true)
         forcePosition(currentPosition)
         seek(progress)
+        player.repeatMode = repeatMode
     }
 
     fun submitQueue(queue: InsertQueue, force: Boolean = false) {
@@ -652,7 +653,8 @@ class PlayerService : Service() {
                     queue,
                     currentPosition,
                     player.currentPosition,
-                    player.playWhenReady
+                    player.playWhenReady,
+                    player.repeatMode
             )
             PreferenceManager.getDefaultSharedPreferences(this).edit()
                     .putString(PREF_KEY_PLAYER_STATE, Gson().toJson(state))
