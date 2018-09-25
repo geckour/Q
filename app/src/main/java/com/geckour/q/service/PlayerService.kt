@@ -358,12 +358,7 @@ class PlayerService : Service() {
                 source.addMediaSources(source.size,
                         queue.queue.map { it.getMediaSource(mediaSourceFactory) })
             }
-            InsertActionType.OVERRIDE -> {
-                clear(force.not())
-
-                this.queue.addAll(queue.queue)
-                source.addMediaSources(queue.queue.map { it.getMediaSource(mediaSourceFactory) })
-            }
+            InsertActionType.OVERRIDE -> override(queue.queue)
             InsertActionType.SHUFFLE_NEXT -> {
                 val position = if (currentPosition < 1) 0 else currentPosition + 1
                 val shuffled = queue.queue.shuffleByClassType(queue.metadata.classType)
@@ -380,12 +375,9 @@ class PlayerService : Service() {
                         shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_OVERRIDE -> {
-                clear(force.not())
-
                 val shuffled = queue.queue.shuffleByClassType(queue.metadata.classType)
 
-                this.queue.addAll(shuffled)
-                source.addMediaSources(shuffled.map { it.getMediaSource(mediaSourceFactory) })
+                override(shuffled)
             }
             InsertActionType.SHUFFLE_SIMPLE_NEXT -> {
                 val position = if (currentPosition < 1) 0 else currentPosition + 1
@@ -403,12 +395,9 @@ class PlayerService : Service() {
                         shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
-                clear(force.not())
-
                 val shuffled = queue.queue.shuffled()
 
-                this.queue.addAll(shuffled)
-                source.addMediaSources(shuffled.map { it.getMediaSource(mediaSourceFactory) })
+                override(shuffled)
             }
         }
 
@@ -523,27 +512,38 @@ class PlayerService : Service() {
     }
 
     fun clear(keepCurrentIfPlaying: Boolean = false) {
-        if (keepCurrentIfPlaying
+        val before = if (keepCurrentIfPlaying
                 && player.playbackState == Player.STATE_READY
                 && player.playWhenReady) {
-            val current = currentPosition
-            val remain = source.size - current - 1
-            (0 until current).forEach {
-                source.removeMediaSource(0)
-                this.queue.removeAt(0)
-            }
-            (0 until remain).forEach {
-                source.removeMediaSource(1)
-                this.queue.removeAt(1)
-            }
-        } else {
-            stop()
-            notificationUpdateJob.cancel()
-            this.queue.clear()
-            source.clear()
-            source = ConcatenatingMediaSource()
-            player.prepare(source)
+            currentPosition
+        } else source.size
+        clear(before)
+    }
+
+    private fun clear(before: Int) {
+        if (before >= source.size) stop()
+        val after = source.size - 1 - before
+
+        (0 until before).forEach { _ ->
+            source.removeMediaSource(0)
+            this.queue.removeAt(0)
         }
+        (0 until after).forEach { _ ->
+            source.removeMediaSource(1)
+            this.queue.removeAt(1)
+        }
+
+        if (player.playWhenReady) {
+            pause()
+            resume()
+        }
+    }
+
+    fun override(queue: List<Song>) {
+        clear(true)
+        source.addMediaSources(queue.map { it.getMediaSource(mediaSourceFactory) })
+        if (this.queue.isEmpty()) player.prepare(source)
+        this.queue.addAll(queue)
     }
 
     fun next() {
@@ -689,6 +689,7 @@ class PlayerService : Service() {
     }
 
     private fun destroyNotification() {
+        notificationUpdateJob.cancel()
         stopForeground(true)
         getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID_PLAYER)
     }
