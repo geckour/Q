@@ -282,7 +282,6 @@ class MainActivity : AppCompatActivity() {
         beginUniqueWork(MediaRetrieveWorker.WORK_NAME, ExistingWorkPolicy.KEEP,
                 OneTimeWorkRequestBuilder<MediaRetrieveWorker>().build()).enqueue()
         viewModel.syncing.value = true
-        monitorSyncState()
     }
 
     private fun WorkManager.monitorSyncState() {
@@ -302,8 +301,9 @@ class MainActivity : AppCompatActivity() {
         retrieveMediaWithPermissionCheck()
     }
 
-
     private fun observeEvents() {
+        WorkManager.getInstance().monitorSyncState()
+
         viewModel.resumedFragmentId.observe(this, Observer { navId ->
             if (navId == null) return@Observer
             binding.navigationView.setCheckedItem(navId)
