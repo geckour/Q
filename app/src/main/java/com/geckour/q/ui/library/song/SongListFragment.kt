@@ -56,6 +56,9 @@ class SongListFragment : Fragment() {
         }
     }
 
+    private val viewModel: SongListViewModel by lazy {
+        ViewModelProviders.of(requireActivity())[SongListViewModel::class.java]
+    }
     private val mainViewModel: MainViewModel by lazy {
         ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
     }
@@ -84,18 +87,7 @@ class SongListFragment : Fragment() {
 
         observeEvents()
 
-        if (adapter.itemCount == 0) {
-            val album = arguments?.getParcelable<Album>(ARGS_KEY_ALBUM)
-            val genre = arguments?.getParcelable<Genre>(ARGS_KEY_GENRE)
-            val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST)
-
-            when {
-                album != null -> fetchSongsWithAlbum(album)
-                genre != null -> fetchSongsWithGenre(genre)
-                playlist != null -> fetchSongsWithPlaylist(playlist)
-                else -> fetchSongs()
-            }
-        }
+        if (adapter.itemCount == 0) fetchSongs()
     }
 
     override fun onResume() {
@@ -135,7 +127,7 @@ class SongListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        mainViewModel.removeFromPlaylistPlayOrder.observe(this, Observer {
+        mainViewModel.removePlayOrderOfPlaylist.observe(this, Observer {
             if (it == null) return@Observer
             val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST) ?: return@Observer
             val removed = context?.contentResolver
@@ -145,8 +137,13 @@ class SongListFragment : Fragment() {
             if (removed) adapter.removeByPlayOrder(it)
         })
 
-        mainViewModel.requireScrollTop.observe(this, Observer {
+        viewModel.requireScrollTop.observe(this, Observer {
             binding.recyclerView.smoothScrollToPosition(0)
+        })
+
+        viewModel.forceLoad.observe(this, Observer {
+            adapter.clearItems()
+            fetchSongs()
         })
 
         mainViewModel.songIdDeleted.observe(this, Observer {
@@ -156,6 +153,19 @@ class SongListFragment : Fragment() {
     }
 
     private fun fetchSongs() {
+        val album = arguments?.getParcelable<Album>(ARGS_KEY_ALBUM)
+        val genre = arguments?.getParcelable<Genre>(ARGS_KEY_GENRE)
+        val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST)
+
+        when {
+            album != null -> fetchSongsWithAlbum(album)
+            genre != null -> fetchSongsWithGenre(genre)
+            playlist != null -> fetchSongsWithPlaylist(playlist)
+            else -> fetchAllSongs()
+        }
+    }
+
+    private fun fetchAllSongs() {
         context?.apply {
             DB.getInstance(this).also { db ->
                 db.trackDao().getAllAsync().observe(this@SongListFragment, Observer { dbTrackList ->

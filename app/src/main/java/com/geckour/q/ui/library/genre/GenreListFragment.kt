@@ -30,6 +30,9 @@ class GenreListFragment : Fragment() {
         fun newInstance(): GenreListFragment = GenreListFragment()
     }
 
+    private val viewModel: GenreListViewModel by lazy {
+        ViewModelProviders.of(requireActivity())[GenreListViewModel::class.java]
+    }
     private val mainViewModel: MainViewModel by lazy {
         ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
     }
@@ -114,8 +117,13 @@ class GenreListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        mainViewModel.requireScrollTop.observe(this, Observer {
+        viewModel.requireScrollTop.observe(this, Observer {
             binding.recyclerView.smoothScrollToPosition(0)
+        })
+
+        viewModel.forceLoad.observe(this, Observer {
+            adapter.clearItems()
+            fetchGenres()
         })
     }
 

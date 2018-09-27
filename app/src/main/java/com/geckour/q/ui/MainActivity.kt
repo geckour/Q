@@ -27,10 +27,13 @@ import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
 import com.geckour.q.ui.easteregg.EasterEggFragment
 import com.geckour.q.ui.library.album.AlbumListFragment
+import com.geckour.q.ui.library.album.AlbumListViewModel
 import com.geckour.q.ui.library.artist.ArtistListFragment
+import com.geckour.q.ui.library.artist.ArtistListViewModel
 import com.geckour.q.ui.library.genre.GenreListFragment
 import com.geckour.q.ui.library.playlist.PlaylistListFragment
 import com.geckour.q.ui.library.song.SongListFragment
+import com.geckour.q.ui.library.song.SongListViewModel
 import com.geckour.q.ui.pay.PaymentFragment
 import com.geckour.q.ui.pay.PaymentViewModel
 import com.geckour.q.ui.sheet.BottomSheetViewModel
@@ -66,6 +69,21 @@ class MainActivity : AppCompatActivity() {
     }
     private val bottomSheetViewModel: BottomSheetViewModel by lazy {
         ViewModelProviders.of(this)[BottomSheetViewModel::class.java]
+    }
+    private val artistListViewModel: ArtistListViewModel by lazy {
+        ViewModelProviders.of(this)[ArtistListViewModel::class.java]
+    }
+    private val albumListViewModel: AlbumListViewModel by lazy {
+        ViewModelProviders.of(this)[AlbumListViewModel::class.java]
+    }
+    private val songListViewModel: SongListViewModel by lazy {
+        ViewModelProviders.of(this)[SongListViewModel::class.java]
+    }
+    private val genreListViewModel: SongListViewModel by lazy {
+        ViewModelProviders.of(this)[SongListViewModel::class.java]
+    }
+    private val playlistListViewModel: SongListViewModel by lazy {
+        ViewModelProviders.of(this)[SongListViewModel::class.java]
     }
     private val paymentViewModel: PaymentViewModel by lazy {
         ViewModelProviders.of(this)[PaymentViewModel::class.java]
@@ -289,6 +307,11 @@ class MainActivity : AppCompatActivity() {
                 .observe(this@MainActivity, Observer {
                     viewModel.syncing.value =
                             it?.firstOrNull { it.state == State.RUNNING } != null
+                    if (it?.any { status -> status.state == State.SUCCEEDED } == true) {
+                        artistListViewModel.forceLoad.call()
+                        albumListViewModel.forceLoad.call()
+                        songListViewModel.forceLoad.call()
+                    }
                 })
     }
 
@@ -330,11 +353,24 @@ class MainActivity : AppCompatActivity() {
         viewModel.syncing.observe(this, Observer {
             if (it == null) return@Observer
             toggleIndicateSync(it)
+            artistListViewModel.forceLoad.call()
+            albumListViewModel.forceLoad.call()
+            songListViewModel.forceLoad.call()
+            genreListViewModel.forceLoad.call()
+            playlistListViewModel.forceLoad.call()
         })
 
         viewModel.loading.observe(this, Observer {
             if (it == null) return@Observer
             toggleIndicateLoad(it)
+        })
+
+        viewModel.requireScrollTop.observe(this, Observer {
+            artistListViewModel.requireScrollTop.call()
+            albumListViewModel.requireScrollTop.call()
+            songListViewModel.requireScrollTop.call()
+            genreListViewModel.requireScrollTop.call()
+            playlistListViewModel.requireScrollTop.call()
         })
 
         viewModel.selectedArtist.observe(this, Observer {

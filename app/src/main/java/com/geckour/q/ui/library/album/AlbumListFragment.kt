@@ -32,6 +32,9 @@ class AlbumListFragment : Fragment() {
         }
     }
 
+    private val viewModel: AlbumListViewModel by lazy {
+        ViewModelProviders.of(requireActivity())[AlbumListViewModel::class.java]
+    }
     private val mainViewModel: MainViewModel by lazy {
         ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
     }
@@ -42,6 +45,8 @@ class AlbumListFragment : Fragment() {
     private var chatteringCancelFlag: Boolean = false
 
     private var parentJob = Job()
+
+    private var artist: Artist? = null
 
     override fun onCreateView(inflater: LayoutInflater,
                               container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -57,8 +62,10 @@ class AlbumListFragment : Fragment() {
 
         observeEvents()
 
-        if (adapter.itemCount == 0)
-            arguments?.getParcelable<Artist>(ARGS_KEY_ARTIST).apply { fetchAlbums(this) }
+        if (adapter.itemCount == 0) {
+            artist = arguments?.getParcelable(ARGS_KEY_ARTIST)
+            fetchAlbums(artist)
+        }
     }
 
     override fun onStart() {
@@ -118,8 +125,13 @@ class AlbumListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        mainViewModel.requireScrollTop.observe(this, Observer {
+        viewModel.requireScrollTop.observe(this, Observer {
             binding.recyclerView.smoothScrollToPosition(0)
+        })
+
+        viewModel.forceLoad.observe(this, Observer {
+            adapter.clearItems()
+            fetchAlbums(artist)
         })
     }
 

@@ -16,7 +16,7 @@ class MainViewModel : ViewModel() {
     internal val requestedPositionInQueue: SingleLiveEvent<Int> = SingleLiveEvent()
     internal val swappedQueuePositions: SingleLiveEvent<Pair<Int, Int>> = SingleLiveEvent()
     internal val removedQueueIndex: SingleLiveEvent<Int> = SingleLiveEvent()
-    internal val removeFromPlaylistPlayOrder: SingleLiveEvent<Int> = SingleLiveEvent()
+    internal val removePlayOrderOfPlaylist: SingleLiveEvent<Int> = SingleLiveEvent()
     internal val songToDelete: SingleLiveEvent<Song> = SingleLiveEvent()
     internal val songIdDeleted: SingleLiveEvent<Long> = SingleLiveEvent()
     internal val cancelSync: SingleLiveEvent<Unit> = SingleLiveEvent()
@@ -89,7 +89,7 @@ class MainViewModel : ViewModel() {
     }
 
     fun onRequestRemoveSongFromPlaylist(playOrder: Int) {
-        removeFromPlaylistPlayOrder.value = playOrder
+        removePlayOrderOfPlaylist.value = playOrder
     }
 
     fun onCancelSync() {
