@@ -333,7 +333,7 @@ class MainActivity : AppCompatActivity() {
         })
 
         viewModel.loading.observe(this, Observer {
-            if (it == null || viewModel.syncing.value == true) return@Observer
+            if (it == null) return@Observer
             toggleIndicateLoad(it)
         })
 
@@ -529,18 +529,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun toggleIndicateSync(syncing: Boolean) {
-        toggleIndicateLock(syncing)
-        binding.coordinatorMain.descLocking.text = getString(R.string.syncing)
-        binding.coordinatorMain.progressSync.visibility = View.VISIBLE
-        binding.coordinatorMain.buttonCancelSync.visibility = View.VISIBLE
+        if (syncing) {
+            binding.coordinatorMain.descLocking.text = getString(R.string.syncing)
+            binding.coordinatorMain.progressSync.visibility = View.VISIBLE
+            binding.coordinatorMain.buttonCancelSync.visibility = View.VISIBLE
+        }
+        toggleIndicateLock(syncing || viewModel.loading.value == true)
 
     }
 
     private fun toggleIndicateLoad(loading: Boolean) {
-        toggleIndicateLock(loading)
-        binding.coordinatorMain.descLocking.text = getString(R.string.loading)
-        binding.coordinatorMain.progressSync.visibility = View.GONE
-        binding.coordinatorMain.buttonCancelSync.visibility = View.GONE
+        if (loading) {
+            binding.coordinatorMain.descLocking.text = getString(R.string.loading)
+            binding.coordinatorMain.progressSync.visibility = View.GONE
+            binding.coordinatorMain.buttonCancelSync.visibility = View.GONE
+        }
+        toggleIndicateLock(loading || viewModel.syncing.value == true)
     }
 
     private fun toggleIndicateLock(locking: Boolean) {

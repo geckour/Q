@@ -51,7 +51,7 @@ dependencies {
     implementation "androidx.legacy:legacy-support-core-ui:$support_ver"
     implementation "androidx.media:media:$support_ver"
     implementation "androidx.legacy:legacy-support-v13:$support_ver"
-    implementation 'com.google.android.material:material:1.0.0-rc02'
+    implementation 'com.google.android.material:material:1.0.0'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test:runner:1.1.0-alpha4'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0-alpha4'
