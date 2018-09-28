@@ -47,6 +47,7 @@ import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
+import timber.log.Timber
 import java.io.File
 
 @RuntimePermissions
@@ -209,8 +210,6 @@ class MainActivity : AppCompatActivity() {
 
         paused = false
 
-        WorkManager.getInstance().monitorSyncState()
-
         if (player == null) {
             bottomSheetViewModel.currentQueue.value = emptyList()
             bindPlayer()
@@ -308,9 +307,12 @@ class MainActivity : AppCompatActivity() {
                     viewModel.syncing.value =
                             it?.firstOrNull { it.state == State.RUNNING } != null
                     if (it?.any { status -> status.state == State.SUCCEEDED } == true) {
+                        Timber.d("qgeck sync succeeded")
                         artistListViewModel.forceLoad.call()
                         albumListViewModel.forceLoad.call()
                         songListViewModel.forceLoad.call()
+                        genreListViewModel.forceLoad.call()
+                        playlistListViewModel.forceLoad.call()
                     }
                 })
     }
@@ -352,17 +354,12 @@ class MainActivity : AppCompatActivity() {
 
         viewModel.syncing.observe(this, Observer {
             if (it == null) return@Observer
-            toggleIndicateSync(it)
-            artistListViewModel.forceLoad.call()
-            albumListViewModel.forceLoad.call()
-            songListViewModel.forceLoad.call()
-            genreListViewModel.forceLoad.call()
-            playlistListViewModel.forceLoad.call()
+            setLockingIndicator(it, viewModel.loading.value == true)
         })
 
         viewModel.loading.observe(this, Observer {
             if (it == null) return@Observer
-            toggleIndicateLoad(it)
+            setLockingIndicator(viewModel.syncing.value == true, it)
         })
 
         viewModel.requireScrollTop.observe(this, Observer {
@@ -564,23 +561,32 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun toggleIndicateSync(syncing: Boolean) {
-        if (syncing) {
-            binding.coordinatorMain.descLocking.text = getString(R.string.syncing)
-            binding.coordinatorMain.progressSync.visibility = View.VISIBLE
-            binding.coordinatorMain.buttonCancelSync.visibility = View.VISIBLE
+    private fun setLockingIndicator(syncing: Boolean, loading: Boolean) {
+        when {
+            syncing -> {
+                indicateSync()
+                toggleIndicateLock(true)
+            }
+            syncing.not() && loading -> {
+                indicateLoad()
+                toggleIndicateLock(true)
+            }
+            syncing.not() && loading.not() -> {
+                toggleIndicateLock(false)
+            }
         }
-        toggleIndicateLock(syncing || viewModel.loading.value == true)
-
     }
 
-    private fun toggleIndicateLoad(loading: Boolean) {
-        if (loading) {
-            binding.coordinatorMain.descLocking.text = getString(R.string.loading)
-            binding.coordinatorMain.progressSync.visibility = View.GONE
-            binding.coordinatorMain.buttonCancelSync.visibility = View.GONE
-        }
-        toggleIndicateLock(loading || viewModel.syncing.value == true)
+    private fun indicateSync() {
+        binding.coordinatorMain.descLocking.text = getString(R.string.syncing)
+        binding.coordinatorMain.progressSync.visibility = View.VISIBLE
+        binding.coordinatorMain.buttonCancelSync.visibility = View.VISIBLE
+    }
+
+    private fun indicateLoad() {
+        binding.coordinatorMain.descLocking.text = getString(R.string.loading)
+        binding.coordinatorMain.progressSync.visibility = View.GONE
+        binding.coordinatorMain.buttonCancelSync.visibility = View.GONE
     }
 
     private fun toggleIndicateLock(locking: Boolean) {

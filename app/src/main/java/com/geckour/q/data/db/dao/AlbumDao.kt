@@ -17,6 +17,9 @@ interface AlbumDao {
     fun update(album: Album): Int
 
     @Query("select * from album")
+    fun getAll(): List<Album>
+
+    @Query("select * from album")
     fun getAllAsync(): LiveData<List<Album>>
 
     @Query("select * from album where id = :id")

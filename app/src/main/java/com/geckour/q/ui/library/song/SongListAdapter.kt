@@ -24,7 +24,7 @@ class SongListAdapter(private val viewModel: MainViewModel,
 
     internal fun setItems(items: List<Song>) {
         this.items.clear()
-        this.items.addAll(items)
+        upsertItems(items)
         notifyDataSetChanged()
     }
 

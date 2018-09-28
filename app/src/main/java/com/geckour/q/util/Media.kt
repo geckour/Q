@@ -144,7 +144,7 @@ fun fetchPlaylists(context: Context): Deferred<List<Playlist>> = async {
             list.add(playlist)
         }
 
-        return@use list.toList()
+        return@use list.toList().sortedBy { it.name }
     } ?: emptyList()
 }
 

@@ -23,18 +23,8 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
 
     internal fun setItems(items: List<Album>) {
         this.items.clear()
-        this.items.addAll(items)
+        upsertItems(items)
         notifyDataSetChanged()
-    }
-
-    internal fun setItem(item: Album, position: Int = itemCount) {
-        if (items.lastIndex < position) {
-            items.add(item)
-            notifyItemInserted(items.lastIndex)
-        } else {
-            this.items[position] = item
-            notifyItemInserted(position)
-        }
     }
 
     internal fun getItems(): List<Album> = items

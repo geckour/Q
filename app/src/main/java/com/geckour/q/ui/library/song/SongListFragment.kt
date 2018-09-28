@@ -87,7 +87,7 @@ class SongListFragment : Fragment() {
 
         observeEvents()
 
-        if (adapter.itemCount == 0) fetchSongs()
+        fetchSongs()
     }
 
     override fun onResume() {
@@ -181,10 +181,13 @@ class SongListFragment : Fragment() {
     private fun fetchSongsWithAlbum(album: Album) {
         mainViewModel.loading.value = true
         context?.also {
-            launch(parentJob) {
-                DB.getInstance(it).also { db ->
-                    upsertSongListIfPossible(db, db.trackDao().findByAlbum(album.id))
-                }
+            DB.getInstance(it).also { db ->
+                db.trackDao().findByAlbumAsync(album.id).observe(this@SongListFragment, Observer { dbTrackList ->
+                    if (dbTrackList == null) return@Observer
+
+                    mainViewModel.loading.value = true
+                    upsertSongListIfPossible(db, dbTrackList)
+                })
             }
         }
     }

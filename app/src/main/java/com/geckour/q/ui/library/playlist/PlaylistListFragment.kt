@@ -56,7 +56,8 @@ class PlaylistListFragment : Fragment() {
         if (adapter.itemCount == 0) {
             launch(UI + parentJob) {
                 mainViewModel.loading.value = true
-                context?.apply { adapter.setItems(fetchPlaylists(this).await().sortedBy { it.name }) }
+                context?.apply { adapter.setItems(fetchPlaylists(this).await()) }
+                binding.recyclerView.smoothScrollToPosition(0)
                 mainViewModel.loading.value = false
             }
         }
@@ -120,9 +121,13 @@ class PlaylistListFragment : Fragment() {
         })
 
         viewModel.forceLoad.observe(this, Observer {
-            context?.apply {
-                adapter.clearItems()
-                fetchPlaylists(this)
+            launch(UI + parentJob) {
+                context?.apply {
+                    mainViewModel.loading.value = true
+                    adapter.setItems(fetchPlaylists(this).await())
+                    binding.recyclerView.smoothScrollToPosition(0)
+                    mainViewModel.loading.value = false
+                }
             }
         })
     }

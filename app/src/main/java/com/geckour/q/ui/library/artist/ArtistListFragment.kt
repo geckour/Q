@@ -15,10 +15,9 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.getSong
 import com.geckour.q.util.sortedByTrackOrder
-import kotlinx.coroutines.experimental.Job
+import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
+import timber.log.Timber
 
 class ArtistListFragment : Fragment() {
 
@@ -54,8 +53,6 @@ class ArtistListFragment : Fragment() {
         binding.recyclerView.adapter = adapter
 
         observeEvents()
-
-        if (adapter.itemCount == 0) fetchArtists()
     }
 
     override fun onStart() {
@@ -118,17 +115,26 @@ class ArtistListFragment : Fragment() {
     }
 
     private fun observeEvents() {
+        observeArtists()
+
         viewModel.requireScrollTop.observe(this, Observer {
             binding.recyclerView.smoothScrollToPosition(0)
         })
 
         viewModel.forceLoad.observe(this, Observer {
-            adapter.clearItems()
-            fetchArtists()
+            Timber.d("qgeck artist list force load called, context: $context")
+            context?.also { context ->
+                launch(UI + parentJob) {
+                    mainViewModel.loading.value = true
+                    adapter.setItems(fetchArtists(DB.getInstance(context)).await())
+                    binding.recyclerView.smoothScrollToPosition(0)
+                    mainViewModel.loading.value = false
+                }
+            }
         })
     }
 
-    private fun fetchArtists() {
+    private fun observeArtists() {
         context?.apply {
             DB.getInstance(this).also { db ->
                 db.albumDao().getAllAsync().observe(this@ArtistListFragment, Observer { dbAlbumList ->
@@ -142,12 +148,15 @@ class ArtistListFragment : Fragment() {
         }
     }
 
-    private fun upsertArtistListIfPossible(db: DB) {
+    private fun fetchArtists(db: DB): Deferred<List<Artist>> =
+            async(parentJob) { db.albumDao().getAll().getArtistList(db) }
+
+    private fun upsertArtistListIfPossible(db: DB, albumList: List<Album> = latestDbAlbumList) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
             launch(parentJob) {
                 delay(500)
-                val items = latestDbAlbumList.getArtistList(db)
+                val items = albumList.getArtistList(db)
                 launch(UI + parentJob) {
                     adapter.upsertItems(items)
                     binding.recyclerView.smoothScrollToPosition(0)

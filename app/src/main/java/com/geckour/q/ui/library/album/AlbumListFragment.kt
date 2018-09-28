@@ -62,10 +62,8 @@ class AlbumListFragment : Fragment() {
 
         observeEvents()
 
-        if (adapter.itemCount == 0) {
-            artist = arguments?.getParcelable(ARGS_KEY_ARTIST)
-            fetchAlbums(artist)
-        }
+        artist = arguments?.getParcelable(ARGS_KEY_ARTIST)
+        observeAlbums(artist)
     }
 
     override fun onStart() {
@@ -125,36 +123,43 @@ class AlbumListFragment : Fragment() {
     }
 
     private fun observeEvents() {
+        observeAlbums(artist)
+
         viewModel.requireScrollTop.observe(this, Observer {
             binding.recyclerView.smoothScrollToPosition(0)
         })
 
         viewModel.forceLoad.observe(this, Observer {
-            adapter.clearItems()
-            fetchAlbums(artist)
+            context?.also { context ->
+                launch(UI + parentJob) {
+                    mainViewModel.loading.value = true
+                    val items = fetchAlbums(DB.getInstance(context)).await()
+                    adapter.setItems(items)
+                    binding.recyclerView.smoothScrollToPosition(0)
+                    mainViewModel.loading.value = false
+                }
+            }
         })
     }
 
-    private fun fetchAlbums(artist: Artist?) {
+    private fun observeAlbums(artist: Artist?) {
         context?.apply {
             DB.getInstance(this).also { db ->
-                if (artist == null) {
-                    db.albumDao().getAllAsync().observe(this@AlbumListFragment, Observer { dbAlbumList ->
-                        if (dbAlbumList == null) return@Observer
+                db.albumDao().getAllAsync().observe(this@AlbumListFragment, Observer { dbAlbumList ->
+                    if (dbAlbumList == null) return@Observer
 
-                        mainViewModel.loading.value = true
-                        latestDbAlbumList = dbAlbumList
-                        upsertAlbumListIfPossible(db)
-                    })
-                } else {
-                    launch(parentJob) {
-                        val items = db.albumDao().findByArtistId(artist.id).getAlbumList(db).await()
-                        upsertAlbumListIfPossible(items)
+                    mainViewModel.loading.value = true
+                    latestDbAlbumList = dbAlbumList.let {
+                        if (artist != null) it.filter { it.artistId == artist.id } else it
                     }
-                }
+                    upsertAlbumListIfPossible(db)
+                })
             }
         }
     }
+
+    private fun fetchAlbums(db: DB): Deferred<List<Album>> =
+            async(parentJob) { db.albumDao().getAll().getAlbumList(db).await() }
 
     private fun upsertAlbumListIfPossible(db: DB) {
         launch(UI) {

@@ -16,6 +16,9 @@ interface TrackDao {
     @Update
     fun update(track: Track)
 
+    @Query("delete from track where id = :id")
+    fun delete(id: Long)
+
     @Query("select * from track")
     fun getAllAsync(): LiveData<List<Track>>
 
@@ -28,14 +31,11 @@ interface TrackDao {
     @Query("select * from track where mediaId = :trackId")
     fun getByMediaId(trackId: Long): Track?
 
-    @Query("delete from track where id = :id")
-    fun delete(id: Long)
-
     @Query("select * from track where albumId = :albumId")
     fun findByAlbum(albumId: Long): List<Track>
 
-    @Query("select * from track where artistId = :artistId")
-    fun findByArtist(artistId: Long): List<Track>
+    @Query("select * from track where albumId = :albumId")
+    fun findByAlbumAsync(albumId: Long): LiveData<List<Track>>
 
     @Query("select count(*) from track")
     fun count(): Int

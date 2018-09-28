@@ -22,20 +22,10 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
 
     private val items: ArrayList<Artist> = ArrayList()
 
-    internal fun addItems(items: List<Artist>) {
+    internal fun setItems(items: List<Artist>) {
         this.items.clear()
-        this.items.addAll(items)
+        upsertItems(items)
         notifyDataSetChanged()
-    }
-
-    internal fun addItem(item: Artist, position: Int = itemCount) {
-        if (items.lastIndex < position) {
-            items.add(item)
-            notifyItemInserted(items.lastIndex)
-        } else {
-            this.items[position] = item
-            notifyItemChanged(position)
-        }
     }
 
     internal fun getItems(): List<Artist> = items

@@ -61,7 +61,8 @@ class GenreListFragment : Fragment() {
         if (adapter.itemCount == 0) {
             launch(UI + parentJob) {
                 mainViewModel.loading.value = true
-                adapter.setItems(fetchGenres().await().sortedBy { it.name })
+                adapter.setItems(fetchGenres().await())
+                binding.recyclerView.smoothScrollToPosition(0)
                 mainViewModel.loading.value = false
             }
         }
@@ -122,8 +123,12 @@ class GenreListFragment : Fragment() {
         })
 
         viewModel.forceLoad.observe(this, Observer {
-            adapter.clearItems()
-            fetchGenres()
+            launch(UI + parentJob) {
+                mainViewModel.loading.value = true
+                adapter.setItems(fetchGenres().await())
+                binding.recyclerView.smoothScrollToPosition(0)
+                mainViewModel.loading.value = false
+            }
         })
     }
 
@@ -146,7 +151,7 @@ class GenreListFragment : Fragment() {
                     list.add(genre)
                 }
 
-                return@use list.toList()
+                return@use list.toList().sortedBy { it.name }
             }
         } ?: emptyList()
     }
