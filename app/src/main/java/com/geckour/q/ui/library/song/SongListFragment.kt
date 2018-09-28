@@ -74,6 +74,7 @@ class SongListFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater,
                               container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        observeEvents()
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -85,9 +86,7 @@ class SongListFragment : Fragment() {
 
         binding.recyclerView.adapter = adapter
 
-        observeEvents()
-
-        fetchSongs()
+        if (adapter.itemCount == 0) fetchSongs()
     }
 
     override fun onResume() {
@@ -158,14 +157,14 @@ class SongListFragment : Fragment() {
         val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST)
 
         when {
-            album != null -> fetchSongsWithAlbum(album)
+            album != null -> observeSongsWithAlbum(album)
             genre != null -> fetchSongsWithGenre(genre)
             playlist != null -> fetchSongsWithPlaylist(playlist)
-            else -> fetchAllSongs()
+            else -> observeAllSongs()
         }
     }
 
-    private fun fetchAllSongs() {
+    private fun observeAllSongs() {
         context?.apply {
             DB.getInstance(this).also { db ->
                 db.trackDao().getAllAsync().observe(this@SongListFragment, Observer { dbTrackList ->
@@ -178,7 +177,7 @@ class SongListFragment : Fragment() {
         }
     }
 
-    private fun fetchSongsWithAlbum(album: Album) {
+    private fun observeSongsWithAlbum(album: Album) {
         mainViewModel.loading.value = true
         context?.also {
             DB.getInstance(it).also { db ->

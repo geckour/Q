@@ -50,6 +50,7 @@ class AlbumListFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater,
                               container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        observeEvents()
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -60,10 +61,8 @@ class AlbumListFragment : Fragment() {
         setHasOptionsMenu(true)
         binding.recyclerView.adapter = adapter
 
-        observeEvents()
-
         artist = arguments?.getParcelable(ARGS_KEY_ARTIST)
-        observeAlbums(artist)
+        if (adapter.itemCount == 0) observeAlbums(artist)
     }
 
     override fun onStart() {
@@ -123,8 +122,6 @@ class AlbumListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        observeAlbums(artist)
-
         viewModel.requireScrollTop.observe(this, Observer {
             binding.recyclerView.smoothScrollToPosition(0)
         })

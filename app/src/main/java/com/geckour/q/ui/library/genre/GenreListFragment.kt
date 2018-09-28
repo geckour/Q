@@ -43,6 +43,7 @@ class GenreListFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater,
                               container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        observeEvents()
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -56,7 +57,6 @@ class GenreListFragment : Fragment() {
         binding.recyclerView.addItemDecoration(
                 DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL))
 
-        observeEvents()
 
         if (adapter.itemCount == 0) {
             launch(UI + parentJob) {

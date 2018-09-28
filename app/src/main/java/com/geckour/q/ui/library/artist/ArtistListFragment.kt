@@ -41,6 +41,7 @@ class ArtistListFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater,
                               container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        observeEvents()
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -52,7 +53,7 @@ class ArtistListFragment : Fragment() {
 
         binding.recyclerView.adapter = adapter
 
-        observeEvents()
+        if (adapter.itemCount == 0) observeArtists()
     }
 
     override fun onStart() {
@@ -115,14 +116,11 @@ class ArtistListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        observeArtists()
-
         viewModel.requireScrollTop.observe(this, Observer {
             binding.recyclerView.smoothScrollToPosition(0)
         })
 
         viewModel.forceLoad.observe(this, Observer {
-            Timber.d("qgeck artist list force load called, context: $context")
             context?.also { context ->
                 launch(UI + parentJob) {
                     mainViewModel.loading.value = true
