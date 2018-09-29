@@ -33,6 +33,9 @@ interface AlbumDao {
 
     @Query("select * from album where artistId = :id")
     fun findByArtistId(id: Long): List<Album>
+
+    @Query("select * from album where title like :title")
+    fun searchByTitle(title: String): List<Album>
 }
 
 fun Album.upsert(db: DB): Long =

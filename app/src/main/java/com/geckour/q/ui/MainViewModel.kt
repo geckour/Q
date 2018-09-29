@@ -20,6 +20,7 @@ class MainViewModel : ViewModel() {
     internal val songToDelete: SingleLiveEvent<Song> = SingleLiveEvent()
     internal val cancelSync: SingleLiveEvent<Unit> = SingleLiveEvent()
     internal val requireScrollTop: SingleLiveEvent<Unit> = SingleLiveEvent()
+    internal val searchQuery: SingleLiveEvent<String> = SingleLiveEvent()
 
     private var currentOrientedClassType: OrientedClassType? = null
 

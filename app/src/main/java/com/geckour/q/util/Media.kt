@@ -16,6 +16,8 @@ import com.bumptech.glide.Glide
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Album
+import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
@@ -50,15 +52,6 @@ enum class OrientedClassType {
     SONG,
     GENRE,
     PLAYLIST
-}
-
-enum class PlaybackButton {
-    PLAY_OR_PAUSE,
-    NEXT,
-    PREV,
-    FF,
-    REWIND,
-    UNDEFINED
 }
 
 enum class NotificationCommand {
@@ -157,6 +150,15 @@ private fun List<Track>.getPlaylistThumb(context: Context): Deferred<Bitmap?> = 
             .getThumb(context)
             .await()
 }
+
+fun DB.searchArtistByFuzzyTitle(title: String): Deferred<List<Artist>> =
+        async { this@searchArtistByFuzzyTitle.artistDao().searchByTitle("%$title%") }
+
+fun DB.searchAlbumByFuzzyTitle(title: String): Deferred<List<Album>> =
+        async { this@searchAlbumByFuzzyTitle.albumDao().searchByTitle("%$title%") }
+
+fun DB.searchTrackByFuzzyTitle(title: String): Deferred<List<Track>> =
+        async { this@searchTrackByFuzzyTitle.trackDao().searchByTitle("%$title%") }
 
 fun <T> List<T>.takeOrFillNull(n: Int): List<T?> =
         this.take(n).let { it + List(n - it.size) { null } }

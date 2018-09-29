@@ -14,4 +14,5 @@
     <color name="colorTintNowPlaying">#50f095ad</color>
 
     <color name="colorBackgroundInactive">#e8ffffff</color>
+    <color name="colorBackgroundSearchItem">#e8ffffff</color>
 </resources>

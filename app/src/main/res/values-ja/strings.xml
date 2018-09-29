@@ -33,6 +33,8 @@
     <string name="nav_pay">投げ銭</string>
 
 
+    <string name="menu_search">検索</string>
+
     <string name="menu_delete_song">端末から削除</string>
 
     <string name="menu_delete_playlist">プレイリストから削除</string>
@@ -74,10 +76,15 @@
     <string name="dialog_content_label_exist_playlist">既存プレイリストへ追加:</string>
     <string name="dialog_content_label_new_playlist">新規プレイリストを作成:</string>
     <string name="dialog_content_hint_playlist_name">プレイリストの名前を入力</string>
-    
+
     <string name="payment_desc">Kyashを利用した投げ銭を受け付けています</string>
     <string name="payment_save_success">保存しました</string>
     <string name="payment_save_failure">エラー: 保存できませんでした</string>
 
     <string name="easter_egg_title">今日の一曲</string>
+
+
+    <string name="search_category_artist">アーティスト</string>
+    <string name="search_category_album">アルバム</string>
+    <string name="search_category_song">曲</string>
 </resources>

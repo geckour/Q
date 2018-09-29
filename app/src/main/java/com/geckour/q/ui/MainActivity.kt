@@ -8,6 +8,8 @@ import android.os.IBinder
 import android.provider.MediaStore
 import android.view.MenuItem
 import android.view.View
+import android.view.inputmethod.InputMethodManager
+import android.widget.FrameLayout
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
@@ -22,10 +24,13 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogAddQueuePlaylistBinding
+import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.RequestedTransaction
+import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
 import com.geckour.q.ui.easteregg.EasterEggFragment
+import com.geckour.q.ui.library.SearchListAdapter
 import com.geckour.q.ui.library.album.AlbumListFragment
 import com.geckour.q.ui.library.album.AlbumListViewModel
 import com.geckour.q.ui.library.artist.ArtistListFragment
@@ -91,7 +96,9 @@ class MainActivity : AppCompatActivity() {
     }
     internal lateinit var binding: ActivityMainBinding
     private lateinit var drawerToggle: ActionBarDrawerToggle
+    private val searchListAdapter: SearchListAdapter by lazy { SearchListAdapter(viewModel) }
     private var parentJob = Job()
+    private var searchJob = Job()
 
     private var requestedTransaction: RequestedTransaction? = null
     private var paused = true
@@ -103,7 +110,7 @@ class MainActivity : AppCompatActivity() {
     private val syncingProgressReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             (intent?.extras?.get(EXTRA_PROGRESS_SYNCING) as? Pair<Int, Int>)?.apply {
-                binding.coordinatorMain.progressSync.text =
+                binding.coordinatorMain.indicatorLocking.progressSync.text =
                         getString(R.string.progress_sync, this.first, this.second)
             }
         }
@@ -127,10 +134,10 @@ class MainActivity : AppCompatActivity() {
         if (fragment != null) {
             supportFragmentManager.beginTransaction()
                     .apply {
-                        if (binding.coordinatorMain.contentMain.fragmentContainer.childCount == 0)
-                            add(R.id.fragment_container, fragment)
+                        if ((binding.coordinatorMain.contentMain.root as FrameLayout).childCount == 0)
+                            add(R.id.content_main, fragment)
                         else {
-                            replace(R.id.fragment_container, fragment)
+                            replace(R.id.content_main, fragment)
                             addToBackStack(null)
                         }
                     }
@@ -184,12 +191,12 @@ class MainActivity : AppCompatActivity() {
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
         binding.coordinatorMain.viewModel = viewModel
-        binding.coordinatorMain.contentMain.viewModel = viewModel
+        binding.coordinatorMain.contentSearch.recyclerView.adapter = searchListAdapter
 
         observeEvents()
         registerReceiver(syncingProgressReceiver, IntentFilter(ACTION_PROGRESS_SYNCING))
 
-        setSupportActionBar(binding.coordinatorMain.contentMain.toolbar)
+        setSupportActionBar(binding.coordinatorMain.toolbar)
         setupDrawer()
 
         if (savedInstanceState == null) {
@@ -460,6 +467,43 @@ class MainActivity : AppCompatActivity() {
             WorkManager.getInstance().cancelSync()
         })
 
+        viewModel.searchQuery.observe(this, Observer {
+            if (it == null || it.isBlank() || it.filterNot { it.isWhitespace() }.length < 2) {
+                binding.coordinatorMain.contentSearch.root.visibility = View.GONE
+                return@Observer
+            } else binding.coordinatorMain.contentSearch.root.visibility = View.VISIBLE
+
+            val db = DB.getInstance(this@MainActivity)
+            searchJob.cancel()
+            searchJob = launch(UI + parentJob) {
+                searchListAdapter.clearItems()
+                val tracks = db.searchTrackByFuzzyTitle(it).await().take(3)
+                if (tracks.isNotEmpty()) {
+                    searchListAdapter.addItem(SearchItem(getString(R.string.search_category_song),
+                            Unit, SearchItem.SearchItemType.CATEGORY))
+                    searchListAdapter.addItems(tracks.map {
+                        SearchItem(it.title ?: UNKNOWN, it, SearchItem.SearchItemType.TRACK)
+                    })
+                }
+                val albums = db.searchAlbumByFuzzyTitle(it).await().take(3)
+                if (albums.isNotEmpty()) {
+                    searchListAdapter.addItem(SearchItem(getString(R.string.search_category_album),
+                            Unit, SearchItem.SearchItemType.CATEGORY))
+                    searchListAdapter.addItems(albums.map {
+                        SearchItem(it.title ?: UNKNOWN, it, SearchItem.SearchItemType.ALBUM)
+                    })
+                }
+                val artists = db.searchArtistByFuzzyTitle(it).await().take(3)
+                if (artists.isNotEmpty()) {
+                    searchListAdapter.addItem(SearchItem(getString(R.string.search_category_artist),
+                            Unit, SearchItem.SearchItemType.CATEGORY))
+                    searchListAdapter.addItems(artists.map {
+                        SearchItem(it.title ?: UNKNOWN, it, SearchItem.SearchItemType.ARTIST)
+                    })
+                }
+            }
+        })
+
         bottomSheetViewModel.playbackButton.observe(this, Observer {
             if (it == null) return@Observer
             when (it) {
@@ -571,7 +615,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupDrawer() {
         drawerToggle = ActionBarDrawerToggle(this,
-                binding.drawerLayout, binding.coordinatorMain.contentMain.toolbar,
+                binding.drawerLayout, binding.coordinatorMain.toolbar,
                 R.string.drawer_open, R.string.drawer_close)
         binding.drawerLayout.addDrawerListener(drawerToggle)
         drawerToggle.syncState()
@@ -600,19 +644,19 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun indicateSync() {
-        binding.coordinatorMain.descLocking.text = getString(R.string.syncing)
-        binding.coordinatorMain.progressSync.visibility = View.VISIBLE
-        binding.coordinatorMain.buttonCancelSync.visibility = View.VISIBLE
+        binding.coordinatorMain.indicatorLocking.descLocking.text = getString(R.string.syncing)
+        binding.coordinatorMain.indicatorLocking.progressSync.visibility = View.VISIBLE
+        binding.coordinatorMain.indicatorLocking.buttonCancelSync.visibility = View.VISIBLE
     }
 
     private fun indicateLoad() {
-        binding.coordinatorMain.descLocking.text = getString(R.string.loading)
-        binding.coordinatorMain.progressSync.visibility = View.GONE
-        binding.coordinatorMain.buttonCancelSync.visibility = View.GONE
+        binding.coordinatorMain.indicatorLocking.descLocking.text = getString(R.string.loading)
+        binding.coordinatorMain.indicatorLocking.progressSync.visibility = View.GONE
+        binding.coordinatorMain.indicatorLocking.buttonCancelSync.visibility = View.GONE
     }
 
     private fun toggleIndicateLock(locking: Boolean) {
-        binding.coordinatorMain.indicatorLocking.visibility =
+        binding.coordinatorMain.indicatorLocking.root.visibility =
                 if (locking) View.VISIBLE else View.GONE
         binding.drawerLayout.setDrawerLockMode(
                 if (locking) DrawerLayout.LOCK_MODE_LOCKED_CLOSED
@@ -622,11 +666,12 @@ class MainActivity : AppCompatActivity() {
     private fun tryTransaction() {
         if (paused.not()) {
             requestedTransaction?.apply {
+                dismissSearch()
                 when (this.tag) {
                     ArtistListFragment.TAG -> {
                         if (artist != null) {
                             supportFragmentManager.beginTransaction()
-                                    .replace(R.id.fragment_container,
+                                    .replace(R.id.content_main,
                                             AlbumListFragment.newInstance(artist), artist.name)
                                     .addToBackStack(null)
                                     .commit()
@@ -635,7 +680,7 @@ class MainActivity : AppCompatActivity() {
                     AlbumListFragment.TAG -> {
                         if (album != null) {
                             supportFragmentManager.beginTransaction()
-                                    .replace(R.id.fragment_container,
+                                    .replace(R.id.content_main,
                                             SongListFragment.newInstance(album), album.name)
                                     .addToBackStack(null)
                                     .commit()
@@ -644,7 +689,7 @@ class MainActivity : AppCompatActivity() {
                     GenreListFragment.TAG -> {
                         if (genre != null) {
                             supportFragmentManager.beginTransaction()
-                                    .replace(R.id.fragment_container,
+                                    .replace(R.id.content_main,
                                             SongListFragment.newInstance(genre), genre.name)
                                     .addToBackStack(null)
                                     .commit()
@@ -653,7 +698,7 @@ class MainActivity : AppCompatActivity() {
                     PlaylistListFragment.TAG -> {
                         if (playlist != null) {
                             supportFragmentManager.beginTransaction()
-                                    .replace(R.id.fragment_container,
+                                    .replace(R.id.content_main,
                                             SongListFragment.newInstance(playlist), playlist.name)
                                     .addToBackStack(null)
                                     .commit()
@@ -661,7 +706,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     EasterEggFragment.TAG -> {
                         supportFragmentManager.beginTransaction()
-                                .replace(R.id.fragment_container, EasterEggFragment.newInstance())
+                                .replace(R.id.content_main, EasterEggFragment.newInstance())
                                 .addToBackStack(null)
                                 .commit()
                         binding.drawerLayout.closeDrawer(binding.navigationView)
@@ -670,5 +715,11 @@ class MainActivity : AppCompatActivity() {
                 requestedTransaction = null
             }
         }
+    }
+
+    private fun dismissSearch() {
+        binding.coordinatorMain.contentSearch.root.visibility = View.GONE
+        getSystemService(InputMethodManager::class.java)
+                .hideSoftInputFromWindow(currentFocus?.windowToken, 0)
     }
 }

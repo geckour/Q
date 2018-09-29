@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.*
+import android.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
@@ -86,12 +87,25 @@ class GenreListFragment : Fragment() {
 
     override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
         super.onCreateOptionsMenu(menu, inflater)
+        inflater?.inflate(R.menu.genres_toolbar, menu)
+        (menu?.findItem(R.id.menu_search)?.actionView as? SearchView)?.apply {
+            setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+                override fun onQueryTextSubmit(newText: String?): Boolean {
+                    mainViewModel.searchQuery.value = newText
+                    return true
+                }
 
-        inflater?.inflate(R.menu.genres, menu)
+                override fun onQueryTextChange(query: String?): Boolean {
+                    mainViewModel.searchQuery.value = query
+                    return true
+                }
+            })
+        }
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         context?.also { context ->
+            val actionType =
             launch(parentJob) {
                 val songs = adapter.getItems().map { genre ->
                     genre.getTrackMediaIds(context).mapNotNull {

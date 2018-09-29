@@ -116,6 +116,7 @@ class SongListAdapter(private val viewModel: MainViewModel,
 
     inner class ViewHolder(private val binding: ItemListSongBinding)
         : RecyclerView.ViewHolder(binding.root) {
+
         private val shortPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener {
                 viewModel.selectedSong?.apply {

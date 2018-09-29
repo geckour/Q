@@ -38,6 +38,8 @@
     <string name="nav_pay">Donate</string>
 
 
+    <string name="menu_search">Search</string>
+
     <string name="menu_delete_song">Delete from device</string>
 
     <string name="menu_delete_playlist">Delete this playlist</string>
@@ -85,4 +87,9 @@
     <string name="payment_save_failure">Failure to save</string>
 
     <string name="easter_egg_title">Today\'s song</string>
+
+
+    <string name="search_category_artist">Artist</string>
+    <string name="search_category_album">Album</string>
+    <string name="search_category_song">Song</string>
 </resources>

@@ -15,58 +15,28 @@
         android:layout_height="match_parent"
         tools:context=".view.activity.MainActivity">
 
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="@color/colorPrimary"
+            android:elevation="5dp"
+            android:onClick="@{() -> viewModel.onToolbarClick()}"
+            android:theme="@style/ToolbarStyle"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:popupTheme="@style/ToolbarStyle.Popup" />
+
         <include
             android:id="@+id/content_main"
             layout="@layout/content_main" />
 
-        <RelativeLayout
+        <include
             android:id="@+id/indicator_locking"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@color/colorBackgroundInactive"
-            android:clickable="true"
-            android:focusable="true"
-            android:paddingBottom="@dimen/bottom_sheet_peek_height"
-            android:visibility="gone">
-
-            <ProgressBar
-                android:id="@+id/progress_bar"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_centerInParent="true" />
-
-            <TextView
-                android:id="@+id/desc_locking"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_below="@id/progress_bar"
-                android:layout_centerHorizontal="true"
-                android:layout_marginTop="4dp"
-                android:textColor="@color/colorTextSecondary"
-                android:textSize="14sp" />
-
-            <TextView
-                android:id="@+id/progress_sync"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_below="@id/desc_locking"
-                android:layout_centerHorizontal="true"
-                android:layout_marginTop="4dp"
-                android:textColor="@color/colorTextSecondary"
-                android:textSize="12sp" />
-
-            <Button
-                android:id="@+id/button_cancel_sync"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentBottom="true"
-                android:layout_centerHorizontal="true"
-                android:layout_marginBottom="16dp"
-                android:backgroundTint="@color/colorAccent"
-                android:onClick="@{() -> viewModel.onCancelSync()}"
-                android:text="@string/button_cancel_sync"
-                android:textColor="@android:color/white" />
-        </RelativeLayout>
+            layout="@layout/indicator_locking"
+            android:visibility="gone"
+            app:viewModel="@{viewModel}" />
 
         <View
             android:layout_width="match_parent"
@@ -90,5 +60,9 @@
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
             tools:layout="@layout/fragment_sheet_bottom" />
+
+        <include
+            android:id="@+id/content_search"
+            layout="@layout/content_search" />
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 </layout>

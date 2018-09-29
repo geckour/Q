@@ -17,9 +17,9 @@ import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentSheetBottomBinding
+import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
-import com.geckour.q.util.PlaybackButton
 import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.getTimeString
 import com.google.android.exoplayer2.Player
