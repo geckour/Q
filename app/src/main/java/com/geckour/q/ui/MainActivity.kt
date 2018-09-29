@@ -5,6 +5,7 @@ import android.app.AlertDialog
 import android.content.*
 import android.os.Bundle
 import android.os.IBinder
+import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.view.MenuItem
 import android.view.View
@@ -206,8 +207,14 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState == null) {
             retrieveMediaIfEmpty()
 
-            // TODO: 設定画面でどの画面を初期画面にするか設定できるようにする
-            val navId = R.id.nav_artist
+            val navId = when (PreferenceManager.getDefaultSharedPreferences(this)
+                    .getPreferScreen()) {
+                Screen.ARTIST -> R.id.nav_artist
+                Screen.ALBUM -> R.id.nav_album
+                Screen.SONG -> R.id.nav_song
+                Screen.GENRE -> R.id.nav_genre
+                Screen.PLAYLIST -> R.id.nav_playlist
+            }
             onNavigationItemSelected(binding.navigationView.menu.findItem(navId))
         } else if (savedInstanceState.containsKey(STATE_KEY_REQUESTED_TRANSACTION)) {
             requestedTransaction =
