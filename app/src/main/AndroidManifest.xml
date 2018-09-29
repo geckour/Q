@@ -24,6 +24,10 @@
             </intent-filter>
         </activity>
 
+        <activity android:name=".ui.setting.SettingActivity" />
+
+        <activity android:name=".ui.license.LicenseActivity" />
+
         <service android:name=".service.PlayerService" />
     </application>
 

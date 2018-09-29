@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name" translatable="false">Q</string>
     <string name="title_activity_main" translatable="false">Q</string>
+    <string name="title_activity_setting">Settings</string>
 
 
     <string name="drawer_open">Open</string>
@@ -82,6 +83,10 @@
     <string name="dialog_content_label_new_playlist">Create new playlist:</string>
     <string name="dialog_content_hint_playlist_name">Enter playlist name</string>
 
+    <string name="dialog_title_choose_screen_on_launch">Select screen</string>
+    <string name="dialog_desc_choose_screen_on_launch">Select screen to show on launch</string>
+
+
     <string name="payment_desc">Available donation with Kyash</string>
     <string name="payment_save_success">Succeeded</string>
     <string name="payment_save_failure">Failure to save</string>
@@ -92,4 +97,15 @@
     <string name="search_category_artist">Artist</string>
     <string name="search_category_album">Album</string>
     <string name="search_category_song">Song</string>
+
+
+    <string name="setting_category_title_general">General</string>
+
+    <string name="setting_item_title_screen_on_launch">Screen on launch</string>
+    <string name="setting_item_desc_screen_on_launch">Select screen to show on launch</string>
+
+    <string name="setting_category_title_misc">Misc</string>
+
+    <string name="setting_item_title_license">License</string>
+    <string name="setting_item_desc_license">Show OSS Licenses</string>
 </resources>

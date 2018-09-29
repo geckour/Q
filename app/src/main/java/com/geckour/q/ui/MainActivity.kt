@@ -41,6 +41,7 @@ import com.geckour.q.ui.library.song.SongListFragment
 import com.geckour.q.ui.library.song.SongListViewModel
 import com.geckour.q.ui.pay.PaymentFragment
 import com.geckour.q.ui.pay.PaymentViewModel
+import com.geckour.q.ui.setting.SettingActivity
 import com.geckour.q.ui.sheet.BottomSheetViewModel
 import com.geckour.q.util.*
 import com.google.android.exoplayer2.Player
@@ -123,7 +124,10 @@ class MainActivity : AppCompatActivity() {
             R.id.nav_song -> SongListFragment.newInstance()
             R.id.nav_genre -> GenreListFragment.newInstance()
             R.id.nav_playlist -> PlaylistListFragment.newInstance()
-            R.id.nav_setting -> null
+            R.id.nav_setting -> {
+                startActivity(SettingActivity.createIntent(this))
+                null
+            }
             R.id.nav_sync -> {
                 retrieveMediaWithPermissionCheck()
                 null
