@@ -58,10 +58,24 @@ class SongListAdapter(private val viewModel: MainViewModel,
     }
 
     internal fun upsertItems(items: List<Song>, sortByTrackOrder: Boolean = true) {
-        val changed = items - this.items
-        changed.forEach {
-            upsertItem(it, sortByTrackOrder)
-        }
+        val increased = items - this.items
+        val decreased = this.items - items
+        increased.forEach { upsertItem(it, sortByTrackOrder) }
+        decreased.forEach { removeItem(it) }
+    }
+
+    private fun removeItem(item: Song) {
+        removeItem(item.id)
+    }
+
+    private fun removeItem(songId: Long) {
+        items.asSequence()
+                .mapIndexed { i, s -> i to s }
+                .filter { it.second.id == songId }.toList()
+                .forEach {
+                    items.removeAt(it.first)
+                    notifyItemRemoved(it.first)
+                }
     }
 
     internal fun addItems(items: List<Song>) {
@@ -70,8 +84,8 @@ class SongListAdapter(private val viewModel: MainViewModel,
         notifyItemRangeInserted(size, items.size)
     }
 
-    internal fun removeByPlayOrder(playOrder: Int) {
-        val index = this.items.indexOfFirst { it.trackNum == playOrder }
+    internal fun removeByTrackNum(trackNum: Int) {
+        val index = this.items.indexOfFirst { it.trackNum == trackNum }
         if (index !in this.items.indices) return
         this.items.removeAt(index)
         notifyItemRemoved(index)
@@ -87,13 +101,7 @@ class SongListAdapter(private val viewModel: MainViewModel,
     }
 
     internal fun onSongDeleted(id: Long) {
-        items.asSequence()
-                .mapIndexed { i, s -> i to s }
-                .filter { it.second.id == id }.toList()
-                .forEach {
-                    items.removeAt(it.first)
-                    notifyItemRemoved(it.first)
-                }
+        removeItem(id)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =

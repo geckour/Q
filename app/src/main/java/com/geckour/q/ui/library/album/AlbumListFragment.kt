@@ -137,6 +137,11 @@ class AlbumListFragment : Fragment() {
                 }
             }
         })
+
+        viewModel.albumIdDeleted.observe(this, Observer {
+            if (it == null) return@Observer
+            adapter.onAlbumDeleted(it)
+        })
     }
 
     private fun observeAlbums(artist: Artist?) {

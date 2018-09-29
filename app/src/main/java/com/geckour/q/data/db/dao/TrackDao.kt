@@ -11,13 +11,13 @@ import com.geckour.q.data.db.model.Track
 @Dao
 interface TrackDao {
     @Insert
-    fun insert(track: Track)
+    fun insert(track: Track): Long
 
     @Update
-    fun update(track: Track)
+    fun update(track: Track): Int
 
     @Query("delete from track where id = :id")
-    fun delete(id: Long)
+    fun delete(id: Long): Int
 
     @Query("select * from track")
     fun getAllAsync(): LiveData<List<Track>>
@@ -36,6 +36,9 @@ interface TrackDao {
 
     @Query("select * from track where albumId = :albumId")
     fun findByAlbumAsync(albumId: Long): LiveData<List<Track>>
+
+    @Query("select * from track where artistId = :artistId")
+    fun findByArtist(artistId: Long): List<Track>
 
     @Query("select count(*) from track")
     fun count(): Int

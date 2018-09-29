@@ -46,15 +46,30 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
     }
 
     internal fun upsertItems(items: List<Album>) {
-        val changed = items - this.items
-        changed.forEach {
-            upsertItem(it)
-        }
+        val increased = items - this.items
+        val decreased = this.items - items
+        increased.forEach { upsertItem(it) }
+        decreased.forEach { removeItem(it) }
+    }
+
+    private fun removeItem(item: Album) {
+        removeItem(item.id)
+    }
+
+    private fun removeItem(albumId: Long) {
+        val index = items.indexOfFirst { it.id == albumId }
+        if (index < 0) return
+        items.removeAt(index)
+        notifyItemRemoved(index)
     }
 
     internal fun clearItems() {
         this.items.clear()
         notifyDataSetChanged()
+    }
+
+    internal fun onAlbumDeleted(albumId: Long) {
+        removeItem(albumId)
     }
 
     internal fun onNewQueue(songs: List<Song>, actionType: InsertActionType,

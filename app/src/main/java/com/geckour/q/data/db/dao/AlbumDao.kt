@@ -16,6 +16,9 @@ interface AlbumDao {
     @Update
     fun update(album: Album): Int
 
+    @Query("delete from album where id = :id")
+    fun delete(id: Long): Int
+
     @Query("select * from album")
     fun getAll(): List<Album>
 

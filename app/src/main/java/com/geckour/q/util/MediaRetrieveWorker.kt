@@ -46,6 +46,7 @@ class MediaRetrieveWorker(context: Context, parameters: WorkerParameters? = null
         } else {
             Timber.d("qgeck media retrieve worker started")
             val db = DB.getInstance(applicationContext)
+            db.clearAllTables()
             applicationContext.contentResolver
                     .query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                             arrayOf(MediaStore.Audio.Media._ID,

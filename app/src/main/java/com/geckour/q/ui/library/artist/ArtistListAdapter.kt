@@ -30,8 +30,12 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
 
     internal fun getItems(): List<Artist> = items
 
-    internal fun removeItem(item: Artist) {
-        val index = items.indexOfFirst { it.id == item.id }
+    private fun removeItem(item: Artist) {
+        removeItem(item.id)
+    }
+
+    private fun removeItem(artistId: Long) {
+        val index = items.indexOfFirst { it.id == artistId }
         if (index < 0) return
         items.removeAt(index)
         notifyItemRemoved(index)
@@ -61,6 +65,10 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
     internal fun clearItems() {
         this.items.clear()
         notifyDataSetChanged()
+    }
+
+    internal fun onArtistDeleted(artistId: Long) {
+        removeItem(artistId)
     }
 
     internal fun onNewQueue(songs: List<Song>, actionType: InsertActionType,

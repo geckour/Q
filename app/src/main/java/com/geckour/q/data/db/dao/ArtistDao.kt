@@ -15,6 +15,9 @@ interface ArtistDao {
     @Update
     fun update(artist: Artist): Int
 
+    @Query("delete from artist where id = :id")
+    fun delete(id: Long): Int
+
     @Query("select * from artist where title = :title")
     fun findArtist(title: String): List<Artist>
 

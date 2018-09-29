@@ -18,7 +18,6 @@ class MainViewModel : ViewModel() {
     internal val removedQueueIndex: SingleLiveEvent<Int> = SingleLiveEvent()
     internal val removePlayOrderOfPlaylist: SingleLiveEvent<Int> = SingleLiveEvent()
     internal val songToDelete: SingleLiveEvent<Song> = SingleLiveEvent()
-    internal val songIdDeleted: SingleLiveEvent<Long> = SingleLiveEvent()
     internal val cancelSync: SingleLiveEvent<Unit> = SingleLiveEvent()
     internal val requireScrollTop: SingleLiveEvent<Unit> = SingleLiveEvent()
 

@@ -133,7 +133,7 @@ class SongListFragment : Fragment() {
                     ?.delete(MediaStore.Audio.Playlists.Members.getContentUri("external", playlist.id),
                             "${MediaStore.Audio.Playlists.Members.PLAY_ORDER}=?",
                             arrayOf(it.toString()))?.equals(1) ?: return@Observer
-            if (removed) adapter.removeByPlayOrder(it)
+            if (removed) adapter.removeByTrackNum(it)
         })
 
         viewModel.requireScrollTop.observe(this, Observer {
@@ -145,7 +145,7 @@ class SongListFragment : Fragment() {
             fetchSongs()
         })
 
-        mainViewModel.songIdDeleted.observe(this, Observer {
+        viewModel.songIdDeleted.observe(this, Observer {
             if (it == null) return@Observer
             adapter.onSongDeleted(it)
         })

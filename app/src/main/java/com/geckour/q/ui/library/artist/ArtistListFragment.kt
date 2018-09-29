@@ -17,7 +17,6 @@ import com.geckour.q.util.getSong
 import com.geckour.q.util.sortedByTrackOrder
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.UI
-import timber.log.Timber
 
 class ArtistListFragment : Fragment() {
 
@@ -129,6 +128,11 @@ class ArtistListFragment : Fragment() {
                     mainViewModel.loading.value = false
                 }
             }
+        })
+
+        viewModel.artistIdDeleted.observe(this, Observer {
+            if (it == null) return@Observer
+            adapter.onArtistDeleted(it)
         })
     }
 

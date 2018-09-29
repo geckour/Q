@@ -423,14 +423,36 @@ class MainActivity : AppCompatActivity() {
                     this.delete()
                 }
             }
-            val deleted = contentResolver.delete(
+            contentResolver.delete(
                     MediaStore.Files.getContentUri("external"),
                     "${MediaStore.Files.FileColumns.DATA}=?",
-                    arrayOf(it.sourcePath)) == 1
+                    arrayOf(it.sourcePath))
 
-            if (deleted) {
-                launch { DB.getInstance(this@MainActivity).trackDao().delete(it.id) }
-                viewModel.songIdDeleted.value = it.id
+            launch(parentJob) {
+                val db = DB.getInstance(this@MainActivity)
+                val track = db.trackDao().get(it.id) ?: return@launch
+
+                player?.removeQueue(track.id)
+
+                var deleted = db.trackDao().delete(track.id) > 0
+                if (deleted)
+                    launch(UI + parentJob) {
+                        songListViewModel.songIdDeleted.value = track.id
+                    }
+                if (db.trackDao().findByAlbum(track.albumId).isEmpty()) {
+                    deleted = db.albumDao().delete(track.albumId) > 0
+                    if (deleted)
+                        launch(UI + parentJob) {
+                            albumListViewModel.albumIdDeleted.value = track.albumId
+                        }
+                }
+                if (db.trackDao().findByArtist(track.artistId).isEmpty()) {
+                    deleted = db.artistDao().delete(track.artistId) > 0
+                    if (deleted)
+                        launch(UI + parentJob) {
+                            artistListViewModel.artistIdDeleted.value = track.artistId
+                        }
+                }
             }
         })
 
