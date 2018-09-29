@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:app="http://schemas.android.com/apk/res-auto">
+        xmlns:app="http://schemas.android.com/apk/res-auto"
+        xmlns:tools="http://schemas.android.com/tools">
 
     <data>
 
@@ -12,25 +13,15 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:elevation="6dp">
-
-        <View
-            android:id="@+id/bg_lock"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:background="@color/colorBackgroundInactive"
-            android:clickable="true"
-            android:focusable="true"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+        android:background="@color/colorBackgroundInactive"
+        android:clickable="true"
+        android:elevation="6dp"
+        android:focusable="true">
 
         <ProgressBar
             android:id="@+id/progress_bar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_centerInParent="true"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
@@ -40,41 +31,44 @@
             android:id="@+id/desc_locking"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@id/progress_bar"
-            android:layout_centerHorizontal="true"
             android:layout_marginTop="4dp"
             android:textColor="@color/colorTextSecondary"
             android:textSize="14sp"
             app:layout_constraintLeft_toLeftOf="@id/progress_bar"
             app:layout_constraintRight_toRightOf="@id/progress_bar"
-            app:layout_constraintTop_toBottomOf="@id/progress_bar" />
+            app:layout_constraintTop_toBottomOf="@id/progress_bar"
+            tools:text="Syncing library…" />
 
         <TextView
             android:id="@+id/progress_sync"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@id/desc_locking"
-            android:layout_centerHorizontal="true"
             android:layout_marginTop="4dp"
             android:textColor="@color/colorTextSecondary"
             android:textSize="12sp"
             app:layout_constraintLeft_toLeftOf="@id/progress_bar"
             app:layout_constraintRight_toRightOf="@id/progress_bar"
-            app:layout_constraintTop_toBottomOf="@id/desc_locking" />
+            app:layout_constraintTop_toBottomOf="@id/desc_locking"
+            tools:text="133 / 2504" />
 
         <Button
             android:id="@+id/button_cancel_sync"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            android:layout_centerHorizontal="true"
             android:layout_marginBottom="16dp"
             android:backgroundTint="@color/colorAccent"
             android:onClick="@{() -> viewModel.onCancelSync()}"
             android:text="@string/button_cancel_sync"
             android:textColor="@android:color/white"
+            app:layout_constraintBottom_toTopOf="@id/guide_peek_height"
             app:layout_constraintLeft_toLeftOf="@id/progress_bar"
-            app:layout_constraintRight_toRightOf="@id/progress_bar"
-            app:layout_constraintTop_toBottomOf="@id/desc_locking" />
+            app:layout_constraintRight_toRightOf="@id/progress_bar" />
+
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/guide_peek_height"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:orientation="horizontal"
+            app:layout_constraintGuide_end="@dimen/bottom_sheet_peek_height" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>
