@@ -92,6 +92,20 @@ class ArtistListFragment : Fragment() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         context?.also { context ->
+            val actionType = when (item.itemId) {
+                R.id.menu_insert_all_next -> InsertActionType.NEXT
+                R.id.menu_insert_all_last -> InsertActionType.LAST
+                R.id.menu_override_all -> InsertActionType.OVERRIDE
+                R.id.menu_insert_all_shuffle_next -> InsertActionType.SHUFFLE_NEXT
+                R.id.menu_insert_all_shuffle_last -> InsertActionType.SHUFFLE_LAST
+                R.id.menu_override_all_shuffle -> InsertActionType.SHUFFLE_OVERRIDE
+                R.id.menu_insert_all_simple_shuffle_next -> InsertActionType.SHUFFLE_SIMPLE_NEXT
+                R.id.menu_insert_all_simple_shuffle_last -> InsertActionType.SHUFFLE_SIMPLE_LAST
+                R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
+                else -> return false
+            }
+
+            mainViewModel.loading.value = true
             launch(parentJob) {
                 val sortByTrackOrder = item.itemId.let {
                     it != R.id.menu_insert_all_simple_shuffle_next
@@ -109,18 +123,7 @@ class ArtistListFragment : Fragment() {
                     }?.flatten()
                 }.flatten()
 
-                adapter.onNewQueue(songs, when (item.itemId) {
-                    R.id.menu_insert_all_next -> InsertActionType.NEXT
-                    R.id.menu_insert_all_last -> InsertActionType.LAST
-                    R.id.menu_override_all -> InsertActionType.OVERRIDE
-                    R.id.menu_insert_all_shuffle_next -> InsertActionType.SHUFFLE_NEXT
-                    R.id.menu_insert_all_shuffle_last -> InsertActionType.SHUFFLE_LAST
-                    R.id.menu_override_all_shuffle -> InsertActionType.SHUFFLE_OVERRIDE
-                    R.id.menu_insert_all_simple_shuffle_next -> InsertActionType.SHUFFLE_SIMPLE_NEXT
-                    R.id.menu_insert_all_simple_shuffle_last -> InsertActionType.SHUFFLE_SIMPLE_LAST
-                    R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
-                    else -> return@launch
-                })
+                adapter.onNewQueue(songs, actionType)
             }
         }
 

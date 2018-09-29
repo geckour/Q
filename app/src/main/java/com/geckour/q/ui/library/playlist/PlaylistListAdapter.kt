@@ -128,6 +128,7 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
                 else -> return false
             }
 
+            viewModel.loading.value = true
             launch {
                 val songs = playlist.getTrackMediaIds(context)
                         .sortedBy { it.second }

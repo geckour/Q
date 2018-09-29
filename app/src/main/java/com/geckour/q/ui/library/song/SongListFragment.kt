@@ -125,6 +125,7 @@ class SongListFragment : Fragment() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        mainViewModel.loading.value = true
         adapter.onNewQueue(when (item.itemId) {
             R.id.menu_insert_all_next -> InsertActionType.NEXT
             R.id.menu_insert_all_last -> InsertActionType.LAST

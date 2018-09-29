@@ -160,6 +160,7 @@ class BottomSheetFragment : Fragment() {
                 context?.getString(R.string.bottom_sheet_time_total, it.getTimeString())
             }
             viewModel.currentPosition.value = if (state) viewModel.currentPosition.value else 0
+            mainViewModel.loading.value = false
         })
 
         viewModel.currentPosition.observe(this, Observer {

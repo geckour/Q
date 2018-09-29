@@ -98,6 +98,7 @@ class GenreListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
                 else -> return false
             }
 
+            viewModel.loading.value = true
             launch {
                 val songs = genre.getTrackMediaIds(context).mapNotNull {
                     getSong(DB.getInstance(context), it, genreId = genre.id).await()

@@ -129,6 +129,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
                 else -> return false
             }
 
+            viewModel.loading.value = true
             launch {
                 val sortByTrackOrder = id.let {
                     it != R.id.menu_insert_all_simple_shuffle_next
