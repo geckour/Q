@@ -106,8 +106,7 @@ fun getSong(db: DB, track: Track,
             val artistName = db.artistDao().get(track.artistId)?.title ?: UNKNOWN
             val artwork = db.albumDao().get(track.albumId)?.artworkUriString
             Song(track.id, track.mediaId, track.albumId, track.title,
-                    artistName, artwork, track.duration,
-                    trackNum ?: track.trackNum, track.trackTotal, track.discNum, track.discTotal,
+                    artistName, artwork, track.duration, trackNum ?: track.trackNum, track.discNum,
                     genreId, playlistId, track.sourcePath)
         }
 

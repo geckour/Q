@@ -38,7 +38,7 @@ fun Artist.upsert(db: DB): Long? =
         this.mediaId?.let {
             val artist = db.artistDao().getByMediaId(it)
             if (artist != null) {
-                db.artistDao().update(this)
+                if (this.title != null) db.artistDao().update(this.copy(id = artist.id))
                 artist.id
             } else db.artistDao().insert(this)
         } ?: run {

@@ -83,8 +83,7 @@ class SearchListAdapter(private val viewModel: MainViewModel)
             setOnMenuItemClickListener {
                 val song = (binding.data?.data as? Track)?.let {
                     Song(it.id, it.mediaId, it.albumId, it.title, UNKNOWN, null, it.duration,
-                            it.trackNum, it.trackTotal, it.discNum, it.discTotal,
-                            null, null, it.sourcePath)
+                            it.trackNum, it.discNum, null, null, it.sourcePath)
                 } ?: return@setOnMenuItemClickListener false
                 viewModel.onNewQueue(listOf(song), when (it.itemId) {
                     R.id.menu_insert_all_next -> {

@@ -40,6 +40,6 @@ interface AlbumDao {
 
 fun Album.upsert(db: DB): Long =
         db.albumDao().getByMediaId(this.mediaId)?.let {
-            db.albumDao().update(this)
+            if (this.title != null) db.albumDao().update(this.copy(id = it.id))
             it.id
         } ?: db.albumDao().insert(this)
