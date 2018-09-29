@@ -6,15 +6,19 @@
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:layout_marginBottom="@dimen/bottom_sheet_peek_height"
+        android:layout_marginLeft="40dp"
+        android:layout_marginRight="40dp"
         android:layout_marginTop="?attr/actionBarSize"
-        android:elevation="28dp"
-        android:paddingLeft="40dp"
-        android:paddingRight="40dp">
+        android:elevation="28dp">
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recycler_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:layout_margin="8dp"
+            android:background="@color/colorBackgroundSearch"
+            android:elevation="4dp"
             android:orientation="vertical"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             tools:listitem="@layout/item_list_search_item" />

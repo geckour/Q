@@ -33,6 +33,11 @@
             layout="@layout/content_main" />
 
         <include
+            android:id="@+id/content_search"
+            layout="@layout/content_search"
+            android:visibility="gone" />
+
+        <include
             android:id="@+id/indicator_locking"
             layout="@layout/indicator_locking"
             android:visibility="gone"
@@ -60,9 +65,5 @@
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
             tools:layout="@layout/fragment_sheet_bottom" />
-
-        <include
-            android:id="@+id/content_search"
-            layout="@layout/content_search" />
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 </layout>

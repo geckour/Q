@@ -12,14 +12,13 @@
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/colorBackgroundSearchItem"
         android:paddingBottom="4dp"
         android:paddingEnd="16dp"
         android:paddingStart="16dp"
         android:paddingTop="4dp"
-        android:textStyle="bold"
+        android:text="@{title}"
         android:textColor="@color/colorTextPrimary"
         android:textSize="12sp"
-        android:text="@{title}"
+        android:textStyle="bold"
         tools:text="Artist" />
 </layout>
