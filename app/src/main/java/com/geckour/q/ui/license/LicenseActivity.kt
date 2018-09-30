@@ -33,5 +33,6 @@ class LicenseActivity : AppCompatActivity() {
                 LicenseItem(getString(R.string.license_name_glide), getString(R.string.license_text_glide)),
                 LicenseItem(getString(R.string.license_name_exo), getString(R.string.license_text_exo))
         ))
+        binding.toolbar.setOnClickListener { binding.recyclerView.smoothScrollToPosition(0) }
     }
 }
