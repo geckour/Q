@@ -159,6 +159,43 @@ fun DB.searchAlbumByFuzzyTitle(title: String): Deferred<List<Album>> =
 fun DB.searchTrackByFuzzyTitle(title: String): Deferred<List<Track>> =
         async { this@searchTrackByFuzzyTitle.trackDao().searchByTitle("%$title%") }
 
+fun Context.searchPlaylistByFuzzyTitle(title: String): List<Playlist> =
+        contentResolver.query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
+                arrayOf(MediaStore.Audio.Playlists._ID,
+                        MediaStore.Audio.Playlists.NAME),
+                "${MediaStore.Audio.Playlists.NAME} like '%$title%'",
+                null,
+                MediaStore.Audio.Playlists.DEFAULT_SORT_ORDER).use {
+            it ?: return@use emptyList()
+            val result: MutableList<Playlist> = mutableListOf()
+            while (it.moveToNext()) {
+                val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists._ID))
+                val name = it.getString(it.getColumnIndex(MediaStore.Audio.Playlists.NAME))
+                        ?: UNKNOWN
+                result.add(Playlist(id, null, name, 0, 0))
+            }
+
+            return@use result
+        }
+
+fun Context.searchGenreByFuzzyTitle(title: String): List<Genre> =
+        contentResolver.query(MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
+                arrayOf(MediaStore.Audio.Genres._ID,
+                        MediaStore.Audio.Genres.NAME),
+                "${MediaStore.Audio.Genres.NAME} like '%$title%'",
+                null,
+                MediaStore.Audio.Genres.DEFAULT_SORT_ORDER).use {
+            it ?: return@use emptyList()
+            val result: MutableList<Genre> = mutableListOf()
+            while (it.moveToNext()) {
+                val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Genres._ID))
+                val name = it.getString(it.getColumnIndex(MediaStore.Audio.Genres.NAME)) ?: UNKNOWN
+                result.add(Genre(id, null, name, 0))
+            }
+
+            return@use result
+        }
+
 fun <T> List<T>.takeOrFillNull(n: Int): List<T?> =
         this.take(n).let { it + List(n - it.size) { null } }
 

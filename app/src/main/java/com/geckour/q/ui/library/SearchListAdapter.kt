@@ -10,10 +10,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.ItemListSearchCategoryBinding
 import com.geckour.q.databinding.ItemListSearchItemBinding
-import com.geckour.q.domain.model.Album
-import com.geckour.q.domain.model.Artist
-import com.geckour.q.domain.model.SearchItem
-import com.geckour.q.domain.model.Song
+import com.geckour.q.domain.model.*
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -141,6 +138,12 @@ class SearchListAdapter(private val viewModel: MainViewModel)
                     }
                 }
                 SearchItem.SearchItemType.TRACK -> trackPopupMenu.show()
+                SearchItem.SearchItemType.PLAYLIST -> {
+                    viewModel.selectedPlaylist.value = (data as? Playlist)
+                }
+                SearchItem.SearchItemType.GENRE -> {
+                    viewModel.selectedGenre.value = (data as? Genre)
+                }
                 else -> Unit
             }
         }

@@ -132,11 +132,11 @@ class PlaylistListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        viewModel.requireScrollTop.observe(this, Observer {
+        viewModel.requireScrollTop.observe(this) {
             binding.recyclerView.smoothScrollToPosition(0)
-        })
+        }
 
-        viewModel.forceLoad.observe(this, Observer {
+        viewModel.forceLoad.observe(this) {
             launch(UI + parentJob) {
                 context?.apply {
                     mainViewModel.loading.value = true
@@ -145,6 +145,6 @@ class PlaylistListFragment : Fragment() {
                     mainViewModel.loading.value = false
                 }
             }
-        })
+        }
     }
 }

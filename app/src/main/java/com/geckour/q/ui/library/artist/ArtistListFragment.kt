@@ -131,11 +131,11 @@ class ArtistListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        viewModel.requireScrollTop.observe(this, Observer {
+        viewModel.requireScrollTop.observe(this) {
             binding.recyclerView.smoothScrollToPosition(0)
-        })
+        }
 
-        viewModel.forceLoad.observe(this, Observer {
+        viewModel.forceLoad.observe(this) {
             context?.also { context ->
                 launch(UI + parentJob) {
                     mainViewModel.loading.value = true
@@ -144,12 +144,12 @@ class ArtistListFragment : Fragment() {
                     mainViewModel.loading.value = false
                 }
             }
-        })
+        }
 
-        viewModel.artistIdDeleted.observe(this, Observer {
-            if (it == null) return@Observer
+        viewModel.artistIdDeleted.observe(this) {
+            if (it == null) return@observe
             adapter.onArtistDeleted(it)
-        })
+        }
     }
 
     private fun observeArtists() {

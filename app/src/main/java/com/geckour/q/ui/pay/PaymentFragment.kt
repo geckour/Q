@@ -9,7 +9,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentPaymentBinding
@@ -57,10 +56,10 @@ class PaymentFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        viewModel.save.observe(this, Observer {
+        viewModel.save.observe(this) {
             val success = insertQRImage()
             viewModel.saveSuccess.value = success
-        })
+        }
     }
 
     private fun insertQRImage(): Boolean =

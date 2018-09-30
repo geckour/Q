@@ -14,7 +14,6 @@ import android.widget.ArrayAdapter
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivitySettingBinding
@@ -51,9 +50,7 @@ class SettingActivity : AppCompatActivity() {
     }
 
     private fun observeEvents() {
-        viewModel.scrollToTop.observe(this, Observer {
-            binding.scrollView.smoothScrollTo(0, 0)
-        })
+        viewModel.scrollToTop.observe(this) { binding.scrollView.smoothScrollTo(0, 0) }
     }
 
     private fun getChooseLaunchScreenViewModel(): SettingItemViewModel =
