@@ -13,8 +13,8 @@ android {
     defaultConfig {
         applicationId "com.geckour.q"
         minSdkVersion 24
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.0.1"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
@@ -45,7 +45,7 @@ repositories {
 }
 
 dependencies {
-    def support_ver = '1.0.1'
+    def support_ver = '1.0.0'
     def aac_lifecycle_ver = '2.0.0-beta01'
     def aac_room_ver = '2.0.0-beta01'
     def aac_work_ver = '1.0.0-alpha09'
