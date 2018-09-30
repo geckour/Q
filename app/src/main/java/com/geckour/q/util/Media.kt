@@ -30,6 +30,7 @@ import com.google.android.exoplayer2.source.ads.AdsMediaSource
 import kotlinx.coroutines.experimental.Deferred
 import kotlinx.coroutines.experimental.async
 import timber.log.Timber
+import java.io.File
 
 
 const val UNKNOWN: String = "UNKNOWN"
@@ -254,7 +255,7 @@ fun getTrackMediaIdByPlaylistId(context: Context, playlistId: Long): List<Pair<L
         } ?: emptyList()
 
 fun Song.getMediaSource(mediaSourceFactory: AdsMediaSource.MediaSourceFactory): MediaSource =
-        mediaSourceFactory.createMediaSource(Uri.parse(sourcePath))
+        mediaSourceFactory.createMediaSource(Uri.fromFile(File(sourcePath)))
 
 fun List<Song>.sortedByTrackOrder(): List<Song> = this.asSequence()
         .groupBy { it.discNum }
