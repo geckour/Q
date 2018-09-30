@@ -1,0 +1,105 @@
+<resources>
+    <string name="title_activity_setting">設定</string>
+    <string name="title_activity_license">OSSライセンス</string>
+
+    <string name="drawer_open">開</string>
+    <string name="drawer_close">閉</string>
+
+
+    <string name="notification_channel_player">プレイヤー</string>
+    <string name="notification_channel_description_player">プレイヤーを生存状態に保つためのプレイヤー情報通知</string>
+    <string name="notification_action_prev">前へ</string>
+    <string name="notification_action_play">再生</string>
+    <string name="notification_action_pause">停止</string>
+    <string name="notification_action_next">次へ</string>
+
+
+    <string name="syncing">ライブラリを同期中…</string>
+    <string name="loading">アイテムを取得中…</string>
+    <string name="button_cancel_sync">キャンセル</string>
+
+
+    <string name="bottom_sheet_time_total">総時間・%1$s</string>
+
+
+    <string name="nav_header_desc">Q - Queue oriented player</string>
+
+    <string name="nav_category_others">その他</string>
+
+    <string name="nav_artist">アーティスト</string>
+    <string name="nav_album">アルバム</string>
+    <string name="nav_song">曲</string>
+    <string name="nav_genre">ジャンル</string>
+    <string name="nav_playlist">プレイリスト</string>
+    <string name="nav_setting">設定</string>
+    <string name="nav_sync">ライブラリを同期</string>
+    <string name="nav_pay">投げ銭</string>
+
+
+    <string name="menu_search">検索</string>
+
+    <string name="menu_delete_song">端末から削除</string>
+
+    <string name="menu_delete_playlist">プレイリストから削除</string>
+
+    <string name="menu_insert_next">次へ挿入</string>
+    <string name="menu_insert_last">最後へ挿入</string>
+    <string name="menu_override">上書き</string>
+
+    <string name="menu_insert_all_simple_shuffle_next">単純シャッフルで次へ挿入</string>
+    <string name="menu_insert_all_simple_shuffle_last">単純シャッフルで最後へ挿入</string>
+    <string name="menu_override_all_simple_shuffle">単純シャッフルで上書き</string>
+
+    <string name="menu_insert_all_next">全てを次へ挿入</string>
+    <string name="menu_insert_all_last">全てを最後へ挿入</string>
+    <string name="menu_override_all">全てによって上書き</string>
+
+    <string name="menu_artists_insert_all_shuffle_next">アーティストシャッフルで次へ挿入</string>
+    <string name="menu_artists_insert_all_shuffle_last">アーティストシャッフルで最後へ挿入</string>
+    <string name="menu_artists_override_all_shuffle">アーティストシャッフルで上書き</string>
+
+    <string name="menu_albums_insert_all_shuffle_next">アルバムシャッフルで次へ挿入</string>
+    <string name="menu_albums_insert_all_shuffle_last">アルバムシャッフルで最後へ挿入</string>
+    <string name="menu_albums_override_all_shuffle">アルバムシャッフルで上書き</string>
+
+    <string name="menu_genres_insert_all_shuffle_next">ジャンルシャッフルで次へ挿入</string>
+    <string name="menu_genres_insert_all_shuffle_last">ジャンルシャッフルで最後へ挿入</string>
+    <string name="menu_genres_override_all_shuffle">ジャンルシャッフルで上書き</string>
+
+    <string name="menu_playlists_insert_all_shuffle_next">プレイリストシャッフルで次へ挿入</string>
+    <string name="menu_playlists_insert_all_shuffle_last">プレイリストシャッフルで最後へ挿入</string>
+    <string name="menu_playlists_override_all_shuffle">プレイリストシャッフルで上書き</string>
+
+
+    <string name="dialog_ok">決定</string>
+    <string name="dialog_ng">キャンセル</string>
+
+    <string name="dialog_title_add_queue_to_playlist">プレイリストへキューを追加</string>
+    <string name="dialog_desc_add_queue_to_playlist">現在のキューを 既存 / 新規 プレイリストへ追加</string>
+    <string name="dialog_content_label_exist_playlist">既存プレイリストへ追加:</string>
+    <string name="dialog_content_label_new_playlist">新規プレイリストを作成:</string>
+    <string name="dialog_content_hint_playlist_name">プレイリストの名前を入力</string>
+
+    <string name="dialog_title_choose_screen_on_launch">画面を選択</string>
+    <string name="dialog_desc_choose_screen_on_launch">起動時に表示する画面を選択</string>
+
+
+    <string name="payment_desc">Kyashを利用した投げ銭を受け付けています</string>
+    <string name="payment_save_success">保存しました</string>
+    <string name="payment_save_failure">エラー: 保存できませんでした</string>
+
+    <string name="easter_egg_title">今日の一曲</string>
+
+
+    <string name="search_category_artist">アーティスト</string>
+    <string name="search_category_album">アルバム</string>
+    <string name="search_category_song">曲</string>
+
+
+    <string name="setting_category_title_general">一般</string>
+    <string name="setting_item_title_screen_on_launch">起動時の画面</string>
+    <string name="setting_item_desc_screen_on_launch">起動時に表示する画面を選択する</string>
+    <string name="setting_category_title_misc">その他</string>
+    <string name="setting_item_title_license">ライセンス</string>
+    <string name="setting_item_desc_license">OSSライセンスを表示する</string>
+</resources>

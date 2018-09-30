@@ -1,6 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#3F51B5</color>
-    <color name="colorPrimaryDark">#303F9F</color>
-    <color name="colorAccent">#FF4081</color>
+    <color name="colorPrimary">#ffd54f</color>
+    <color name="colorPrimaryDark">#fbc02d</color>
+    <color name="colorAccent">#f095ad</color>
+
+    <color name="colorDrawerHeaderBg">#f8f8f8</color>
+
+    <color name="colorTextPrimary">#c0160900</color>
+    <color name="colorTextSecondary">#98160900</color>
+
+    <color name="colorTintOption">#707070</color>
+    <color name="colorTintInactive">#dfdcd5</color>
+    <color name="colorTintNowPlaying">#50f095ad</color>
+
+    <color name="colorBackgroundInactive">#e8ffffff</color>
+    <color name="colorBackgroundSearch">#ffffff</color>
+
+    <color name="colorDivider">#80f095ad</color>
 </resources>

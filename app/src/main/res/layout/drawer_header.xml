@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/colorDrawerHeaderBg"
+        android:padding="12dp">
+
+        <ImageView
+            android:id="@+id/drawer_head_icon"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:foreground="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/head_icon"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/drawer_head_desc"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/nav_header_desc"
+            android:textAlignment="viewEnd"
+            android:textColor="@color/colorAccent"
+            android:textSize="16sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="@id/drawer_head_icon"
+            app:layout_constraintTop_toBottomOf="@id/drawer_head_icon" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</layout>

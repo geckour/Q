@@ -201,3 +201,8 @@ fabric.properties
 
 
 # End of https://www.gitignore.io/api/kotlin,android,androidstudio
+
+codeStyleConfig.xml
+*/signing/*.gradle
+*.jks
+*.aab
