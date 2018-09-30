@@ -4,7 +4,8 @@
     <color name="colorPrimaryDark">#fbc02d</color>
     <color name="colorAccent">#f095ad</color>
 
-    <color name="colorDrawerHeaderBg">#f8f8f8</color>
+    <color name="colorBackgroundDrawerHeader">#87b9b4</color>
+    <color name="colorShadowTextDrawerHeader">#a033968b</color>
 
     <color name="colorTextPrimary">#c0160900</color>
     <color name="colorTextSecondary">#98160900</color>

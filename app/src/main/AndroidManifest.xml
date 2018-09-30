@@ -29,6 +29,9 @@
         <activity android:name=".ui.license.LicenseActivity" />
 
         <service android:name=".service.PlayerService" />
+        <meta-data
+            android:name="preloaded_fonts"
+            android:resource="@array/preloaded_fonts" />
     </application>
 
 </manifest>
