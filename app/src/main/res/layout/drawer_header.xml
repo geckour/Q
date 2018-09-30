@@ -5,7 +5,10 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="@color/colorBackgroundDrawerHeader"
-    android:padding="12dp">
+    android:paddingLeft="12dp"
+    android:paddingRight="12dp"
+    android:paddingTop="40dp"
+    android:paddingBottom="20dp">
 
     <ImageView
         android:id="@+id/drawer_head_icon"
