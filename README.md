@@ -5,7 +5,12 @@ Play music with Q(ueue)
 The Android app for playing music oriented to queue.
 
 ## Features
-- TBD
+- Play music in your device with queue
+- Sort queue by D&D
+- Create playlist / add to exist playlit from queue
+- Artist / Album / Genre / Playlist based shuffle
+- Search Song / Album / Artist in library
+- Contains an easter egg
 
 ## Lisence
     GNU GENERAL PUBLIC LICENSE Version 3
