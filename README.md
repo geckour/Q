@@ -8,8 +8,8 @@ The Android app for playing music oriented to queue.
 - Play music in your device with queue
 - Sort queue by D&D
 - Create playlist / add to exist playlit from queue
-- Artist / Album / Genre / Playlist based shuffle
-- Search Song / Album / Artist in library
+- Artist / album / genre / playlist based shuffle
+- Search song / album / artist / playlist / genre in library
 - Contains an easter egg
 
 ## Lisence
