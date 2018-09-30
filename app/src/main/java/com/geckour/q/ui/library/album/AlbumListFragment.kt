@@ -138,11 +138,11 @@ class AlbumListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        viewModel.requireScrollTop.observe(this, Observer {
+        viewModel.requireScrollTop.observe(this) {
             binding.recyclerView.smoothScrollToPosition(0)
-        })
+        }
 
-        viewModel.forceLoad.observe(this, Observer {
+        viewModel.forceLoad.observe(this) {
             context?.also { context ->
                 launch(UI + parentJob) {
                     mainViewModel.loading.value = true
@@ -152,12 +152,12 @@ class AlbumListFragment : Fragment() {
                     mainViewModel.loading.value = false
                 }
             }
-        })
+        }
 
-        viewModel.albumIdDeleted.observe(this, Observer {
-            if (it == null) return@Observer
+        viewModel.albumIdDeleted.observe(this) {
+            if (it == null) return@observe
             adapter.onAlbumDeleted(it)
-        })
+        }
     }
 
     private fun observeAlbums(artist: Artist?) {

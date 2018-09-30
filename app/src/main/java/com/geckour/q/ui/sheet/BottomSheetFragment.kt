@@ -1,5 +1,6 @@
 package com.geckour.q.ui.sheet
 
+import android.annotation.SuppressLint
 import android.content.res.ColorStateList
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -9,7 +10,6 @@ import android.view.ViewGroup
 import android.widget.SeekBar
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
@@ -123,6 +123,7 @@ class BottomSheetFragment : Fragment() {
             override fun onSlide(v: View, dy: Float) {
             }
 
+            @SuppressLint("SwitchIntDef")
             override fun onStateChanged(v: View, state: Int) {
                 viewModel.sheetState = state
                 binding.buttonToggleVisibleQueue.setImageResource(
@@ -144,14 +145,14 @@ class BottomSheetFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        viewModel.toggleSheetState.observe(this, Observer {
+        viewModel.toggleSheetState.observe(this) {
             behavior.state = when (behavior.state) {
                 BottomSheetBehavior.STATE_EXPANDED -> BottomSheetBehavior.STATE_COLLAPSED
                 else -> BottomSheetBehavior.STATE_EXPANDED
             }
-        })
+        }
 
-        viewModel.currentQueue.observe(this, Observer { it ->
+        viewModel.currentQueue.observe(this) {
             adapter.setItems(it ?: emptyList())
             val state = it?.isNotEmpty() ?: false
             binding.isQueueNotEmpty = state
@@ -161,9 +162,9 @@ class BottomSheetFragment : Fragment() {
             }
             viewModel.currentPosition.value = if (state) viewModel.currentPosition.value else 0
             mainViewModel.loading.value = false
-        })
+        }
 
-        viewModel.currentPosition.observe(this, Observer {
+        viewModel.currentPosition.observe(this) {
             val song = adapter.getItem(it)
 
             context?.let { context ->
@@ -201,24 +202,24 @@ class BottomSheetFragment : Fragment() {
             binding.textTimeRight.text = song?.durationString
             adapter.setNowPlaying(it)
 
-            if (song != null && behavior.state != BottomSheetBehavior.STATE_EXPANDED) {
+            if (it != null && song != null && behavior.state != BottomSheetBehavior.STATE_EXPANDED) {
                 binding.recyclerView.smoothScrollToPosition(it)
             }
-        })
+        }
 
-        viewModel.playing.observe(this, Observer {
+        viewModel.playing.observe(this) {
             binding.playing = it
-        })
+        }
 
-        viewModel.playbackRatio.observe(this, Observer {
-            if (it == null) return@Observer
+        viewModel.playbackRatio.observe(this) {
+            if (it == null) return@observe
             binding.seekBar.progress = (binding.seekBar.max * it).toInt()
-            val song = adapter.getItem(viewModel.currentPosition.value) ?: return@Observer
+            val song = adapter.getItem(viewModel.currentPosition.value) ?: return@observe
             binding.textTimeLeft.text = (song.duration * it).toLong().getTimeString()
-        })
+        }
 
-        viewModel.repeatMode.observe(this, Observer {
-            if (it == null) return@Observer
+        viewModel.repeatMode.observe(this) {
+            if (it == null) return@observe
             binding.buttonRepeat.apply {
                 setImageResource(when (it) {
                     Player.REPEAT_MODE_ALL -> R.drawable.ic_repeat
@@ -227,10 +228,10 @@ class BottomSheetFragment : Fragment() {
                 })
                 visibility = View.VISIBLE
             }
-        })
+        }
 
-        viewModel.scrollToCurrent.observe(this, Observer {
+        viewModel.scrollToCurrent.observe(this) {
             binding.recyclerView.smoothScrollToPosition(viewModel.currentPosition.value ?: 0)
-        })
+        }
     }
 }

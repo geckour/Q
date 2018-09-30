@@ -140,29 +140,29 @@ class SongListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        mainViewModel.removePlayOrderOfPlaylist.observe(this, Observer {
-            if (it == null) return@Observer
-            val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST) ?: return@Observer
+        mainViewModel.removePlayOrderOfPlaylist.observe(this) {
+            if (it == null) return@observe
+            val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST) ?: return@observe
             val removed = context?.contentResolver
                     ?.delete(MediaStore.Audio.Playlists.Members.getContentUri("external", playlist.id),
                             "${MediaStore.Audio.Playlists.Members.PLAY_ORDER}=?",
-                            arrayOf(it.toString()))?.equals(1) ?: return@Observer
+                            arrayOf(it.toString()))?.equals(1) ?: return@observe
             if (removed) adapter.removeByTrackNum(it)
-        })
+        }
 
-        viewModel.requireScrollTop.observe(this, Observer {
+        viewModel.requireScrollTop.observe(this) {
             binding.recyclerView.smoothScrollToPosition(0)
-        })
+        }
 
-        viewModel.forceLoad.observe(this, Observer {
+        viewModel.forceLoad.observe(this) {
             adapter.clearItems()
             fetchSongs()
-        })
+        }
 
-        viewModel.songIdDeleted.observe(this, Observer {
-            if (it == null) return@Observer
+        viewModel.songIdDeleted.observe(this) {
+            if (it == null) return@observe
             adapter.onSongDeleted(it)
-        })
+        }
     }
 
     private fun fetchSongs() {

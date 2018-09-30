@@ -134,18 +134,18 @@ class GenreListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        viewModel.requireScrollTop.observe(this, Observer {
+        viewModel.requireScrollTop.observe(this) {
             binding.recyclerView.smoothScrollToPosition(0)
-        })
+        }
 
-        viewModel.forceLoad.observe(this, Observer {
+        viewModel.forceLoad.observe(this) {
             launch(UI + parentJob) {
                 mainViewModel.loading.value = true
                 adapter.setItems(fetchGenres().await())
                 binding.recyclerView.smoothScrollToPosition(0)
                 mainViewModel.loading.value = false
             }
-        })
+        }
     }
 
     private fun fetchGenres(): Deferred<List<Genre>> = async(parentJob) {

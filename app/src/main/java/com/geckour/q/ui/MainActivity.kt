@@ -347,8 +347,8 @@ class MainActivity : AppCompatActivity() {
     private fun observeEvents() {
         WorkManager.getInstance().monitorSyncState()
 
-        viewModel.resumedFragmentId.observe(this, Observer { navId ->
-            if (navId == null) return@Observer
+        viewModel.resumedFragmentId.observe(this) { navId ->
+            if (navId == null) return@observe
             binding.navigationView.setCheckedItem(navId)
             val title = supportFragmentManager.fragments.firstOrNull {
                 when (navId) {
@@ -365,75 +365,75 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_song -> R.string.nav_song
                 R.id.nav_genre -> R.string.nav_genre
                 R.id.nav_playlist -> R.string.nav_playlist
-                else -> return@Observer
+                else -> return@observe
             })
             supportActionBar?.title = title
-        })
+        }
 
-        viewModel.syncing.observe(this, Observer {
-            if (it == null) return@Observer
+        viewModel.syncing.observe(this) {
+            if (it == null) return@observe
             setLockingIndicator(it, viewModel.loading.value == true)
-        })
+        }
 
-        viewModel.loading.observe(this, Observer {
-            if (it == null) return@Observer
+        viewModel.loading.observe(this) {
+            if (it == null) return@observe
             setLockingIndicator(viewModel.syncing.value == true, it)
-        })
+        }
 
-        viewModel.requireScrollTop.observe(this, Observer {
+        viewModel.requireScrollTop.observe(this) {
             artistListViewModel.requireScrollTop.call()
             albumListViewModel.requireScrollTop.call()
             songListViewModel.requireScrollTop.call()
             genreListViewModel.requireScrollTop.call()
             playlistListViewModel.requireScrollTop.call()
-        })
+        }
 
-        viewModel.selectedArtist.observe(this, Observer {
-            if (it == null) return@Observer
+        viewModel.selectedArtist.observe(this) {
+            if (it == null) return@observe
             requestedTransaction = RequestedTransaction(ArtistListFragment.TAG, artist = it)
             tryTransaction()
-        })
+        }
 
-        viewModel.selectedAlbum.observe(this, Observer {
-            if (it == null) return@Observer
+        viewModel.selectedAlbum.observe(this) {
+            if (it == null) return@observe
             requestedTransaction = RequestedTransaction(AlbumListFragment.TAG, album = it)
             tryTransaction()
-        })
+        }
 
-        viewModel.selectedGenre.observe(this, Observer {
-            if (it == null) return@Observer
+        viewModel.selectedGenre.observe(this) {
+            if (it == null) return@observe
             requestedTransaction = RequestedTransaction(GenreListFragment.TAG, genre = it)
             tryTransaction()
-        })
+        }
 
-        viewModel.selectedPlaylist.observe(this, Observer {
-            if (it == null) return@Observer
+        viewModel.selectedPlaylist.observe(this) {
+            if (it == null) return@observe
             requestedTransaction = RequestedTransaction(PlaylistListFragment.TAG, playlist = it)
             tryTransaction()
-        })
+        }
 
-        viewModel.newQueue.observe(this, Observer {
-            if (it == null) return@Observer
+        viewModel.newQueue.observe(this) {
+            if (it == null) return@observe
             player?.submitQueue(it)
-        })
+        }
 
-        viewModel.requestedPositionInQueue.observe(this, Observer {
-            if (it == null) return@Observer
+        viewModel.requestedPositionInQueue.observe(this) {
+            if (it == null) return@observe
             player?.play(it)
-        })
+        }
 
-        viewModel.swappedQueuePositions.observe(this, Observer {
-            if (it == null) return@Observer
+        viewModel.swappedQueuePositions.observe(this) {
+            if (it == null) return@observe
             player?.swapQueuePosition(it.first, it.second)
-        })
+        }
 
-        viewModel.removedQueueIndex.observe(this, Observer {
-            if (it == null) return@Observer
+        viewModel.removedQueueIndex.observe(this) {
+            if (it == null) return@observe
             player?.removeQueue(it)
-        })
+        }
 
-        viewModel.songToDelete.observe(this, Observer {
-            if (it == null) return@Observer
+        viewModel.songToDelete.observe(this) {
+            if (it == null) return@observe
 
             File(it.sourcePath).apply {
                 if (this.exists()) {
@@ -472,16 +472,16 @@ class MainActivity : AppCompatActivity() {
                         }
                 }
             }
-        })
+        }
 
-        viewModel.cancelSync.observe(this, Observer {
+        viewModel.cancelSync.observe(this) {
             WorkManager.getInstance().cancelSync()
-        })
+        }
 
-        viewModel.searchQuery.observe(this, Observer {
+        viewModel.searchQuery.observe(this) {
             if (it == null || it.isBlank() || it.filterNot { it.isWhitespace() }.length < 2) {
                 binding.coordinatorMain.contentSearch.root.visibility = View.GONE
-                return@Observer
+                return@observe
             } else binding.coordinatorMain.contentSearch.root.visibility = View.VISIBLE
 
             val db = DB.getInstance(this@MainActivity)
@@ -512,11 +512,27 @@ class MainActivity : AppCompatActivity() {
                         SearchItem(it.title ?: UNKNOWN, it, SearchItem.SearchItemType.ARTIST)
                     })
                 }
+                val playlists = searchPlaylistByFuzzyTitle(it).take(3)
+                if (playlists.isNotEmpty()) {
+                    searchListAdapter.addItem(SearchItem(getString(R.string.search_category_playlist),
+                            Unit, SearchItem.SearchItemType.CATEGORY))
+                    searchListAdapter.addItems(playlists.map {
+                        SearchItem(it.name, it, SearchItem.SearchItemType.PLAYLIST)
+                    })
+                }
+                val genres = searchGenreByFuzzyTitle(it).take(3)
+                if (genres.isNotEmpty()) {
+                    searchListAdapter.addItem(SearchItem(getString(R.string.search_category_genre),
+                            Unit, SearchItem.SearchItemType.CATEGORY))
+                    searchListAdapter.addItems(genres.map {
+                        SearchItem(it.name, it, SearchItem.SearchItemType.GENRE)
+                    })
+                }
             }
-        })
+        }
 
-        bottomSheetViewModel.playbackButton.observe(this, Observer {
-            if (it == null) return@Observer
+        bottomSheetViewModel.playbackButton.observe(this) {
+            if (it == null) return@observe
             when (it) {
                 PlaybackButton.PLAY_OR_PAUSE -> player?.togglePlayPause()
                 PlaybackButton.NEXT -> player?.next()
@@ -525,10 +541,10 @@ class MainActivity : AppCompatActivity() {
                 PlaybackButton.REWIND -> player?.rewind()
                 PlaybackButton.UNDEFINED -> player?.stopRunningButtonAction()
             }
-        })
+        }
 
-        bottomSheetViewModel.addQueueToPlaylist.observe(this, Observer { queue ->
-            if (queue == null) return@Observer
+        bottomSheetViewModel.addQueueToPlaylist.observe(this) { queue ->
+            if (queue == null) return@observe
             launch(UI + parentJob) {
                 val playlists = fetchPlaylists(this@MainActivity).await()
                 val binding = DialogAddQueuePlaylistBinding.inflate(layoutInflater)
@@ -584,44 +600,40 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-        })
+        }
 
-        bottomSheetViewModel.clearQueue.observe(this, Observer {
+        bottomSheetViewModel.clearQueue.observe(this) {
             player?.clear(true)
-        })
+        }
 
-        bottomSheetViewModel.newSeekBarProgress.observe(this, Observer {
-            if (it == null) return@Observer
+        bottomSheetViewModel.newSeekBarProgress.observe(this) {
+            if (it == null) return@observe
             player?.seek(it)
-        })
+        }
 
-        bottomSheetViewModel.shuffle.observe(this, Observer {
-            player?.shuffle()
-        })
+        bottomSheetViewModel.shuffle.observe(this) { player?.shuffle() }
 
-        bottomSheetViewModel.changeRepeatMode.observe(this, Observer {
-            player?.rotateRepeatMode()
-        })
+        bottomSheetViewModel.changeRepeatMode.observe(this) { player?.rotateRepeatMode() }
 
-        bottomSheetViewModel.changedQueue.observe(this, Observer {
-            if (it == null) return@Observer
+        bottomSheetViewModel.changedQueue.observe(this) {
+            if (it == null) return@observe
             player?.submitQueue(InsertQueue(
                     QueueMetadata(InsertActionType.OVERRIDE,
                             OrientedClassType.SONG), it))
-        })
+        }
 
-        bottomSheetViewModel.changedPosition.observe(this, Observer {
-            if (it == null) return@Observer
+        bottomSheetViewModel.changedPosition.observe(this) {
+            if (it == null) return@observe
             player?.forcePosition(it)
-        })
+        }
 
-        paymentViewModel.saveSuccess.observe(this, Observer {
-            if (it == null) return@Observer
+        paymentViewModel.saveSuccess.observe(this) {
+            if (it == null) return@observe
             Snackbar.make(binding.root,
                     if (it) R.string.payment_save_success
                     else R.string.payment_save_failure,
                     Snackbar.LENGTH_SHORT).show()
-        })
+        }
     }
 
     private fun setupDrawer() {

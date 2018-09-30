@@ -20,6 +20,10 @@ class SingleLiveEvent<T> : MutableLiveData<T>() {
         })
     }
 
+    fun observe(owner: LifecycleOwner, observer: (T?) -> Unit) {
+        observe(owner, Observer { observer(it) })
+    }
+
     @MainThread
     override fun setValue(t: T?) {
         pending.set(true)

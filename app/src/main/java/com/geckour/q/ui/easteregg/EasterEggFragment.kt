@@ -94,11 +94,11 @@ class EasterEggFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        viewModel.tap.observe(this, Observer {
+        viewModel.tap.observe(this) {
             song?.apply {
                 mainViewModel.onNewQueue(listOf(this),
                         InsertActionType.NEXT, OrientedClassType.SONG)
             }
-        })
+        }
     }
 }
