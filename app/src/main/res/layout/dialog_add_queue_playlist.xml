@@ -6,8 +6,10 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:paddingBottom="16dp"
         android:paddingEnd="24dp"
-        android:paddingStart="24dp">
+        android:paddingStart="24dp"
+        android:paddingTop="16dp">
 
         <TextView
             android:id="@+id/label_new"
@@ -15,7 +17,7 @@
             android:layout_height="wrap_content"
             android:text="@string/dialog_content_label_new_playlist"
             android:textColor="@color/colorTextSecondary"
-            android:textSize="16sp"
+            android:textSize="18sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
@@ -24,8 +26,12 @@
             android:id="@+id/edit_text"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp"
             android:background="@android:color/transparent"
             android:hint="@string/dialog_content_hint_playlist_name"
+            android:textColor="@color/colorAccent"
             android:textSize="16sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -38,7 +44,7 @@
             android:layout_marginTop="12dp"
             android:text="@string/dialog_content_label_exist_playlist"
             android:textColor="@color/colorTextSecondary"
-            android:textSize="16sp"
+            android:textSize="18sp"
             android:textStyle="bold"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/edit_text" />
@@ -47,6 +53,7 @@
             android:id="@+id/recycler_view"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
             android:maxHeight="200dp"
             android:orientation="vertical"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
