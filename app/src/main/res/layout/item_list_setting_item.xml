@@ -10,10 +10,6 @@
         <variable
             name="viewModel"
             type="com.geckour.q.ui.setting.SettingItemViewModel" />
-
-        <variable
-            name="summary"
-            type="String" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -64,7 +60,7 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
             android:layout_marginTop="4dp"
-            android:text="@{summary}"
+            android:text="@{viewModel.summary}"
             android:textColor="@color/colorTextSecondary"
             android:textSize="12sp"
             app:layout_constraintEnd_toStartOf="@id/state"

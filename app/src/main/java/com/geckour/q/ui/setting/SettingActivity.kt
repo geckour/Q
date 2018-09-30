@@ -23,7 +23,6 @@ import com.geckour.q.ui.license.LicenseActivity
 import com.geckour.q.util.Screen
 import com.geckour.q.util.getPreferScreen
 import com.geckour.q.util.setPreferScreen
-import timber.log.Timber
 
 class SettingActivity : AppCompatActivity() {
 
@@ -45,7 +44,6 @@ class SettingActivity : AppCompatActivity() {
         binding = DataBindingUtil.setContentView(this, R.layout.activity_setting)
         binding.itemChooseScreen.apply {
             viewModel = getChooseLaunchScreenViewModel()
-            summary = getString(sharedPreferences.getPreferScreen().displayNameResId)
         }
         binding.itemLicense.viewModel = getLicenseViewModel()
 
@@ -62,6 +60,7 @@ class SettingActivity : AppCompatActivity() {
             SettingItemViewModel(
                     getString(R.string.setting_item_title_screen_on_launch),
                     getString(R.string.setting_item_desc_screen_on_launch),
+                    getString(sharedPreferences.getPreferScreen().displayNameResId),
                     false) {
                 val binding = DialogSpinnerBinding.inflate(
                         LayoutInflater.from(this@SettingActivity), null, false).apply {
@@ -98,8 +97,8 @@ class SettingActivity : AppCompatActivity() {
                             val screenIndex = binding.spinner.selectedItemPosition
                             val screen = Screen.values()[screenIndex]
                             sharedPreferences.setPreferScreen(screen)
-                            this@SettingActivity.binding.itemChooseScreen.summary =
-                                    getString(screen.displayNameResId)
+                            summary = getString(screen.displayNameResId)
+                            this@SettingActivity.binding.itemChooseScreen.viewModel = this
                         }
                     }
                     dialog.dismiss()
@@ -109,6 +108,7 @@ class SettingActivity : AppCompatActivity() {
     private fun getLicenseViewModel(): SettingItemViewModel =
             SettingItemViewModel(getString(R.string.setting_item_title_license),
                     getString(R.string.setting_item_desc_license),
+                    null,
                     false) {
                 startActivity(LicenseActivity.createIntent(this@SettingActivity))
             }
