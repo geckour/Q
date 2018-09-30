@@ -17,10 +17,21 @@ android {
         versionName "1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
+    signingConfigs {
+        release {
+            def releaseSettingGradleFile = new File("${project.rootDir}/app/signing/release.gradle")
+            if (releaseSettingGradleFile.exists()) {
+                apply from: releaseSettingGradleFile, to: android
+            } else {
+                throw new GradleException("Missing ${releaseSettingGradleFile.getAbsolutePath()} . Generate the file by copying and modifying ${project.rootDir}/app/signing/release.gradle.sample .")
+            }
+        }
+    }
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
     androidExtensions {
@@ -61,7 +72,6 @@ dependencies {
 
     // Inspect
     implementation "com.facebook.stetho:stetho:$stetho_ver"
-    implementation "com.facebook.stetho:stetho-okhttp3:$stetho_ver"
 
     // Coroutines
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutines_ver"

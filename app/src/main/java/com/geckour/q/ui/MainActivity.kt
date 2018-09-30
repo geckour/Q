@@ -309,7 +309,7 @@ class MainActivity : AppCompatActivity() {
     private fun retrieveMediaIfEmpty() {
         launch(parentJob) {
             if (DB.getInstance(this@MainActivity).trackDao().count() == 0)
-                retrieveMediaWithPermissionCheck()
+                launch(UI + parentJob) { retrieveMediaWithPermissionCheck() }
         }
     }
 

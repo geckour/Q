@@ -21,18 +21,10 @@ import timber.log.Timber
 import java.io.File
 import java.util.*
 
-class MediaRetrieveWorker(context: Context, parameters: WorkerParameters? = null) :
-        Worker(context.applicationContext,
-                parameters ?: WorkerParameters(UUID.randomUUID(),
-                        Data.EMPTY, emptyList<String>(),
-                        WorkerParameters.RuntimeExtras(),
-                        0,
-                        {},
-                        { appContext, workerClassName, workerParameters ->
-                            if (workerClassName == MediaRetrieveWorker::class.java.name)
-                                MediaRetrieveWorker(appContext, workerParameters)
-                            else null
-                        })) {
+class MediaRetrieveWorker : Worker {
+
+    constructor() : super()
+    constructor(context: Context, parameters: WorkerParameters) : super(context.applicationContext, parameters)
 
     companion object {
         const val WORK_NAME = "media_retrieve_work"
