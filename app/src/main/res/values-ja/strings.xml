@@ -38,7 +38,7 @@
 
     <string name="menu_delete_song">端末から削除</string>
 
-    <string name="menu_delete_playlist">プレイリストから削除</string>
+    <string name="menu_delete_playlist">プレイリストを削除</string>
 
     <string name="menu_insert_next">次へ挿入</string>
     <string name="menu_insert_last">最後へ挿入</string>
