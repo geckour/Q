@@ -71,6 +71,9 @@ class EasterEggFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+
+        mainViewModel.resumedFragmentId.value = R.layout.fragment_easter_egg
+
         setSong()
     }
 

@@ -375,6 +375,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_song -> R.string.nav_song
                 R.id.nav_genre -> R.string.nav_genre
                 R.id.nav_playlist -> R.string.nav_playlist
+                R.layout.fragment_easter_egg -> R.string.nav_fortune
                 else -> return@observe
             })
             supportActionBar?.title = title

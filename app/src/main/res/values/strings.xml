@@ -38,6 +38,7 @@
     <string name="nav_setting">Settings</string>
     <string name="nav_sync">Sync library</string>
     <string name="nav_pay">Donate</string>
+    <string name="nav_fortune">Fortune</string>
 
 
     <string name="menu_search">Search</string>
