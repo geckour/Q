@@ -16,7 +16,8 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.getSong
 import com.geckour.q.util.sortedByTrackOrder
 import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.android.Main
+import kotlin.coroutines.experimental.CoroutineContext
 import com.geckour.q.data.db.model.Album as DBAlbum
 
 class AlbumListFragment : Fragment() {
@@ -46,6 +47,12 @@ class AlbumListFragment : Fragment() {
     private var chatteringCancelFlag: Boolean = false
 
     private var parentJob = Job()
+    private val bgScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = parentJob
+    }
+    private val uiScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
+    }
 
     private var artist: Artist? = null
 
@@ -116,7 +123,7 @@ class AlbumListFragment : Fragment() {
             }
 
             mainViewModel.loading.value = true
-            launch(parentJob) {
+            bgScope.launch {
                 val sortByTrackOrder = item.itemId.let {
                     it != R.id.menu_insert_all_simple_shuffle_next
                             || it != R.id.menu_insert_all_simple_shuffle_last
@@ -144,7 +151,7 @@ class AlbumListFragment : Fragment() {
 
         viewModel.forceLoad.observe(this) {
             context?.also { context ->
-                launch(UI + parentJob) {
+                uiScope.launch {
                     mainViewModel.loading.value = true
                     val items = fetchAlbums(DB.getInstance(context)).await()
                     adapter.setItems(items)
@@ -177,10 +184,10 @@ class AlbumListFragment : Fragment() {
     }
 
     private fun fetchAlbums(db: DB): Deferred<List<Album>> =
-            async(parentJob) { db.albumDao().getAll().getAlbumList(db).await() }
+            bgScope.async { db.albumDao().getAll().getAlbumList(db).await() }
 
     private fun upsertAlbumListIfPossible(db: DB) {
-        launch(UI) {
+        uiScope.launch {
             val items = latestDbAlbumList.getAlbumList(db).await()
             upsertAlbumListIfPossible(items)
         }
@@ -189,7 +196,7 @@ class AlbumListFragment : Fragment() {
     private fun upsertAlbumListIfPossible(items: List<Album>) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
-            launch(UI) {
+            uiScope.launch {
                 delay(500)
                 adapter.upsertItems(items)
                 binding.recyclerView.smoothScrollToPosition(0)
@@ -200,7 +207,7 @@ class AlbumListFragment : Fragment() {
     }
 
     private fun List<DBAlbum>.getAlbumList(db: DB): Deferred<List<Album>> =
-            async(parentJob) {
+            bgScope.async {
                 this@getAlbumList.mapNotNull {
                     val artistName = db.artistDao().get(it.artistId)?.title
                             ?: return@mapNotNull null

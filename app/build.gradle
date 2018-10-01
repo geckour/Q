@@ -49,7 +49,7 @@ dependencies {
     def aac_lifecycle_ver = '2.0.0-beta01'
     def aac_room_ver = '2.0.0-beta01'
     def aac_work_ver = '1.0.0-alpha09'
-    def coroutines_ver = '0.25.0'
+    def coroutines_ver = '0.30.0'
     def permission_dispatcher_ver = '3.3.1'
     def stetho_ver = '1.5.0'
     def glide_ver = '4.7.1'

@@ -14,7 +14,9 @@ import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.Dispatchers
+import kotlinx.coroutines.experimental.GlobalScope
+import kotlinx.coroutines.experimental.android.Main
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
 
@@ -47,7 +49,7 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
 
     internal fun onNewQueue(songs: List<Song>, actionType: InsertActionType,
                             classType: OrientedClassType = OrientedClassType.PLAYLIST) {
-        launch(UI) {
+        GlobalScope.launch(Dispatchers.Main) {
             viewModel.onNewQueue(songs, actionType, classType)
         }
     }
@@ -129,7 +131,7 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
             }
 
             viewModel.loading.value = true
-            launch {
+            GlobalScope.launch {
                 val songs = playlist.getTrackMediaIds(context)
                         .sortedBy { it.second }
                         .mapNotNull {

@@ -13,7 +13,9 @@ import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.Dispatchers
+import kotlinx.coroutines.experimental.GlobalScope
+import kotlinx.coroutines.experimental.android.Main
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
 
@@ -46,7 +48,7 @@ class GenreListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
 
     internal fun onNewQueue(songs: List<Song>, actionType: InsertActionType,
                             classType: OrientedClassType = OrientedClassType.GENRE) {
-        launch(UI) {
+        GlobalScope.launch(Dispatchers.Main) {
             viewModel.onNewQueue(songs, actionType, classType)
         }
     }
@@ -99,7 +101,7 @@ class GenreListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             }
 
             viewModel.loading.value = true
-            launch {
+            GlobalScope.launch {
                 val songs = genre.getTrackMediaIds(context).mapNotNull {
                     getSong(DB.getInstance(context), it, genreId = genre.id).await()
                 }

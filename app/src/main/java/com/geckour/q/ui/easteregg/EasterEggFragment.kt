@@ -5,7 +5,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.bumptech.glide.Glide
 import com.geckour.q.R
@@ -16,10 +15,13 @@ import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.getSong
+import kotlinx.coroutines.experimental.CoroutineScope
+import kotlinx.coroutines.experimental.Dispatchers
 import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.android.Main
 import kotlinx.coroutines.experimental.launch
 import java.util.*
+import kotlin.coroutines.experimental.CoroutineContext
 
 class EasterEggFragment : Fragment() {
 
@@ -35,6 +37,12 @@ class EasterEggFragment : Fragment() {
     }
     private lateinit var mainViewModel: MainViewModel
     private var parentJob = Job()
+    private val bgScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = parentJob
+    }
+    private val uiScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
+    }
 
     private var song: Song? = null
 
@@ -49,7 +57,7 @@ class EasterEggFragment : Fragment() {
 
         binding.viewModel = viewModel
 
-        launch(parentJob) {
+        bgScope.launch {
             if (song == null) {
                 val db = DB.getInstance(requireContext())
                 val max = db.trackDao().count()
@@ -86,7 +94,7 @@ class EasterEggFragment : Fragment() {
 
     private fun setSong() {
         binding.song = song
-        launch(UI + parentJob) {
+        uiScope.launch {
             Glide.with(binding.artwork)
                     .load(song?.thumbUriString ?: R.drawable.ic_empty)
                     .into(binding.artwork)

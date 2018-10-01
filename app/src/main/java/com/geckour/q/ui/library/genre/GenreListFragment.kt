@@ -8,7 +8,6 @@ import android.provider.MediaStore
 import android.view.*
 import android.widget.SearchView
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.DividerItemDecoration
 import com.geckour.q.R
@@ -18,11 +17,9 @@ import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.Deferred
-import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.async
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.android.Main
+import kotlin.coroutines.experimental.CoroutineContext
 
 class GenreListFragment : Fragment() {
 
@@ -41,6 +38,12 @@ class GenreListFragment : Fragment() {
     private val adapter: GenreListAdapter by lazy { GenreListAdapter(mainViewModel) }
 
     private var parentJob = Job()
+    private val bgScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = parentJob
+    }
+    private val uiScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
+    }
 
     override fun onCreateView(inflater: LayoutInflater,
                               container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -60,7 +63,7 @@ class GenreListFragment : Fragment() {
 
 
         if (adapter.itemCount == 0) {
-            launch(UI + parentJob) {
+            uiScope.launch {
                 mainViewModel.loading.value = true
                 adapter.setItems(fetchGenres().await())
                 binding.recyclerView.smoothScrollToPosition(0)
@@ -119,7 +122,7 @@ class GenreListFragment : Fragment() {
             }
 
             mainViewModel.loading.value = true
-            launch(parentJob) {
+            bgScope.launch {
                 val songs = adapter.getItems().map { genre ->
                     genre.getTrackMediaIds(context).mapNotNull {
                         getSong(DB.getInstance(context), it, genreId = genre.id).await()
@@ -139,7 +142,7 @@ class GenreListFragment : Fragment() {
         }
 
         viewModel.forceLoad.observe(this) {
-            launch(UI + parentJob) {
+            uiScope.launch {
                 mainViewModel.loading.value = true
                 adapter.setItems(fetchGenres().await())
                 binding.recyclerView.smoothScrollToPosition(0)
@@ -148,7 +151,7 @@ class GenreListFragment : Fragment() {
         }
     }
 
-    private fun fetchGenres(): Deferred<List<Genre>> = async(parentJob) {
+    private fun fetchGenres(): Deferred<List<Genre>> = bgScope.async {
         context?.let { context ->
             context.contentResolver?.query(MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
                     arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME),
@@ -172,7 +175,7 @@ class GenreListFragment : Fragment() {
         } ?: emptyList()
     }
 
-    private fun List<Track>.getGenreThumb(context: Context): Deferred<Bitmap?> = async {
+    private fun List<Track>.getGenreThumb(context: Context): Deferred<Bitmap?> = bgScope.async {
         val db = DB.getInstance(context)
         this@getGenreThumb.distinctBy { it.albumId }.takeOrFillNull(5)
                 .map {

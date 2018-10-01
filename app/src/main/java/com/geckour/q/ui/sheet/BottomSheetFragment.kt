@@ -24,8 +24,12 @@ import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.getTimeString
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
-import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.CoroutineScope
+import kotlinx.coroutines.experimental.Dispatchers
+import kotlinx.coroutines.experimental.Job
+import kotlinx.coroutines.experimental.android.Main
 import kotlinx.coroutines.experimental.launch
+import kotlin.coroutines.experimental.CoroutineContext
 
 class BottomSheetFragment : Fragment() {
 
@@ -38,6 +42,11 @@ class BottomSheetFragment : Fragment() {
     private lateinit var binding: FragmentSheetBottomBinding
     private lateinit var adapter: QueueListAdapter
     private lateinit var behavior: BottomSheetBehavior<*>
+
+    private var parentJob = Job()
+    private val uiScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
+    }
 
     override fun onCreateView(inflater: LayoutInflater,
                               container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -138,10 +147,20 @@ class BottomSheetFragment : Fragment() {
         viewModel.currentQueue.value = emptyList()
     }
 
+    override fun onStart() {
+        super.onStart()
+        parentJob = Job()
+    }
+
     override fun onResume() {
         super.onResume()
 
         observeEvents()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        parentJob.cancel()
     }
 
     private fun observeEvents() {
@@ -168,7 +187,7 @@ class BottomSheetFragment : Fragment() {
             val song = adapter.getItem(it)
 
             context?.let { context ->
-                launch(UI) {
+                uiScope.launch {
                     val model = song?.albumId?.let {
                         DB.getInstance(context)
                                 .getArtworkUriStringFromId(it).await() ?: R.drawable.ic_empty

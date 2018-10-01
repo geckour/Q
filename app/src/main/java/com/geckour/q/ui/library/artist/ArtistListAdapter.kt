@@ -13,7 +13,9 @@ import com.geckour.q.domain.model.Artist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.Dispatchers
+import kotlinx.coroutines.experimental.GlobalScope
+import kotlinx.coroutines.experimental.android.Main
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
 
@@ -73,7 +75,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
 
     internal fun onNewQueue(songs: List<Song>, actionType: InsertActionType,
                             classType: OrientedClassType = OrientedClassType.ARTIST) {
-        launch(UI) {
+        GlobalScope.launch(Dispatchers.Main) {
             viewModel.onNewQueue(songs, actionType, classType)
         }
     }
@@ -107,7 +109,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
             binding.root.setOnClickListener { viewModel.onRequestNavigate(artist) }
             binding.option.setOnClickListener { popupMenu.show() }
             try {
-                launch(UI) {
+                GlobalScope.launch(Dispatchers.Main) {
                     Glide.with(binding.thumb)
                             .load(artist.thumbUriString ?: R.drawable.ic_empty)
                             .into(binding.thumb)
@@ -134,7 +136,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
             }
 
             viewModel.loading.value = true
-            launch {
+            GlobalScope.launch {
                 val sortByTrackOrder = id.let {
                     it != R.id.menu_insert_all_simple_shuffle_next
                             || it != R.id.menu_insert_all_simple_shuffle_last

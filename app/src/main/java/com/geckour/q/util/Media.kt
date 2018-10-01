@@ -28,6 +28,7 @@ import com.geckour.q.ui.MainActivity
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ads.AdsMediaSource
 import kotlinx.coroutines.experimental.Deferred
+import kotlinx.coroutines.experimental.GlobalScope
 import kotlinx.coroutines.experimental.async
 import timber.log.Timber
 import java.io.File
@@ -94,7 +95,7 @@ suspend fun getSongListFromTrackMediaIdWithTrackNum(db: DB,
 fun getSong(db: DB, trackMediaId: Long,
             genreId: Long? = null, playlistId: Long? = null,
             trackNum: Int? = null): Deferred<Song?> =
-        async {
+        GlobalScope.async {
             db.trackDao().getByMediaId(trackMediaId)?.let {
                 getSong(db, it, genreId, playlistId, trackNum = trackNum).await()
             }
@@ -103,7 +104,7 @@ fun getSong(db: DB, trackMediaId: Long,
 fun getSong(db: DB, track: Track,
             genreId: Long? = null, playlistId: Long? = null,
             trackNum: Int? = null): Deferred<Song?> =
-        async {
+        GlobalScope.async {
             val artistName = db.artistDao().get(track.artistId)?.title ?: UNKNOWN
             val artwork = db.albumDao().get(track.albumId)?.artworkUriString
             Song(track.id, track.mediaId, track.albumId, track.title,
@@ -111,7 +112,7 @@ fun getSong(db: DB, track: Track,
                     genreId, playlistId, track.sourcePath)
         }
 
-fun fetchPlaylists(context: Context): Deferred<List<Playlist>> = async {
+fun fetchPlaylists(context: Context): Deferred<List<Playlist>> = GlobalScope.async {
     context.contentResolver.query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
             arrayOf(
                     MediaStore.Audio.Playlists._ID,
@@ -141,7 +142,7 @@ fun fetchPlaylists(context: Context): Deferred<List<Playlist>> = async {
     } ?: emptyList()
 }
 
-private fun List<Track>.getPlaylistThumb(context: Context): Deferred<Bitmap?> = async {
+private fun List<Track>.getPlaylistThumb(context: Context): Deferred<Bitmap?> = GlobalScope.async {
     val db = DB.getInstance(context)
     this@getPlaylistThumb.takeOrFillNull(6)
             .map {
@@ -152,13 +153,13 @@ private fun List<Track>.getPlaylistThumb(context: Context): Deferred<Bitmap?> = 
 }
 
 fun DB.searchArtistByFuzzyTitle(title: String): Deferred<List<Artist>> =
-        async { this@searchArtistByFuzzyTitle.artistDao().searchByTitle("%$title%") }
+        GlobalScope.async { this@searchArtistByFuzzyTitle.artistDao().searchByTitle("%$title%") }
 
 fun DB.searchAlbumByFuzzyTitle(title: String): Deferred<List<Album>> =
-        async { this@searchAlbumByFuzzyTitle.albumDao().searchByTitle("%$title%") }
+        GlobalScope.async { this@searchAlbumByFuzzyTitle.albumDao().searchByTitle("%$title%") }
 
 fun DB.searchTrackByFuzzyTitle(title: String): Deferred<List<Track>> =
-        async { this@searchTrackByFuzzyTitle.trackDao().searchByTitle("%$title%") }
+        GlobalScope.async { this@searchTrackByFuzzyTitle.trackDao().searchByTitle("%$title%") }
 
 fun Context.searchPlaylistByFuzzyTitle(title: String): List<Playlist> =
         contentResolver.query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
@@ -200,7 +201,7 @@ fun Context.searchGenreByFuzzyTitle(title: String): List<Genre> =
 fun <T> List<T>.takeOrFillNull(n: Int): List<T?> =
         this.take(n).let { it + List(n - it.size) { null } }
 
-fun List<Uri?>.getThumb(context: Context): Deferred<Bitmap?> = async {
+fun List<Uri?>.getThumb(context: Context): Deferred<Bitmap?> = GlobalScope.async {
     if (this@getThumb.isEmpty()) return@async null
     val unit = 100
     val bitmap = Bitmap.createBitmap(((this@getThumb.size * 0.9 - 0.1) * unit).toInt(), unit, Bitmap.Config.ARGB_8888)
@@ -295,7 +296,7 @@ fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> =
         }
 
 fun Song.getMediaMetadata(context: Context, albumTitle: String? = null): Deferred<MediaMetadata> =
-        async {
+        GlobalScope.async {
             val db = DB.getInstance(context)
             val album = albumTitle
                     ?: db.albumDao().get(this@getMediaMetadata.albumId)?.title

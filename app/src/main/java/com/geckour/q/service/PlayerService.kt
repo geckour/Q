@@ -31,12 +31,10 @@ import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
 import com.google.gson.Gson
-import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.async
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.android.Main
 import timber.log.Timber
+import kotlin.coroutines.experimental.CoroutineContext
 
 class PlayerService : Service() {
 
@@ -162,9 +160,9 @@ class PlayerService : Service() {
             onCurrentPositionChanged?.invoke(currentPosition)
 
             notificationUpdateJob.cancel()
-            notificationUpdateJob = launch(UI + parentJob) {
+            notificationUpdateJob = uiScope.launch {
                 val song = currentSong ?: return@launch
-                val albumTitle = async(parentJob) {
+                val albumTitle = bgScope.async {
                     DB.getInstance(applicationContext).albumDao().get(song.albumId)?.title
                             ?: UNKNOWN
                 }.await()
@@ -236,6 +234,12 @@ class PlayerService : Service() {
     }
 
     private var parentJob = Job()
+    private val bgScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = parentJob
+    }
+    private val uiScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
+    }
     private var notificationUpdateJob = Job()
     private var notifyPlaybackRatioJob: Job? = null
     private var seekJob: Job? = null
@@ -358,7 +362,7 @@ class PlayerService : Service() {
                 source.addMediaSources(source.size,
                         queue.queue.map { it.getMediaSource(mediaSourceFactory) })
             }
-            InsertActionType.OVERRIDE -> override(queue.queue)
+            InsertActionType.OVERRIDE -> override(queue.queue, force)
             InsertActionType.SHUFFLE_NEXT -> {
                 val position = if (source.size < 1) 0 else currentPosition + 1
                 val shuffled = queue.queue.shuffleByClassType(queue.metadata.classType)
@@ -377,7 +381,7 @@ class PlayerService : Service() {
             InsertActionType.SHUFFLE_OVERRIDE -> {
                 val shuffled = queue.queue.shuffleByClassType(queue.metadata.classType)
 
-                override(shuffled)
+                override(shuffled, force)
             }
             InsertActionType.SHUFFLE_SIMPLE_NEXT -> {
                 val position = if (source.size < 1) 0 else currentPosition + 1
@@ -397,7 +401,7 @@ class PlayerService : Service() {
             InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
                 val shuffled = queue.queue.shuffled()
 
-                override(shuffled)
+                override(shuffled, force)
             }
         }
 
@@ -448,7 +452,7 @@ class PlayerService : Service() {
     private fun resume() {
         Timber.d("qgeck resume invoked")
         notifyPlaybackRatioJob?.cancel()
-        notifyPlaybackRatioJob = launch(UI + parentJob) {
+        notifyPlaybackRatioJob = uiScope.launch {
             while (true) {
                 val song = currentSong ?: break
                 onPlaybackRatioChanged?.invoke(player.contentPosition.toFloat() / song.duration)
@@ -460,7 +464,7 @@ class PlayerService : Service() {
             player.playWhenReady = true
             mediaSession.isActive = true
             notificationUpdateJob.cancel()
-            notificationUpdateJob = launch(parentJob) {
+            notificationUpdateJob = bgScope.launch {
                 val song = currentSong ?: return@launch
                 val albumTitle =
                         DB.getInstance(applicationContext).albumDao().get(song.albumId)?.title
@@ -486,7 +490,7 @@ class PlayerService : Service() {
             }
         }
         notificationUpdateJob.cancel()
-        notificationUpdateJob = launch(parentJob) {
+        notificationUpdateJob = bgScope.launch {
             val song = currentSong ?: return@launch
             val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId)?.title
                     ?: UNKNOWN
@@ -545,8 +549,8 @@ class PlayerService : Service() {
         }
     }
 
-    fun override(queue: List<Song>) {
-        clear(true)
+    fun override(queue: List<Song>, force: Boolean = false) {
+        clear(force.not())
         source.addMediaSources(queue.map { it.getMediaSource(mediaSourceFactory) })
         if (this.queue.isEmpty()) player.prepare(source)
         this.queue.addAll(queue)
@@ -574,7 +578,7 @@ class PlayerService : Service() {
         val song = currentSong
         if (song != null) {
             seekJob?.cancel()
-            seekJob = launch(UI + parentJob) {
+            seekJob = uiScope.launch {
                 while (true) {
                     val seekTo = (player.currentPosition + 3000).let {
                         if (it > song.duration) song.duration else it
@@ -589,7 +593,7 @@ class PlayerService : Service() {
     fun rewind() {
         if (currentSong != null) {
             seekJob?.cancel()
-            seekJob = launch(UI + parentJob) {
+            seekJob = uiScope.launch {
                 while (true) {
                     val seekTo = (player.currentPosition - 3000).let {
                         if (it < 0) 0 else it

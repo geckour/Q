@@ -12,7 +12,9 @@ import com.geckour.q.databinding.ItemListSongBinding
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.Dispatchers
+import kotlinx.coroutines.experimental.GlobalScope
+import kotlinx.coroutines.experimental.android.Main
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
 
@@ -158,7 +160,7 @@ class SongListAdapter(private val viewModel: MainViewModel,
             binding.data = song
             binding.duration.text = song.durationString
             try {
-                launch(UI) {
+                GlobalScope.launch(Dispatchers.Main) {
                     Glide.with(binding.thumb)
                             .load(DB.getInstance(binding.root.context)
                                     .getArtworkUriStringFromId(song.albumId)

@@ -16,10 +16,9 @@ import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.android.Main
+import kotlin.coroutines.experimental.CoroutineContext
 
 class SongListFragment : Fragment() {
 
@@ -71,6 +70,9 @@ class SongListFragment : Fragment() {
     }
 
     private var parentJob = Job()
+    private val uiScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
+    }
     private var chatteringCancelFlag: Boolean = false
 
     override fun onCreateView(inflater: LayoutInflater,
@@ -208,7 +210,7 @@ class SongListFragment : Fragment() {
     private fun fetchSongsWithGenre(genre: Genre) {
         mainViewModel.loading.value = true
         context?.also {
-            launch(UI + parentJob) {
+            uiScope.launch {
                 adapter.upsertItems(
                         getSongListFromTrackMediaId(DB.getInstance(it),
                                 genre.getTrackMediaIds(it),
@@ -222,7 +224,7 @@ class SongListFragment : Fragment() {
     private fun fetchSongsWithPlaylist(playlist: Playlist) {
         mainViewModel.loading.value = true
         context?.also {
-            launch(UI + parentJob) {
+            uiScope.launch {
                 adapter.addItems(
                         getSongListFromTrackMediaIdWithTrackNum(DB.getInstance(it),
                                 playlist.getTrackMediaIds(it),
@@ -237,7 +239,7 @@ class SongListFragment : Fragment() {
     private fun upsertSongListIfPossible(db: DB, dbTrackList: List<Track>, sortByTrackOrder: Boolean = true) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
-            launch(UI + parentJob) {
+            uiScope.launch {
                 delay(500)
                 val items = getSongListFromTrackList(db, dbTrackList)
                 adapter.upsertItems(items, sortByTrackOrder)
