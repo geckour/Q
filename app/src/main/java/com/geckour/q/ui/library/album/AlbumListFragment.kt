@@ -69,7 +69,7 @@ class AlbumListFragment : Fragment() {
         binding.recyclerView.adapter = adapter
 
         artist = arguments?.getParcelable(ARGS_KEY_ARTIST)
-        if (adapter.itemCount == 0) observeAlbums(artist)
+        if (adapter.itemCount == 0) observeAlbums()
     }
 
     override fun onStart() {
@@ -166,11 +166,12 @@ class AlbumListFragment : Fragment() {
         }
     }
 
-    private fun observeAlbums(artist: Artist?) {
+    private fun observeAlbums() {
         context?.apply {
             DB.getInstance(this).also { db ->
-                (if (artist == null) db.albumDao().getAllAsync()
-                else db.albumDao().findByArtistIdAsync(artist.id))
+                (artist?.let {
+                    db.albumDao().findByArtistIdAsync(it.id)
+                } ?: db.albumDao().getAllAsync())
                         .observe(this@AlbumListFragment, Observer { dbAlbumList ->
                             if (dbAlbumList == null) return@Observer
 

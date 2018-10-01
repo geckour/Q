@@ -334,11 +334,14 @@ class MainActivity : AppCompatActivity() {
                             it?.firstOrNull { it.state == State.RUNNING } != null
                     if (it?.any { status -> status.state == State.SUCCEEDED } == true) {
                         Timber.d("qgeck sync succeeded")
-                        artistListViewModel.forceLoad.call()
-                        albumListViewModel.forceLoad.call()
-                        songListViewModel.forceLoad.call()
-                        genreListViewModel.forceLoad.call()
-                        playlistListViewModel.forceLoad.call()
+                        val fragment = supportFragmentManager.fragments.lastOrNull { it.isVisible }
+                        when (fragment) {
+                            is ArtistListFragment -> artistListViewModel.forceLoad.call()
+                            is AlbumListFragment -> albumListViewModel.forceLoad.call()
+                            is SongListFragment -> songListViewModel.forceLoad.call()
+                            is GenreListFragment -> genreListViewModel.forceLoad.call()
+                            is PlaylistListFragment -> playlistListViewModel.forceLoad.call()
+                        }
                     }
                 })
     }
