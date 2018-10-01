@@ -12,6 +12,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentPaymentBinding
+import com.geckour.q.util.observe
 import kotlinx.coroutines.experimental.Job
 
 class PaymentFragment : Fragment() {

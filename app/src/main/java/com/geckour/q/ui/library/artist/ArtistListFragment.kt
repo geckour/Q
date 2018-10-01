@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.*
 import android.widget.SearchView
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -12,10 +11,7 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.MainViewModel
-import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.UNKNOWN
-import com.geckour.q.util.getSong
-import com.geckour.q.util.sortedByTrackOrder
+import com.geckour.q.util.*
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.Main
 import kotlin.coroutines.experimental.CoroutineContext
@@ -161,13 +157,13 @@ class ArtistListFragment : Fragment() {
     private fun observeArtists() {
         context?.apply {
             DB.getInstance(this).also { db ->
-                db.albumDao().getAllAsync().observe(this@ArtistListFragment, Observer { dbAlbumList ->
-                    if (dbAlbumList == null) return@Observer
+                db.albumDao().getAllAsync().observe(this@ArtistListFragment) { dbAlbumList ->
+                    if (dbAlbumList == null) return@observe
 
                     mainViewModel.loading.value = true
                     latestDbAlbumList = dbAlbumList
                     upsertArtistListIfPossible(db)
-                })
+                }
             }
         }
     }

@@ -2,6 +2,7 @@ package com.geckour.q.util
 
 import androidx.annotation.MainThread
 import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
 import java.util.concurrent.atomic.AtomicBoolean
@@ -20,10 +21,6 @@ class SingleLiveEvent<T> : MutableLiveData<T>() {
         })
     }
 
-    fun observe(owner: LifecycleOwner, observer: (T?) -> Unit) {
-        observe(owner, Observer { observer(it) })
-    }
-
     @MainThread
     override fun setValue(t: T?) {
         pending.set(true)
@@ -37,4 +34,8 @@ class SingleLiveEvent<T> : MutableLiveData<T>() {
     fun call() {
         value = null
     }
+}
+
+fun <T> LiveData<T>.observe(owner: LifecycleOwner, observer: (T?) -> Unit) {
+    observe(owner, Observer { observer(it) })
 }

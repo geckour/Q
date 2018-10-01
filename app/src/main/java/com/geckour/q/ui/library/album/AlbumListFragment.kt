@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.view.*
 import android.widget.SearchView
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -14,6 +13,7 @@ import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.getSong
+import com.geckour.q.util.observe
 import com.geckour.q.util.sortedByTrackOrder
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.Main
@@ -172,13 +172,13 @@ class AlbumListFragment : Fragment() {
                 (artist?.let {
                     db.albumDao().findByArtistIdAsync(it.id)
                 } ?: db.albumDao().getAllAsync())
-                        .observe(this@AlbumListFragment, Observer { dbAlbumList ->
-                            if (dbAlbumList == null) return@Observer
+                        .observe(this@AlbumListFragment) { dbAlbumList ->
+                            if (dbAlbumList == null) return@observe
 
                             mainViewModel.loading.value = true
                             latestDbAlbumList = dbAlbumList
                             upsertAlbumListIfPossible(db)
-                        })
+                        }
             }
         }
     }

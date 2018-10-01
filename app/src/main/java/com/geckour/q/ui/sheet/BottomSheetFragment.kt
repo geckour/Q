@@ -22,6 +22,7 @@ import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.getTimeString
+import com.geckour.q.util.observe
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.experimental.CoroutineScope

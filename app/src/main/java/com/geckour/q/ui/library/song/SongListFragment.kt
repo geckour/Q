@@ -5,7 +5,6 @@ import android.provider.MediaStore
 import android.view.*
 import android.widget.SearchView
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -183,12 +182,12 @@ class SongListFragment : Fragment() {
     private fun observeAllSongs() {
         context?.apply {
             DB.getInstance(this).also { db ->
-                db.trackDao().getAllAsync().observe(this@SongListFragment, Observer { dbTrackList ->
-                    if (dbTrackList == null) return@Observer
+                db.trackDao().getAllAsync().observe(this@SongListFragment) { dbTrackList ->
+                    if (dbTrackList == null) return@observe
 
                     mainViewModel.loading.value = true
                     upsertSongListIfPossible(db, dbTrackList, false)
-                })
+                }
             }
         }
     }
@@ -197,12 +196,12 @@ class SongListFragment : Fragment() {
         mainViewModel.loading.value = true
         context?.also {
             DB.getInstance(it).also { db ->
-                db.trackDao().findByAlbumAsync(album.id).observe(this@SongListFragment, Observer { dbTrackList ->
-                    if (dbTrackList == null) return@Observer
+                db.trackDao().findByAlbumAsync(album.id).observe(this@SongListFragment) { dbTrackList ->
+                    if (dbTrackList == null) return@observe
 
                     mainViewModel.loading.value = true
                     upsertSongListIfPossible(db, dbTrackList)
-                })
+                }
             }
         }
     }

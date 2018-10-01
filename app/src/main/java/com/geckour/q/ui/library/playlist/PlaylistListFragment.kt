@@ -10,10 +10,7 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.ui.MainViewModel
-import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.fetchPlaylists
-import com.geckour.q.util.getSong
-import com.geckour.q.util.getTrackMediaIds
+import com.geckour.q.util.*
 import kotlinx.coroutines.experimental.CoroutineScope
 import kotlinx.coroutines.experimental.Dispatchers
 import kotlinx.coroutines.experimental.Job

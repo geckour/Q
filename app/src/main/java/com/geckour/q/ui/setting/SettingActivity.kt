@@ -21,6 +21,7 @@ import com.geckour.q.databinding.DialogSpinnerBinding
 import com.geckour.q.ui.license.LicenseActivity
 import com.geckour.q.util.Screen
 import com.geckour.q.util.getPreferScreen
+import com.geckour.q.util.observe
 import com.geckour.q.util.setPreferScreen
 
 class SettingActivity : AppCompatActivity() {

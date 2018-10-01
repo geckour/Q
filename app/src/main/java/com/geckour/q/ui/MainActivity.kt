@@ -15,7 +15,6 @@ import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -329,7 +328,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun WorkManager.monitorSyncState() {
         getStatusesForUniqueWork(MediaRetrieveWorker.WORK_NAME)
-                .observe(this@MainActivity, Observer {
+                .observe(this@MainActivity) {
                     viewModel.syncing.value =
                             it?.firstOrNull { it.state == State.RUNNING } != null
                     if (it?.any { status -> status.state == State.SUCCEEDED } == true) {
@@ -343,7 +342,7 @@ class MainActivity : AppCompatActivity() {
                             is PlaylistListFragment -> playlistListViewModel.forceLoad.call()
                         }
                     }
-                })
+                }
     }
 
     private fun WorkManager.cancelSync() {
