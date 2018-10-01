@@ -26,8 +26,6 @@ import kotlin.coroutines.experimental.CoroutineContext
 class EasterEggFragment : Fragment() {
 
     companion object {
-        val TAG: String = EasterEggFragment::class.java.simpleName
-
         fun newInstance(): EasterEggFragment = EasterEggFragment()
     }
 

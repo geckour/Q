@@ -45,7 +45,7 @@ class PlayerService : Service() {
     companion object {
         fun createIntent(context: Context): Intent = Intent(context, PlayerService::class.java)
 
-        private val TAG: String = PlayerService::class.java.simpleName
+        private const val TAG: String = "com.geckour.q.service.PlayerService"
 
         const val NOTIFICATION_CHANNEL_ID_PLAYER = "notification_channel_id_player"
         private const val NOTIFICATION_ID_PLAYER = 320

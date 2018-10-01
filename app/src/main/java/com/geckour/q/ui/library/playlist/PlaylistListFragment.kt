@@ -24,7 +24,6 @@ import kotlin.coroutines.experimental.CoroutineContext
 class PlaylistListFragment : Fragment() {
 
     companion object {
-        val TAG: String = PlaylistListFragment::class.java.simpleName
         fun newInstance(): PlaylistListFragment = PlaylistListFragment()
     }
 

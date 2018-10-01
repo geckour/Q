@@ -23,7 +23,6 @@ import com.geckour.q.data.db.model.Album as DBAlbum
 class AlbumListFragment : Fragment() {
 
     companion object {
-        val TAG: String = AlbumListFragment::class.java.simpleName
         private const val ARGS_KEY_ARTIST = "args_key_artist"
         fun newInstance(artist: Artist? = null): AlbumListFragment = AlbumListFragment().apply {
             if (artist != null) {
@@ -170,15 +169,15 @@ class AlbumListFragment : Fragment() {
     private fun observeAlbums(artist: Artist?) {
         context?.apply {
             DB.getInstance(this).also { db ->
-                db.albumDao().getAllAsync().observe(this@AlbumListFragment, Observer { dbAlbumList ->
-                    if (dbAlbumList == null) return@Observer
+                (if (artist == null) db.albumDao().getAllAsync()
+                else db.albumDao().findByArtistIdAsync(artist.id))
+                        .observe(this@AlbumListFragment, Observer { dbAlbumList ->
+                            if (dbAlbumList == null) return@Observer
 
-                    mainViewModel.loading.value = true
-                    latestDbAlbumList = dbAlbumList.let {
-                        if (artist != null) it.filter { it.artistId == artist.id } else it
-                    }
-                    upsertAlbumListIfPossible(db)
-                })
+                            mainViewModel.loading.value = true
+                            latestDbAlbumList = dbAlbumList
+                            upsertAlbumListIfPossible(db)
+                        })
             }
         }
     }

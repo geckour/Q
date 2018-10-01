@@ -398,25 +398,25 @@ class MainActivity : AppCompatActivity() {
 
         viewModel.selectedArtist.observe(this) {
             if (it == null) return@observe
-            requestedTransaction = RequestedTransaction(ArtistListFragment.TAG, artist = it)
+            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.ARTIST, artist = it)
             tryTransaction()
         }
 
         viewModel.selectedAlbum.observe(this) {
             if (it == null) return@observe
-            requestedTransaction = RequestedTransaction(AlbumListFragment.TAG, album = it)
+            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.ALBUM, album = it)
             tryTransaction()
         }
 
         viewModel.selectedGenre.observe(this) {
             if (it == null) return@observe
-            requestedTransaction = RequestedTransaction(GenreListFragment.TAG, genre = it)
+            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.GENRE, genre = it)
             tryTransaction()
         }
 
         viewModel.selectedPlaylist.observe(this) {
             if (it == null) return@observe
-            requestedTransaction = RequestedTransaction(PlaylistListFragment.TAG, playlist = it)
+            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.PLAYLIST, playlist = it)
             tryTransaction()
         }
 
@@ -652,7 +652,7 @@ class MainActivity : AppCompatActivity() {
         drawerToggle.syncState()
         binding.navigationView.setNavigationItemSelectedListener(onNavigationItemSelected)
         binding.navigationView.getHeaderView(0).findViewById<View>(R.id.drawer_head_icon)?.setOnLongClickListener {
-            requestedTransaction = RequestedTransaction(EasterEggFragment.TAG)
+            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.EASTER_EGG)
             tryTransaction()
             true
         }
@@ -697,9 +697,10 @@ class MainActivity : AppCompatActivity() {
     private fun tryTransaction() {
         if (paused.not()) {
             requestedTransaction?.apply {
+                Timber.d("qgeck requested transaction: $requestedTransaction")
                 dismissSearch()
                 when (this.tag) {
-                    ArtistListFragment.TAG -> {
+                    RequestedTransaction.Tag.ARTIST -> {
                         if (artist != null) {
                             supportFragmentManager.beginTransaction()
                                     .replace(R.id.content_main,
@@ -708,7 +709,7 @@ class MainActivity : AppCompatActivity() {
                                     .commit()
                         }
                     }
-                    AlbumListFragment.TAG -> {
+                    RequestedTransaction.Tag.ALBUM -> {
                         if (album != null) {
                             supportFragmentManager.beginTransaction()
                                     .replace(R.id.content_main,
@@ -717,7 +718,7 @@ class MainActivity : AppCompatActivity() {
                                     .commit()
                         }
                     }
-                    GenreListFragment.TAG -> {
+                    RequestedTransaction.Tag.GENRE -> {
                         if (genre != null) {
                             supportFragmentManager.beginTransaction()
                                     .replace(R.id.content_main,
@@ -726,7 +727,7 @@ class MainActivity : AppCompatActivity() {
                                     .commit()
                         }
                     }
-                    PlaylistListFragment.TAG -> {
+                    RequestedTransaction.Tag.PLAYLIST -> {
                         if (playlist != null) {
                             supportFragmentManager.beginTransaction()
                                     .replace(R.id.content_main,
@@ -735,7 +736,7 @@ class MainActivity : AppCompatActivity() {
                                     .commit()
                         }
                     }
-                    EasterEggFragment.TAG -> {
+                    RequestedTransaction.Tag.EASTER_EGG -> {
                         supportFragmentManager.beginTransaction()
                                 .replace(R.id.content_main, EasterEggFragment.newInstance())
                                 .addToBackStack(null)
