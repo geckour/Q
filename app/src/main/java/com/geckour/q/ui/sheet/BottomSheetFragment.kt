@@ -147,6 +147,7 @@ class BottomSheetFragment : Fragment() {
                 (requireActivity() as MainActivity).binding.root.findViewById(R.id.bottom_sheet))
         behavior.setBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback() {
             override fun onSlide(v: View, dy: Float) {
+                binding.sheet.progress = dy
             }
 
             @SuppressLint("SwitchIntDef")
