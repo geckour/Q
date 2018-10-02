@@ -153,6 +153,7 @@ class BottomSheetFragment : Fragment() {
             @SuppressLint("SwitchIntDef")
             override fun onStateChanged(v: View, state: Int) {
                 viewModel.sheetState = state
+                reloadBindingVariable()
                 binding.buttonToggleVisibleQueue.setImageResource(
                         when (state) {
                             BottomSheetBehavior.STATE_EXPANDED -> R.drawable.ic_collapse
@@ -243,7 +244,14 @@ class BottomSheetFragment : Fragment() {
                 binding.textTimeTotal.text = null
                 binding.textTimeRemain.text = null
             }
-            binding.textTimeRight.text = song?.durationString
+            binding.textTimeRight.text = song?.duration?.let { duration ->
+                if (sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false)) {
+                    viewModel.playbackRatio.value?.let {
+                        val remain = (duration * (1 - it)).toLong()
+                        "-${remain.getTimeString()}"
+                    }
+                } else duration.getTimeString()
+            }
             adapter.setNowPlaying(it)
 
             if (it != null && song != null && behavior.state != BottomSheetBehavior.STATE_EXPANDED) {
@@ -264,7 +272,7 @@ class BottomSheetFragment : Fragment() {
             binding.textTimeRight.text =
                     if (sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false))
                         "-${(song.duration - elapsed).getTimeString()}"
-                    else song.duration.getTimeString()
+                    else song.durationString
             val remain = adapter.getItemsAfter((viewModel.currentPosition.value ?: 0) + 1)
                     .map { it.duration }.sum() + (song.duration - elapsed)
             binding.textTimeRemain.text =
@@ -303,5 +311,12 @@ class BottomSheetFragment : Fragment() {
                     .apply()
             binding.queueUnTouchable = it
         }
+    }
+
+    private fun reloadBindingVariable() {
+        binding.viewModel = binding.viewModel
+        binding.isQueueNotEmpty = binding.isQueueNotEmpty
+        binding.playing = binding.playing
+        binding.queueUnTouchable = binding.queueUnTouchable
     }
 }
