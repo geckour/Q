@@ -218,6 +218,7 @@ class BottomSheetFragment : Fragment() {
                 binding.textTimeLeft.text = null
                 binding.seekBar.progress = 0
                 binding.textTimeTotal.text = null
+                binding.textTimeRemain.text = null
             }
             binding.textTimeRight.text = song?.durationString
             adapter.setNowPlaying(it)
