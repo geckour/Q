@@ -144,7 +144,7 @@ fun fetchPlaylists(context: Context): Deferred<List<Playlist>> = GlobalScope.asy
 
 private fun List<Track>.getPlaylistThumb(context: Context): Deferred<Bitmap?> = GlobalScope.async {
     val db = DB.getInstance(context)
-    this@getPlaylistThumb.takeOrFillNull(6)
+    this@getPlaylistThumb.takeOrFillNull(10)
             .map {
                 it?.let { db.getArtworkUriStringFromId(it.albumId).await()?.let { Uri.parse(it) } }
             }
