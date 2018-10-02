@@ -1,8 +1,10 @@
 package com.geckour.q.ui.sheet
 
 import android.annotation.SuppressLint
+import android.content.SharedPreferences
 import android.content.res.ColorStateList
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -34,6 +36,10 @@ import kotlin.coroutines.experimental.CoroutineContext
 
 class BottomSheetFragment : Fragment() {
 
+    companion object {
+        private const val PREF_KEY_SHOW_CURRENT_REMAIN = "pref_key_show_current_remain"
+    }
+
     private val viewModel: BottomSheetViewModel by lazy {
         ViewModelProviders.of(requireActivity())[BottomSheetViewModel::class.java]
     }
@@ -47,6 +53,10 @@ class BottomSheetFragment : Fragment() {
     private var parentJob = Job()
     private val uiScope = object : CoroutineScope {
         override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
+    }
+
+    val sharedPreferences: SharedPreferences by lazy {
+        PreferenceManager.getDefaultSharedPreferences(requireContext())
     }
 
     override fun onCreateView(inflater: LayoutInflater,
@@ -124,6 +134,14 @@ class BottomSheetFragment : Fragment() {
 
                 return@setOnTouchListener false
             }
+        }
+
+        binding.textTimeRight.setOnClickListener {
+            val currentSetting = sharedPreferences
+                    .getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false)
+            sharedPreferences.edit()
+                    .putBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, currentSetting.not())
+                    .apply()
         }
 
         behavior = BottomSheetBehavior.from(
@@ -238,6 +256,10 @@ class BottomSheetFragment : Fragment() {
             val song = adapter.getItem(viewModel.currentPosition.value) ?: return@observe
             val elapsed = (song.duration * it).toLong()
             binding.textTimeLeft.text = elapsed.getTimeString()
+            binding.textTimeRight.text =
+                    if (sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false))
+                        "-${(song.duration - elapsed).getTimeString()}"
+                    else song.duration.getTimeString()
             val remain = adapter.getItemsAfter((viewModel.currentPosition.value ?: 0) + 1)
                     .map { it.duration }.sum() + (song.duration - elapsed)
             binding.textTimeRemain.text =
