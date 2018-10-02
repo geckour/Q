@@ -253,14 +253,14 @@
             tools:text="Remain・-57:12" />
 
         <ImageView
-            android:id="@+id/button_touch_off"
+            android:id="@+id/button_touch_lock"
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:layout_marginRight="12dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:onClick="@{() -> viewModel.onClickTouchOffButton()}"
             android:padding="6dp"
-            android:src="@drawable/ic_touch_off"
+            android:src="@drawable/ic_touch_lock"
             android:tint="@{queueUnTouchable ? @color/colorAccent : @color/colorTintInactive}"
             app:layout_constraintRight_toLeftOf="@id/button_add_queue_to_playlist"
             app:layout_constraintTop_toBottomOf="@id/guide_peek_height"
