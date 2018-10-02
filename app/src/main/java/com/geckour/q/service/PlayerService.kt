@@ -4,10 +4,7 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.app.Service
 import android.bluetooth.BluetoothHeadset
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
+import android.content.*
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.session.MediaSession
@@ -278,19 +275,15 @@ class PlayerService : Service() {
             addAction(SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE)
         })
 
-        PreferenceManager.getDefaultSharedPreferences(this).apply {
-            if (player.playWhenReady.not()) {
-                getString(PREF_KEY_PLAYER_STATE, null)?.let {
-                    Gson().fromJson(it, PlayerState::class.java)
-                }?.set()
-            }
-
-            edit().remove(PREF_KEY_PLAYER_STATE).apply()
-        }
+        PreferenceManager.getDefaultSharedPreferences(this).restoreState()
     }
 
     override fun onDestroy() {
         super.onDestroy()
+
+        PreferenceManager.getDefaultSharedPreferences(this).apply {
+            if (contains(PREF_KEY_PLAYER_STATE).not()) storeState()
+        }
 
         unregisterReceiver(headsetStateReceiver)
         parentJob.cancel()
@@ -659,20 +652,33 @@ class PlayerService : Service() {
 
     fun onRequestedStopService() {
         if (player.playWhenReady.not()) {
-            val state = PlayerState(
-                    queue,
-                    currentPosition,
-                    player.currentPosition,
-                    player.playWhenReady,
-                    player.repeatMode
-            )
-            PreferenceManager.getDefaultSharedPreferences(this).edit()
-                    .putString(PREF_KEY_PLAYER_STATE, Gson().toJson(state))
-                    .apply()
+            PreferenceManager.getDefaultSharedPreferences(this).storeState()
 
             clear()
             stopSelf()
         }
+    }
+
+    private fun SharedPreferences.storeState() {
+        val state = PlayerState(
+                queue,
+                currentPosition,
+                player.currentPosition,
+                player.playWhenReady,
+                player.repeatMode
+        )
+        edit().putString(PREF_KEY_PLAYER_STATE, Gson().toJson(state))
+                .apply()
+    }
+
+    private fun SharedPreferences.restoreState() {
+        if (player.playWhenReady.not()) {
+            getString(PREF_KEY_PLAYER_STATE, null)?.let {
+                Gson().fromJson(it, PlayerState::class.java)
+            }?.set()
+        }
+
+        edit().remove(PREF_KEY_PLAYER_STATE).apply()
     }
 
     fun publishStatus() {
