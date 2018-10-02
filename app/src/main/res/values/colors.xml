@@ -4,11 +4,12 @@
     <color name="colorPrimaryDark">#fbc02d</color>
     <color name="colorAccent">#f095ad</color>
 
-    <color name="colorBackgroundDrawerHeader">#87b9b4</color>
+    <color name="colorStrong">#87b9b4</color>
     <color name="colorShadowTextDrawerHeader">#a033968b</color>
 
     <color name="colorTextPrimary">#c0160900</color>
     <color name="colorTextSecondary">#98160900</color>
+    <color name="colorTextStrong">#5fa49d</color>
 
     <color name="colorTintOption">#707070</color>
     <color name="colorTintInactive">#dfdcd5</color>
