@@ -10,6 +10,8 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
+import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
@@ -38,6 +40,7 @@ class BottomSheetFragment : Fragment() {
 
     companion object {
         private const val PREF_KEY_SHOW_CURRENT_REMAIN = "pref_key_show_current_remain"
+        private const val PREF_KEY_SHOW_LOCK_TOUCH_QUEUE = "pref_key_lock_touch_queue"
     }
 
     private val viewModel: BottomSheetViewModel by lazy {
@@ -48,14 +51,14 @@ class BottomSheetFragment : Fragment() {
     }
     private lateinit var binding: FragmentSheetBottomBinding
     private lateinit var adapter: QueueListAdapter
-    private lateinit var behavior: BottomSheetBehavior<*>
+    private lateinit var behavior: BottomSheetBehavior<ConstraintLayout>
 
     private var parentJob = Job()
     private val uiScope = object : CoroutineScope {
         override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
     }
 
-    val sharedPreferences: SharedPreferences by lazy {
+    private val sharedPreferences: SharedPreferences by lazy {
         PreferenceManager.getDefaultSharedPreferences(requireContext())
     }
 
@@ -105,6 +108,7 @@ class BottomSheetFragment : Fragment() {
         }).attachToRecyclerView(binding.recyclerView)
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
@@ -136,17 +140,11 @@ class BottomSheetFragment : Fragment() {
             }
         }
 
-        binding.textTimeRight.setOnClickListener {
-            val currentSetting = sharedPreferences
-                    .getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false)
-            sharedPreferences.edit()
-                    .putBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, currentSetting.not())
-                    .apply()
-        }
+        viewModel.touchLock.value = sharedPreferences
+                .getBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, false)
 
         behavior = BottomSheetBehavior.from(
-                (requireActivity() as MainActivity).binding.root
-                        .findViewById<View>(R.id.bottom_sheet))
+                (requireActivity() as MainActivity).binding.root.findViewById(R.id.bottom_sheet))
         behavior.setBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback() {
             override fun onSlide(v: View, dy: Float) {
             }
@@ -162,6 +160,12 @@ class BottomSheetFragment : Fragment() {
                 )
             }
         })
+
+        binding.touchBlockWall.setOnTouchListener { _, event ->
+            behavior.onTouchEvent((requireActivity() as MainActivity)
+                    .findViewById(R.id.coordinator_main) as CoordinatorLayout, binding.sheet, event)
+            true
+        }
 
         viewModel.currentQueue.value = emptyList()
     }
@@ -280,6 +284,23 @@ class BottomSheetFragment : Fragment() {
 
         viewModel.scrollToCurrent.observe(this) {
             binding.recyclerView.smoothScrollToPosition(viewModel.currentPosition.value ?: 0)
+        }
+
+        viewModel.toggleCurrentRmeain.observe(this) {
+            val changeTo = sharedPreferences
+                    .getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false)
+                    .not()
+            sharedPreferences.edit()
+                    .putBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, changeTo)
+                    .apply()
+        }
+
+        viewModel.touchLock.observe(this) {
+            if (it == null) return@observe
+            sharedPreferences.edit()
+                    .putBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, it)
+                    .apply()
+            binding.queueUnTouchable = it
         }
     }
 }

@@ -26,6 +26,8 @@ class BottomSheetViewModel : ViewModel() {
 
     internal val repeatMode: SingleLiveEvent<Int> = SingleLiveEvent()
     internal val changeRepeatMode: SingleLiveEvent<Unit> = SingleLiveEvent()
+    internal val toggleCurrentRmeain: SingleLiveEvent<Unit> = SingleLiveEvent()
+    internal val touchLock: SingleLiveEvent<Boolean> = SingleLiveEvent()
 
     fun onClickQueueButton() {
         toggleSheetState.call()
@@ -49,6 +51,14 @@ class BottomSheetViewModel : ViewModel() {
 
     fun onClickRepeatButton() {
         changeRepeatMode.call()
+    }
+
+    fun onClickToggleCurrentRemainButton() {
+        toggleCurrentRmeain.call()
+    }
+
+    fun onClickTouchOffButton() {
+        touchLock.value = touchLock.value?.not() ?: true
     }
 
     fun onPlayOrPause() {
