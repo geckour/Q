@@ -235,7 +235,12 @@ class BottomSheetFragment : Fragment() {
             if (it == null) return@observe
             binding.seekBar.progress = (binding.seekBar.max * it).toInt()
             val song = adapter.getItem(viewModel.currentPosition.value) ?: return@observe
-            binding.textTimeLeft.text = (song.duration * it).toLong().getTimeString()
+            val elapsed = (song.duration * it).toLong()
+            binding.textTimeLeft.text = elapsed.getTimeString()
+            val remain = adapter.getItemsAfter((viewModel.currentPosition.value ?: 0) + 1)
+                    .map { it.duration }.sum() + (song.duration - elapsed)
+            binding.textTimeRemain.text =
+                    getString(R.string.bottom_sheet_time_remain, remain.getTimeString())
         }
 
         viewModel.repeatMode.observe(this) {

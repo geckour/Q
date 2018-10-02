@@ -24,6 +24,7 @@
 
 
     <string name="bottom_sheet_time_total">Total・%1$s</string>
+    <string name="bottom_sheet_time_remain">Remain・-%1$s</string>
 
 
     <string name="nav_header_desc" translatable="false">: Queue oriented player</string>

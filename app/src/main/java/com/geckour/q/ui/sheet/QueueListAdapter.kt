@@ -39,6 +39,9 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
                 else -> null
             }
 
+    internal fun getItemsAfter(start: Int): List<Song> =
+            items.subList(start, items.size)
+
     internal fun setNowPlaying(index: Int?) {
         items = items.map { it.copy(nowPlaying = false) }
         items.mapIndexed { i, song -> i to song.nowPlaying }

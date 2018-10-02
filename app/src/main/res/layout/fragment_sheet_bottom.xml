@@ -233,6 +233,18 @@
             app:layout_constraintTop_toTopOf="@id/button_scroll_to_current"
             tools:text="Total・1:34:28" />
 
+        <TextView
+            android:id="@+id/text_time_remain"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginLeft="16dp"
+            android:textColor="@color/colorTextPrimary"
+            android:textSize="12sp"
+            app:layout_constraintBottom_toBottomOf="@id/button_scroll_to_current"
+            app:layout_constraintLeft_toRightOf="@id/text_time_total"
+            app:layout_constraintTop_toTopOf="@id/button_scroll_to_current"
+            tools:text="Remain・-57:12" />
+
         <ImageView
             android:id="@+id/button_add_queue_to_playlist"
             android:layout_width="28dp"

@@ -20,6 +20,7 @@
 
 
     <string name="bottom_sheet_time_total">総時間・%1$s</string>
+    <string name="bottom_sheet_time_remain">残り・-%1$s</string>
 
 
     <string name="nav_category_others">その他</string>
