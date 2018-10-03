@@ -142,8 +142,6 @@ class BottomSheetFragment : Fragment() {
             }
         }
 
-        binding.recyclerView.isNestedScrollingEnabled = false
-
         viewModel.touchLock.value = sharedPreferences
                 .getBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, false)
 
