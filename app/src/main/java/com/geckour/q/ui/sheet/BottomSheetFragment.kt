@@ -11,7 +11,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
 import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.coordinatorlayout.widget.CoordinatorLayout
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
@@ -56,6 +55,9 @@ class BottomSheetFragment : Fragment() {
     private var parentJob = Job()
     private val uiScope = object : CoroutineScope {
         override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
+    }
+    private val bgScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = parentJob
     }
 
     private val sharedPreferences: SharedPreferences by lazy {
@@ -154,18 +156,17 @@ class BottomSheetFragment : Fragment() {
             override fun onStateChanged(v: View, state: Int) {
                 viewModel.sheetState = state
                 reloadBindingVariable()
-                binding.buttonToggleVisibleQueue.setImageResource(
-                        when (state) {
+                binding.buttonToggleVisibleQueue
+                        .setImageResource(when (state) {
                             BottomSheetBehavior.STATE_EXPANDED -> R.drawable.ic_collapse
                             else -> R.drawable.ic_queue
-                        }
-                )
+                        })
             }
         })
 
         binding.touchBlockWall.setOnTouchListener { _, event ->
-            behavior.onTouchEvent((requireActivity() as MainActivity)
-                    .findViewById(R.id.coordinator_main) as CoordinatorLayout, binding.sheet, event)
+            behavior.onTouchEvent(
+                    requireActivity().findViewById(R.id.coordinator_main), binding.sheet, event)
             true
         }
 
@@ -212,14 +213,19 @@ class BottomSheetFragment : Fragment() {
             val song = adapter.getItem(it)
 
             context?.let { context ->
-                uiScope.launch {
+                bgScope.launch {
                     val model = song?.albumId?.let {
                         DB.getInstance(context)
                                 .getArtworkUriStringFromId(it).await() ?: R.drawable.ic_empty
                     }
-                    Glide.with(binding.artwork)
-                            .load(model)
-                            .into(binding.artwork)
+                    val drawable = model?.let {
+                        Glide.with(binding.artwork)
+                            .asDrawable()
+                            .load(it)
+                            .submit()
+                            .get()
+                    }
+                    uiScope.launch { binding.artwork.setImageDrawable(drawable) }
                 }
             }
             binding.textSong.text = song?.name
