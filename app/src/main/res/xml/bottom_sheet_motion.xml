@@ -31,7 +31,12 @@
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toTopOf="@id/text_artist"
             app:layout_constraintLeft_toLeftOf="@id/text_artist"
-            app:layout_constraintRight_toRightOf="@id/text_artist" />
+            app:layout_constraintRight_toRightOf="@id/text_artist">
+
+            <CustomAttribute
+                app:attributeName="MaxLines"
+                app:customIntegerValue="1" />
+        </Constraint>
 
         <Constraint
             android:id="@+id/text_artist"
@@ -41,7 +46,12 @@
             android:layout_marginRight="12dp"
             app:layout_constraintBottom_toTopOf="@id/button_controller_center"
             app:layout_constraintLeft_toRightOf="@id/artwork"
-            app:layout_constraintRight_toLeftOf="@id/button_toggle_visible_queue" />
+            app:layout_constraintRight_toLeftOf="@id/button_toggle_visible_queue">
+
+            <CustomAttribute
+                app:attributeName="MaxLines"
+                app:customIntegerValue="1" />
+        </Constraint>
 
         <Constraint
             android:id="@+id/button_controller_left"
@@ -230,7 +240,12 @@
             android:layout_marginRight="12dp"
             app:layout_constraintBottom_toTopOf="@id/text_artist"
             app:layout_constraintLeft_toRightOf="@id/artwork"
-            app:layout_constraintRight_toRightOf="parent" />
+            app:layout_constraintRight_toRightOf="parent">
+
+            <CustomAttribute
+                app:attributeName="MaxLines"
+                app:customIntegerValue="2" />
+        </Constraint>
 
         <Constraint
             android:id="@id/text_artist"
@@ -238,7 +253,12 @@
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toTopOf="@id/button_controller_center"
             app:layout_constraintLeft_toLeftOf="@id/text_song"
-            app:layout_constraintRight_toRightOf="@id/text_song" />
+            app:layout_constraintRight_toRightOf="@id/text_song">
+
+            <CustomAttribute
+                app:attributeName="MaxLines"
+                app:customIntegerValue="2" />
+        </Constraint>
 
         <Constraint
             android:id="@id/button_controller_left"
