@@ -16,10 +16,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.ViewModelProviders
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.State
-import androidx.work.WorkManager
+import androidx.work.*
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ActivityMainBinding
@@ -27,6 +24,7 @@ import com.geckour.q.databinding.DialogAddQueuePlaylistBinding
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.domain.model.SearchItem
+import com.geckour.q.domain.model.Song
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
 import com.geckour.q.ui.easteregg.EasterEggFragment
@@ -213,6 +211,7 @@ class MainActivity : AppCompatActivity() {
 
         if (savedInstanceState == null) {
             retrieveMediaIfEmpty()
+            WorkManager.getInstance().observeMediaChange()
 
             val navId = when (PreferenceManager.getDefaultSharedPreferences(this)
                     .getPreferScreen()) {
@@ -308,7 +307,8 @@ class MainActivity : AppCompatActivity() {
         player = null
     }
 
-    @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
+    @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE)
     internal fun retrieveMedia() {
         WorkManager.getInstance().invokeRetrieveMediaWorker()
     }
@@ -324,6 +324,15 @@ class MainActivity : AppCompatActivity() {
         beginUniqueWork(MediaRetrieveWorker.WORK_NAME, ExistingWorkPolicy.KEEP,
                 OneTimeWorkRequestBuilder<MediaRetrieveWorker>().build()).enqueue()
         viewModel.syncing.value = true
+    }
+
+    private fun WorkManager.observeMediaChange() {
+        enqueue(OneTimeWorkRequestBuilder<MediaObserveWorker>().setConstraints(Constraints().apply {
+            requiredNetworkType = NetworkType.NOT_REQUIRED
+            contentUriTriggers = ContentUriTriggers().apply {
+                add(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, true)
+            }
+        }).build())
     }
 
     private fun WorkManager.monitorSyncState() {
@@ -349,7 +358,8 @@ class MainActivity : AppCompatActivity() {
         cancelUniqueWork(MediaRetrieveWorker.WORK_NAME)
     }
 
-    @OnPermissionDenied(Manifest.permission.READ_EXTERNAL_STORAGE)
+    @OnPermissionDenied(Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE)
     internal fun onReadExternalStorageDenied() {
         retrieveMediaWithPermissionCheck()
     }
@@ -446,43 +456,7 @@ class MainActivity : AppCompatActivity() {
         viewModel.songToDelete.observe(this) {
             if (it == null) return@observe
 
-            File(it.sourcePath).apply {
-                if (this.exists()) {
-                    player?.removeQueue(it.id)
-                    this.delete()
-                }
-            }
-            contentResolver.delete(
-                    MediaStore.Files.getContentUri("external"),
-                    "${MediaStore.Files.FileColumns.DATA}=?",
-                    arrayOf(it.sourcePath))
-
-            bgScope.launch {
-                val db = DB.getInstance(this@MainActivity)
-                val track = db.trackDao().get(it.id) ?: return@launch
-
-                player?.removeQueue(track.id)
-
-                var deleted = db.trackDao().delete(track.id) > 0
-                if (deleted)
-                    uiScope.launch {
-                        songListViewModel.songIdDeleted.value = track.id
-                    }
-                if (db.trackDao().findByAlbum(track.albumId).isEmpty()) {
-                    deleted = db.albumDao().delete(track.albumId) > 0
-                    if (deleted)
-                        uiScope.launch {
-                            albumListViewModel.albumIdDeleted.value = track.albumId
-                        }
-                }
-                if (db.trackDao().findByArtist(track.artistId).isEmpty()) {
-                    deleted = db.artistDao().delete(track.artistId) > 0
-                    if (deleted)
-                        uiScope.launch {
-                            artistListViewModel.artistIdDeleted.value = track.artistId
-                        }
-                }
-            }
+            deleteFromDeviceWithPermissionCheck(it)
         }
 
         viewModel.cancelSync.observe(this) {
@@ -756,5 +730,46 @@ class MainActivity : AppCompatActivity() {
         binding.coordinatorMain.contentSearch.root.visibility = View.GONE
         getSystemService(InputMethodManager::class.java)
                 .hideSoftInputFromWindow(currentFocus?.windowToken, 0)
+    }
+
+    @NeedsPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+    internal fun deleteFromDevice(song: Song) {
+        File(song.sourcePath).apply {
+            if (this.exists()) {
+                player?.removeQueue(song.id)
+                this.delete()
+            }
+        }
+        contentResolver.delete(
+                android.provider.MediaStore.Files.getContentUri("external"),
+                "${android.provider.MediaStore.Files.FileColumns.DATA}=?",
+                kotlin.arrayOf(song.sourcePath))
+
+        bgScope.launch {
+            val db = com.geckour.q.data.db.DB.getInstance(this@MainActivity)
+            val track = db.trackDao().get(song.id) ?: return@launch
+
+            player?.removeQueue(track.id)
+
+            var deleted = db.trackDao().delete(track.id) > 0
+            if (deleted)
+                uiScope.launch {
+                    songListViewModel.songIdDeleted.value = track.id
+                }
+            if (db.trackDao().findByAlbum(track.albumId).isEmpty()) {
+                deleted = db.albumDao().delete(track.albumId) > 0
+                if (deleted)
+                    uiScope.launch {
+                        albumListViewModel.albumIdDeleted.value = track.albumId
+                    }
+            }
+            if (db.trackDao().findByArtist(track.artistId).isEmpty()) {
+                deleted = db.artistDao().delete(track.artistId) > 0
+                if (deleted)
+                    uiScope.launch {
+                        artistListViewModel.artistIdDeleted.value = track.artistId
+                    }
+            }
+        }
     }
 }

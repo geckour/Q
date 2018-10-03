@@ -2,12 +2,15 @@ package com.geckour.q.util
 
 import android.app.Notification
 import android.app.PendingIntent
+import android.content.ContentUris
 import android.content.Context
+import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.drawable.Icon
 import android.media.MediaMetadata
+import android.media.MediaMetadataRetriever
 import android.media.session.MediaSession
 import android.net.Uri
 import android.os.Build
@@ -16,6 +19,7 @@ import com.bumptech.glide.Glide
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.dao.upsert
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Track
@@ -153,13 +157,13 @@ private fun List<Track>.getPlaylistThumb(context: Context): Deferred<Bitmap?> = 
 }
 
 fun DB.searchArtistByFuzzyTitle(title: String): Deferred<List<Artist>> =
-        GlobalScope.async { this@searchArtistByFuzzyTitle.artistDao().searchByTitle("%$title%") }
+        GlobalScope.async { this@searchArtistByFuzzyTitle.artistDao().findByTitle("%$title%") }
 
 fun DB.searchAlbumByFuzzyTitle(title: String): Deferred<List<Album>> =
-        GlobalScope.async { this@searchAlbumByFuzzyTitle.albumDao().searchByTitle("%$title%") }
+        GlobalScope.async { this@searchAlbumByFuzzyTitle.albumDao().findByTitle("%$title%") }
 
 fun DB.searchTrackByFuzzyTitle(title: String): Deferred<List<Track>> =
-        GlobalScope.async { this@searchTrackByFuzzyTitle.trackDao().searchByTitle("%$title%") }
+        GlobalScope.async { this@searchTrackByFuzzyTitle.trackDao().findByTitle("%$title%") }
 
 fun Context.searchPlaylistByFuzzyTitle(title: String): List<Playlist> =
         contentResolver.query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
@@ -395,3 +399,77 @@ fun Long.getTimeString(): String {
     val second = (this % 60000) / 1000
     return (if (hour > 0) String.format("%d:", hour) else "") + String.format("%02d:%02d", minute, second)
 }
+
+fun pushMedia(context: Context, db: DB, cursor: Cursor) {
+    val trackMediaId = cursor.getLong(
+            cursor.getColumnIndex(MediaStore.Audio.Media._ID))
+
+    val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackMediaId)
+
+    val trackPath = cursor.getString(
+            cursor.getColumnIndex(MediaStore.Audio.Media.DATA))
+
+    if (File(trackPath).exists().not()) {
+        context.contentResolver.delete(uri, null, null)
+        return
+    }
+
+    MediaMetadataRetriever().also { retriever ->
+        try {
+            retriever.setDataSource(context, uri)
+
+            val current = cursor.position
+            val total = cursor.count
+
+            val title = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.TITLE))
+            val duration = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DURATION))
+            val trackNum = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Media.TRACK))
+            val albumMediaId = cursor.getLong(
+                    cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID))
+            val albumTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM))
+            val artistMediaId = cursor.getLong(
+                    cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST_ID))
+            val artistTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST))
+            val artworkUriString = albumMediaId.getArtworkUriIfExist(context)?.toString()
+
+            val discNum = retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER)?.split("/")
+                    ?.first()?.toInt()
+            val albumArtistTitle = retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
+
+            val artistId = Artist(0, artistMediaId, artistTitle).upsert(db) ?: return@also
+            val albumArtistId =
+                    if (albumArtistTitle == null) null
+                    else Artist(0, null, albumArtistTitle).upsert(db)
+
+            val albumId = db.albumDao().getByMediaId(albumMediaId).let {
+                if (it == null || it.hasAlbumArtist.not()) {
+                    val album = Album(0, albumMediaId, albumTitle,
+                            albumArtistId ?: artistId,
+                            artworkUriString, albumArtistId != null)
+                    album.upsert(db)
+                } else it.id
+            }
+
+            val track = Track(0, trackMediaId, title, albumId, artistId, albumArtistId, duration,
+                    trackNum, discNum, trackPath)
+            track.upsert(db)
+            context.sendBroadcast(MainActivity.createProgressIntent(current to total))
+        } catch (t: Throwable) {
+            Timber.e(t)
+        }
+    }
+}
+
+private fun Long.getArtworkUriIfExist(context: Context): Uri? =
+        this.getArtworkUriFromMediaId().let { uri ->
+            context.contentResolver.query(uri,
+                    arrayOf(MediaStore.MediaColumns.DATA),
+                    null, null, null)?.use {
+                if (it.moveToFirst()
+                        && File(it.getString(it.getColumnIndex(MediaStore.MediaColumns.DATA))).exists())
+                    uri
+                else null
+            }
+        }

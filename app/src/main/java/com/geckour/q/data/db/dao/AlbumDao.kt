@@ -38,7 +38,7 @@ interface AlbumDao {
     fun findByArtistIdAsync(id: Long): LiveData<List<Album>>
 
     @Query("select * from album where title like :title")
-    fun searchByTitle(title: String): List<Album>
+    fun findByTitle(title: String): List<Album>
 }
 
 fun Album.upsert(db: DB): Long =
