@@ -142,6 +142,8 @@ class BottomSheetFragment : Fragment() {
             }
         }
 
+        binding.recyclerView.isNestedScrollingEnabled = false
+
         viewModel.touchLock.value = sharedPreferences
                 .getBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, false)
 
@@ -163,12 +165,6 @@ class BottomSheetFragment : Fragment() {
                         })
             }
         })
-
-        binding.touchBlockWall.setOnTouchListener { _, event ->
-            behavior.onTouchEvent(
-                    requireActivity().findViewById(R.id.coordinator_main), binding.sheet, event)
-            true
-        }
 
         viewModel.currentQueue.value = emptyList()
     }
@@ -220,10 +216,10 @@ class BottomSheetFragment : Fragment() {
                     }
                     val drawable = model?.let {
                         Glide.with(binding.artwork)
-                            .asDrawable()
-                            .load(it)
-                            .submit()
-                            .get()
+                                .asDrawable()
+                                .load(it)
+                                .submit()
+                                .get()
                     }
                     uiScope.launch { binding.artwork.setImageDrawable(drawable) }
                 }

@@ -241,6 +241,8 @@
             android:id="@+id/touch_block_wall"
             android:layout_width="0dp"
             android:layout_height="0dp"
+            android:clickable="true"
+            android:focusable="true"
             android:visibility="@{queueUnTouchable ? View.VISIBLE : View.GONE}" />
 
     </androidx.constraintlayout.motion.widget.MotionLayout>
