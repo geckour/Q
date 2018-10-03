@@ -46,8 +46,8 @@ repositories {
 
 dependencies {
     def support_ver = '1.0.0'
-    def aac_lifecycle_ver = '2.0.0-beta01'
-    def aac_room_ver = '2.0.0-beta01'
+    def aac_lifecycle_ver = '2.0.0'
+    def aac_room_ver = '2.0.0'
     def aac_work_ver = '1.0.0-alpha09'
     def coroutines_ver = '0.30.0'
     def permission_dispatcher_ver = '3.3.1'
