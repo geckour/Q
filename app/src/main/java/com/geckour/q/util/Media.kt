@@ -28,6 +28,7 @@ import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.service.PlayerService
 import com.geckour.q.service.PlayerService.Companion.NOTIFICATION_CHANNEL_ID_PLAYER
+import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.ui.MainActivity
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ads.AdsMediaSource
@@ -321,7 +322,7 @@ fun Song.getMediaMetadata(context: Context, albumTitle: String? = null): Deferre
 fun getNotification(context: Context, sessionToken: MediaSession.Token,
                     song: Song, albumTitle: String,
                     playWhenReady: Boolean): Deferred<Notification> =
-        async {
+        GlobalScope.async {
             val artwork = try {
                 Glide.with(context)
                         .asBitmap()
@@ -348,8 +349,8 @@ fun getNotification(context: Context, sessionToken: MediaSession.Token,
                             .setShowActionsInCompactView(0, 1, 2)
                             .setMediaSession(sessionToken))
                     .setContentIntent(PendingIntent.getActivity(context,
-                            App.REQUEST_CODE_OPEN_DEFAULT_ACTIVITY,
-                            MainActivity.createIntent(context),
+                            App.REQUEST_CODE_LAUNCH_APP,
+                            LauncherActivity.createIntent(context),
                             PendingIntent.FLAG_UPDATE_CURRENT))
                     .setActions(
                             Notification.Action.Builder(
