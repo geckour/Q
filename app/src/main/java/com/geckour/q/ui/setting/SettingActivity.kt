@@ -40,9 +40,8 @@ class SettingActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_setting)
-        binding.itemChooseScreen.apply {
-            viewModel = chooseLaunchScreenViewModel
-        }
+        binding.itemChooseScreen.viewModel = chooseLaunchScreenViewModel
+        binding.itemDucking.viewModel = duckingViewModel
         binding.itemLicense.viewModel = licenseViewModel
         binding.itemFormatPattern.viewModel = formatPatternViewModel
         binding.itemBundleArtwork.viewModel = bundleArtworkViewModel
@@ -102,6 +101,20 @@ class SettingActivity : AppCompatActivity() {
                 dialog.dismiss()
             }.show()
         })
+    }
+
+    private val duckingViewModel: SettingItemViewModel by lazy {
+        val state = sharedPreferences.ducking
+        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
+        SettingItemViewModel(getString(R.string.setting_item_title_ducking),
+                getString(R.string.setting_item_desc_ducking),
+                state.switchSummary, true, onSwitchClick = {
+            sharedPreferences.ducking = it
+            summary = it.switchSummary
+            binding.itemDucking.viewModel = this
+            if (binding.itemDucking.state.isChecked != it)
+                binding.itemDucking.state.isChecked = it
+        }).apply { switchState = state }
     }
 
     private val formatPatternViewModel: SettingItemViewModel by lazy {

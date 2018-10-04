@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:app="http://schemas.android.com/apk/res-auto">
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <data>
 
@@ -48,6 +48,10 @@
 
                 <include
                     android:id="@+id/item_choose_screen"
+                    layout="@layout/item_list_setting_item" />
+
+                <include
+                    android:id="@+id/item_ducking"
                     layout="@layout/item_list_setting_item" />
 
                 <include

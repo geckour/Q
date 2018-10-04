@@ -59,6 +59,10 @@ import kotlin.coroutines.experimental.CoroutineContext
 @RuntimePermissions
 class MainActivity : AppCompatActivity() {
 
+    enum class RequestCode(val code: Int) {
+        RESULT_SETTING(333)
+    }
+
     companion object {
         private const val ACTION_PROGRESS_SYNCING = "action_progress_syncing"
         private const val EXTRA_PROGRESS_SYNCING = "extra_progress_syncing"
@@ -131,7 +135,8 @@ class MainActivity : AppCompatActivity() {
             R.id.nav_genre -> GenreListFragment.newInstance()
             R.id.nav_playlist -> PlaylistListFragment.newInstance()
             R.id.nav_setting -> {
-                startActivity(SettingActivity.createIntent(this))
+                startActivityForResult(SettingActivity.createIntent(this),
+                        RequestCode.RESULT_SETTING.code)
                 null
             }
             R.id.nav_sync -> {
@@ -286,6 +291,22 @@ class MainActivity : AppCompatActivity() {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
         onRequestPermissionsResult(requestCode, grantResults)
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        when (requestCode) {
+            RequestCode.RESULT_SETTING.code -> {
+                val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
+                if (player?.getDuking() != sharedPreferences.ducking) {
+                    player?.pause()
+                    player?.onRequestedStopService()
+                    unbindPlayer()
+                    bindPlayer()
+                }
+            }
+        }
     }
 
     private fun bindPlayer() {

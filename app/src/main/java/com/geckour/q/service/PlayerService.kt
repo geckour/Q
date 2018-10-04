@@ -118,9 +118,11 @@ class PlayerService : Service() {
     }
 
     private val player: SimpleExoPlayer by lazy {
+        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
+        ducking = sharedPreferences.ducking
         ExoPlayerFactory.newSimpleInstance(this, DefaultTrackSelector()).apply {
             addListener(eventListener)
-            setAudioAttributes(AudioAttributes.Builder().build(), true)
+            setAudioAttributes(AudioAttributes.Builder().build(), ducking)
         }
     }
     private val currentPosition
@@ -200,6 +202,16 @@ class PlayerService : Service() {
         }
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
+            notificationUpdateJob.cancel()
+            notificationUpdateJob = bgScope.launch {
+                val song = currentSong ?: return@launch
+                val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId)?.title
+                        ?: UNKNOWN
+                getNotification(this@PlayerService, mediaSession.sessionToken,
+                        song, albumTitle, playWhenReady).await()
+                        .show(playWhenReady)
+                if (playWhenReady.not()) stopForeground(false)
+            }
             if (currentPosition == source.size - 1
                     && playbackState == Player.STATE_ENDED
                     && player.repeatMode == Player.REPEAT_MODE_OFF) {
@@ -242,6 +254,9 @@ class PlayerService : Service() {
     private var notificationUpdateJob = Job()
     private var notifyPlaybackRatioJob: Job? = null
     private var seekJob: Job? = null
+
+    private var ducking: Boolean = false
+    fun getDuking(): Boolean = ducking
 
     override fun onBind(intent: Intent?): IBinder? = binder
 
@@ -458,16 +473,6 @@ class PlayerService : Service() {
         if (player.playWhenReady.not()) {
             player.playWhenReady = true
             mediaSession.isActive = true
-            notificationUpdateJob.cancel()
-            notificationUpdateJob = bgScope.launch {
-                val song = currentSong ?: return@launch
-                val albumTitle =
-                        DB.getInstance(applicationContext).albumDao().get(song.albumId)?.title
-                                ?: UNKNOWN
-                getNotification(this@PlayerService, mediaSession.sessionToken,
-                        song, albumTitle, player.playWhenReady).await()
-                        .show(player.playWhenReady)
-            }
         }
     }
 
@@ -483,16 +488,6 @@ class PlayerService : Service() {
             } else {
                 abandonAudioFocus {}
             }
-        }
-        notificationUpdateJob.cancel()
-        notificationUpdateJob = bgScope.launch {
-            val song = currentSong ?: return@launch
-            val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId)?.title
-                    ?: UNKNOWN
-            getNotification(this@PlayerService, mediaSession.sessionToken,
-                    song, albumTitle, player.playWhenReady).await()
-                    .show(player.playWhenReady)
-            stopForeground(false)
         }
     }
 

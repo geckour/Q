@@ -116,6 +116,9 @@
     <string name="setting_item_title_screen_on_launch">Screen on launch</string>
     <string name="setting_item_desc_screen_on_launch">Select screen to show on launch</string>
 
+    <string name="setting_item_title_ducking">Enable ducking</string>
+    <string name="setting_item_desc_ducking">Enable duking on other app play sound</string>
+
     <string name="setting_category_title_misc">Misc</string>
 
     <string name="setting_item_title_license">License</string>

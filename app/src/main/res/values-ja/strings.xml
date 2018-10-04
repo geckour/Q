@@ -107,6 +107,9 @@
     <string name="setting_item_title_screen_on_launch">起動時の画面</string>
     <string name="setting_item_desc_screen_on_launch">起動時に表示する画面を選択する</string>
 
+    <string name="setting_item_title_ducking">割り込みの有効化</string>
+    <string name="setting_item_desc_ducking">他のアプリが音を鳴らした時の割り込みを有効にする</string>
+
     <string name="setting_category_title_misc">その他</string>
 
     <string name="setting_item_title_license">ライセンス</string>
