@@ -99,6 +99,7 @@ class PlayerService : Service() {
 
         override fun onMediaButtonEvent(mediaButtonIntent: Intent): Boolean {
             val keyCode = (mediaButtonIntent.extras?.get(Intent.EXTRA_KEY_EVENT) as? KeyEvent)?.keyCode
+            Timber.d("qgeck media button key code: $keyCode")
             return when (keyCode) {
                 KeyEvent.KEYCODE_MEDIA_PAUSE -> {
                     pause()
@@ -202,6 +203,17 @@ class PlayerService : Service() {
         }
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
+            val sessionState = when (playbackState) {
+                Player.STATE_READY -> {
+                    if (playWhenReady) PlaybackState.STATE_PLAYING
+                    else PlaybackState.STATE_PAUSED
+                }
+                else -> PlaybackState.STATE_PAUSED
+            }
+            mediaSession.setPlaybackState(PlaybackState.Builder()
+                    .setState(sessionState, player.currentPosition, 1f)
+                    .build())
+            if (playWhenReady) mediaSession.isActive = true
             notificationUpdateJob.cancel()
             notificationUpdateJob = bgScope.launch {
                 val song = currentSong ?: return@launch
@@ -472,7 +484,6 @@ class PlayerService : Service() {
 
         if (player.playWhenReady.not()) {
             player.playWhenReady = true
-            mediaSession.isActive = true
         }
     }
 
