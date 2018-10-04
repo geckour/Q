@@ -1,7 +1,10 @@
 package com.geckour.q.domain.model
 
+import android.os.Parcelable
 import com.geckour.q.util.getTimeString
+import kotlinx.android.parcel.Parcelize
 
+@Parcelize
 data class Song(
         val id: Long,
         val mediaId: Long,
@@ -16,6 +19,6 @@ data class Song(
         val playlistId: Long?,
         val sourcePath: String,
         val nowPlaying: Boolean = false
-) {
+) : Parcelable {
     val durationString: String get() = duration.getTimeString()
 }

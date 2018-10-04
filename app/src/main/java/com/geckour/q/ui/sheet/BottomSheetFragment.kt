@@ -23,6 +23,7 @@ import com.geckour.q.databinding.FragmentSheetBottomBinding
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.ui.MainActivity
 import com.geckour.q.ui.MainViewModel
+import com.geckour.q.ui.share.SharingActivity
 import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.observe
@@ -33,6 +34,7 @@ import kotlinx.coroutines.experimental.Dispatchers
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.Main
 import kotlinx.coroutines.experimental.launch
+import timber.log.Timber
 import kotlin.coroutines.experimental.CoroutineContext
 
 class BottomSheetFragment : Fragment() {
@@ -310,6 +312,11 @@ class BottomSheetFragment : Fragment() {
                     .putBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, it)
                     .apply()
             binding.queueUnTouchable = it
+        }
+
+        viewModel.share.observe(this) {
+            if (it == null) return@observe
+            startActivity(SharingActivity.getIntent(requireContext(), it))
         }
     }
 

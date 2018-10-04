@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest package="com.geckour.q"
-          xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.geckour.q">
 
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -27,6 +27,12 @@
         <activity android:name=".ui.setting.SettingActivity" />
 
         <activity android:name=".ui.license.LicenseActivity" />
+
+        <activity
+            android:name=".ui.share.SharingActivity"
+            android:launchMode="singleTask"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.NoDisplay" />
 
         <service android:name=".service.PlayerService" />
 

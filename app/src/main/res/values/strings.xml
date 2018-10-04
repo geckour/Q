@@ -94,6 +94,10 @@
     <string name="payment_save_success">Succeeded</string>
     <string name="payment_save_failure">Failure to save</string>
 
+
+    <string name="share_chooser_title">Choose destination to share…</string>
+
+
     <string name="easter_egg_title">Today\'s song</string>
 
 
@@ -104,6 +108,9 @@
     <string name="search_category_genre">Genre</string>
 
 
+    <string name="setting_switch_on" translatable="false">ON</string>
+    <string name="setting_switch_off" translatable="false">OFF</string>
+
     <string name="setting_category_title_general">General</string>
 
     <string name="setting_item_title_screen_on_launch">Screen on launch</string>
@@ -113,6 +120,20 @@
 
     <string name="setting_item_title_license">License</string>
     <string name="setting_item_desc_license">Show OSS Licenses</string>
+
+    <string name="setting_category_title_share">Share</string>
+
+    <string name="setting_item_title_format_pattern">Specify format</string>
+    <string name="setting_item_desc_format_pattern">Specify sharing text\'s format pattern</string>
+
+    <string name="setting_item_title_bundle_artwork">Bundle artwork</string>
+    <string name="setting_item_desc_bundle_artwork">Bundle artwork on share</string>
+
+    <string name="setting_default_sharing_text_pattern" translatable="false">#NowPlaying TI - AR (AL)</string>
+
+    <string name="setting_dialog_title_pattern_format">Enter format</string>
+    <string name="setting_dialog_message_pattern_format">Enter sharing text format pattern</string>
+    <string name="setting_dialog_hint_pattern_format">ex: #NowPlaying TI - AR (AL)</string>
 
 
     <string name="license_name_coroutines" translatable="false">Kotlin Coroutines</string>

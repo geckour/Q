@@ -51,6 +51,19 @@
                     layout="@layout/item_list_setting_item" />
 
                 <include
+                    android:id="@+id/category_share"
+                    layout="@layout/item_list_setting_category"
+                    android:title="@{@string/setting_category_title_share}" />
+
+                <include
+                    android:id="@+id/item_format_pattern"
+                    layout="@layout/item_list_setting_item" />
+
+                <include
+                    android:id="@+id/item_bundle_artwork"
+                    layout="@layout/item_list_setting_item" />
+
+                <include
                     android:id="@+id/category_misc"
                     layout="@layout/item_list_setting_category"
                     android:title="@{@string/setting_category_title_misc}" />

@@ -1,7 +1,7 @@
 <resources>
 
     <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar">
+    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar.Bridge">
         <!-- Customize your theme here. -->
         <item name="android:textColorPrimary">@color/colorTextPrimary</item>
         <item name="android:textColorSecondary">@color/colorTextSecondary</item>
@@ -23,10 +23,5 @@
     <style name="ToolbarStyle.Popup" parent="AppTheme">
         <!-- text -->
         <item name="android:textColorPrimary">@color/colorTextPrimary</item>
-    </style>
-
-    <style name="DialogStyle" parent="Theme.MaterialComponents.Light.Dialog.Alert">
-        <item name="android:colorAccent">@color/colorAccent</item>
-        <item name="android:textColorPrimary">@color/colorTextSecondary</item>
     </style>
 </resources>

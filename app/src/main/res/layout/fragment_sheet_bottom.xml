@@ -135,7 +135,7 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> viewModel.onClickShareButton()}"
+            android:onClick="@{() -> isQueueNotEmpty ? viewModel.onClickShareButton() : null}"
             android:padding="6dp"
             android:src="@drawable/ic_share"
             android:tint="@{isQueueNotEmpty ? @color/colorAccent : @color/colorTintInactive}"

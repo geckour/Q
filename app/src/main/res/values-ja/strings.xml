@@ -88,6 +88,10 @@
     <string name="payment_save_success">保存しました</string>
     <string name="payment_save_failure">エラー: 保存できませんでした</string>
 
+
+    <string name="share_chooser_title">共有先を選択…</string>
+
+
     <string name="easter_egg_title">今日の一曲</string>
 
 
@@ -99,9 +103,24 @@
 
 
     <string name="setting_category_title_general">一般</string>
+
     <string name="setting_item_title_screen_on_launch">起動時の画面</string>
     <string name="setting_item_desc_screen_on_launch">起動時に表示する画面を選択する</string>
+
     <string name="setting_category_title_misc">その他</string>
+
     <string name="setting_item_title_license">ライセンス</string>
     <string name="setting_item_desc_license">OSSライセンスを表示する</string>
+
+    <string name="setting_category_title_share">共有</string>
+
+    <string name="setting_item_title_format_pattern">フォーマットを指定</string>
+    <string name="setting_item_desc_format_pattern">共有文のフォーマットを指定する</string>
+
+    <string name="setting_item_title_bundle_artwork">アートワークの添付</string>
+    <string name="setting_item_desc_bundle_artwork">共有時にアートワークを添付する</string>
+
+    <string name="setting_dialog_title_pattern_format">フォーマットを入力</string>
+    <string name="setting_dialog_message_pattern_format">共有文のフォーマットを入力してください</string>
+    <string name="setting_dialog_hint_pattern_format">例: #NowPlaying TI - AR (AL)</string>
 </resources>

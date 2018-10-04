@@ -213,8 +213,7 @@ class MainActivity : AppCompatActivity() {
             retrieveMediaIfEmpty()
             WorkManager.getInstance().observeMediaChange()
 
-            val navId = when (PreferenceManager.getDefaultSharedPreferences(this)
-                    .getPreferScreen()) {
+            val navId = when (PreferenceManager.getDefaultSharedPreferences(this).preferScreen) {
                 Screen.ARTIST -> R.id.nav_artist
                 Screen.ALBUM -> R.id.nav_album
                 Screen.SONG -> R.id.nav_song
@@ -533,7 +532,7 @@ class MainActivity : AppCompatActivity() {
             uiScope.launch {
                 val playlists = fetchPlaylists(this@MainActivity).await()
                 val binding = DialogAddQueuePlaylistBinding.inflate(layoutInflater)
-                val dialog = AlertDialog.Builder(this@MainActivity, R.style.DialogStyle)
+                val dialog = AlertDialog.Builder(this@MainActivity)
                         .setTitle(R.string.dialog_title_add_queue_to_playlist)
                         .setMessage(R.string.dialog_desc_add_queue_to_playlist)
                         .setView(binding.root)
