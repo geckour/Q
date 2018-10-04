@@ -38,6 +38,10 @@ android {
         experimental = true
     }
     dataBinding.enabled = true
+    compileOptions {
+        sourceCompatibility 1.8
+        targetCompatibility 1.8
+    }
 }
 
 repositories {
@@ -53,7 +57,7 @@ dependencies {
     def permission_dispatcher_ver = '3.3.1'
     def stetho_ver = '1.5.0'
     def glide_ver = '4.7.1'
-    def exo_ver = '2.8.4'
+    def exo_ver = '2.9.0'
     def exo_ext_ver = '2.7.0-1'
 
     implementation fileTree(include: ['*.jar'], dir: 'libs')

@@ -19,6 +19,7 @@ import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.Song
 import com.geckour.q.util.*
 import com.google.android.exoplayer2.*
+import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource
 import com.google.android.exoplayer2.source.ExtractorMediaSource
@@ -119,6 +120,7 @@ class PlayerService : Service() {
     private val player: SimpleExoPlayer by lazy {
         ExoPlayerFactory.newSimpleInstance(this, DefaultTrackSelector()).apply {
             addListener(eventListener)
+            setAudioAttributes(AudioAttributes.Builder().build(), true)
         }
     }
     private val currentPosition
