@@ -46,7 +46,7 @@
             android:layout_marginRight="12dp"
             app:layout_constraintBottom_toTopOf="@id/button_controller_center"
             app:layout_constraintLeft_toRightOf="@id/artwork"
-            app:layout_constraintRight_toLeftOf="@id/button_toggle_visible_queue">
+            app:layout_constraintRight_toLeftOf="@id/button_share">
 
             <CustomAttribute
                 app:attributeName="MaxLines"
