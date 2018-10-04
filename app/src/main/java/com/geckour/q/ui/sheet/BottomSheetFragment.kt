@@ -215,7 +215,7 @@ class BottomSheetFragment : Fragment() {
                                 .getArtworkUriStringFromId(it).await() ?: R.drawable.ic_empty
                     }
                     val drawable = model?.let {
-                        Glide.with(binding.artwork)
+                        Glide.with(requireContext())
                                 .asDrawable()
                                 .load(it)
                                 .submit()
