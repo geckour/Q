@@ -12,6 +12,7 @@ import android.view.ViewGroup
 import android.widget.SeekBar
 import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.ColorUtils
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -29,11 +30,8 @@ import com.geckour.q.util.getTimeString
 import com.geckour.q.util.observe
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
-import kotlinx.coroutines.experimental.CoroutineScope
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.Job
+import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.Main
-import kotlinx.coroutines.experimental.launch
 import kotlin.coroutines.experimental.CoroutineContext
 
 class BottomSheetFragment : Fragment() {
@@ -207,6 +205,18 @@ class BottomSheetFragment : Fragment() {
                 context?.getString(R.string.bottom_sheet_time_total, it.getTimeString())
             }
             viewModel.currentPosition.value = if (state) viewModel.currentPosition.value else 0
+            if (behavior.state == BottomSheetBehavior.STATE_COLLAPSED) {
+                uiScope.launch {
+                    var direction = 1
+                    var count = 0
+                    while (count++ < 4) {
+                        binding.buttonToggleVisibleQueue.rotation = 20f * direction
+                        direction *= -1
+                        delay(80)
+                    }
+                    binding.buttonToggleVisibleQueue.rotation = 0f
+                }
+            }
             mainViewModel.loading.value = false
         }
 
