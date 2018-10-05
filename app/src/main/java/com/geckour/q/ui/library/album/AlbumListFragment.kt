@@ -184,7 +184,11 @@ class AlbumListFragment : Fragment() {
     }
 
     private fun fetchAlbums(db: DB): Deferred<List<Album>> =
-            bgScope.async { db.albumDao().getAll().getAlbumList(db).await() }
+            bgScope.async {
+                (artist?.let { db.albumDao().findByArtistId(it.id) }
+                        ?: db.albumDao().getAll())
+                        .getAlbumList(db).await()
+            }
 
     private fun upsertAlbumListIfPossible(db: DB) {
         uiScope.launch {
