@@ -10,7 +10,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
-import androidx.constraintlayout.widget.ConstraintLayout
+import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
@@ -34,7 +34,6 @@ import kotlinx.coroutines.experimental.Dispatchers
 import kotlinx.coroutines.experimental.Job
 import kotlinx.coroutines.experimental.android.Main
 import kotlinx.coroutines.experimental.launch
-import timber.log.Timber
 import kotlin.coroutines.experimental.CoroutineContext
 
 class BottomSheetFragment : Fragment() {
@@ -52,7 +51,7 @@ class BottomSheetFragment : Fragment() {
     }
     private lateinit var binding: FragmentSheetBottomBinding
     private lateinit var adapter: QueueListAdapter
-    private lateinit var behavior: BottomSheetBehavior<ConstraintLayout>
+    private lateinit var behavior: BottomSheetBehavior<MotionLayout>
 
     private var parentJob = Job()
     private val uiScope = object : CoroutineScope {
@@ -165,6 +164,12 @@ class BottomSheetFragment : Fragment() {
                         })
             }
         })
+
+        binding.touchBlockWall.setOnTouchListener { _, event ->
+            behavior.onTouchEvent(
+                    requireActivity().findViewById(R.id.coordinator_main), binding.sheet, event)
+            true
+        }
 
         viewModel.currentQueue.value = emptyList()
     }
