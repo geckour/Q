@@ -203,26 +203,34 @@ class PlayerService : Service() {
         }
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
-            val sessionState = when (playbackState) {
+            val sessionPlaybackState = when (playbackState) {
+                Player.STATE_BUFFERING -> PlaybackState.STATE_BUFFERING
+                Player.STATE_ENDED -> PlaybackState.STATE_STOPPED
+                Player.STATE_IDLE -> PlaybackState.STATE_NONE
                 Player.STATE_READY -> {
                     if (playWhenReady) PlaybackState.STATE_PLAYING
                     else PlaybackState.STATE_PAUSED
                 }
-                else -> PlaybackState.STATE_PAUSED
+                else -> PlaybackState.STATE_ERROR
             }
+
             mediaSession.setPlaybackState(PlaybackState.Builder()
-                    .setState(sessionState, player.currentPosition, 1f)
+                    .setState(sessionPlaybackState, player.currentPosition, 1f)
                     .build())
-            if (playWhenReady) mediaSession.isActive = true
-            notificationUpdateJob.cancel()
-            notificationUpdateJob = bgScope.launch {
-                val song = currentSong ?: return@launch
-                val albumTitle = DB.getInstance(applicationContext).albumDao().get(song.albumId)?.title
-                        ?: UNKNOWN
-                getNotification(this@PlayerService, mediaSession.sessionToken,
-                        song, albumTitle, playWhenReady).await()
-                        .show(playWhenReady)
-                if (playWhenReady.not()) stopForeground(false)
+            if (playbackState == Player.STATE_READY) {
+                mediaSession.isActive = true
+
+                notificationUpdateJob.cancel()
+                notificationUpdateJob = bgScope.launch {
+                    val song = currentSong ?: return@launch
+                    val albumTitle = DB.getInstance(applicationContext).albumDao()
+                            .get(song.albumId)?.title ?: UNKNOWN
+                    getNotification(this@PlayerService,
+                            mediaSession.sessionToken, song, albumTitle, playWhenReady)
+                            .await()
+                            .show(playWhenReady)
+                    if (playWhenReady.not()) stopForeground(false)
+                }
             }
             if (currentPosition == source.size - 1
                     && playbackState == Player.STATE_ENDED
@@ -230,6 +238,7 @@ class PlayerService : Service() {
                 pause()
                 seekToHead()
             }
+
             onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
         }
     }
