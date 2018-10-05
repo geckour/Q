@@ -136,6 +136,7 @@ class PlayerService : Service() {
             in queue.indices -> queue[currentPosition]
             else -> null
         }
+    private var playing = false
 
     private val queue: ArrayList<Song> = ArrayList()
     private var onQueueChanged: ((List<Song>) -> Unit)? = null
@@ -217,7 +218,7 @@ class PlayerService : Service() {
             mediaSession.setPlaybackState(PlaybackState.Builder()
                     .setState(sessionPlaybackState, player.currentPosition, 1f)
                     .build())
-            if (playbackState == Player.STATE_READY) {
+            if (playbackState == Player.STATE_READY && playWhenReady != playing) {
                 mediaSession.isActive = true
 
                 notificationUpdateJob.cancel()
@@ -240,6 +241,7 @@ class PlayerService : Service() {
             }
 
             onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
+            playing = playbackState == Player.STATE_READY && playWhenReady
         }
     }
 
