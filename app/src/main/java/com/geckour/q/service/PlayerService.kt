@@ -18,6 +18,7 @@ import android.view.KeyEvent
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.Song
+import com.geckour.q.ui.equalizer.EqualizerActivity
 import com.geckour.q.util.*
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
@@ -58,8 +59,6 @@ class PlayerService : Service() {
         private const val SOURCE_ACTION_WIRED_STATE = Intent.ACTION_HEADSET_PLUG
         private const val SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE =
                 BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED
-
-        var equalizer: Equalizer? = null
     }
 
     private val binder = PlayerBinder()
@@ -148,6 +147,8 @@ class PlayerService : Service() {
             else -> null
         }
     private var playing = false
+
+    private var equalizer: Equalizer? = null
 
     private val queue: ArrayList<Song> = ArrayList()
     private var onQueueChanged: ((List<Song>) -> Unit)? = null
@@ -729,6 +730,11 @@ class PlayerService : Service() {
             equalizer?.enabled = false
             equalizer = null
         }
+
+        sendBroadcast(Intent().apply {
+            action = EqualizerActivity.ACTION_EQUALIZER_STATE
+            putExtra(EqualizerActivity.EXTRA_KEY_EQUALIZER_ENABLED, equalizer?.enabled ?: false)
+        })
     }
 
     private fun reflectEqualizerSettings() {

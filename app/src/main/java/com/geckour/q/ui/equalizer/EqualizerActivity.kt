@@ -1,8 +1,6 @@
 package com.geckour.q.ui.equalizer
 
-import android.content.Context
-import android.content.Intent
-import android.content.SharedPreferences
+import android.content.*
 import android.os.Bundle
 import android.preference.PreferenceManager
 import android.widget.SeekBar
@@ -16,10 +14,13 @@ import com.geckour.q.databinding.ItemEqualizerSeekBarBinding
 import com.geckour.q.service.PlayerService
 import com.geckour.q.util.*
 import com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBar
+import timber.log.Timber
 
 class EqualizerActivity : AppCompatActivity() {
 
     companion object {
+        const val ACTION_EQUALIZER_STATE = "action_equalizer_state"
+        const val EXTRA_KEY_EQUALIZER_ENABLED = "extra_key_equalizer_enabled"
         fun createIntent(context: Context): Intent =
                 Intent(context, EqualizerActivity::class.java)
     }
@@ -32,13 +33,22 @@ class EqualizerActivity : AppCompatActivity() {
         PreferenceManager.getDefaultSharedPreferences(this)
     }
 
+    private var changeEnabledTo: Boolean? = null
+
+    private val equalizerStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val enabled = intent.getBooleanExtra(EXTRA_KEY_EQUALIZER_ENABLED, false)
+            onReceiveEnabled(enabled)
+        }
+    }
+
+    private var initialSettingState: Boolean = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val enabled = sharedPreferences.equalizerEnabled && PlayerService.equalizer != null
-        sharedPreferences.equalizerEnabled = enabled
-
-        viewModel.enabled = enabled
+        initialSettingState = sharedPreferences.equalizerEnabled
+        if (initialSettingState) sendCommand(SettingCommand.SET_EQUALIZER)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_equalizer)
         binding.viewModel = viewModel
 
@@ -47,26 +57,43 @@ class EqualizerActivity : AppCompatActivity() {
         observeEvents()
     }
 
+    override fun onStart() {
+        super.onStart()
+        registerReceiver(equalizerStateReceiver, IntentFilter().apply {
+            addAction(ACTION_EQUALIZER_STATE)
+        })
+    }
+
+    override fun onStop() {
+        super.onStop()
+        unregisterReceiver(equalizerStateReceiver)
+        if (initialSettingState.not())
+            sharedPreferences.equalizerEnabled = viewModel.enabled
+    }
+
     private fun observeEvents() {
         viewModel.toggleEnabled.observe(this) {
             val changeTo = viewModel.enabled.not()
+            sharedPreferences.equalizerEnabled = changeTo
+            changeEnabledTo = changeTo
             sendCommand(
                     if (changeTo) SettingCommand.SET_EQUALIZER
                     else SettingCommand.UNSET_EQUALIZER)
-            val enabled = changeTo && PlayerService.equalizer != null
-
-            if (changeTo && enabled.not())
-                Toast.makeText(this,
-                        R.string.equalizer_message_error_turn_on, Toast.LENGTH_LONG).show()
-
-            if (viewModel.enabled != enabled) {
-                viewModel.enabled = enabled
-                binding.viewModel = viewModel
-                sharedPreferences.equalizerEnabled = enabled
-            }
         }
 
         viewModel.flatten.observe(this) { flatten() }
+    }
+
+    private fun onReceiveEnabled(enabled: Boolean) {
+        if (changeEnabledTo == true && enabled.not())
+            Toast.makeText(this,
+                    R.string.equalizer_message_error_turn_on, Toast.LENGTH_LONG).show()
+
+        if (viewModel.enabled != enabled) {
+            viewModel.enabled = enabled
+            binding.viewModel = viewModel
+        }
+        changeEnabledTo = null
     }
 
     private fun inflateSeekBars() {

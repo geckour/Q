@@ -73,6 +73,6 @@ var SharedPreferences.equalizerSettings: EqualizerSettings?
 fun SharedPreferences.setEqualizerLevel(bandNum: Int, level: Int) {
     equalizerSettings?.apply {
         this@setEqualizerLevel.equalizerSettings =
-                EqualizerSettings(levels.toMutableList().apply { this[bandNum] = level }.apply { Timber.d("qgeck new level list: $this") })
+                EqualizerSettings(levels.toMutableList().apply { this[bandNum] = level })
     }
 }
