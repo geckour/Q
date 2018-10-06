@@ -674,7 +674,6 @@ class PlayerService : Service() {
         if (player.playWhenReady.not()) {
             PreferenceManager.getDefaultSharedPreferences(this).storeState()
 
-            clear()
             stopSelf()
         }
     }
