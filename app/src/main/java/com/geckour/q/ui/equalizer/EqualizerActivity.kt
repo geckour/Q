@@ -6,6 +6,7 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import android.preference.PreferenceManager
 import android.widget.SeekBar
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.ViewModelProviders
@@ -33,7 +34,11 @@ class EqualizerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        viewModel.enabled.value = sharedPreferences.equalizerEnabled
+
+        val enabled = sharedPreferences.equalizerEnabled && PlayerService.equalizer != null
+        sharedPreferences.equalizerEnabled = enabled
+
+        viewModel.enabled = enabled
         binding = DataBindingUtil.setContentView(this, R.layout.activity_equalizer)
         binding.viewModel = viewModel
 
@@ -43,19 +48,25 @@ class EqualizerActivity : AppCompatActivity() {
     }
 
     private fun observeEvents() {
-        viewModel.enabled.observe(this) {
-            if (it == null) return@observe
-            sharedPreferences.equalizerEnabled = it
+        viewModel.toggleEnabled.observe(this) {
+            val changeTo = viewModel.enabled.not()
             sendCommand(
-                    if (it) SettingCommand.SET_EQUALIZER
+                    if (changeTo) SettingCommand.SET_EQUALIZER
                     else SettingCommand.UNSET_EQUALIZER)
+            val enabled = changeTo && PlayerService.equalizer != null
+
+            if (changeTo && enabled.not())
+                Toast.makeText(this,
+                        R.string.equalizer_message_error_turn_on, Toast.LENGTH_LONG).show()
+
+            if (viewModel.enabled != enabled) {
+                viewModel.enabled = enabled
+                binding.viewModel = viewModel
+                sharedPreferences.equalizerEnabled = enabled
+            }
         }
 
         viewModel.flatten.observe(this) { flatten() }
-
-        viewModel.requireRebindSelf.observe(this) {
-            binding.viewModel = binding.viewModel
-        }
     }
 
     private fun inflateSeekBars() {

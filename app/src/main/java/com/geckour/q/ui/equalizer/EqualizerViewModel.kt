@@ -6,8 +6,8 @@ import com.geckour.q.util.SingleLiveEvent
 class EqualizerViewModel : ViewModel() {
 
     internal val flatten: SingleLiveEvent<Unit> = SingleLiveEvent()
-    internal val requireRebindSelf: SingleLiveEvent<Unit> = SingleLiveEvent()
-    var enabled: SingleLiveEvent<Boolean> = SingleLiveEvent()
+    internal val toggleEnabled: SingleLiveEvent<Unit> = SingleLiveEvent()
+    var enabled: Boolean = false
 
     fun onToolbarClick() {
     }
@@ -17,7 +17,6 @@ class EqualizerViewModel : ViewModel() {
     }
 
     fun onToggleEnabled() {
-        enabled.value = enabled.value?.not()
-        requireRebindSelf.call()
+        toggleEnabled.call()
     }
 }

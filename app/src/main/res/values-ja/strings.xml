@@ -131,4 +131,5 @@
 
 
     <string name="equalizer_flatten">リセット</string>
+    <string name="equalizer_message_error_turn_on">エラー: 一度曲を再生してから再度お試しください</string>
 </resources>

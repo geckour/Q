@@ -143,6 +143,7 @@
 
     <string name="equalizer_flatten">Flatten</string>
     <string name="equalizer_seek_bar_label" translatable="false">%1$sHz</string>
+    <string name="equalizer_message_error_turn_on">Error: Please play music at once</string>
 
 
     <string name="license_name_coroutines" translatable="false">Kotlin Coroutines</string>

@@ -58,6 +58,8 @@ class PlayerService : Service() {
         private const val SOURCE_ACTION_WIRED_STATE = Intent.ACTION_HEADSET_PLUG
         private const val SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE =
                 BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED
+
+        var equalizer: Equalizer? = null
     }
 
     private val binder = PlayerBinder()
@@ -146,7 +148,6 @@ class PlayerService : Service() {
             else -> null
         }
     private var playing = false
-    private var equalizer: Equalizer? = null
 
     private val queue: ArrayList<Song> = ArrayList()
     private var onQueueChanged: ((List<Song>) -> Unit)? = null
@@ -343,6 +344,7 @@ class PlayerService : Service() {
 
         unregisterReceiver(headsetStateReceiver)
         parentJob.cancel()
+        equalizer = null
         player.stop(true)
         player.release()
         onDestroyed?.invoke()
@@ -363,10 +365,11 @@ class PlayerService : Service() {
 
     private fun onSettingAction(intent: Intent) {
         if (intent.hasExtra(ARGS_KEY_SETTING_COMMAND)) {
-            val key = intent.extras?.getInt(ARGS_KEY_SETTING_COMMAND, -1).apply { Timber.d("qgeck setting action key: $this") } ?: return
+            val key = intent.extras?.getInt(ARGS_KEY_SETTING_COMMAND, -1) ?: return
             val command = SettingCommand.values()[key]
             when (command) {
-                SettingCommand.SET_EQUALIZER -> setEqualizer(player.audioSessionId)
+                SettingCommand.SET_EQUALIZER ->
+                    player.audioSessionId.apply { setEqualizer(if (this != 0) this else null) }
                 SettingCommand.UNSET_EQUALIZER -> setEqualizer(null)
                 SettingCommand.REFLECT_EQUALIZER_SETTING -> reflectEqualizerSettings()
             }
@@ -701,7 +704,7 @@ class PlayerService : Service() {
     private fun setEqualizer(audioSessionId: Int?) {
         if (audioSessionId != null) {
             if (equalizer == null) {
-                equalizer = Equalizer(0, audioSessionId).apply {
+                equalizer = Equalizer(0, audioSessionId.apply { Timber.d("qgeck audio session id: $this") }).apply {
                     val params = EqualizerParams(
                             bandLevelRange.let { Pair(it.first().toInt(), it.last().toInt()) },
                             (0 until numberOfBands).map {
