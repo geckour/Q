@@ -28,6 +28,7 @@ import com.geckour.q.domain.model.Song
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
 import com.geckour.q.ui.easteregg.EasterEggFragment
+import com.geckour.q.ui.equalizer.EqualizerActivity
 import com.geckour.q.ui.library.album.AlbumListFragment
 import com.geckour.q.ui.library.album.AlbumListViewModel
 import com.geckour.q.ui.library.artist.ArtistListFragment
@@ -137,6 +138,10 @@ class MainActivity : AppCompatActivity() {
             R.id.nav_setting -> {
                 startActivityForResult(SettingActivity.createIntent(this),
                         RequestCode.RESULT_SETTING.code)
+                null
+            }
+            R.id.nav_equalizer -> {
+                startActivity(EqualizerActivity.createIntent(this))
                 null
             }
             R.id.nav_sync -> {
@@ -299,12 +304,8 @@ class MainActivity : AppCompatActivity() {
         when (requestCode) {
             RequestCode.RESULT_SETTING.code -> {
                 val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
-                if (player?.getDuking() != sharedPreferences.ducking) {
-                    player?.pause()
-                    player?.onRequestedStopService()
-                    unbindPlayer()
-                    bindPlayer()
-                }
+                if (player?.getDuking() != sharedPreferences.ducking)
+                    rebootPlayer()
             }
         }
     }
@@ -325,6 +326,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun onDestroyPlayer() {
         player = null
+    }
+
+    private fun rebootPlayer() {
+        player?.pause()
+        unbindPlayer()
+        player?.onRequestedStopService()
+        startService(PlayerService.createIntent(this))
+        bindPlayer()
     }
 
     @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE,

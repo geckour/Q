@@ -31,6 +31,10 @@
                 android:icon="@drawable/ic_setting"
                 android:title="@string/nav_setting" />
             <item
+                android:id="@+id/nav_equalizer"
+                android:icon="@drawable/ic_spectrum"
+                android:title="@string/nav_equalizer" />
+            <item
                 android:id="@+id/nav_sync"
                 android:icon="@drawable/ic_sync"
                 android:title="@string/nav_sync" />

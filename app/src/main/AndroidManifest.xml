@@ -34,6 +34,8 @@
 
         <activity android:name=".ui.license.LicenseActivity" />
 
+        <activity android:name=".ui.equalizer.EqualizerActivity" />
+
         <activity
             android:name=".ui.share.SharingActivity"
             android:launchMode="singleTask"

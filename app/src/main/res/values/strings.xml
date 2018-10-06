@@ -2,6 +2,7 @@
     <string name="app_name" translatable="false">Q</string>
     <string name="title_activity_main" translatable="false">Q</string>
     <string name="title_activity_setting">Settings</string>
+    <string name="title_activity_equalizer">Equalizer</string>
     <string name="title_activity_license">OSS Licenses</string>
 
 
@@ -37,6 +38,7 @@
     <string name="nav_genre">Genres</string>
     <string name="nav_playlist">Playlist</string>
     <string name="nav_setting">Settings</string>
+    <string name="nav_equalizer">Equalizer</string>
     <string name="nav_sync">Sync library</string>
     <string name="nav_pay">Donate</string>
     <string name="nav_fortune">Fortune</string>
@@ -137,6 +139,10 @@
     <string name="setting_dialog_title_pattern_format">Enter format</string>
     <string name="setting_dialog_message_pattern_format">Enter sharing text format pattern</string>
     <string name="setting_dialog_hint_pattern_format">ex: #NowPlaying TI - AR (AL)</string>
+
+
+    <string name="equalizer_flatten">Flatten</string>
+    <string name="equalizer_seek_bar_label" translatable="false">%1$sHz</string>
 
 
     <string name="license_name_coroutines" translatable="false">Kotlin Coroutines</string>

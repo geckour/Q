@@ -68,6 +68,12 @@ enum class NotificationCommand {
     DESTROY
 }
 
+enum class SettingCommand {
+    SET_EQUALIZER,
+    UNSET_EQUALIZER,
+    REFLECT_EQUALIZER_SETTING
+}
+
 data class QueueMetadata(
         val actionType: InsertActionType,
         val classType: OrientedClassType

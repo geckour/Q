@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothHeadset
 import android.content.*
 import android.media.AudioFocusRequest
 import android.media.AudioManager
+import android.media.audiofx.Equalizer
 import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Binder
@@ -20,6 +21,7 @@ import com.geckour.q.domain.model.Song
 import com.geckour.q.util.*
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
+import com.google.android.exoplayer2.audio.AudioListener
 import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource
 import com.google.android.exoplayer2.source.ExtractorMediaSource
@@ -49,6 +51,7 @@ class PlayerService : Service() {
         private const val NOTIFICATION_ID_PLAYER = 320
 
         const val ARGS_KEY_CONTROL_COMMAND = "args_key_control_command"
+        const val ARGS_KEY_SETTING_COMMAND = "args_key_setting_command"
 
         const val PREF_KEY_PLAYER_STATE = "pref_key_player_state"
 
@@ -119,9 +122,15 @@ class PlayerService : Service() {
     }
 
     private val player: SimpleExoPlayer by lazy {
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
         ducking = sharedPreferences.ducking
         ExoPlayerFactory.newSimpleInstance(this, DefaultTrackSelector()).apply {
+            addAudioListener(object : AudioListener {
+                override fun onAudioSessionId(audioSessionId: Int) {
+                    super.onAudioSessionId(audioSessionId)
+
+                    setEqualizer(audioSessionId)
+                }
+            })
             addListener(eventListener)
             setAudioAttributes(AudioAttributes.Builder().build(), ducking)
         }
@@ -137,6 +146,7 @@ class PlayerService : Service() {
             else -> null
         }
     private var playing = false
+    private var equalizer: Equalizer? = null
 
     private val queue: ArrayList<Song> = ArrayList()
     private var onQueueChanged: ((List<Song>) -> Unit)? = null
@@ -282,11 +292,16 @@ class PlayerService : Service() {
     private var ducking: Boolean = false
     fun getDuking(): Boolean = ducking
 
+    private val sharedPreferences: SharedPreferences by lazy {
+        PreferenceManager.getDefaultSharedPreferences(this)
+    }
+
     override fun onBind(intent: Intent?): IBinder? = binder
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         mediaSessionCallback.onMediaButtonEvent(intent)
         onNotificationAction(intent)
+        onSettingAction(intent)
         return Service.START_NOT_STICKY
     }
 
@@ -316,13 +331,13 @@ class PlayerService : Service() {
             addAction(SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE)
         })
 
-        PreferenceManager.getDefaultSharedPreferences(this).restoreState()
+        sharedPreferences.restoreState()
     }
 
     override fun onDestroy() {
         super.onDestroy()
 
-        PreferenceManager.getDefaultSharedPreferences(this).apply {
+        sharedPreferences.apply {
             if (contains(PREF_KEY_PLAYER_STATE).not()) storeState()
         }
 
@@ -342,6 +357,18 @@ class PlayerService : Service() {
                 NotificationCommand.PLAY_OR_PAUSE -> togglePlayPause()
                 NotificationCommand.NEXT -> next()
                 NotificationCommand.DESTROY -> onRequestedStopService()
+            }
+        }
+    }
+
+    private fun onSettingAction(intent: Intent) {
+        if (intent.hasExtra(ARGS_KEY_SETTING_COMMAND)) {
+            val key = intent.extras?.getInt(ARGS_KEY_SETTING_COMMAND, -1).apply { Timber.d("qgeck setting action key: $this") } ?: return
+            val command = SettingCommand.values()[key]
+            when (command) {
+                SettingCommand.SET_EQUALIZER -> setEqualizer(player.audioSessionId)
+                SettingCommand.UNSET_EQUALIZER -> setEqualizer(null)
+                SettingCommand.REFLECT_EQUALIZER_SETTING -> reflectEqualizerSettings()
             }
         }
     }
@@ -378,6 +405,7 @@ class PlayerService : Service() {
         submitQueue(insertQueue, true)
         forcePosition(currentPosition)
         seek(progress)
+        player.playWhenReady = playWhenReady
         player.repeatMode = repeatMode
     }
 
@@ -670,9 +698,52 @@ class PlayerService : Service() {
         onRepeatModeChanged?.invoke(player.repeatMode)
     }
 
+    private fun setEqualizer(audioSessionId: Int?) {
+        if (audioSessionId != null) {
+            if (equalizer == null) {
+                equalizer = Equalizer(0, audioSessionId).apply {
+                    val params = EqualizerParams(
+                            bandLevelRange.let { Pair(it.first().toInt(), it.last().toInt()) },
+                            (0 until numberOfBands).map {
+                                val short = it.toShort()
+                                EqualizerParams.Band(
+                                        getBandFreqRange(short).let { Pair(it.first(), it.last()) },
+                                        getCenterFreq(short)
+                                )
+                            }
+                    ).apply { Timber.d("qgeck equalizer params: $this") }
+                    sharedPreferences.equalizerParams = params
+                    if (sharedPreferences.equalizerSettings == null) {
+                        sharedPreferences.equalizerSettings = EqualizerSettings(params.bands.map { 0 })
+                    }
+                }
+            }
+            if (sharedPreferences.equalizerEnabled) {
+                reflectEqualizerSettings()
+                equalizer?.enabled = true
+            }
+        } else {
+            equalizer?.enabled = false
+            equalizer = null
+        }
+    }
+
+    private fun reflectEqualizerSettings() {
+        sharedPreferences.equalizerSettings?.apply {
+            levels.forEachIndexed { i, level ->
+                Timber.d("qgeck reflecting setting: $i:$level")
+                try {
+                    equalizer?.setBandLevel(i.toShort(), level.toShort())
+                } catch (t: Throwable) {
+                    Timber.e(t)
+                }
+            }
+        }
+    }
+
     fun onRequestedStopService() {
         if (player.playWhenReady.not()) {
-            PreferenceManager.getDefaultSharedPreferences(this).storeState()
+            sharedPreferences.storeState()
 
             stopSelf()
         }

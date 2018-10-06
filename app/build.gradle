@@ -42,6 +42,9 @@ android {
         sourceCompatibility 1.8
         targetCompatibility 1.8
     }
+    kotlinOptions {
+        jvmTarget = '1.8'
+    }
 }
 
 repositories {
@@ -56,7 +59,7 @@ dependencies {
     def coroutines_ver = '0.30.0'
     def permission_dispatcher_ver = '3.3.1'
     def stetho_ver = '1.5.0'
-    def glide_ver = '4.7.1'
+    def glide_ver = '4.8.0'
     def exo_ver = '2.9.0'
     def exo_ext_ver = '2.7.0-1'
 
@@ -68,8 +71,8 @@ dependencies {
     implementation "androidx.legacy:legacy-support-v13:$support_ver"
     implementation 'com.google.android.material:material:1.0.0'
     testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'androidx.test:runner:1.1.0-alpha4'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0-alpha4'
+    androidTestImplementation 'androidx.test:runner:1.1.0-beta01'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0-beta01'
 
     // Logging
     implementation 'com.jakewharton.timber:timber:4.7.1'
@@ -110,4 +113,7 @@ dependencies {
     implementation "com.google.android.exoplayer:exoplayer-core:$exo_ver"
     implementation "com.github.PaulWoitaschek.ExoPlayer-Extensions:flac:$exo_ext_ver"
     implementation "com.github.PaulWoitaschek.ExoPlayer-Extensions:opus:$exo_ext_ver"
+
+    // Vertical SeekBar
+    implementation 'com.h6ah4i.android.widget.verticalseekbar:verticalseekbar:1.0.0'
 }
