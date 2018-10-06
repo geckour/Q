@@ -172,8 +172,8 @@ class PlayerService : Service() {
                 mediaSession.setMetadata(
                         song.getMediaMetadata(this@PlayerService, albumTitle).await())
                 getNotification(this@PlayerService, mediaSession.sessionToken,
-                        song, albumTitle, player.playWhenReady).await()
-                        .show(player.playWhenReady)
+                        song, albumTitle, playing).await()
+                        .show(playing)
             }
         }
 
@@ -214,11 +214,19 @@ class PlayerService : Service() {
                 }
                 else -> PlaybackState.STATE_ERROR
             }
-
             mediaSession.setPlaybackState(PlaybackState.Builder()
                     .setState(sessionPlaybackState, player.currentPosition, 1f)
                     .build())
-            if (playbackState == Player.STATE_READY && playWhenReady != playing) {
+
+            if (currentPosition == source.size - 1
+                    && playbackState == Player.STATE_ENDED
+                    && player.repeatMode == Player.REPEAT_MODE_OFF) {
+                pause()
+                seekToHead()
+            }
+
+            val newState = playbackState == Player.STATE_READY && playWhenReady
+            if (newState != playing) {
                 mediaSession.isActive = true
 
                 notificationUpdateJob.cancel()
@@ -227,21 +235,14 @@ class PlayerService : Service() {
                     val albumTitle = DB.getInstance(applicationContext).albumDao()
                             .get(song.albumId)?.title ?: UNKNOWN
                     getNotification(this@PlayerService,
-                            mediaSession.sessionToken, song, albumTitle, playWhenReady)
+                            mediaSession.sessionToken, song, albumTitle, newState)
                             .await()
-                            .show(playWhenReady)
-                    if (playWhenReady.not()) stopForeground(false)
+                            .show(newState)
                 }
-            }
-            if (currentPosition == source.size - 1
-                    && playbackState == Player.STATE_ENDED
-                    && player.repeatMode == Player.REPEAT_MODE_OFF) {
-                pause()
-                seekToHead()
             }
 
             onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
-            playing = playbackState == Player.STATE_READY && playWhenReady
+            playing = newState
         }
     }
 
@@ -714,10 +715,11 @@ class PlayerService : Service() {
         pause()
     }
 
-    private fun Notification.show(playWhenReady: Boolean) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && playWhenReady) {
+    private fun Notification.show(playing: Boolean) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && playing) {
             startForeground(NOTIFICATION_ID_PLAYER, this)
         } else {
+            stopForeground(false)
             getSystemService(NotificationManager::class.java)
                     .notify(NOTIFICATION_ID_PLAYER, this)
         }

@@ -321,7 +321,7 @@ fun Song.getMediaMetadata(context: Context, albumTitle: String? = null): Deferre
 
 fun getNotification(context: Context, sessionToken: MediaSession.Token,
                     song: Song, albumTitle: String,
-                    playWhenReady: Boolean): Deferred<Notification> =
+                    playing: Boolean): Deferred<Notification> =
         GlobalScope.async {
             val artwork = try {
                 Glide.with(context)
@@ -344,7 +344,7 @@ fun getNotification(context: Context, sessionToken: MediaSession.Token,
                     .setContentTitle(song.name)
                     .setContentText(song.artist)
                     .setSubText(albumTitle)
-                    .setOngoing(playWhenReady)
+                    .setOngoing(playing)
                     .setStyle(Notification.MediaStyle()
                             .setShowActionsInCompactView(0, 1, 2)
                             .setMediaSession(sessionToken))
@@ -359,7 +359,7 @@ fun getNotification(context: Context, sessionToken: MediaSession.Token,
                                     context.getString(R.string.notification_action_prev),
                                     getCommandPendingIntent(context, NotificationCommand.PREV)
                             ).build(),
-                            if (playWhenReady) {
+                            if (playing) {
                                 Notification.Action.Builder(
                                         Icon.createWithResource(context,
                                                 R.drawable.ic_pause),
