@@ -17,55 +17,36 @@
         android:layout_height="match_parent"
         android:background="@android:color/white">
 
-        <androidx.appcompat.widget.Toolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            android:background="@color/colorPrimary"
-            android:elevation="5dp"
-            android:onClick="@{() -> viewModel.onToolbarClick()}"
-            android:theme="@style/ToolbarStyle"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent"
-            app:title="@string/title_activity_equalizer" />
-
-        <androidx.constraintlayout.widget.Guideline
-            android:id="@+id/guide_seek_bar_top"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:orientation="horizontal"
-            app:layout_constraintGuide_percent="0.5" />
-
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_flatten"
             style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="56dp"
-            android:layout_marginBottom="12dp"
+            android:layout_marginTop="12dp"
             android:backgroundTint="@android:color/white"
             android:elevation="4dp"
             android:onClick="@{() -> viewModel.onFlatten()}"
             android:text="@string/equalizer_flatten"
             android:textColor="@color/colorPrimaryDark"
             android:textStyle="bold"
-            android:visibility="@{viewModel.enabled ? View.VISIBLE : View.GONE}"
+            android:visibility="@{viewModel.enabled ? View.VISIBLE : View.INVISIBLE}"
             app:cornerRadius="28dp"
-            app:layout_constraintBottom_toTopOf="@id/guide_seek_bar_top"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent" />
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
 
         <LinearLayout
             android:id="@+id/seek_bar_container"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_marginBottom="24dp"
+            android:layout_marginTop="12dp"
             android:gravity="center_horizontal|bottom"
             android:orientation="horizontal"
             app:layout_constraintBottom_toTopOf="@id/button_toggle_enabled"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/guide_seek_bar_top" />
+            app:layout_constraintTop_toBottomOf="@id/button_flatten" />
 
         <View
             android:layout_width="0dp"
@@ -93,9 +74,16 @@
             android:text="@{viewModel.enabled ? @string/setting_switch_on : @string/setting_switch_off}"
             android:textColor="@android:color/white"
             app:cornerRadius="32dp"
-            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintBottom_toBottomOf="@id/guide_peek_height"
             app:layout_constraintEnd_toEndOf="parent"
             tools:backgroundTint="@color/colorTintOption"
             tools:text="@string/setting_switch_off" />
+
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/guide_peek_height"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:orientation="horizontal"
+            app:layout_constraintGuide_end="@dimen/bottom_sheet_peek_height" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

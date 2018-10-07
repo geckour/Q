@@ -28,7 +28,8 @@ import com.geckour.q.domain.model.Song
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
 import com.geckour.q.ui.easteregg.EasterEggFragment
-import com.geckour.q.ui.equalizer.EqualizerActivity
+import com.geckour.q.ui.equalizer.EqualizerFragment
+import com.geckour.q.ui.equalizer.EqualizerViewModel
 import com.geckour.q.ui.library.album.AlbumListFragment
 import com.geckour.q.ui.library.album.AlbumListViewModel
 import com.geckour.q.ui.library.artist.ArtistListFragment
@@ -97,6 +98,9 @@ class MainActivity : AppCompatActivity() {
     private val playlistListViewModel: SongListViewModel by lazy {
         ViewModelProviders.of(this)[SongListViewModel::class.java]
     }
+    private val equalizerViewModel: EqualizerViewModel by lazy {
+        ViewModelProviders.of(this)[EqualizerViewModel::class.java]
+    }
     private val paymentViewModel: PaymentViewModel by lazy {
         ViewModelProviders.of(this)[PaymentViewModel::class.java]
     }
@@ -127,6 +131,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+    private val equalizerStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val enabled = intent.getBooleanExtra(EqualizerFragment.EXTRA_KEY_EQUALIZER_ENABLED, false)
+            onReceiveEnabled(enabled)
+        }
+    }
 
     private val onNavigationItemSelected: (MenuItem) -> Boolean = {
         val fragment = when (it.itemId) {
@@ -140,10 +150,7 @@ class MainActivity : AppCompatActivity() {
                         RequestCode.RESULT_SETTING.code)
                 null
             }
-            R.id.nav_equalizer -> {
-                startActivity(EqualizerActivity.createIntent(this))
-                null
-            }
+            R.id.nav_equalizer -> EqualizerFragment.newInstance()
             R.id.nav_sync -> {
                 retrieveMediaWithPermissionCheck()
                 null
@@ -215,6 +222,8 @@ class MainActivity : AppCompatActivity() {
 
         observeEvents()
         registerReceiver(syncingProgressReceiver, IntentFilter(ACTION_PROGRESS_SYNCING))
+        registerReceiver(equalizerStateReceiver,
+                IntentFilter(EqualizerFragment.ACTION_EQUALIZER_STATE))
 
         setSupportActionBar(binding.coordinatorMain.toolbar)
         setupDrawer()
@@ -280,6 +289,7 @@ class MainActivity : AppCompatActivity() {
         super.onDestroy()
         player?.onRequestedStopService()
         unregisterReceiver(syncingProgressReceiver)
+        unregisterReceiver(equalizerStateReceiver)
     }
 
     override fun onBackPressed() {
@@ -308,6 +318,10 @@ class MainActivity : AppCompatActivity() {
                     rebootPlayer()
             }
         }
+    }
+
+    private fun onReceiveEnabled(enabled: Boolean) {
+        equalizerViewModel.equalizerState.value = enabled
     }
 
     private fun bindPlayer() {
@@ -414,6 +428,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_song -> R.string.nav_song
                 R.id.nav_genre -> R.string.nav_genre
                 R.id.nav_playlist -> R.string.nav_playlist
+                R.id.nav_equalizer -> R.string.nav_equalizer
                 R.id.nav_pay -> R.string.nav_pay
                 R.layout.fragment_easter_egg -> R.string.nav_fortune
                 else -> return@observe

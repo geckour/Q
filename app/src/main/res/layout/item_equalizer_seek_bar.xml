@@ -20,7 +20,6 @@
                 android:layout_width="0dp"
                 android:layout_height="0dp"
                 android:max="10000"
-                android:progress="5000"
                 android:splitTrack="false"
                 app:seekBarRotation="CW270" />
         </com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBarWrapper>

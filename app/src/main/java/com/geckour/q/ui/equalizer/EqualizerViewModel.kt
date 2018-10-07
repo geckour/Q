@@ -7,10 +7,8 @@ class EqualizerViewModel : ViewModel() {
 
     internal val flatten: SingleLiveEvent<Unit> = SingleLiveEvent()
     internal val toggleEnabled: SingleLiveEvent<Unit> = SingleLiveEvent()
+    internal val equalizerState: SingleLiveEvent<Boolean> = SingleLiveEvent()
     var enabled: Boolean = false
-
-    fun onToolbarClick() {
-    }
 
     fun onFlatten() {
         flatten.call()

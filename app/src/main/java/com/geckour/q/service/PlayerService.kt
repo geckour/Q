@@ -18,7 +18,7 @@ import android.view.KeyEvent
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.Song
-import com.geckour.q.ui.equalizer.EqualizerActivity
+import com.geckour.q.ui.equalizer.EqualizerFragment
 import com.geckour.q.util.*
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
@@ -732,8 +732,8 @@ class PlayerService : Service() {
         }
 
         sendBroadcast(Intent().apply {
-            action = EqualizerActivity.ACTION_EQUALIZER_STATE
-            putExtra(EqualizerActivity.EXTRA_KEY_EQUALIZER_ENABLED, equalizer?.enabled ?: false)
+            action = EqualizerFragment.ACTION_EQUALIZER_STATE
+            putExtra(EqualizerFragment.EXTRA_KEY_EQUALIZER_ENABLED, equalizer?.enabled ?: false)
         })
     }
 

@@ -1,72 +1,79 @@
 package com.geckour.q.ui.equalizer
 
-import android.content.*
+import android.content.Context
+import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.preference.PreferenceManager
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import android.widget.SeekBar
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.databinding.DataBindingUtil
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
-import com.geckour.q.databinding.ActivityEqualizerBinding
+import com.geckour.q.databinding.FragmentEqualizerBinding
 import com.geckour.q.databinding.ItemEqualizerSeekBarBinding
 import com.geckour.q.service.PlayerService
+import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
 import com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBar
-import timber.log.Timber
 
-class EqualizerActivity : AppCompatActivity() {
+class EqualizerFragment : Fragment() {
 
     companion object {
         const val ACTION_EQUALIZER_STATE = "action_equalizer_state"
         const val EXTRA_KEY_EQUALIZER_ENABLED = "extra_key_equalizer_enabled"
-        fun createIntent(context: Context): Intent =
-                Intent(context, EqualizerActivity::class.java)
+
+        fun newInstance(): EqualizerFragment = EqualizerFragment()
     }
 
-    private lateinit var binding: ActivityEqualizerBinding
+    private lateinit var binding: FragmentEqualizerBinding
     private val viewModel: EqualizerViewModel by lazy {
-        ViewModelProviders.of(this)[EqualizerViewModel::class.java]
+        ViewModelProviders.of(requireActivity())[EqualizerViewModel::class.java]
+    }
+    private val mainViewModel: MainViewModel by lazy {
+        ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
     }
     private val sharedPreferences: SharedPreferences by lazy {
-        PreferenceManager.getDefaultSharedPreferences(this)
+        PreferenceManager.getDefaultSharedPreferences(requireContext())
     }
 
     private var changeEnabledTo: Boolean? = null
 
-    private val equalizerStateReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val enabled = intent.getBooleanExtra(EXTRA_KEY_EQUALIZER_ENABLED, false)
-            onReceiveEnabled(enabled)
-        }
-    }
-
     private var initialSettingState: Boolean = false
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
+                              savedInstanceState: Bundle?): View? {
+        binding = FragmentEqualizerBinding.inflate(inflater, container, false)
 
-        initialSettingState = sharedPreferences.equalizerEnabled
-        if (initialSettingState) sendCommand(SettingCommand.SET_EQUALIZER)
-        binding = DataBindingUtil.setContentView(this, R.layout.activity_equalizer)
-        binding.viewModel = viewModel
-
-        inflateSeekBars()
-
-        observeEvents()
+        return binding.root
     }
 
-    override fun onStart() {
-        super.onStart()
-        registerReceiver(equalizerStateReceiver, IntentFilter().apply {
-            addAction(ACTION_EQUALIZER_STATE)
-        })
+    override fun onActivityCreated(savedInstanceState: Bundle?) {
+        super.onActivityCreated(savedInstanceState)
+
+        if (savedInstanceState == null) {
+            initialSettingState = sharedPreferences.equalizerEnabled
+            if (initialSettingState) sendCommand(SettingCommand.SET_EQUALIZER)
+        }
+
+        observeEvents()
+
+        binding.viewModel = viewModel
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        mainViewModel.resumedFragmentId.value = R.id.nav_equalizer
+
+        inflateSeekBars()
     }
 
     override fun onStop() {
         super.onStop()
-        unregisterReceiver(equalizerStateReceiver)
         if (initialSettingState.not())
             sharedPreferences.equalizerEnabled = viewModel.enabled
     }
@@ -82,21 +89,25 @@ class EqualizerActivity : AppCompatActivity() {
         }
 
         viewModel.flatten.observe(this) { flatten() }
-    }
 
-    private fun onReceiveEnabled(enabled: Boolean) {
-        if (changeEnabledTo == true && enabled.not())
-            Toast.makeText(this,
-                    R.string.equalizer_message_error_turn_on, Toast.LENGTH_LONG).show()
+        viewModel.equalizerState.observe(this) {
+            if (it == null) return@observe
 
-        if (viewModel.enabled != enabled) {
-            viewModel.enabled = enabled
-            binding.viewModel = viewModel
+            if (changeEnabledTo == true && it.not())
+                Toast.makeText(requireContext(),
+                        R.string.equalizer_message_error_turn_on, Toast.LENGTH_LONG).show()
+
+            if (viewModel.enabled != it) {
+                viewModel.enabled = it
+                binding.viewModel = viewModel
+            }
+            changeEnabledTo = null
         }
-        changeEnabledTo = null
     }
 
     private fun inflateSeekBars() {
+        binding.seekBarContainer.removeAllViews()
+
         sharedPreferences.equalizerParams?.also { params ->
             val levels = sharedPreferences.equalizerSettings?.levels
             params.bands.forEachIndexed { i, band ->
@@ -104,10 +115,11 @@ class EqualizerActivity : AppCompatActivity() {
                         binding.seekBarContainer, false).apply {
                     seekBarLabel.text =
                             getString(R.string.equalizer_seek_bar_label,
-                                    band.centerFreq.toFloat().getReadableString())
-                    if (levels != null) {
-                        seekBar.progress = seekBar.calcProgress(params, levels[i])
-                    }
+                                    (band.centerFreq / 1000f).getReadableString())
+                    seekBar.progress =
+                            if (levels != null)
+                                seekBar.calcProgress(params, levels[i])
+                            else seekBar.max / 2
                     seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                         override fun onProgressChanged(seekBar: SeekBar,
                                                        progress: Int, fromUser: Boolean) {
@@ -130,7 +142,7 @@ class EqualizerActivity : AppCompatActivity() {
                     binding.seekBarContainer.addView(this.root)
                 }
             }
-        } ?: binding.seekBarContainer.removeAllViews()
+        }
     }
 
     private fun flatten() {
@@ -145,11 +157,11 @@ class EqualizerActivity : AppCompatActivity() {
     }
 
     private fun sendCommand(command: SettingCommand) {
-        startService(getCommandIntent(command))
+        activity?.apply { startService(getCommandIntent(this, command)) }
     }
 
-    private fun getCommandIntent(command: SettingCommand): Intent =
-            PlayerService.createIntent(this).apply {
+    private fun getCommandIntent(context: Context, command: SettingCommand): Intent =
+            PlayerService.createIntent(context).apply {
                 action = command.name
                 putExtra(PlayerService.ARGS_KEY_SETTING_COMMAND, command.ordinal)
             }
