@@ -18,5 +18,7 @@
     <color name="colorBackgroundInactive">#e8ffffff</color>
     <color name="colorBackgroundSearch">#ffffff</color>
 
+    <color name="colorEqualizerScale">#20160900</color>
+
     <color name="colorDivider">#80f095ad</color>
 </resources>

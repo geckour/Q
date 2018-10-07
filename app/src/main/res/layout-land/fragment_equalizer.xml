@@ -42,14 +42,125 @@
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
+        <TextView
+            android:id="@+id/text_scale_top"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/colorTextSecondary"
+            android:textSize="10sp"
+            app:layout_constraintBottom_toBottomOf="@id/line_scale_top"
+            app:layout_constraintStart_toStartOf="@id/seek_bar_container"
+            app:layout_constraintTop_toTopOf="@id/line_scale_top"
+            tools:text="15dB" />
+
+        <View
+            android:id="@+id/line_scale_top"
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="20dp"
+            android:background="@color/colorEqualizerScale"
+            app:layout_constraintEnd_toEndOf="@id/seek_bar_container"
+            app:layout_constraintStart_toEndOf="@id/text_scale_top"
+            app:layout_constraintTop_toTopOf="@id/seek_bar_container" />
+
+        <TextView
+            android:id="@+id/text_scale_upper_middle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/colorTextSecondary"
+            android:textSize="10sp"
+            app:layout_constraintBottom_toBottomOf="@id/line_scale_upper_middle"
+            app:layout_constraintStart_toStartOf="@id/seek_bar_container"
+            app:layout_constraintTop_toTopOf="@id/line_scale_upper_middle"
+            tools:text="7.5dB" />
+
+        <View
+            android:id="@+id/line_scale_upper_middle"
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_marginStart="4dp"
+            android:background="@color/colorEqualizerScale"
+            app:layout_constraintBottom_toBottomOf="@id/line_scale_center"
+            app:layout_constraintEnd_toEndOf="@id/seek_bar_container"
+            app:layout_constraintStart_toEndOf="@id/text_scale_upper_middle"
+            app:layout_constraintTop_toTopOf="@id/line_scale_top" />
+
+        <TextView
+            android:id="@+id/text_scale_center"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/equalizer_scale_label_center"
+            android:textColor="@color/colorTextSecondary"
+            android:textSize="10sp"
+            app:layout_constraintBottom_toBottomOf="@id/line_scale_center"
+            app:layout_constraintStart_toStartOf="@id/seek_bar_container"
+            app:layout_constraintTop_toTopOf="@id/line_scale_center" />
+
+        <View
+            android:id="@+id/line_scale_center"
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_marginStart="4dp"
+            android:background="@color/colorEqualizerScale"
+            app:layout_constraintBottom_toBottomOf="@id/line_scale_bottom"
+            app:layout_constraintEnd_toEndOf="@id/seek_bar_container"
+            app:layout_constraintStart_toEndOf="@id/text_scale_center"
+            app:layout_constraintTop_toTopOf="@id/line_scale_top" />
+
+        <TextView
+            android:id="@+id/text_scale_lower_middle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/colorTextSecondary"
+            android:textSize="10sp"
+            app:layout_constraintBottom_toBottomOf="@id/line_scale_lower_middle"
+            app:layout_constraintStart_toStartOf="@id/seek_bar_container"
+            app:layout_constraintTop_toTopOf="@id/line_scale_lower_middle"
+            tools:text="-7.5dB" />
+
+        <View
+            android:id="@+id/line_scale_lower_middle"
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_marginStart="4dp"
+            android:background="@color/colorEqualizerScale"
+            app:layout_constraintBottom_toBottomOf="@id/line_scale_bottom"
+            app:layout_constraintEnd_toEndOf="@id/seek_bar_container"
+            app:layout_constraintStart_toEndOf="@id/text_scale_lower_middle"
+            app:layout_constraintTop_toTopOf="@id/line_scale_center" />
+
+        <TextView
+            android:id="@+id/text_scale_bottom"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/colorTextSecondary"
+            android:textSize="10sp"
+            app:layout_constraintBottom_toBottomOf="@id/line_scale_bottom"
+            app:layout_constraintStart_toStartOf="@id/seek_bar_container"
+            app:layout_constraintTop_toTopOf="@id/line_scale_bottom"
+            tools:text="-15dB" />
+
+        <View
+            android:id="@+id/line_scale_bottom"
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_marginBottom="20dp"
+            android:layout_marginStart="4dp"
+            android:background="@color/colorEqualizerScale"
+            app:layout_constraintBottom_toBottomOf="@id/seek_bar_container"
+            app:layout_constraintEnd_toEndOf="@id/seek_bar_container"
+            app:layout_constraintStart_toEndOf="@id/text_scale_bottom" />
+
         <LinearLayout
             android:id="@+id/seek_bar_container"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_marginBottom="4dp"
-            android:layout_marginTop="4dp"
+            android:layout_marginBottom="8dp"
             android:layout_marginEnd="12dp"
             android:layout_marginStart="12dp"
+            android:layout_marginTop="16dp"
             android:gravity="center_horizontal|bottom"
             android:orientation="horizontal"
             app:layout_constraintBottom_toTopOf="@id/guide_peek_height"
@@ -67,8 +178,8 @@
             app:layout_constraintBottom_toBottomOf="@id/seek_bar_container"
             app:layout_constraintLeft_toLeftOf="@id/seek_bar_container"
             app:layout_constraintRight_toRightOf="@id/seek_bar_container"
-            app:layout_constraintTop_toTopOf="@id/seek_bar_container"
-            tools:visibility="visible" />
+            app:layout_constraintTop_toTopOf="@id/text_scale_top"
+            tools:visibility="gone" />
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_toggle_enabled"

@@ -110,6 +110,18 @@ class EqualizerFragment : Fragment() {
 
         sharedPreferences.equalizerParams?.also { params ->
             val levels = sharedPreferences.equalizerSettings?.levels
+            binding.textScaleBottom.text =
+                    getString(R.string.equalizer_scale_label,
+                            (params.levelRange.first / 100f).getReadableString())
+            binding.textScaleLowerMiddle.text =
+                    getString(R.string.equalizer_scale_label,
+                            (params.levelRange.first / 200f).getReadableString())
+            binding.textScaleUpperMiddle.text =
+                    getString(R.string.equalizer_scale_label,
+                            (params.levelRange.second / 200f).getReadableString())
+            binding.textScaleTop.text =
+                    getString(R.string.equalizer_scale_label,
+                            (params.levelRange.second / 100f).getReadableString())
             params.bands.forEachIndexed { i, band ->
                 ItemEqualizerSeekBarBinding.inflate(layoutInflater,
                         binding.seekBarContainer, false).apply {

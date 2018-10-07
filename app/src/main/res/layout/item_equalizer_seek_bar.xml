@@ -11,7 +11,7 @@
         <com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBarWrapper
             android:layout_width="wrap_content"
             android:layout_height="0dp"
-            android:layout_above="@id/seek_bar_label"
+            android:layout_alignParentBottom="true"
             android:layout_alignParentTop="true"
             android:layout_centerHorizontal="true">
 
@@ -19,7 +19,8 @@
                 android:id="@+id/seek_bar"
                 android:layout_width="0dp"
                 android:layout_height="0dp"
-                android:max="10000"
+                android:paddingEnd="20dp"
+                android:paddingStart="20dp"
                 android:splitTrack="false"
                 app:seekBarRotation="CW270" />
         </com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBarWrapper>
