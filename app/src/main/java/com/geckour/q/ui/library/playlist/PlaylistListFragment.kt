@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
-import com.geckour.q.ui.MainViewModel
+import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
 import kotlinx.coroutines.experimental.CoroutineScope
 import kotlinx.coroutines.experimental.Dispatchers

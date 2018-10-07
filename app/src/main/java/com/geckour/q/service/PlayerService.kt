@@ -705,7 +705,7 @@ class PlayerService : Service() {
     private fun setEqualizer(audioSessionId: Int?) {
         if (audioSessionId != null) {
             if (equalizer == null) {
-                equalizer = Equalizer(0, audioSessionId.apply { Timber.d("qgeck audio session id: $this") }).apply {
+                equalizer = Equalizer(0, audioSessionId).apply {
                     val params = EqualizerParams(
                             bandLevelRange.let { Pair(it.first().toInt(), it.last().toInt()) },
                             (0 until numberOfBands).map {
@@ -715,7 +715,7 @@ class PlayerService : Service() {
                                         getCenterFreq(short)
                                 )
                             }
-                    ).apply { Timber.d("qgeck equalizer params: $this") }
+                    )
                     sharedPreferences.equalizerParams = params
                     if (sharedPreferences.equalizerSettings == null) {
                         sharedPreferences.equalizerSettings = EqualizerSettings(params.bands.map { 0 })
@@ -740,7 +740,6 @@ class PlayerService : Service() {
     private fun reflectEqualizerSettings() {
         sharedPreferences.equalizerSettings?.apply {
             levels.forEachIndexed { i, level ->
-                Timber.d("qgeck reflecting setting: $i:$level")
                 try {
                     equalizer?.setBandLevel(i.toShort(), level.toShort())
                 } catch (t: Throwable) {

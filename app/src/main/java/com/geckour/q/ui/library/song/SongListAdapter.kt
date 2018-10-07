@@ -10,7 +10,7 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemListSongBinding
 import com.geckour.q.domain.model.Song
-import com.geckour.q.ui.MainViewModel
+import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
 import kotlinx.coroutines.experimental.Dispatchers
 import kotlinx.coroutines.experimental.GlobalScope

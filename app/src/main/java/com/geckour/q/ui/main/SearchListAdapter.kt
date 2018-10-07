@@ -1,4 +1,4 @@
-package com.geckour.q.ui
+package com.geckour.q.ui.main
 
 import android.view.LayoutInflater
 import android.view.ViewGroup

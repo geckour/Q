@@ -1,4 +1,4 @@
-package com.geckour.q.ui
+package com.geckour.q.ui.main
 
 import androidx.lifecycle.ViewModel
 import com.geckour.q.domain.model.*

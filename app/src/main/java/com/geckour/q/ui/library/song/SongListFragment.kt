@@ -13,7 +13,7 @@ import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
-import com.geckour.q.ui.MainViewModel
+import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.Main

@@ -29,7 +29,7 @@ import com.geckour.q.domain.model.Song
 import com.geckour.q.service.PlayerService
 import com.geckour.q.service.PlayerService.Companion.NOTIFICATION_CHANNEL_ID_PLAYER
 import com.geckour.q.ui.LauncherActivity
-import com.geckour.q.ui.MainActivity
+import com.geckour.q.ui.main.MainActivity
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ads.AdsMediaSource
 import kotlinx.coroutines.experimental.Deferred

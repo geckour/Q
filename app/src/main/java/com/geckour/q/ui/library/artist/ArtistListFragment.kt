@@ -10,7 +10,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Artist
-import com.geckour.q.ui.MainViewModel
+import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.Main

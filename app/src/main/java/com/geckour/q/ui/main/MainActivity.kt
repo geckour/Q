@@ -1,4 +1,4 @@
-package com.geckour.q.ui
+package com.geckour.q.ui.main
 
 import android.Manifest
 import android.app.AlertDialog
@@ -414,6 +414,7 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_song -> R.string.nav_song
                 R.id.nav_genre -> R.string.nav_genre
                 R.id.nav_playlist -> R.string.nav_playlist
+                R.id.nav_pay -> R.string.nav_pay
                 R.layout.fragment_easter_egg -> R.string.nav_fortune
                 else -> return@observe
             })

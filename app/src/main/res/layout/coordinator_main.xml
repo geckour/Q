@@ -7,7 +7,7 @@
 
         <variable
             name="viewModel"
-            type="com.geckour.q.ui.MainViewModel" />
+            type="com.geckour.q.ui.main.MainViewModel" />
     </data>
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout

@@ -12,7 +12,6 @@ import android.view.ViewGroup
 import android.widget.SeekBar
 import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.core.content.ContextCompat
-import androidx.core.graphics.ColorUtils
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -22,8 +21,8 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentSheetBottomBinding
 import com.geckour.q.domain.model.PlaybackButton
-import com.geckour.q.ui.MainActivity
-import com.geckour.q.ui.MainViewModel
+import com.geckour.q.ui.main.MainActivity
+import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.ui.share.SharingActivity
 import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.getTimeString
