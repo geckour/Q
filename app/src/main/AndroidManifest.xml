@@ -34,8 +34,6 @@
 
         <activity android:name=".ui.license.LicenseActivity" />
 
-        <activity android:name=".ui.equalizer.EqualizerFragment" />
-
         <activity
             android:name=".ui.share.SharingActivity"
             android:launchMode="singleTask"
@@ -43,6 +41,12 @@
             android:theme="@android:style/Theme.NoDisplay" />
 
         <service android:name=".service.PlayerService" />
+
+        <receiver android:name=".receiver.MediaButtonReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
 
         <meta-data
             android:name="preloaded_fonts"

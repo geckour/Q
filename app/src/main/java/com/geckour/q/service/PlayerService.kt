@@ -8,13 +8,15 @@ import android.content.*
 import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.audiofx.Equalizer
-import android.media.session.MediaSession
 import android.media.session.PlaybackState
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.preference.PreferenceManager
+import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
 import android.view.KeyEvent
+import androidx.media.session.MediaButtonReceiver
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.Song
@@ -59,13 +61,13 @@ class PlayerService : Service() {
         private const val SOURCE_ACTION_WIRED_STATE = Intent.ACTION_HEADSET_PLUG
         private const val SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE =
                 BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED
+
+        var mediaSession: MediaSessionCompat? = null
     }
 
     private val binder = PlayerBinder()
 
-    private lateinit var mediaSession: MediaSession
-
-    private val mediaSessionCallback = object : MediaSession.Callback() {
+    private val mediaSessionCallback = object : MediaSessionCompat.Callback() {
         override fun onPlay() {
             super.onPlay()
             play()
@@ -101,23 +103,40 @@ class PlayerService : Service() {
             seek(pos)
         }
 
-        override fun onMediaButtonEvent(mediaButtonIntent: Intent): Boolean {
-            val keyCode = (mediaButtonIntent.extras?.get(Intent.EXTRA_KEY_EVENT) as? KeyEvent)?.keyCode
-            Timber.d("qgeck media button key code: $keyCode")
-            return when (keyCode) {
-                KeyEvent.KEYCODE_MEDIA_PAUSE -> {
-                    pause()
+        override fun onMediaButtonEvent(mediaButtonEvent: Intent): Boolean {
+            val keyEvent: KeyEvent = mediaButtonEvent.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
+            Timber.d("qgeck key event: $keyEvent")
+            if (keyEvent.action != KeyEvent.ACTION_DOWN) return false
+            return when (keyEvent.keyCode) {
+                KeyEvent.KEYCODE_MEDIA_PLAY -> {
+                    onPlay()
                     true
                 }
-                KeyEvent.KEYCODE_MEDIA_PLAY -> {
-                    play()
+                KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                    onPause()
                     true
                 }
                 KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
                     togglePlayPause()
                     true
                 }
-                else -> super.onMediaButtonEvent(mediaButtonIntent)
+                KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD -> {
+                    onSkipToNext()
+                    true
+                }
+                KeyEvent.KEYCODE_MEDIA_PREVIOUS, KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD -> {
+                    onSkipToPrevious()
+                    true
+                }
+                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                    onFastForward()
+                    true
+                }
+                KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                    onRewind()
+                    true
+                }
+                else -> false
             }
         }
     }
@@ -181,11 +200,11 @@ class PlayerService : Service() {
                     DB.getInstance(applicationContext).albumDao().get(song.albumId)?.title
                             ?: UNKNOWN
                 }.await()
-                mediaSession.setMetadata(
+                mediaSession?.setMetadata(
                         song.getMediaMetadata(this@PlayerService, albumTitle).await())
-                getNotification(this@PlayerService, mediaSession.sessionToken,
+                getNotification(this@PlayerService, mediaSession?.sessionToken,
                         song, albumTitle, playing).await()
-                        .show(playing)
+                        ?.show(playing)
             }
         }
 
@@ -226,7 +245,7 @@ class PlayerService : Service() {
                 }
                 else -> PlaybackState.STATE_ERROR
             }
-            mediaSession.setPlaybackState(PlaybackState.Builder()
+            mediaSession?.setPlaybackState(PlaybackStateCompat.Builder()
                     .setState(sessionPlaybackState, player.currentPosition, 1f)
                     .build())
 
@@ -239,7 +258,7 @@ class PlayerService : Service() {
 
             val newState = playbackState == Player.STATE_READY && playWhenReady
             if (newState != playing) {
-                mediaSession.isActive = true
+                mediaSession?.isActive = true
 
                 notificationUpdateJob.cancel()
                 notificationUpdateJob = bgScope.launch {
@@ -247,9 +266,9 @@ class PlayerService : Service() {
                     val albumTitle = DB.getInstance(applicationContext).albumDao()
                             .get(song.albumId)?.title ?: UNKNOWN
                     getNotification(this@PlayerService,
-                            mediaSession.sessionToken, song, albumTitle, newState)
+                            mediaSession?.sessionToken, song, albumTitle, newState)
                             .await()
-                            .show(newState)
+                            ?.show(newState)
                 }
             }
 
@@ -301,7 +320,6 @@ class PlayerService : Service() {
     override fun onBind(intent: Intent?): IBinder? = binder
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        mediaSessionCallback.onMediaButtonEvent(intent)
         onNotificationAction(intent)
         onSettingAction(intent)
         return Service.START_NOT_STICKY
@@ -312,15 +330,19 @@ class PlayerService : Service() {
 
         parentJob = Job()
 
-        mediaSession = MediaSession(this, TAG).apply {
-            setPlaybackState(PlaybackState.Builder()
-                    .setActions(PlaybackState.ACTION_PLAY_PAUSE or
-                            PlaybackState.ACTION_SKIP_TO_NEXT or
-                            PlaybackState.ACTION_SKIP_TO_PREVIOUS or
-                            PlaybackState.ACTION_FAST_FORWARD or
-                            PlaybackState.ACTION_REWIND or
-                            PlaybackState.ACTION_SEEK_TO)
+        mediaSession = MediaSessionCompat(this, TAG).apply {
+            setPlaybackState(PlaybackStateCompat.Builder()
+                    .setActions(PlaybackStateCompat.ACTION_PLAY or
+                            PlaybackStateCompat.ACTION_PAUSE or
+                            PlaybackStateCompat.ACTION_PLAY_PAUSE or
+                            PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
+                            PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
+                            PlaybackStateCompat.ACTION_FAST_FORWARD or
+                            PlaybackStateCompat.ACTION_REWIND or
+                            PlaybackStateCompat.ACTION_SEEK_TO)
                     .build())
+            setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS
+                    or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS)
             setCallback(mediaSessionCallback)
         }
 
@@ -356,9 +378,6 @@ class PlayerService : Service() {
             val key = intent.extras?.getInt(ARGS_KEY_CONTROL_COMMAND, -1) ?: return
             val command = NotificationCommand.values()[key]
             when (command) {
-                NotificationCommand.PREV -> headOrPrev()
-                NotificationCommand.PLAY_OR_PAUSE -> togglePlayPause()
-                NotificationCommand.NEXT -> next()
                 NotificationCommand.DESTROY -> onRequestedStopService()
             }
         }
@@ -557,7 +576,7 @@ class PlayerService : Service() {
     fun stop() {
         pause()
         seekToHead()
-        mediaSession.isActive = false
+        mediaSession?.isActive = false
     }
 
     fun clear(keepCurrentIfPlaying: Boolean = false) {

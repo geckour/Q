@@ -8,13 +8,15 @@ import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.drawable.Icon
-import android.media.MediaMetadata
 import android.media.MediaMetadataRetriever
-import android.media.session.MediaSession
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
+import androidx.core.app.NotificationCompat
+import androidx.media.session.MediaButtonReceiver
 import com.bumptech.glide.Glide
 import com.geckour.q.App
 import com.geckour.q.R
@@ -62,9 +64,6 @@ enum class OrientedClassType {
 }
 
 enum class NotificationCommand {
-    PLAY_OR_PAUSE,
-    NEXT,
-    PREV,
     DESTROY
 }
 
@@ -306,29 +305,31 @@ fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> =
             }
         }
 
-fun Song.getMediaMetadata(context: Context, albumTitle: String? = null): Deferred<MediaMetadata> =
+fun Song.getMediaMetadata(context: Context, albumTitle: String? = null): Deferred<MediaMetadataCompat> =
         GlobalScope.async {
             val db = DB.getInstance(context)
             val album = albumTitle
                     ?: db.albumDao().get(this@getMediaMetadata.albumId)?.title
                     ?: UNKNOWN
 
-            MediaMetadata.Builder()
-                    .putString(MediaMetadata.METADATA_KEY_MEDIA_ID,
+            MediaMetadataCompat.Builder()
+                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID,
                             this@getMediaMetadata.mediaId.toString())
-                    .putString(MediaMetadata.METADATA_KEY_TITLE, this@getMediaMetadata.name)
-                    .putString(MediaMetadata.METADATA_KEY_ARTIST, this@getMediaMetadata.artist)
-                    .putString(MediaMetadata.METADATA_KEY_ALBUM, album)
-                    .putString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
+                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, this@getMediaMetadata.name)
+                    .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, this@getMediaMetadata.artist)
+                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album)
+                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI,
                             db.getArtworkUriStringFromId(this@getMediaMetadata.albumId).await().toString())
-                    .putLong(MediaMetadata.METADATA_KEY_DURATION, this@getMediaMetadata.duration)
+                    .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, this@getMediaMetadata.duration)
                     .build()
         }
 
-fun getNotification(context: Context, sessionToken: MediaSession.Token,
+fun getNotification(context: Context, sessionToken: MediaSessionCompat.Token?,
                     song: Song, albumTitle: String,
-                    playing: Boolean): Deferred<Notification> =
+                    playing: Boolean): Deferred<Notification?> =
         GlobalScope.async {
+            if (sessionToken == null) return@async null
+
             val artwork = try {
                 Glide.with(context)
                         .asBitmap()
@@ -343,51 +344,48 @@ fun getNotification(context: Context, sessionToken: MediaSession.Token,
             }
             val builder =
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                        Notification.Builder(context, NOTIFICATION_CHANNEL_ID_PLAYER)
-                    else Notification.Builder(context)
+                        NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID_PLAYER)
+                    else NotificationCompat.Builder(context)
             builder.setSmallIcon(R.drawable.ic_notification)
                     .setLargeIcon(artwork)
                     .setContentTitle(song.name)
                     .setContentText(song.artist)
                     .setSubText(albumTitle)
                     .setOngoing(playing)
-                    .setStyle(Notification.MediaStyle()
+                    .setStyle(androidx.media.app.NotificationCompat.MediaStyle()
                             .setShowActionsInCompactView(0, 1, 2)
                             .setMediaSession(sessionToken))
                     .setContentIntent(PendingIntent.getActivity(context,
                             App.REQUEST_CODE_LAUNCH_APP,
                             LauncherActivity.createIntent(context),
                             PendingIntent.FLAG_UPDATE_CURRENT))
-                    .setActions(
-                            Notification.Action.Builder(
-                                    Icon.createWithResource(context,
-                                            R.drawable.ic_backward),
-                                    context.getString(R.string.notification_action_prev),
-                                    getCommandPendingIntent(context, NotificationCommand.PREV)
-                            ).build(),
-                            if (playing) {
-                                Notification.Action.Builder(
-                                        Icon.createWithResource(context,
-                                                R.drawable.ic_pause),
-                                        context.getString(R.string.notification_action_pause),
-                                        getCommandPendingIntent(context,
-                                                NotificationCommand.PLAY_OR_PAUSE)
-                                ).build()
-                            } else {
-                                Notification.Action.Builder(
-                                        Icon.createWithResource(context,
-                                                R.drawable.ic_play),
-                                        context.getString(R.string.notification_action_play),
-                                        getCommandPendingIntent(context,
-                                                NotificationCommand.PLAY_OR_PAUSE)
-                                ).build()
-                            },
-                            Notification.Action.Builder(
-                                    Icon.createWithResource(context,
-                                            R.drawable.ic_forward),
-                                    context.getString(R.string.notification_action_next),
-                                    getCommandPendingIntent(context, NotificationCommand.NEXT)
-                            ).build())
+                    .addAction(NotificationCompat.Action.Builder(
+                            R.drawable.ic_backward,
+                            context.getString(R.string.notification_action_prev),
+                            MediaButtonReceiver.buildMediaButtonPendingIntent(context,
+                                    PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
+                    ).build())
+                    .addAction(if (playing) {
+                        NotificationCompat.Action.Builder(
+                                R.drawable.ic_pause,
+                                context.getString(R.string.notification_action_pause),
+                                MediaButtonReceiver.buildMediaButtonPendingIntent(context,
+                                        PlaybackStateCompat.ACTION_PLAY_PAUSE)
+                        ).build()
+                    } else {
+                        NotificationCompat.Action.Builder(
+                                R.drawable.ic_play,
+                                context.getString(R.string.notification_action_play),
+                                MediaButtonReceiver.buildMediaButtonPendingIntent(context,
+                                        PlaybackStateCompat.ACTION_PLAY_PAUSE)
+                        ).build()
+                    })
+                    .addAction(NotificationCompat.Action.Builder(
+                            R.drawable.ic_forward,
+                            context.getString(R.string.notification_action_next),
+                            MediaButtonReceiver.buildMediaButtonPendingIntent(context,
+                                    PlaybackStateCompat.ACTION_SKIP_TO_NEXT)
+                    ).build())
                     .setDeleteIntent(getCommandPendingIntent(context, NotificationCommand.DESTROY))
                     .build()
         }
