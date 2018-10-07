@@ -125,6 +125,7 @@ class EqualizerFragment : Fragment() {
             params.bands.forEachIndexed { i, band ->
                 ItemEqualizerSeekBarBinding.inflate(layoutInflater,
                         binding.seekBarContainer, false).apply {
+                    seekBar.max = params.levelRange.let { it.second - it.first }
                     seekBarLabel.text =
                             getString(R.string.equalizer_seek_bar_label,
                                     (band.centerFreq / 1000f).getReadableString())
