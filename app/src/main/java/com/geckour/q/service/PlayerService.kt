@@ -16,7 +16,6 @@ import android.preference.PreferenceManager
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.view.KeyEvent
-import androidx.media.session.MediaButtonReceiver
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.Song
@@ -106,35 +105,52 @@ class PlayerService : Service() {
         override fun onMediaButtonEvent(mediaButtonEvent: Intent): Boolean {
             val keyEvent: KeyEvent = mediaButtonEvent.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
             Timber.d("qgeck key event: $keyEvent")
-            if (keyEvent.action != KeyEvent.ACTION_DOWN) return false
-            return when (keyEvent.keyCode) {
-                KeyEvent.KEYCODE_MEDIA_PLAY -> {
-                    onPlay()
-                    true
+            return when (keyEvent.action) {
+                KeyEvent.ACTION_DOWN -> {
+                    when (keyEvent.keyCode) {
+                        KeyEvent.KEYCODE_MEDIA_PLAY -> {
+                            onPlay()
+                            true
+                        }
+                        KeyEvent.KEYCODE_MEDIA_PAUSE -> {
+                            onPause()
+                            true
+                        }
+                        KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+                            togglePlayPause()
+                            true
+                        }
+                        KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD -> {
+                            onSkipToNext()
+                            true
+                        }
+                        KeyEvent.KEYCODE_MEDIA_PREVIOUS, KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD -> {
+                            onSkipToPrevious()
+                            true
+                        }
+                        KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                            onFastForward()
+                            true
+                        }
+                        KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                            onRewind()
+                            true
+                        }
+                        else -> false
+                    }
                 }
-                KeyEvent.KEYCODE_MEDIA_PAUSE -> {
-                    onPause()
-                    true
-                }
-                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
-                    togglePlayPause()
-                    true
-                }
-                KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD -> {
-                    onSkipToNext()
-                    true
-                }
-                KeyEvent.KEYCODE_MEDIA_PREVIOUS, KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD -> {
-                    onSkipToPrevious()
-                    true
-                }
-                KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
-                    onFastForward()
-                    true
-                }
-                KeyEvent.KEYCODE_MEDIA_REWIND -> {
-                    onRewind()
-                    true
+                KeyEvent.ACTION_UP -> {
+                    when (keyEvent.keyCode) {
+                        KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
+                            stopRunningButtonAction()
+                            true
+                        }
+                        KeyEvent.KEYCODE_MEDIA_REWIND -> {
+                            stopRunningButtonAction()
+                            true
+                        }
+                        else -> false
+                    }
                 }
                 else -> false
             }
@@ -258,8 +274,6 @@ class PlayerService : Service() {
 
             val newState = playbackState == Player.STATE_READY && playWhenReady
             if (newState != playing) {
-                mediaSession?.isActive = true
-
                 notificationUpdateJob.cancel()
                 notificationUpdateJob = bgScope.launch {
                     val song = currentSong ?: return@launch
@@ -344,6 +358,7 @@ class PlayerService : Service() {
             setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS
                     or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS)
             setCallback(mediaSessionCallback)
+            isActive = true
         }
 
         mediaSourceFactory = ExtractorMediaSource.Factory(DefaultDataSourceFactory(applicationContext,
