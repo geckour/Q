@@ -11,6 +11,7 @@ import android.graphics.Paint
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
+import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
@@ -311,6 +312,7 @@ fun Song.getMediaMetadata(context: Context, albumTitle: String? = null): Deferre
             val album = albumTitle
                     ?: db.albumDao().get(this@getMediaMetadata.albumId)?.title
                     ?: UNKNOWN
+            val uriString = db.getArtworkUriStringFromId(this@getMediaMetadata.albumId).await()
 
             MediaMetadataCompat.Builder()
                     .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID,
@@ -318,8 +320,22 @@ fun Song.getMediaMetadata(context: Context, albumTitle: String? = null): Deferre
                     .putString(MediaMetadataCompat.METADATA_KEY_TITLE, this@getMediaMetadata.name)
                     .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, this@getMediaMetadata.artist)
                     .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album)
-                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI,
-                            db.getArtworkUriStringFromId(this@getMediaMetadata.albumId).await().toString())
+                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, uriString)
+                    .apply {
+                        if (uriString != null
+                                && PreferenceManager.getDefaultSharedPreferences(context)
+                                        .showArtworkOnLockScreen) {
+                            val bitmap = try {
+                                Glide.with(context).asBitmap()
+                                        .load(uriString)
+                                        .submit().get()
+                            } catch (t: Throwable) {
+                                Timber.e(t)
+                                null
+                            }
+                            putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
+                        }
+                    }
                     .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, this@getMediaMetadata.duration)
                     .build()
         }

@@ -51,6 +51,10 @@
                     layout="@layout/item_list_setting_item" />
 
                 <include
+                    android:id="@+id/item_artwork_on_lock_screen"
+                    layout="@layout/item_list_setting_item" />
+
+                <include
                     android:id="@+id/item_ducking"
                     layout="@layout/item_list_setting_item" />
 

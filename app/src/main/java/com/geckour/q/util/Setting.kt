@@ -5,12 +5,12 @@ import android.content.SharedPreferences
 import android.preference.PreferenceManager
 import com.geckour.q.R
 import com.google.gson.Gson
-import timber.log.Timber
 
 private const val KEY_PREFER_SCREEN = "key_prefer_screen"
 private const val KEY_DUCKING = "key_ducking"
 private const val KEY_PATTERN_FORMAT_SHARE_TEXT = "key_pattern_format_share_text"
 private const val KEY_BUNDLE_ARTWORK = "key_bundle_artwork"
+private const val KEY_SHOW_ARTWORK_ON_LOCK_SCREEN = "key_show_artwork_on_lock_screen"
 private const val KEY_EQUALIZER_ENABLED = "key_equalizer_enabled"
 private const val KEY_EQUALIZER_PARAMS = "key_equalizer_params"
 private const val KEY_EQUALIZER_SETTINGS = "key_equalizer_settings"
@@ -55,6 +55,10 @@ var Context.formatPattern: String
 var SharedPreferences.bundleArtwork: Boolean
     get() = getBoolean(KEY_BUNDLE_ARTWORK, true)
     set(value) = edit().putBoolean(KEY_BUNDLE_ARTWORK, value).apply()
+
+var SharedPreferences.showArtworkOnLockScreen: Boolean
+    get() = getBoolean(KEY_SHOW_ARTWORK_ON_LOCK_SCREEN, false)
+    set(value) = edit().putBoolean(KEY_SHOW_ARTWORK_ON_LOCK_SCREEN, value).apply()
 
 var SharedPreferences.equalizerEnabled: Boolean
     get() = getBoolean(KEY_EQUALIZER_ENABLED, false)

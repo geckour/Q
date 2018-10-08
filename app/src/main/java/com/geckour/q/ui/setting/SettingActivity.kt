@@ -41,6 +41,7 @@ class SettingActivity : AppCompatActivity() {
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_setting)
         binding.itemChooseScreen.viewModel = chooseLaunchScreenViewModel
+        binding.itemArtworkOnLockScreen.viewModel = artworkOnLockScreenViewModel
         binding.itemDucking.viewModel = duckingViewModel
         binding.itemLicense.viewModel = licenseViewModel
         binding.itemFormatPattern.viewModel = formatPatternViewModel
@@ -103,9 +104,21 @@ class SettingActivity : AppCompatActivity() {
         })
     }
 
+    private val artworkOnLockScreenViewModel: SettingItemViewModel by lazy {
+        val state = sharedPreferences.showArtworkOnLockScreen
+        SettingItemViewModel(getString(R.string.setting_item_title_artwork_on_lock_screen),
+                getString(R.string.setting_item_desc_artwork_on_lock_screen),
+                state.switchSummary, true, onSwitchClick = {
+            sharedPreferences.showArtworkOnLockScreen = it
+            summary = it.switchSummary
+            binding.itemArtworkOnLockScreen.viewModel = this
+            if (binding.itemArtworkOnLockScreen.state.isChecked != it)
+                binding.itemArtworkOnLockScreen.state.isChecked = it
+        }).apply { switchState = state }
+    }
+
     private val duckingViewModel: SettingItemViewModel by lazy {
         val state = sharedPreferences.ducking
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
         SettingItemViewModel(getString(R.string.setting_item_title_ducking),
                 getString(R.string.setting_item_desc_ducking),
                 state.switchSummary, true, onSwitchClick = {
@@ -127,7 +140,6 @@ class SettingActivity : AppCompatActivity() {
 
     private val bundleArtworkViewModel: SettingItemViewModel by lazy {
         val state = sharedPreferences.bundleArtwork
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
         SettingItemViewModel(getString(R.string.setting_item_title_bundle_artwork),
                 getString(R.string.setting_item_desc_bundle_artwork),
                 state.switchSummary, true, onSwitchClick = {
