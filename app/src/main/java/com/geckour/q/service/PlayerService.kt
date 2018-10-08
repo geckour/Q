@@ -207,21 +207,7 @@ class PlayerService : Service() {
 
         override fun onTracksChanged(trackGroups: TrackGroupArray?,
                                      trackSelections: TrackSelectionArray?) {
-            onCurrentPositionChanged?.invoke(currentPosition)
 
-            notificationUpdateJob.cancel()
-            notificationUpdateJob = uiScope.launch {
-                val song = currentSong ?: return@launch
-                val albumTitle = bgScope.async {
-                    DB.getInstance(applicationContext).albumDao().get(song.albumId)?.title
-                            ?: UNKNOWN
-                }.await()
-                mediaSession?.setMetadata(
-                        song.getMediaMetadata(this@PlayerService, albumTitle).await())
-                getNotification(this@PlayerService, mediaSession?.sessionToken,
-                        song, albumTitle, playing).await()
-                        ?.show(playing)
-            }
         }
 
         override fun onPlayerError(error: ExoPlaybackException?) {
@@ -279,6 +265,8 @@ class PlayerService : Service() {
                     val song = currentSong ?: return@launch
                     val albumTitle = DB.getInstance(applicationContext).albumDao()
                             .get(song.albumId)?.title ?: UNKNOWN
+                    mediaSession?.setMetadata(
+                            song.getMediaMetadata(this@PlayerService, albumTitle).await())
                     getNotification(this@PlayerService,
                             mediaSession?.sessionToken, song, albumTitle, newState)
                             .await()
