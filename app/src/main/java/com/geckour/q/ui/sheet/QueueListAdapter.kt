@@ -43,16 +43,24 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             items.subList(start, items.size)
 
     internal fun setNowPlaying(index: Int?) {
-        items = items.map { it.copy(nowPlaying = false) }
-        items.mapIndexed { i, song -> i to song.nowPlaying }
-                .forEach { notifyItemChanged(it.first) }
 
-        if (index != null && index in 0..items.lastIndex) {
-            items = items.mapIndexed { i, song ->
-                if (i == index) song.copy(nowPlaying = true)
-                else song
+        if (index != null) {
+            if (index in 0 until items.size) {
+                val changed: MutableList<Int> = mutableListOf()
+                items = items.mapIndexed { i, song ->
+                    val matched = i == index
+                    if (song.nowPlaying != matched) changed.add(i)
+                    song.copy(nowPlaying = matched)
+                }
+                changed.forEach { notifyItemChanged(it) }
             }
-            notifyItemChanged(index)
+        } else {
+            val changed: MutableList<Int> = mutableListOf()
+            items = items.mapIndexed { i, song ->
+                if (song.nowPlaying) changed.add(i)
+                song.copy(nowPlaying = false)
+            }
+            changed.forEach { notifyItemChanged(it) }
         }
     }
 
