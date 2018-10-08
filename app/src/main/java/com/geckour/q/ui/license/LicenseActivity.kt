@@ -31,7 +31,8 @@ class LicenseActivity : AppCompatActivity() {
                 LicenseItem(getString(R.string.license_name_aac), getString(R.string.license_text_aac)),
                 LicenseItem(getString(R.string.license_name_permission), getString(R.string.license_text_permission)),
                 LicenseItem(getString(R.string.license_name_glide), getString(R.string.license_text_glide)),
-                LicenseItem(getString(R.string.license_name_exo), getString(R.string.license_text_exo))
+                LicenseItem(getString(R.string.license_name_exo), getString(R.string.license_text_exo)),
+                LicenseItem(getString(R.string.license_name_seek_bar), getString(R.string.license_text_seek_bar))
         ))
         binding.toolbar.setOnClickListener { binding.recyclerView.smoothScrollToPosition(0) }
     }
