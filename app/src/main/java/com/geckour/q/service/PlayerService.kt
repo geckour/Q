@@ -275,6 +275,7 @@ class PlayerService : Service() {
             }
 
             onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
+            onCurrentPositionChanged?.invoke(currentPosition)
             playing = newState
         }
     }
