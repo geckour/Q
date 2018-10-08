@@ -91,6 +91,10 @@
     <string name="dialog_title_choose_screen_on_launch">Select screen</string>
     <string name="dialog_desc_choose_screen_on_launch">Select screen to show on launch</string>
 
+    <string name="dialog_title_pattern_format">Specify formatting pattern of a sentence to post</string>
+    <string name="dialog_desc_pattern_format">Track name: TI\nArtist name: AR\nAlbum name: AL\nescape sequence: Wrap by \' \'\nline break: \\n</string>
+    <string name="dialog_hint_pattern_format">ex: #NowPlaying TI - AR (AL)</string>
+
 
     <string name="payment_desc">Available donation with Kyash</string>
     <string name="payment_save_success">Succeeded</string>
@@ -124,11 +128,6 @@
     <string name="setting_item_title_ducking">Enable ducking</string>
     <string name="setting_item_desc_ducking">Enable duking on other app play sound</string>
 
-    <string name="setting_category_title_misc">Misc</string>
-
-    <string name="setting_item_title_license">License</string>
-    <string name="setting_item_desc_license">Show OSS Licenses</string>
-
     <string name="setting_category_title_share">Share</string>
 
     <string name="setting_item_title_format_pattern">Specify format</string>
@@ -137,11 +136,12 @@
     <string name="setting_item_title_bundle_artwork">Bundle artwork</string>
     <string name="setting_item_desc_bundle_artwork">Bundle artwork on share</string>
 
-    <string name="setting_default_sharing_text_pattern" translatable="false">#NowPlaying TI - AR (AL)</string>
+    <string name="setting_category_title_misc">Misc</string>
 
-    <string name="setting_dialog_title_pattern_format">Enter format</string>
-    <string name="setting_dialog_message_pattern_format">Enter sharing text format pattern</string>
-    <string name="setting_dialog_hint_pattern_format">ex: #NowPlaying TI - AR (AL)</string>
+    <string name="setting_item_title_license">License</string>
+    <string name="setting_item_desc_license">Show OSS Licenses</string>
+
+    <string name="setting_default_sharing_text_pattern" translatable="false">#NowPlaying TI - AR (AL)</string>
 
 
     <string name="equalizer_flatten">Flatten</string>

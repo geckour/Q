@@ -166,15 +166,15 @@ class SettingActivity : AppCompatActivity() {
                 null,
                 false
         ).apply {
-            hint = getString(R.string.setting_dialog_hint_pattern_format)
+            hint = getString(R.string.dialog_hint_pattern_format)
             editText.setText(this@SettingActivity.formatPattern)
             editText.setSelection(editText.text.length)
         }
 
         AlertDialog.Builder(this).generate(
                 patternFormatDialogBinding.root,
-                getString(R.string.setting_dialog_title_pattern_format),
-                getString(R.string.setting_dialog_message_pattern_format)
+                getString(R.string.dialog_title_pattern_format),
+                getString(R.string.dialog_desc_pattern_format)
         ) { dialog, which ->
             when (which) {
                 DialogInterface.BUTTON_POSITIVE -> {

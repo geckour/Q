@@ -85,6 +85,10 @@
     <string name="dialog_title_choose_screen_on_launch">画面を選択</string>
     <string name="dialog_desc_choose_screen_on_launch">起動時に表示する画面を選択</string>
 
+    <string name="dialog_title_pattern_format">投稿文のフォーマットを指定</string>
+    <string name="dialog_desc_pattern_format">曲名: TI\nアーティスト名: AR\nアルバム名: AL\nエスケープ: \' \' で囲む\n改行: \\n</string>
+    <string name="dialog_hint_pattern_format">例: #NowPlaying TI - AR (AL)</string>
+
 
     <string name="payment_desc">Kyashを利用した投げ銭を受け付けています</string>
     <string name="payment_save_success">保存しました</string>
@@ -115,11 +119,6 @@
     <string name="setting_item_title_ducking">割り込みの有効化</string>
     <string name="setting_item_desc_ducking">他のアプリが音を鳴らした時の割り込みを有効にする</string>
 
-    <string name="setting_category_title_misc">その他</string>
-
-    <string name="setting_item_title_license">ライセンス</string>
-    <string name="setting_item_desc_license">OSSライセンスを表示する</string>
-
     <string name="setting_category_title_share">共有</string>
 
     <string name="setting_item_title_format_pattern">フォーマットを指定</string>
@@ -128,9 +127,10 @@
     <string name="setting_item_title_bundle_artwork">アートワークの添付</string>
     <string name="setting_item_desc_bundle_artwork">共有時にアートワークを添付する</string>
 
-    <string name="setting_dialog_title_pattern_format">フォーマットを入力</string>
-    <string name="setting_dialog_message_pattern_format">共有文のフォーマットを入力してください</string>
-    <string name="setting_dialog_hint_pattern_format">例: #NowPlaying TI - AR (AL)</string>
+    <string name="setting_category_title_misc">その他</string>
+
+    <string name="setting_item_title_license">ライセンス</string>
+    <string name="setting_item_desc_license">OSSライセンスを表示する</string>
 
 
     <string name="equalizer_flatten">リセット</string>
