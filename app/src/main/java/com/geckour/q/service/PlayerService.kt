@@ -181,7 +181,7 @@ class PlayerService : Service() {
             in queue.indices -> queue[currentPosition]
             else -> null
         }
-    private var playing = false
+    private val playing get() = player.playbackState == Player.STATE_READY && player.playWhenReady
 
     private var equalizer: Equalizer? = null
 
@@ -209,20 +209,7 @@ class PlayerService : Service() {
                                      trackSelections: TrackSelectionArray?) {
             onCurrentPositionChanged?.invoke(currentPosition)
             notificationUpdateJob.cancel()
-            notificationUpdateJob = bgScope.launch {
-                val song = currentSong ?: return@launch
-                val albumTitle = DB.getInstance(applicationContext).albumDao()
-                        .get(song.albumId)?.title ?: UNKNOWN
-
-                mediaSession?.setMetadata(
-                        song.getMediaMetadata(this@PlayerService, albumTitle).await())
-
-                val state = player.playbackState == Player.STATE_READY && player.playWhenReady
-                getNotification(this@PlayerService,
-                        mediaSession?.sessionToken, song, albumTitle, state)
-                        .await()
-                        ?.show(state)
-            }
+            notificationUpdateJob = showNotification()
         }
 
         override fun onPlayerError(error: ExoPlaybackException?) {
@@ -273,27 +260,13 @@ class PlayerService : Service() {
                 seekToHead()
             }
 
-            val newState = playbackState == Player.STATE_READY && playWhenReady
-            if (newState != playing) {
+            if (playbackState == Player.STATE_READY) {
                 notificationUpdateJob.cancel()
-                notificationUpdateJob = bgScope.launch {
-                    val song = currentSong ?: return@launch
-                    val albumTitle = DB.getInstance(applicationContext).albumDao()
-                            .get(song.albumId)?.title ?: UNKNOWN
-
-                    mediaSession?.setMetadata(
-                            song.getMediaMetadata(this@PlayerService, albumTitle).await())
-
-                    getNotification(this@PlayerService,
-                            mediaSession?.sessionToken, song, albumTitle, newState)
-                            .await()
-                            ?.show(newState)
-                }
+                notificationUpdateJob = showNotification()
             }
 
             onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
             onCurrentPositionChanged?.invoke(currentPosition)
-            playing = newState
         }
     }
 
@@ -597,7 +570,6 @@ class PlayerService : Service() {
     fun stop() {
         pause()
         seekToHead()
-        mediaSession?.isActive = false
     }
 
     fun clear(keepCurrentIfPlaying: Boolean = false) {
@@ -832,6 +804,19 @@ class PlayerService : Service() {
 
     private fun onUnplugged() {
         pause()
+    }
+
+    private fun showNotification(): Job = bgScope.launch {
+        val song = currentSong ?: return@launch
+        val albumTitle = DB.getInstance(applicationContext).albumDao()
+                .get(song.albumId)?.title ?: UNKNOWN
+
+        mediaSession?.setMetadata(
+                song.getMediaMetadata(this@PlayerService, albumTitle).await())
+        getNotification(this@PlayerService,
+                mediaSession?.sessionToken, song, albumTitle, playing)
+                .await()
+                ?.show(playing)
     }
 
     private fun Notification.show(playing: Boolean) {
