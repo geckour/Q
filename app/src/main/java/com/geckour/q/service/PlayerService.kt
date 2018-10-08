@@ -234,6 +234,23 @@ class PlayerService : Service() {
             onQueueChanged?.invoke(this@PlayerService.queue)
             onCurrentPositionChanged?.invoke(currentPosition)
             if (source.size < 1) destroyNotification()
+            else {
+                notificationUpdateJob.cancel()
+                notificationUpdateJob = bgScope.launch {
+                    val song = currentSong ?: return@launch
+                    val albumTitle = DB.getInstance(applicationContext).albumDao()
+                            .get(song.albumId)?.title ?: UNKNOWN
+
+                    mediaSession?.setMetadata(
+                            song.getMediaMetadata(this@PlayerService, albumTitle).await())
+
+                    val state = player.playbackState == Player.STATE_READY && player.playWhenReady
+                    getNotification(this@PlayerService,
+                            mediaSession?.sessionToken, song, albumTitle, state)
+                            .await()
+                            ?.show(state)
+                }
+            }
         }
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
@@ -265,8 +282,10 @@ class PlayerService : Service() {
                     val song = currentSong ?: return@launch
                     val albumTitle = DB.getInstance(applicationContext).albumDao()
                             .get(song.albumId)?.title ?: UNKNOWN
+
                     mediaSession?.setMetadata(
                             song.getMediaMetadata(this@PlayerService, albumTitle).await())
+
                     getNotification(this@PlayerService,
                             mediaSession?.sessionToken, song, albumTitle, newState)
                             .await()
