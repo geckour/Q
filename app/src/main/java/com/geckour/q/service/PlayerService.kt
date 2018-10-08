@@ -358,7 +358,7 @@ class PlayerService : Service() {
             addAction(SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE)
         })
 
-        sharedPreferences.restoreState()
+        restoreState()
     }
 
     override fun onDestroy() {
@@ -773,13 +773,14 @@ class PlayerService : Service() {
 
     fun onRequestedStopService() {
         if (player.playWhenReady.not()) {
-            sharedPreferences.storeState()
+            if (sharedPreferences.contains(PREF_KEY_PLAYER_STATE).not())
+                storeState()
 
             stopSelf()
         }
     }
 
-    private fun SharedPreferences.storeState() {
+    fun storeState() {
         val state = PlayerState(
                 queue,
                 currentPosition,
@@ -787,18 +788,18 @@ class PlayerService : Service() {
                 player.playWhenReady,
                 player.repeatMode
         )
-        edit().putString(PREF_KEY_PLAYER_STATE, Gson().toJson(state))
+        sharedPreferences.edit().putString(PREF_KEY_PLAYER_STATE, Gson().toJson(state))
                 .apply()
     }
 
-    private fun SharedPreferences.restoreState() {
+    private fun restoreState() {
         if (player.playWhenReady.not()) {
-            getString(PREF_KEY_PLAYER_STATE, null)?.let {
+            sharedPreferences.getString(PREF_KEY_PLAYER_STATE, null)?.let {
                 Gson().fromJson(it, PlayerState::class.java)
             }?.set()
         }
 
-        edit().remove(PREF_KEY_PLAYER_STATE).apply()
+        sharedPreferences.edit().remove(PREF_KEY_PLAYER_STATE).apply()
     }
 
     fun publishStatus() {

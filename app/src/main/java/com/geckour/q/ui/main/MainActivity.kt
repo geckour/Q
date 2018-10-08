@@ -343,6 +343,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun rebootPlayer() {
+        player?.storeState()
         player?.pause()
         unbindPlayer()
         player?.onRequestedStopService()
