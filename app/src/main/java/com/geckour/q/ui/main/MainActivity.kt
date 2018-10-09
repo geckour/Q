@@ -296,12 +296,12 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         parentJob.cancel()
-        unbindPlayer()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         player?.onRequestedStopService()
+        unbindPlayer()
         unregisterReceiver(syncingProgressReceiver)
         unregisterReceiver(equalizerStateReceiver)
     }
