@@ -15,7 +15,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@{data.nowPlaying ? @color/colorTintNowPlaying : @android:color/white}"
+        android:background="@{data.nowPlaying ? @color/colorTintNowPlaying : @android:color/transparent}"
         android:foreground="?android:attr/selectableItemBackground">
 
         <ImageView
