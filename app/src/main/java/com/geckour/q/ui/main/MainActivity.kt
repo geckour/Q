@@ -208,8 +208,21 @@ class MainActivity : AppCompatActivity() {
 
         override fun onServiceDisconnected(name: ComponentName?) {
             if (name == ComponentName(applicationContext, PlayerService::class.java)) {
-                isBoundService = false
-                player = null
+                onDestroyPlayer()
+            }
+        }
+
+        override fun onBindingDied(name: ComponentName?) {
+            super.onBindingDied(name)
+            if (name == ComponentName(applicationContext, PlayerService::class.java)) {
+                onDestroyPlayer()
+            }
+        }
+
+        override fun onNullBinding(name: ComponentName?) {
+            super.onNullBinding(name)
+            if (name == ComponentName(applicationContext, PlayerService::class.java)) {
+                onDestroyPlayer()
             }
         }
     }
@@ -329,12 +342,14 @@ class MainActivity : AppCompatActivity() {
         if (isBoundService.not()) {
             bindService(PlayerService.createIntent(this),
                     serviceConnection, Context.BIND_AUTO_CREATE)
+            isBoundService = true
         }
     }
 
     private fun unbindPlayer() {
         if (isBoundService) {
             unbindService(serviceConnection)
+            isBoundService = false
         }
     }
 
