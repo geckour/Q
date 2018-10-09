@@ -208,6 +208,7 @@ class MainActivity : AppCompatActivity() {
 
         override fun onServiceDisconnected(name: ComponentName?) {
             if (name == ComponentName(applicationContext, PlayerService::class.java)) {
+                isBoundService = false
                 player = null
             }
         }
@@ -333,7 +334,6 @@ class MainActivity : AppCompatActivity() {
 
     private fun unbindPlayer() {
         if (isBoundService) {
-            isBoundService = false
             unbindService(serviceConnection)
         }
     }
