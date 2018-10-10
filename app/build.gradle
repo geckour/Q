@@ -13,8 +13,8 @@ android {
     defaultConfig {
         applicationId "com.geckour.q"
         minSdkVersion 24
-        versionCode 2
-        versionName "1.0.1"
+        versionCode 3
+        versionName "1.1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
@@ -39,11 +39,11 @@ android {
     }
     dataBinding.enabled = true
     compileOptions {
-        sourceCompatibility 1.8
-        targetCompatibility 1.8
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
     }
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = JavaVersion.VERSION_1_8
     }
 }
 
@@ -54,7 +54,7 @@ repositories {
 dependencies {
     def support_ver = '1.0.0'
     def aac_lifecycle_ver = '2.0.0'
-    def aac_room_ver = '2.0.0'
+    def aac_room_ver = '2.1.0-alpha01'
     def aac_work_ver = '1.0.0-alpha09'
     def coroutines_ver = '0.30.0'
     def permission_dispatcher_ver = '3.3.1'

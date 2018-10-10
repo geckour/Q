@@ -26,3 +26,5 @@
 }
 
 -keep class com.geckour.q.service.** { *; }
+
+-dontwarn androidx.concurrent.futures.**
