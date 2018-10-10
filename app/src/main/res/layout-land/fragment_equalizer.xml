@@ -37,7 +37,7 @@
             android:elevation="4dp"
             android:onClick="@{() -> viewModel.onFlatten()}"
             android:text="@string/equalizer_flatten"
-            android:textColor="?attr/colorPrimaryDark"
+            android:textColor="?attr/colorButtonNormal"
             android:textStyle="bold"
             android:visibility="@{viewModel.enabled ? View.VISIBLE : View.INVISIBLE}"
             app:cornerRadius="28dp"
