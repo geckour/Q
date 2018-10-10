@@ -17,7 +17,6 @@ import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.ViewModelProviders
 import androidx.work.*
-import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ActivityMainBinding
@@ -229,12 +228,15 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private lateinit var currentAppTheme: AppTheme
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setTheme(when (sharedPreferences.appTheme) {
-            App.Theme.LIGHT -> R.style.AppTheme
-            App.Theme.DARK -> R.style.AppTheme_Dark
+        currentAppTheme = sharedPreferences.appTheme
+        setTheme(when (currentAppTheme) {
+            AppTheme.LIGHT -> R.style.AppTheme
+            AppTheme.DARK -> R.style.AppTheme_Dark
         })
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
@@ -272,11 +274,6 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
 
         paused = false
-
-        setTheme(when (sharedPreferences.appTheme) {
-            App.Theme.LIGHT -> R.style.AppTheme
-            App.Theme.DARK -> R.style.AppTheme_Dark
-        })
 
         if (player == null) {
             bottomSheetViewModel.currentQueue.value = emptyList()
@@ -341,6 +338,10 @@ class MainActivity : AppCompatActivity() {
             RequestCode.RESULT_SETTING.code -> {
                 if (player?.getDuking() != sharedPreferences.ducking)
                     rebootPlayer()
+                if (currentAppTheme != sharedPreferences.appTheme) {
+                    finish()
+                    startActivity(MainActivity.createIntent(this))
+                }
             }
         }
     }

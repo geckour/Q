@@ -47,6 +47,10 @@
                     android:title="@{@string/setting_category_title_general}" />
 
                 <include
+                    android:id="@+id/item_choose_app_theme"
+                    layout="@layout/item_list_setting_item" />
+
+                <include
                     android:id="@+id/item_choose_screen"
                     layout="@layout/item_list_setting_item" />
 

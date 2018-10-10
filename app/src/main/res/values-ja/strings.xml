@@ -3,6 +3,10 @@
     <string name="title_activity_equalizer">イコライザ</string>
     <string name="title_activity_license">OSSライセンス</string>
 
+
+    <string name="app_theme_light">ライト</string>
+    <string name="app_theme_dark">ダーク</string>
+
     <string name="drawer_open">開</string>
     <string name="drawer_close">閉</string>
 
@@ -82,6 +86,9 @@
     <string name="dialog_content_label_new_playlist">新規プレイリストを作成:</string>
     <string name="dialog_content_hint_playlist_name">プレイリストの名前を入力</string>
 
+    <string name="dialog_title_choose_app_theme">テーマを選択</string>
+    <string name="dialog_desc_choose_app_theme">アプリのカラーテーマを選択</string>
+
     <string name="dialog_title_choose_screen_on_launch">画面を選択</string>
     <string name="dialog_desc_choose_screen_on_launch">起動時に表示する画面を選択</string>
 
@@ -110,8 +117,11 @@
 
     <string name="setting_category_title_general">一般</string>
 
+    <string name="setting_item_title_app_theme">アプリのテーマ</string>
+    <string name="setting_item_desc_app_theme">アプリのカラーテーマを選択</string>
+
     <string name="setting_item_title_screen_on_launch">起動時の画面</string>
-    <string name="setting_item_desc_screen_on_launch">起動時に表示する画面を選択する</string>
+    <string name="setting_item_desc_screen_on_launch">起動時に表示する画面を選択</string>
 
     <string name="setting_item_title_artwork_on_lock_screen">ロック画面のアートワーク</string>
     <string name="setting_item_desc_artwork_on_lock_screen">ロック画面の背景にアートワークを表示する</string>
@@ -122,7 +132,7 @@
     <string name="setting_category_title_share">共有</string>
 
     <string name="setting_item_title_format_pattern">フォーマットを指定</string>
-    <string name="setting_item_desc_format_pattern">共有文のフォーマットを指定する</string>
+    <string name="setting_item_desc_format_pattern">共有文のフォーマットを指定</string>
 
     <string name="setting_item_title_bundle_artwork">アートワークの添付</string>
     <string name="setting_item_desc_bundle_artwork">共有時にアートワークを添付する</string>
@@ -130,7 +140,7 @@
     <string name="setting_category_title_misc">その他</string>
 
     <string name="setting_item_title_license">ライセンス</string>
-    <string name="setting_item_desc_license">OSSライセンスを表示する</string>
+    <string name="setting_item_desc_license">OSSライセンスを表示</string>
 
 
     <string name="equalizer_flatten">リセット</string>

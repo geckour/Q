@@ -6,6 +6,10 @@
     <string name="title_activity_license">OSS Licenses</string>
 
 
+    <string name="app_theme_light">Light</string>
+    <string name="app_theme_dark">Dark</string>
+
+
     <string name="drawer_open">Open</string>
     <string name="drawer_close">Close</string>
 
@@ -88,6 +92,9 @@
     <string name="dialog_content_label_new_playlist">Create new playlist:</string>
     <string name="dialog_content_hint_playlist_name">Enter playlist name</string>
 
+    <string name="dialog_title_choose_app_theme">Select theme</string>
+    <string name="dialog_desc_choose_app_theme">Select app color theme</string>
+
     <string name="dialog_title_choose_screen_on_launch">Select screen</string>
     <string name="dialog_desc_choose_screen_on_launch">Select screen to show on launch</string>
 
@@ -118,6 +125,9 @@
     <string name="setting_switch_off" translatable="false">OFF</string>
 
     <string name="setting_category_title_general">General</string>
+
+    <string name="setting_item_title_app_theme">App theme</string>
+    <string name="setting_item_desc_app_theme">Select app color theme</string>
 
     <string name="setting_item_title_screen_on_launch">Screen on launch</string>
     <string name="setting_item_desc_screen_on_launch">Select screen to show on launch</string>
@@ -180,7 +190,7 @@
 
     <string name="license_name_exo" translatable="false">ExoPlayer</string>
     <string name="license_text_exo" translatable="false">Copyright 2018 Google Inc.\n\nLicensed under the Apache License, Version 2.0 (the "License");\n you may not use this file except in compliance with the License.\n You may obtain a copy of the License at\n\n      http://www.apache.org/licenses/LICENSE–2.0\n\n Unless required by applicable law or agreed to in writing, software\n distributed under the License is distributed on an "AS IS" BASIS,\n WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n See the License for the specific language governing permissions and\n limitations under the License.</string>
-    
+
     <string name="license_name_seek_bar" translatable="false">VerticalSeekBar</string>
     <string name="license_text_seek_bar" translatable="false">Copyright (C) 2015 Haruki Hasegawa\n\nLicensed under the Apache License, Version 2.0 (the "License");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n    http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an "AS IS" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.</string>
 </resources>

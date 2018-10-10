@@ -15,7 +15,6 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.ViewModelProviders
-import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivitySettingBinding
 import com.geckour.q.databinding.DialogEditTextBinding
@@ -41,11 +40,12 @@ class SettingActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         setTheme(when (sharedPreferences.appTheme) {
-            App.Theme.LIGHT -> R.style.AppTheme
-            App.Theme.DARK -> R.style.AppTheme_Dark
+            AppTheme.LIGHT -> R.style.AppTheme
+            AppTheme.DARK -> R.style.AppTheme_Dark
         })
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_setting)
+        binding.itemChooseAppTheme.viewModel = chooseAppThemeViewModel
         binding.itemChooseScreen.viewModel = chooseLaunchScreenViewModel
         binding.itemArtworkOnLockScreen.viewModel = artworkOnLockScreenViewModel
         binding.itemDucking.viewModel = duckingViewModel
@@ -56,17 +56,58 @@ class SettingActivity : AppCompatActivity() {
         observeEvents()
     }
 
-    override fun onResume() {
-        super.onResume()
-
-        setTheme(when (sharedPreferences.appTheme) {
-            App.Theme.LIGHT -> R.style.AppTheme
-            App.Theme.DARK -> R.style.AppTheme_Dark
-        })
-    }
-
     private fun observeEvents() {
         viewModel.scrollToTop.observe(this) { binding.scrollView.smoothScrollTo(0, 0) }
+    }
+
+    private val chooseAppThemeViewModel: SettingItemViewModel by lazy {
+        SettingItemViewModel(
+                getString(R.string.setting_item_title_app_theme),
+                getString(R.string.setting_item_desc_app_theme),
+                getString(sharedPreferences.appTheme.displayNameResId),
+                false, onClick = {
+            val binding = DialogSpinnerBinding.inflate(
+                    LayoutInflater.from(this@SettingActivity), null, false).apply {
+                val arrayAdapter =
+                        object : ArrayAdapter<String>(
+                                this@SettingActivity,
+                                android.R.layout.simple_spinner_item,
+                                AppTheme.values().map { getString(it.displayNameResId) }) {
+                            override fun getDropDownView(position: Int,
+                                                         convertView: View?,
+                                                         parent: ViewGroup): View =
+                                    super.getDropDownView(position, convertView, parent).apply {
+                                        if (position == spinner.selectedItemPosition) {
+                                            (this as TextView).setTextColor(
+                                                    getColor(R.color.colorPrimaryDark))
+                                        }
+                                    }
+                        }.apply {
+                            setDropDownViewResource(
+                                    android.R.layout.simple_spinner_dropdown_item)
+                        }
+                spinner.apply {
+                    adapter = arrayAdapter
+                    setSelection(sharedPreferences.appTheme.ordinal)
+                }
+            }
+
+            AlertDialog.Builder(this@SettingActivity).generate(
+                    binding.root,
+                    getString(R.string.dialog_title_choose_app_theme),
+                    getString(R.string.dialog_desc_choose_app_theme)) { dialog, which ->
+                when (which) {
+                    DialogInterface.BUTTON_POSITIVE -> {
+                        val themeIndex = binding.spinner.selectedItemPosition
+                        val appTheme = AppTheme.values()[themeIndex]
+                        sharedPreferences.appTheme = appTheme
+                        summary = getString(appTheme.displayNameResId)
+                        this@SettingActivity.binding.itemChooseAppTheme.viewModel = this
+                    }
+                }
+                dialog.dismiss()
+            }.show()
+        })
     }
 
     private val chooseLaunchScreenViewModel: SettingItemViewModel by lazy {

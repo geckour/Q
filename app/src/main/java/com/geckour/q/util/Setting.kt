@@ -3,7 +3,6 @@ package com.geckour.q.util
 import android.content.Context
 import android.content.SharedPreferences
 import android.preference.PreferenceManager
-import com.geckour.q.App
 import com.geckour.q.R
 import com.google.gson.Gson
 
@@ -16,6 +15,11 @@ private const val KEY_SHOW_ARTWORK_ON_LOCK_SCREEN = "key_show_artwork_on_lock_sc
 private const val KEY_EQUALIZER_ENABLED = "key_equalizer_enabled"
 private const val KEY_EQUALIZER_PARAMS = "key_equalizer_params"
 private const val KEY_EQUALIZER_SETTINGS = "key_equalizer_settings"
+
+enum class AppTheme(val displayNameResId: Int) {
+    LIGHT(R.string.app_theme_light),
+    DARK(R.string.app_theme_dark)
+}
 
 enum class Screen(val displayNameResId: Int) {
     ARTIST(R.string.nav_artist),
@@ -39,9 +43,9 @@ data class EqualizerSettings(
         val levels: List<Int>
 )
 
-var SharedPreferences.appTheme: App.Theme
-    get() = App.Theme.values()[getInt(KEY_APP_THEME, App.Theme.LIGHT.ordinal)]
-    set(value) = edit().putInt(KEY_DUCKING, value.ordinal).apply()
+var SharedPreferences.appTheme: AppTheme
+    get() = AppTheme.values()[getInt(KEY_APP_THEME, AppTheme.LIGHT.ordinal)]
+    set(value) = edit().putInt(KEY_APP_THEME, value.ordinal).apply()
 
 var SharedPreferences.preferScreen: Screen
     get() = Screen.values()[getInt(KEY_PREFER_SCREEN, Screen.ARTIST.ordinal)]

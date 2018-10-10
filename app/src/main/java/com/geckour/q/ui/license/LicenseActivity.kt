@@ -7,10 +7,10 @@ import android.os.Bundle
 import android.preference.PreferenceManager
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
-import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivityLicenseBinding
 import com.geckour.q.domain.model.LicenseItem
+import com.geckour.q.util.AppTheme
 import com.geckour.q.util.appTheme
 
 class LicenseActivity : AppCompatActivity() {
@@ -28,8 +28,8 @@ class LicenseActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
 
         setTheme(when (sharedPreferences.appTheme) {
-            App.Theme.LIGHT -> R.style.AppTheme
-            App.Theme.DARK -> R.style.AppTheme_Dark
+            AppTheme.LIGHT -> R.style.AppTheme
+            AppTheme.DARK -> R.style.AppTheme_Dark
         })
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_license)
@@ -47,14 +47,5 @@ class LicenseActivity : AppCompatActivity() {
                 LicenseItem(getString(R.string.license_name_seek_bar), getString(R.string.license_text_seek_bar))
         ))
         binding.toolbar.setOnClickListener { binding.recyclerView.smoothScrollToPosition(0) }
-    }
-
-    override fun onResume() {
-        super.onResume()
-
-        setTheme(when (sharedPreferences.appTheme) {
-            App.Theme.LIGHT -> R.style.AppTheme
-            App.Theme.DARK -> R.style.AppTheme_Dark
-        })
     }
 }
