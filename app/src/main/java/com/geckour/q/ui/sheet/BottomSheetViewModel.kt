@@ -30,6 +30,8 @@ class BottomSheetViewModel : ViewModel() {
     internal val touchLock: SingleLiveEvent<Boolean> = SingleLiveEvent()
     internal val share: SingleLiveEvent<Song> = SingleLiveEvent()
 
+    var currentSong: Song? = null
+
     fun onClickQueueButton() {
         toggleSheetState.call()
     }

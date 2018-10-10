@@ -59,6 +59,7 @@
             android:ellipsize="end"
             android:textColor="@color/colorTextPrimary"
             android:textSize="12sp"
+            android:text="@{viewModel.currentSong.name}"
             tools:text="曲タイトル" />
 
         <TextView
@@ -68,6 +69,7 @@
             android:ellipsize="end"
             android:textColor="@color/colorTextPrimary"
             android:textSize="10sp"
+            android:text="@{viewModel.currentSong.artist}"
             tools:text="アーティスト名" />
 
         <ImageView
@@ -166,7 +168,7 @@
             android:layout_height="0dp"
             android:max="10000"
             android:progressTint="@color/colorPrimary"
-            android:thumbTint="@color/colorPrimaryDark"
+            android:thumbTint="@{isQueueNotEmpty ? @color/colorPrimaryDark : @color/colorTintInactive}"
             tools:progress="2000" />
 
         <TextView

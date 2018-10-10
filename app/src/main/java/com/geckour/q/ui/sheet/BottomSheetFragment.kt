@@ -2,7 +2,6 @@ package com.geckour.q.ui.sheet
 
 import android.annotation.SuppressLint
 import android.content.SharedPreferences
-import android.content.res.ColorStateList
 import android.os.Bundle
 import android.preference.PreferenceManager
 import android.view.LayoutInflater
@@ -11,7 +10,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
 import androidx.constraintlayout.motion.widget.MotionLayout
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -197,13 +195,17 @@ class BottomSheetFragment : Fragment() {
 
         viewModel.currentQueue.observe(this) {
             adapter.setItems(it ?: emptyList())
+
             val state = it?.isNotEmpty() ?: false
             binding.isQueueNotEmpty = state
+
             val totalTime = it?.asSequence()?.map { it.duration }?.sum()
             binding.textTimeTotal.text = totalTime?.let {
                 context?.getString(R.string.bottom_sheet_time_total, it.getTimeString())
             }
-            viewModel.currentPosition.value = if (state) viewModel.currentPosition.value else 0
+
+            viewModel.currentPosition.value = if (state) viewModel.currentPosition.value else -1
+
             if (behavior.state == BottomSheetBehavior.STATE_COLLAPSED) {
                 uiScope.launch {
                     var direction = 1
@@ -216,62 +218,52 @@ class BottomSheetFragment : Fragment() {
                     binding.buttonToggleVisibleQueue.rotation = 0f
                 }
             }
+
             mainViewModel.loading.value = false
         }
 
         viewModel.currentPosition.observe(this) {
             val song = adapter.getItem(it)
+            binding.seekBar.setOnTouchListener { _, _ -> song == null }
 
-            context?.let { context ->
-                bgScope.launch {
-                    val model = song?.albumId?.let {
-                        DB.getInstance(context)
-                                .getArtworkUriStringFromId(it).await() ?: R.drawable.ic_empty
+            if (song?.id != viewModel.currentSong?.id) {
+                viewModel.currentSong = song
+                context?.also { context ->
+                    bgScope.launch {
+                        val model = viewModel.currentSong?.albumId?.let {
+                            DB.getInstance(context)
+                                    .getArtworkUriStringFromId(it).await() ?: R.drawable.ic_empty
+                        }
+                        val drawable = model?.let {
+                            Glide.with(requireContext())
+                                    .asDrawable()
+                                    .load(it)
+                                    .submit()
+                                    .get()
+                        }
+                        uiScope.launch { binding.artwork.setImageDrawable(drawable) }
                     }
-                    val drawable = model?.let {
-                        Glide.with(requireContext())
-                                .asDrawable()
-                                .load(it)
-                                .submit()
-                                .get()
-                    }
-                    uiScope.launch { binding.artwork.setImageDrawable(drawable) }
                 }
-            }
-            binding.textSong.text = song?.name
-            binding.textArtist.text = song?.artist
-            binding.seekBar.apply {
-                context?.also {
-                    thumbTintList =
-                            if (song != null) {
-                                setOnTouchListener(null)
-                                ColorStateList.valueOf(ContextCompat.getColor(it,
-                                        R.color.colorPrimaryDark))
-                            } else {
-                                setOnTouchListener { _, _ -> true }
-                                ColorStateList.valueOf(ContextCompat.getColor(it,
-                                        R.color.colorTintInactive))
-                            }
+                if (song == null) {
+                    binding.textTimeLeft.text = null
+                    binding.seekBar.progress = 0
+                    binding.textTimeTotal.text = null
+                    binding.textTimeRemain.text = null
+                } else {
+                    binding.textTimeRight.text =
+                            if (sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false)) {
+                                viewModel.playbackRatio.value?.let {
+                                    val remain = (song.duration * (1 - it)).toLong()
+                                    "-${remain.getTimeString()}"
+                                }
+                            } else song.duration.getTimeString()
                 }
-            }
-            if (song == null) {
-                binding.textTimeLeft.text = null
-                binding.seekBar.progress = 0
-                binding.textTimeTotal.text = null
-                binding.textTimeRemain.text = null
-            }
-            binding.textTimeRight.text = song?.duration?.let { duration ->
-                if (sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false)) {
-                    viewModel.playbackRatio.value?.let {
-                        val remain = (duration * (1 - it)).toLong()
-                        "-${remain.getTimeString()}"
-                    }
-                } else duration.getTimeString()
-            }
-            adapter.setNowPlaying(it)
+                adapter.setNowPlayingPosition(it)
 
-            if (it != null && song != null && behavior.state != BottomSheetBehavior.STATE_EXPANDED) {
-                binding.recyclerView.smoothScrollToPosition(it)
+                if (it != null && song != null && behavior.state != BottomSheetBehavior.STATE_EXPANDED) {
+                    binding.recyclerView.smoothScrollToPosition(it)
+                }
+                binding.viewModel = viewModel
             }
         }
 
