@@ -67,7 +67,7 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
     inner class ViewHolder(private val binding: ItemListPlaylistBinding)
         : RecyclerView.ViewHolder(binding.root) {
 
-        private val popupMenu = PopupMenu(binding.root.context, binding.root).apply {
+        private val longPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener {
                 binding.data?.apply {
                     when (it.itemId) {
@@ -81,9 +81,9 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
             inflate(R.menu.playlist_long)
         }
 
-        private val optionPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
+        private val optionPopupMenu = PopupMenu(binding.option.context, binding.option).apply {
             setOnMenuItemClickListener {
-                return@setOnMenuItemClickListener onOptionSelected(binding.root.context,
+                return@setOnMenuItemClickListener onOptionSelected(binding.option.context,
                         it.itemId, binding.data)
             }
             inflate(R.menu.songs)
@@ -95,7 +95,7 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
             binding.duration.text = playlist.totalDuration.getTimeString()
             binding.root.setOnClickListener { viewModel.onRequestNavigate(playlist) }
             binding.root.setOnLongClickListener {
-                popupMenu.show()
+                longPopupMenu.show()
                 return@setOnLongClickListener true
             }
             binding.option.setOnClickListener { optionPopupMenu.show() }

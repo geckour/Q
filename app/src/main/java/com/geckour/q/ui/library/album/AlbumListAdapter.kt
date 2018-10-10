@@ -95,9 +95,9 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
     inner class ViewHolder(private val binding: ItemListAlbumBinding)
         : RecyclerView.ViewHolder(binding.root) {
 
-        private val popupMenu = PopupMenu(binding.root.context, binding.root).apply {
+        private val popupMenu = PopupMenu(binding.option.context, binding.option).apply {
             setOnMenuItemClickListener {
-                return@setOnMenuItemClickListener onOptionSelected(binding.root.context,
+                return@setOnMenuItemClickListener onOptionSelected(binding.option.context,
                         it.itemId, binding.data)
             }
             inflate(R.menu.songs)
