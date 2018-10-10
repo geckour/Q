@@ -637,11 +637,11 @@ class PlayerService : Service() {
             seekJob?.cancel()
             seekJob = uiScope.launch {
                 while (true) {
-                    val seekTo = (player.currentPosition + 3000).let {
+                    val seekTo = (player.currentPosition + 1000).let {
                         if (it > song.duration) song.duration else it
                     }
                     seek(seekTo)
-                    delay(250)
+                    delay(100)
                 }
             }
         }
@@ -652,11 +652,11 @@ class PlayerService : Service() {
             seekJob?.cancel()
             seekJob = uiScope.launch {
                 while (true) {
-                    val seekTo = (player.currentPosition - 3000).let {
+                    val seekTo = (player.currentPosition - 1000).let {
                         if (it < 0) 0 else it
                     }
                     seek(seekTo)
-                    delay(250)
+                    delay(100)
                 }
             }
         }
