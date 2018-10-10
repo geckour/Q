@@ -109,7 +109,7 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:padding="6dp"
             android:src="@drawable/ic_remove"
-            android:tint="?attr/colorPrimaryDark"
+            android:tint="?attr/colorButtonNormal"
             android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"

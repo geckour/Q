@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.preference.PreferenceManager
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -79,7 +80,7 @@ class SettingActivity : AppCompatActivity() {
                                     super.getDropDownView(position, convertView, parent).apply {
                                         if (position == spinner.selectedItemPosition) {
                                             (this as TextView).setTextColor(
-                                                    getColor(R.color.colorPrimaryDark))
+                                                    theme.getColor(R.attr.colorPrimaryDark))
                                         }
                                     }
                         }.apply {
@@ -129,7 +130,7 @@ class SettingActivity : AppCompatActivity() {
                                     super.getDropDownView(position, convertView, parent).apply {
                                         if (position == spinner.selectedItemPosition) {
                                             (this as TextView).setTextColor(
-                                                    getColor(R.color.colorPrimaryDark))
+                                                    theme.getColor(R.attr.colorPrimaryDark))
                                         }
                                     }
                         }.apply {

@@ -1,7 +1,11 @@
 package com.geckour.q.util
 
 import android.content.ContentUris
+import android.content.res.Resources
 import android.net.Uri
+import android.util.TypedValue
+import androidx.annotation.AttrRes
+import androidx.annotation.ColorInt
 import com.geckour.q.data.db.DB
 import kotlinx.coroutines.experimental.Deferred
 import kotlinx.coroutines.experimental.GlobalScope
@@ -20,3 +24,6 @@ fun DB.getArtworkUriStringFromId(albumId: Long, parentJob: Job? = null): Deferre
 fun Long.getArtworkUriFromMediaId(): Uri =
         ContentUris.withAppendedId(
                 Uri.parse("content://media/external/audio/albumart"), this)
+
+fun Resources.Theme.getColor(@AttrRes attrResId: Int): Int =
+        TypedValue().apply { this@getColor.resolveAttribute(attrResId, this, true) }.data
