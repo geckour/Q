@@ -7,13 +7,13 @@
 
         <variable
             name="viewModel"
-            type="com.geckour.q.ui.MainViewModel" />
+            type="com.geckour.q.ui.main.MainViewModel" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/colorBackgroundInactive"
+        android:background="?attr/colorBackgroundInactive"
         android:clickable="true"
         android:elevation="6dp"
         android:focusable="true">
@@ -22,6 +22,7 @@
             android:id="@+id/progress_bar"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:indeterminateTint="@color/colorStrong"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
@@ -32,7 +33,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:textColor="@color/colorTextSecondary"
+            android:textColor="?attr/colorTextSecondary"
             android:textSize="14sp"
             app:layout_constraintLeft_toLeftOf="@id/progress_bar"
             app:layout_constraintRight_toRightOf="@id/progress_bar"
@@ -44,7 +45,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:textColor="@color/colorTextSecondary"
+            android:textColor="?attr/colorTextSecondary"
             android:textSize="12sp"
             app:layout_constraintLeft_toLeftOf="@id/progress_bar"
             app:layout_constraintRight_toRightOf="@id/progress_bar"
@@ -56,7 +57,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
-            android:backgroundTint="@color/colorAccent"
+            android:backgroundTint="?attr/colorAccent"
             android:onClick="@{() -> viewModel.onCancelSync()}"
             android:text="@string/button_cancel_sync"
             android:textColor="@android:color/white"

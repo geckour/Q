@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:app="http://schemas.android.com/apk/res-auto">
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <data>
 
@@ -12,20 +12,20 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@android:color/white">
+        android:background="?attr/colorBackground">
 
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="@color/colorPrimary"
+            android:background="?attr/colorPrimary"
             android:elevation="5dp"
             android:onClick="@{() -> viewModel.onToolbarClick()}"
-            android:theme="@style/ToolbarStyle"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            app:title="@string/title_activity_setting" />
+            app:title="@string/title_activity_setting"
+            app:titleTextColor="@android:color/white" />
 
         <ScrollView
             android:id="@+id/scroll_view"
@@ -47,7 +47,32 @@
                     android:title="@{@string/setting_category_title_general}" />
 
                 <include
+                    android:id="@+id/item_choose_app_theme"
+                    layout="@layout/item_list_setting_item" />
+
+                <include
                     android:id="@+id/item_choose_screen"
+                    layout="@layout/item_list_setting_item" />
+
+                <include
+                    android:id="@+id/item_artwork_on_lock_screen"
+                    layout="@layout/item_list_setting_item" />
+
+                <include
+                    android:id="@+id/item_ducking"
+                    layout="@layout/item_list_setting_item" />
+
+                <include
+                    android:id="@+id/category_share"
+                    layout="@layout/item_list_setting_category"
+                    android:title="@{@string/setting_category_title_share}" />
+
+                <include
+                    android:id="@+id/item_format_pattern"
+                    layout="@layout/item_list_setting_item" />
+
+                <include
+                    android:id="@+id/item_bundle_artwork"
                     layout="@layout/item_list_setting_item" />
 
                 <include

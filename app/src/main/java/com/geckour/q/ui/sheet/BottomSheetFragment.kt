@@ -1,14 +1,15 @@
 package com.geckour.q.ui.sheet
 
 import android.annotation.SuppressLint
-import android.content.res.ColorStateList
+import android.content.SharedPreferences
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
-import androidx.core.content.ContextCompat
+import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -18,16 +19,24 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentSheetBottomBinding
 import com.geckour.q.domain.model.PlaybackButton
-import com.geckour.q.ui.MainActivity
-import com.geckour.q.ui.MainViewModel
+import com.geckour.q.ui.main.MainActivity
+import com.geckour.q.ui.main.MainViewModel
+import com.geckour.q.ui.share.SharingActivity
 import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.getTimeString
+import com.geckour.q.util.observe
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.android.Main
+import kotlin.coroutines.experimental.CoroutineContext
 
 class BottomSheetFragment : Fragment() {
+
+    companion object {
+        private const val PREF_KEY_SHOW_CURRENT_REMAIN = "pref_key_show_current_remain"
+        private const val PREF_KEY_SHOW_LOCK_TOUCH_QUEUE = "pref_key_lock_touch_queue"
+    }
 
     private val viewModel: BottomSheetViewModel by lazy {
         ViewModelProviders.of(requireActivity())[BottomSheetViewModel::class.java]
@@ -37,7 +46,19 @@ class BottomSheetFragment : Fragment() {
     }
     private lateinit var binding: FragmentSheetBottomBinding
     private lateinit var adapter: QueueListAdapter
-    private lateinit var behavior: BottomSheetBehavior<*>
+    private lateinit var behavior: BottomSheetBehavior<MotionLayout>
+
+    private var parentJob = Job()
+    private val uiScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
+    }
+    private val bgScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = parentJob
+    }
+
+    private val sharedPreferences: SharedPreferences by lazy {
+        PreferenceManager.getDefaultSharedPreferences(requireContext())
+    }
 
     override fun onCreateView(inflater: LayoutInflater,
                               container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -85,6 +106,7 @@ class BottomSheetFragment : Fragment() {
         }).attachToRecyclerView(binding.recyclerView)
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
@@ -116,32 +138,51 @@ class BottomSheetFragment : Fragment() {
             }
         }
 
+        viewModel.touchLock.value = sharedPreferences
+                .getBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, false)
+
         behavior = BottomSheetBehavior.from(
-                (requireActivity() as MainActivity).binding.root
-                        .findViewById<View>(R.id.bottom_sheet))
+                (requireActivity() as MainActivity).binding.root.findViewById(R.id.bottom_sheet))
         behavior.setBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback() {
             override fun onSlide(v: View, dy: Float) {
+                binding.sheet.progress = dy
             }
 
             @SuppressLint("SwitchIntDef")
             override fun onStateChanged(v: View, state: Int) {
                 viewModel.sheetState = state
-                binding.buttonToggleVisibleQueue.setImageResource(
-                        when (state) {
+                reloadBindingVariable()
+                binding.buttonToggleVisibleQueue
+                        .setImageResource(when (state) {
                             BottomSheetBehavior.STATE_EXPANDED -> R.drawable.ic_collapse
                             else -> R.drawable.ic_queue
-                        }
-                )
+                        })
             }
         })
 
+        binding.touchBlockWall.setOnTouchListener { _, event ->
+            behavior.onTouchEvent(
+                    requireActivity().findViewById(R.id.coordinator_main), binding.sheet, event)
+            true
+        }
+
         viewModel.currentQueue.value = emptyList()
+    }
+
+    override fun onStart() {
+        super.onStart()
+        parentJob = Job()
     }
 
     override fun onResume() {
         super.onResume()
 
         observeEvents()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        parentJob.cancel()
     }
 
     private fun observeEvents() {
@@ -154,56 +195,75 @@ class BottomSheetFragment : Fragment() {
 
         viewModel.currentQueue.observe(this) {
             adapter.setItems(it ?: emptyList())
+
             val state = it?.isNotEmpty() ?: false
             binding.isQueueNotEmpty = state
+
             val totalTime = it?.asSequence()?.map { it.duration }?.sum()
             binding.textTimeTotal.text = totalTime?.let {
                 context?.getString(R.string.bottom_sheet_time_total, it.getTimeString())
             }
-            viewModel.currentPosition.value = if (state) viewModel.currentPosition.value else 0
+
+            viewModel.currentPosition.value = if (state) viewModel.currentPosition.value else -1
+
+            if (behavior.state == BottomSheetBehavior.STATE_COLLAPSED) {
+                uiScope.launch {
+                    var direction = 1
+                    var count = 0
+                    while (count++ < 4) {
+                        binding.buttonToggleVisibleQueue.rotation = 20f * direction
+                        direction *= -1
+                        delay(80)
+                    }
+                    binding.buttonToggleVisibleQueue.rotation = 0f
+                }
+            }
+
             mainViewModel.loading.value = false
         }
 
         viewModel.currentPosition.observe(this) {
             val song = adapter.getItem(it)
+            binding.seekBar.setOnTouchListener { _, _ -> song == null }
 
-            context?.let { context ->
-                launch(UI) {
-                    val model = song?.albumId?.let {
-                        DB.getInstance(context)
-                                .getArtworkUriStringFromId(it).await() ?: R.drawable.ic_empty
+            if (song?.id != viewModel.currentSong?.id) {
+                viewModel.currentSong = song
+                context?.also { context ->
+                    bgScope.launch {
+                        val model = viewModel.currentSong?.albumId?.let {
+                            DB.getInstance(context)
+                                    .getArtworkUriStringFromId(it).await() ?: R.drawable.ic_empty
+                        }
+                        val drawable = model?.let {
+                            Glide.with(requireContext())
+                                    .asDrawable()
+                                    .load(it)
+                                    .submit()
+                                    .get()
+                        }
+                        uiScope.launch { binding.artwork.setImageDrawable(drawable) }
                     }
-                    Glide.with(binding.artwork)
-                            .load(model)
-                            .into(binding.artwork)
                 }
-            }
-            binding.textSong.text = song?.name
-            binding.textArtist.text = song?.artist
-            binding.seekBar.apply {
-                context?.also {
-                    thumbTintList =
-                            if (song != null) {
-                                setOnTouchListener(null)
-                                ColorStateList.valueOf(ContextCompat.getColor(it,
-                                        R.color.colorPrimaryDark))
-                            } else {
-                                setOnTouchListener { _, _ -> true }
-                                ColorStateList.valueOf(ContextCompat.getColor(it,
-                                        R.color.colorTintInactive))
-                            }
+                if (song == null) {
+                    binding.textTimeLeft.text = null
+                    binding.seekBar.progress = 0
+                    binding.textTimeTotal.text = null
+                    binding.textTimeRemain.text = null
+                } else {
+                    binding.textTimeRight.text =
+                            if (sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false)) {
+                                viewModel.playbackRatio.value?.let {
+                                    val remain = (song.duration * (1 - it)).toLong()
+                                    "-${remain.getTimeString()}"
+                                }
+                            } else song.duration.getTimeString()
                 }
-            }
-            if (song == null) {
-                binding.textTimeLeft.text = null
-                binding.seekBar.progress = 0
-                binding.textTimeTotal.text = null
-            }
-            binding.textTimeRight.text = song?.durationString
-            adapter.setNowPlaying(it)
+                adapter.setNowPlayingPosition(it)
 
-            if (it != null && song != null && behavior.state != BottomSheetBehavior.STATE_EXPANDED) {
-                binding.recyclerView.smoothScrollToPosition(it)
+                if (it != null && it > -1 && behavior.state != BottomSheetBehavior.STATE_EXPANDED) {
+                    binding.recyclerView.smoothScrollToPosition(it)
+                }
+                binding.viewModel = viewModel
             }
         }
 
@@ -215,7 +275,16 @@ class BottomSheetFragment : Fragment() {
             if (it == null) return@observe
             binding.seekBar.progress = (binding.seekBar.max * it).toInt()
             val song = adapter.getItem(viewModel.currentPosition.value) ?: return@observe
-            binding.textTimeLeft.text = (song.duration * it).toLong().getTimeString()
+            val elapsed = (song.duration * it).toLong()
+            binding.textTimeLeft.text = elapsed.getTimeString()
+            binding.textTimeRight.text =
+                    if (sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false))
+                        "-${(song.duration - elapsed).getTimeString()}"
+                    else song.durationString
+            val remain = adapter.getItemsAfter((viewModel.currentPosition.value ?: 0) + 1)
+                    .map { it.duration }.sum() + (song.duration - elapsed)
+            binding.textTimeRemain.text =
+                    getString(R.string.bottom_sheet_time_remain, remain.getTimeString())
         }
 
         viewModel.repeatMode.observe(this) {
@@ -233,5 +302,34 @@ class BottomSheetFragment : Fragment() {
         viewModel.scrollToCurrent.observe(this) {
             binding.recyclerView.smoothScrollToPosition(viewModel.currentPosition.value ?: 0)
         }
+
+        viewModel.toggleCurrentRmeain.observe(this) {
+            val changeTo = sharedPreferences
+                    .getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false)
+                    .not()
+            sharedPreferences.edit()
+                    .putBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, changeTo)
+                    .apply()
+        }
+
+        viewModel.touchLock.observe(this) {
+            if (it == null) return@observe
+            sharedPreferences.edit()
+                    .putBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, it)
+                    .apply()
+            binding.queueUnTouchable = it
+        }
+
+        viewModel.share.observe(this) {
+            if (it == null) return@observe
+            startActivity(SharingActivity.getIntent(requireContext(), it))
+        }
+    }
+
+    private fun reloadBindingVariable() {
+        binding.viewModel = binding.viewModel
+        binding.isQueueNotEmpty = binding.isQueueNotEmpty
+        binding.playing = binding.playing
+        binding.queueUnTouchable = binding.queueUnTouchable
     }
 }

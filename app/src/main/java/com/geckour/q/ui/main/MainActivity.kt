@@ -1,4 +1,4 @@
-package com.geckour.q.ui
+package com.geckour.q.ui.main
 
 import android.Manifest
 import android.app.AlertDialog
@@ -15,12 +15,8 @@ import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.State
-import androidx.work.WorkManager
+import androidx.work.*
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ActivityMainBinding
@@ -28,10 +24,12 @@ import com.geckour.q.databinding.DialogAddQueuePlaylistBinding
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.domain.model.SearchItem
+import com.geckour.q.domain.model.Song
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
 import com.geckour.q.ui.easteregg.EasterEggFragment
-import com.geckour.q.ui.library.SearchListAdapter
+import com.geckour.q.ui.equalizer.EqualizerFragment
+import com.geckour.q.ui.equalizer.EqualizerViewModel
 import com.geckour.q.ui.library.album.AlbumListFragment
 import com.geckour.q.ui.library.album.AlbumListViewModel
 import com.geckour.q.ui.library.artist.ArtistListFragment
@@ -48,17 +46,24 @@ import com.geckour.q.util.*
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.experimental.CoroutineScope
+import kotlinx.coroutines.experimental.Dispatchers
 import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.android.Main
 import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
 import timber.log.Timber
 import java.io.File
+import kotlin.coroutines.experimental.CoroutineContext
 
 @RuntimePermissions
 class MainActivity : AppCompatActivity() {
+
+    enum class RequestCode(val code: Int) {
+        RESULT_SETTING(333)
+    }
 
     companion object {
         private const val ACTION_PROGRESS_SYNCING = "action_progress_syncing"
@@ -93,13 +98,23 @@ class MainActivity : AppCompatActivity() {
     private val playlistListViewModel: SongListViewModel by lazy {
         ViewModelProviders.of(this)[SongListViewModel::class.java]
     }
+    private val equalizerViewModel: EqualizerViewModel by lazy {
+        ViewModelProviders.of(this)[EqualizerViewModel::class.java]
+    }
     private val paymentViewModel: PaymentViewModel by lazy {
         ViewModelProviders.of(this)[PaymentViewModel::class.java]
     }
     internal lateinit var binding: ActivityMainBinding
+    private val sharedPreferences by lazy { PreferenceManager.getDefaultSharedPreferences(this) }
     private lateinit var drawerToggle: ActionBarDrawerToggle
     private val searchListAdapter: SearchListAdapter by lazy { SearchListAdapter(viewModel) }
     private var parentJob = Job()
+    private val bgScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = parentJob
+    }
+    private val uiScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
+    }
     private var searchJob = Job()
 
     private var requestedTransaction: RequestedTransaction? = null
@@ -117,6 +132,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
     }
+    private val equalizerStateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            val enabled = intent.getBooleanExtra(EqualizerFragment.EXTRA_KEY_EQUALIZER_ENABLED, false)
+            onReceiveEnabled(enabled)
+        }
+    }
 
     private val onNavigationItemSelected: (MenuItem) -> Boolean = {
         val fragment = when (it.itemId) {
@@ -126,9 +147,11 @@ class MainActivity : AppCompatActivity() {
             R.id.nav_genre -> GenreListFragment.newInstance()
             R.id.nav_playlist -> PlaylistListFragment.newInstance()
             R.id.nav_setting -> {
-                startActivity(SettingActivity.createIntent(this))
+                startActivityForResult(SettingActivity.createIntent(this),
+                        RequestCode.RESULT_SETTING.code)
                 null
             }
+            R.id.nav_equalizer -> EqualizerFragment.newInstance()
             R.id.nav_sync -> {
                 retrieveMediaWithPermissionCheck()
                 null
@@ -148,7 +171,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     .commit()
         }
-        launch(UI + parentJob) { binding.drawerLayout.closeDrawers() }
+        uiScope.launch { binding.drawerLayout.closeDrawers() }
         true
     }
 
@@ -186,13 +209,35 @@ class MainActivity : AppCompatActivity() {
 
         override fun onServiceDisconnected(name: ComponentName?) {
             if (name == ComponentName(applicationContext, PlayerService::class.java)) {
-                player = null
+                onDestroyPlayer()
+            }
+        }
+
+        override fun onBindingDied(name: ComponentName?) {
+            super.onBindingDied(name)
+            if (name == ComponentName(applicationContext, PlayerService::class.java)) {
+                onDestroyPlayer()
+            }
+        }
+
+        override fun onNullBinding(name: ComponentName?) {
+            super.onNullBinding(name)
+            if (name == ComponentName(applicationContext, PlayerService::class.java)) {
+                onDestroyPlayer()
             }
         }
     }
 
+    private lateinit var currentAppTheme: AppTheme
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        currentAppTheme = sharedPreferences.appTheme
+        setTheme(when (currentAppTheme) {
+            AppTheme.LIGHT -> R.style.AppTheme
+            AppTheme.DARK -> R.style.AppTheme_Dark
+        })
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
         binding.coordinatorMain.viewModel = viewModel
@@ -200,15 +245,17 @@ class MainActivity : AppCompatActivity() {
 
         observeEvents()
         registerReceiver(syncingProgressReceiver, IntentFilter(ACTION_PROGRESS_SYNCING))
+        registerReceiver(equalizerStateReceiver,
+                IntentFilter(EqualizerFragment.ACTION_EQUALIZER_STATE))
 
         setSupportActionBar(binding.coordinatorMain.toolbar)
         setupDrawer()
 
         if (savedInstanceState == null) {
             retrieveMediaIfEmpty()
+            WorkManager.getInstance().observeMediaChange()
 
-            val navId = when (PreferenceManager.getDefaultSharedPreferences(this)
-                    .getPreferScreen()) {
+            val navId = when (PreferenceManager.getDefaultSharedPreferences(this).preferScreen) {
                 Screen.ARTIST -> R.id.nav_artist
                 Screen.ALBUM -> R.id.nav_album
                 Screen.SONG -> R.id.nav_song
@@ -258,13 +305,14 @@ class MainActivity : AppCompatActivity() {
     override fun onStop() {
         super.onStop()
         parentJob.cancel()
-        unbindPlayer()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         player?.onRequestedStopService()
+        unbindPlayer()
         unregisterReceiver(syncingProgressReceiver)
+        unregisterReceiver(equalizerStateReceiver)
     }
 
     override fun onBackPressed() {
@@ -283,17 +331,37 @@ class MainActivity : AppCompatActivity() {
         onRequestPermissionsResult(requestCode, grantResults)
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        when (requestCode) {
+            RequestCode.RESULT_SETTING.code -> {
+                if (player?.getDuking() != sharedPreferences.ducking)
+                    rebootPlayer()
+                if (currentAppTheme != sharedPreferences.appTheme) {
+                    finish()
+                    startActivity(MainActivity.createIntent(this))
+                }
+            }
+        }
+    }
+
+    private fun onReceiveEnabled(enabled: Boolean) {
+        equalizerViewModel.equalizerState.value = enabled
+    }
+
     private fun bindPlayer() {
         if (isBoundService.not()) {
             bindService(PlayerService.createIntent(this),
                     serviceConnection, Context.BIND_AUTO_CREATE)
+            isBoundService = true
         }
     }
 
     private fun unbindPlayer() {
         if (isBoundService) {
-            isBoundService = false
             unbindService(serviceConnection)
+            isBoundService = false
         }
     }
 
@@ -301,15 +369,25 @@ class MainActivity : AppCompatActivity() {
         player = null
     }
 
-    @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
+    private fun rebootPlayer() {
+        player?.storeState()
+        player?.pause()
+        unbindPlayer()
+        player?.onRequestedStopService()
+        startService(PlayerService.createIntent(this))
+        bindPlayer()
+    }
+
+    @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE)
     internal fun retrieveMedia() {
         WorkManager.getInstance().invokeRetrieveMediaWorker()
     }
 
     private fun retrieveMediaIfEmpty() {
-        launch(parentJob) {
+        bgScope.launch {
             if (DB.getInstance(this@MainActivity).trackDao().count() == 0)
-                launch(UI + parentJob) { retrieveMediaWithPermissionCheck() }
+                uiScope.launch { retrieveMediaWithPermissionCheck() }
         }
     }
 
@@ -319,27 +397,40 @@ class MainActivity : AppCompatActivity() {
         viewModel.syncing.value = true
     }
 
+    private fun WorkManager.observeMediaChange() {
+        enqueue(OneTimeWorkRequestBuilder<MediaObserveWorker>().setConstraints(Constraints().apply {
+            requiredNetworkType = NetworkType.NOT_REQUIRED
+            contentUriTriggers = ContentUriTriggers().apply {
+                add(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, true)
+            }
+        }).build())
+    }
+
     private fun WorkManager.monitorSyncState() {
         getStatusesForUniqueWork(MediaRetrieveWorker.WORK_NAME)
-                .observe(this@MainActivity, Observer {
+                .observe(this@MainActivity) {
                     viewModel.syncing.value =
                             it?.firstOrNull { it.state == State.RUNNING } != null
                     if (it?.any { status -> status.state == State.SUCCEEDED } == true) {
                         Timber.d("qgeck sync succeeded")
-                        artistListViewModel.forceLoad.call()
-                        albumListViewModel.forceLoad.call()
-                        songListViewModel.forceLoad.call()
-                        genreListViewModel.forceLoad.call()
-                        playlistListViewModel.forceLoad.call()
+                        val fragment = supportFragmentManager.fragments.lastOrNull { it.isVisible }
+                        when (fragment) {
+                            is ArtistListFragment -> artistListViewModel.forceLoad.call()
+                            is AlbumListFragment -> albumListViewModel.forceLoad.call()
+                            is SongListFragment -> songListViewModel.forceLoad.call()
+                            is GenreListFragment -> genreListViewModel.forceLoad.call()
+                            is PlaylistListFragment -> playlistListViewModel.forceLoad.call()
+                        }
                     }
-                })
+                }
     }
 
     private fun WorkManager.cancelSync() {
         cancelUniqueWork(MediaRetrieveWorker.WORK_NAME)
     }
 
-    @OnPermissionDenied(Manifest.permission.READ_EXTERNAL_STORAGE)
+    @OnPermissionDenied(Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE)
     internal fun onReadExternalStorageDenied() {
         retrieveMediaWithPermissionCheck()
     }
@@ -365,6 +456,9 @@ class MainActivity : AppCompatActivity() {
                 R.id.nav_song -> R.string.nav_song
                 R.id.nav_genre -> R.string.nav_genre
                 R.id.nav_playlist -> R.string.nav_playlist
+                R.id.nav_equalizer -> R.string.nav_equalizer
+                R.id.nav_pay -> R.string.nav_pay
+                R.layout.fragment_easter_egg -> R.string.nav_fortune
                 else -> return@observe
             })
             supportActionBar?.title = title
@@ -390,25 +484,25 @@ class MainActivity : AppCompatActivity() {
 
         viewModel.selectedArtist.observe(this) {
             if (it == null) return@observe
-            requestedTransaction = RequestedTransaction(ArtistListFragment.TAG, artist = it)
+            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.ARTIST, artist = it)
             tryTransaction()
         }
 
         viewModel.selectedAlbum.observe(this) {
             if (it == null) return@observe
-            requestedTransaction = RequestedTransaction(AlbumListFragment.TAG, album = it)
+            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.ALBUM, album = it)
             tryTransaction()
         }
 
         viewModel.selectedGenre.observe(this) {
             if (it == null) return@observe
-            requestedTransaction = RequestedTransaction(GenreListFragment.TAG, genre = it)
+            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.GENRE, genre = it)
             tryTransaction()
         }
 
         viewModel.selectedPlaylist.observe(this) {
             if (it == null) return@observe
-            requestedTransaction = RequestedTransaction(PlaylistListFragment.TAG, playlist = it)
+            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.PLAYLIST, playlist = it)
             tryTransaction()
         }
 
@@ -435,43 +529,7 @@ class MainActivity : AppCompatActivity() {
         viewModel.songToDelete.observe(this) {
             if (it == null) return@observe
 
-            File(it.sourcePath).apply {
-                if (this.exists()) {
-                    player?.removeQueue(it.id)
-                    this.delete()
-                }
-            }
-            contentResolver.delete(
-                    MediaStore.Files.getContentUri("external"),
-                    "${MediaStore.Files.FileColumns.DATA}=?",
-                    arrayOf(it.sourcePath))
-
-            launch(parentJob) {
-                val db = DB.getInstance(this@MainActivity)
-                val track = db.trackDao().get(it.id) ?: return@launch
-
-                player?.removeQueue(track.id)
-
-                var deleted = db.trackDao().delete(track.id) > 0
-                if (deleted)
-                    launch(UI + parentJob) {
-                        songListViewModel.songIdDeleted.value = track.id
-                    }
-                if (db.trackDao().findByAlbum(track.albumId).isEmpty()) {
-                    deleted = db.albumDao().delete(track.albumId) > 0
-                    if (deleted)
-                        launch(UI + parentJob) {
-                            albumListViewModel.albumIdDeleted.value = track.albumId
-                        }
-                }
-                if (db.trackDao().findByArtist(track.artistId).isEmpty()) {
-                    deleted = db.artistDao().delete(track.artistId) > 0
-                    if (deleted)
-                        launch(UI + parentJob) {
-                            artistListViewModel.artistIdDeleted.value = track.artistId
-                        }
-                }
-            }
+            deleteFromDeviceWithPermissionCheck(it)
         }
 
         viewModel.cancelSync.observe(this) {
@@ -486,7 +544,7 @@ class MainActivity : AppCompatActivity() {
 
             val db = DB.getInstance(this@MainActivity)
             searchJob.cancel()
-            searchJob = launch(UI + parentJob) {
+            searchJob = uiScope.launch {
                 searchListAdapter.clearItems()
                 val tracks = db.searchTrackByFuzzyTitle(it).await().take(3)
                 if (tracks.isNotEmpty()) {
@@ -545,10 +603,10 @@ class MainActivity : AppCompatActivity() {
 
         bottomSheetViewModel.addQueueToPlaylist.observe(this) { queue ->
             if (queue == null) return@observe
-            launch(UI + parentJob) {
+            uiScope.launch {
                 val playlists = fetchPlaylists(this@MainActivity).await()
                 val binding = DialogAddQueuePlaylistBinding.inflate(layoutInflater)
-                val dialog = AlertDialog.Builder(this@MainActivity, R.style.DialogStyle)
+                val dialog = AlertDialog.Builder(this@MainActivity)
                         .setTitle(R.string.dialog_title_add_queue_to_playlist)
                         .setMessage(R.string.dialog_desc_add_queue_to_playlist)
                         .setView(binding.root)
@@ -644,7 +702,7 @@ class MainActivity : AppCompatActivity() {
         drawerToggle.syncState()
         binding.navigationView.setNavigationItemSelectedListener(onNavigationItemSelected)
         binding.navigationView.getHeaderView(0).findViewById<View>(R.id.drawer_head_icon)?.setOnLongClickListener {
-            requestedTransaction = RequestedTransaction(EasterEggFragment.TAG)
+            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.EASTER_EGG)
             tryTransaction()
             true
         }
@@ -689,9 +747,10 @@ class MainActivity : AppCompatActivity() {
     private fun tryTransaction() {
         if (paused.not()) {
             requestedTransaction?.apply {
+                Timber.d("qgeck requested transaction: $requestedTransaction")
                 dismissSearch()
                 when (this.tag) {
-                    ArtistListFragment.TAG -> {
+                    RequestedTransaction.Tag.ARTIST -> {
                         if (artist != null) {
                             supportFragmentManager.beginTransaction()
                                     .replace(R.id.content_main,
@@ -700,7 +759,7 @@ class MainActivity : AppCompatActivity() {
                                     .commit()
                         }
                     }
-                    AlbumListFragment.TAG -> {
+                    RequestedTransaction.Tag.ALBUM -> {
                         if (album != null) {
                             supportFragmentManager.beginTransaction()
                                     .replace(R.id.content_main,
@@ -709,7 +768,7 @@ class MainActivity : AppCompatActivity() {
                                     .commit()
                         }
                     }
-                    GenreListFragment.TAG -> {
+                    RequestedTransaction.Tag.GENRE -> {
                         if (genre != null) {
                             supportFragmentManager.beginTransaction()
                                     .replace(R.id.content_main,
@@ -718,7 +777,7 @@ class MainActivity : AppCompatActivity() {
                                     .commit()
                         }
                     }
-                    PlaylistListFragment.TAG -> {
+                    RequestedTransaction.Tag.PLAYLIST -> {
                         if (playlist != null) {
                             supportFragmentManager.beginTransaction()
                                     .replace(R.id.content_main,
@@ -727,7 +786,7 @@ class MainActivity : AppCompatActivity() {
                                     .commit()
                         }
                     }
-                    EasterEggFragment.TAG -> {
+                    RequestedTransaction.Tag.EASTER_EGG -> {
                         supportFragmentManager.beginTransaction()
                                 .replace(R.id.content_main, EasterEggFragment.newInstance())
                                 .addToBackStack(null)
@@ -744,5 +803,46 @@ class MainActivity : AppCompatActivity() {
         binding.coordinatorMain.contentSearch.root.visibility = View.GONE
         getSystemService(InputMethodManager::class.java)
                 .hideSoftInputFromWindow(currentFocus?.windowToken, 0)
+    }
+
+    @NeedsPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+    internal fun deleteFromDevice(song: Song) {
+        File(song.sourcePath).apply {
+            if (this.exists()) {
+                player?.removeQueue(song.id)
+                this.delete()
+            }
+        }
+        contentResolver.delete(
+                android.provider.MediaStore.Files.getContentUri("external"),
+                "${android.provider.MediaStore.Files.FileColumns.DATA}=?",
+                kotlin.arrayOf(song.sourcePath))
+
+        bgScope.launch {
+            val db = com.geckour.q.data.db.DB.getInstance(this@MainActivity)
+            val track = db.trackDao().get(song.id) ?: return@launch
+
+            player?.removeQueue(track.id)
+
+            var deleted = db.trackDao().delete(track.id) > 0
+            if (deleted)
+                uiScope.launch {
+                    songListViewModel.songIdDeleted.value = track.id
+                }
+            if (db.trackDao().findByAlbum(track.albumId).isEmpty()) {
+                deleted = db.albumDao().delete(track.albumId) > 0
+                if (deleted)
+                    uiScope.launch {
+                        albumListViewModel.albumIdDeleted.value = track.albumId
+                    }
+            }
+            if (db.trackDao().findByArtist(track.artistId).isEmpty()) {
+                deleted = db.artistDao().delete(track.artistId) > 0
+                if (deleted)
+                    uiScope.launch {
+                        artistListViewModel.artistIdDeleted.value = track.artistId
+                    }
+            }
+        }
     }
 }

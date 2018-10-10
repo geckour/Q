@@ -7,6 +7,7 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.preference.PreferenceManager
+import android.util.TypedValue
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -17,11 +18,10 @@ import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivitySettingBinding
+import com.geckour.q.databinding.DialogEditTextBinding
 import com.geckour.q.databinding.DialogSpinnerBinding
 import com.geckour.q.ui.license.LicenseActivity
-import com.geckour.q.util.Screen
-import com.geckour.q.util.getPreferScreen
-import com.geckour.q.util.setPreferScreen
+import com.geckour.q.util.*
 
 class SettingActivity : AppCompatActivity() {
 
@@ -40,11 +40,19 @@ class SettingActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        setTheme(when (sharedPreferences.appTheme) {
+            AppTheme.LIGHT -> R.style.AppTheme
+            AppTheme.DARK -> R.style.AppTheme_Dark
+        })
+
         binding = DataBindingUtil.setContentView(this, R.layout.activity_setting)
-        binding.itemChooseScreen.apply {
-            viewModel = getChooseLaunchScreenViewModel()
-        }
-        binding.itemLicense.viewModel = getLicenseViewModel()
+        binding.itemChooseAppTheme.viewModel = chooseAppThemeViewModel
+        binding.itemChooseScreen.viewModel = chooseLaunchScreenViewModel
+        binding.itemArtworkOnLockScreen.viewModel = artworkOnLockScreenViewModel
+        binding.itemDucking.viewModel = duckingViewModel
+        binding.itemLicense.viewModel = licenseViewModel
+        binding.itemFormatPattern.viewModel = formatPatternViewModel
+        binding.itemBundleArtwork.viewModel = bundleArtworkViewModel
 
         observeEvents()
     }
@@ -53,62 +61,189 @@ class SettingActivity : AppCompatActivity() {
         viewModel.scrollToTop.observe(this) { binding.scrollView.smoothScrollTo(0, 0) }
     }
 
-    private fun getChooseLaunchScreenViewModel(): SettingItemViewModel =
-            SettingItemViewModel(
-                    getString(R.string.setting_item_title_screen_on_launch),
-                    getString(R.string.setting_item_desc_screen_on_launch),
-                    getString(sharedPreferences.getPreferScreen().displayNameResId),
-                    false) {
-                val binding = DialogSpinnerBinding.inflate(
-                        LayoutInflater.from(this@SettingActivity), null, false).apply {
-                    val arrayAdapter =
-                            object : ArrayAdapter<String>(
-                                    this@SettingActivity,
-                                    android.R.layout.simple_spinner_item,
-                                    Screen.values().map { getString(it.displayNameResId) }) {
-                                override fun getDropDownView(position: Int,
-                                                             convertView: View?,
-                                                             parent: ViewGroup): View =
-                                        super.getDropDownView(position, convertView, parent).apply {
-                                            if (position == spinner.selectedItemPosition) {
-                                                (this as TextView).setTextColor(
-                                                        getColor(R.color.colorPrimaryDark))
-                                            }
+    private val chooseAppThemeViewModel: SettingItemViewModel by lazy {
+        SettingItemViewModel(
+                getString(R.string.setting_item_title_app_theme),
+                getString(R.string.setting_item_desc_app_theme),
+                getString(sharedPreferences.appTheme.displayNameResId),
+                false, onClick = {
+            val binding = DialogSpinnerBinding.inflate(
+                    LayoutInflater.from(this@SettingActivity), null, false).apply {
+                val arrayAdapter =
+                        object : ArrayAdapter<String>(
+                                this@SettingActivity,
+                                android.R.layout.simple_spinner_item,
+                                AppTheme.values().map { getString(it.displayNameResId) }) {
+                            override fun getDropDownView(position: Int,
+                                                         convertView: View?,
+                                                         parent: ViewGroup): View =
+                                    super.getDropDownView(position, convertView, parent).apply {
+                                        if (position == spinner.selectedItemPosition) {
+                                            (this as TextView).setTextColor(
+                                                    theme.getColor(R.attr.colorPrimaryDark))
                                         }
-                            }.apply {
-                                setDropDownViewResource(
-                                        android.R.layout.simple_spinner_dropdown_item)
-                            }
-                    spinner.apply {
-                        adapter = arrayAdapter
-                        setSelection(sharedPreferences.getPreferScreen().ordinal)
+                                    }
+                        }.apply {
+                            setDropDownViewResource(
+                                    android.R.layout.simple_spinner_dropdown_item)
+                        }
+                spinner.apply {
+                    adapter = arrayAdapter
+                    setSelection(sharedPreferences.appTheme.ordinal)
+                }
+            }
+
+            AlertDialog.Builder(this@SettingActivity).generate(
+                    binding.root,
+                    getString(R.string.dialog_title_choose_app_theme),
+                    getString(R.string.dialog_desc_choose_app_theme)) { dialog, which ->
+                when (which) {
+                    DialogInterface.BUTTON_POSITIVE -> {
+                        val themeIndex = binding.spinner.selectedItemPosition
+                        val appTheme = AppTheme.values()[themeIndex]
+                        sharedPreferences.appTheme = appTheme
+                        summary = getString(appTheme.displayNameResId)
+                        this@SettingActivity.binding.itemChooseAppTheme.viewModel = this
                     }
                 }
+                dialog.dismiss()
+            }.show()
+        })
+    }
 
-                AlertDialog.Builder(this@SettingActivity).generate(
-                        binding.root,
-                        getString(R.string.dialog_title_choose_screen_on_launch),
-                        getString(R.string.dialog_desc_choose_screen_on_launch)) { dialog, which ->
-                    when (which) {
-                        DialogInterface.BUTTON_POSITIVE -> {
-                            val screenIndex = binding.spinner.selectedItemPosition
-                            val screen = Screen.values()[screenIndex]
-                            sharedPreferences.setPreferScreen(screen)
-                            summary = getString(screen.displayNameResId)
-                            this@SettingActivity.binding.itemChooseScreen.viewModel = this
+    private val chooseLaunchScreenViewModel: SettingItemViewModel by lazy {
+        SettingItemViewModel(
+                getString(R.string.setting_item_title_screen_on_launch),
+                getString(R.string.setting_item_desc_screen_on_launch),
+                getString(sharedPreferences.preferScreen.displayNameResId),
+                false, onClick = {
+            val binding = DialogSpinnerBinding.inflate(
+                    LayoutInflater.from(this@SettingActivity), null, false).apply {
+                val arrayAdapter =
+                        object : ArrayAdapter<String>(
+                                this@SettingActivity,
+                                android.R.layout.simple_spinner_item,
+                                Screen.values().map { getString(it.displayNameResId) }) {
+                            override fun getDropDownView(position: Int,
+                                                         convertView: View?,
+                                                         parent: ViewGroup): View =
+                                    super.getDropDownView(position, convertView, parent).apply {
+                                        if (position == spinner.selectedItemPosition) {
+                                            (this as TextView).setTextColor(
+                                                    theme.getColor(R.attr.colorPrimaryDark))
+                                        }
+                                    }
+                        }.apply {
+                            setDropDownViewResource(
+                                    android.R.layout.simple_spinner_dropdown_item)
                         }
-                    }
-                    dialog.dismiss()
-                }.show()
+                spinner.apply {
+                    adapter = arrayAdapter
+                    setSelection(sharedPreferences.preferScreen.ordinal)
+                }
             }
 
-    private fun getLicenseViewModel(): SettingItemViewModel =
-            SettingItemViewModel(getString(R.string.setting_item_title_license),
-                    getString(R.string.setting_item_desc_license),
-                    null,
-                    false) {
-                startActivity(LicenseActivity.createIntent(this@SettingActivity))
+            AlertDialog.Builder(this@SettingActivity).generate(
+                    binding.root,
+                    getString(R.string.dialog_title_choose_screen_on_launch),
+                    getString(R.string.dialog_desc_choose_screen_on_launch)) { dialog, which ->
+                when (which) {
+                    DialogInterface.BUTTON_POSITIVE -> {
+                        val screenIndex = binding.spinner.selectedItemPosition
+                        val screen = Screen.values()[screenIndex]
+                        sharedPreferences.preferScreen = screen
+                        summary = getString(screen.displayNameResId)
+                        this@SettingActivity.binding.itemChooseScreen.viewModel = this
+                    }
+                }
+                dialog.dismiss()
+            }.show()
+        })
+    }
+
+    private val artworkOnLockScreenViewModel: SettingItemViewModel by lazy {
+        val state = sharedPreferences.showArtworkOnLockScreen
+        SettingItemViewModel(getString(R.string.setting_item_title_artwork_on_lock_screen),
+                getString(R.string.setting_item_desc_artwork_on_lock_screen),
+                state.switchSummary, true, onSwitchClick = {
+            sharedPreferences.showArtworkOnLockScreen = it
+            summary = it.switchSummary
+            binding.itemArtworkOnLockScreen.viewModel = this
+            if (binding.itemArtworkOnLockScreen.state.isChecked != it)
+                binding.itemArtworkOnLockScreen.state.isChecked = it
+        }).apply { switchState = state }
+    }
+
+    private val duckingViewModel: SettingItemViewModel by lazy {
+        val state = sharedPreferences.ducking
+        SettingItemViewModel(getString(R.string.setting_item_title_ducking),
+                getString(R.string.setting_item_desc_ducking),
+                state.switchSummary, true, onSwitchClick = {
+            sharedPreferences.ducking = it
+            summary = it.switchSummary
+            binding.itemDucking.viewModel = this
+            if (binding.itemDucking.state.isChecked != it)
+                binding.itemDucking.state.isChecked = it
+        }).apply { switchState = state }
+    }
+
+    private val formatPatternViewModel: SettingItemViewModel by lazy {
+        SettingItemViewModel(getString(R.string.setting_item_title_format_pattern),
+                getString(R.string.setting_item_desc_format_pattern),
+                this.formatPattern, false, onClick = {
+            onCLickSpecifyPatternFormat()
+        })
+    }
+
+    private val bundleArtworkViewModel: SettingItemViewModel by lazy {
+        val state = sharedPreferences.bundleArtwork
+        SettingItemViewModel(getString(R.string.setting_item_title_bundle_artwork),
+                getString(R.string.setting_item_desc_bundle_artwork),
+                state.switchSummary, true, onSwitchClick = {
+            sharedPreferences.bundleArtwork = it
+            summary = it.switchSummary
+            binding.itemBundleArtwork.viewModel = this
+            if (binding.itemBundleArtwork.state.isChecked != it)
+                binding.itemBundleArtwork.state.isChecked = it
+        }).apply { switchState = state }
+    }
+
+    private val licenseViewModel: SettingItemViewModel by lazy {
+        SettingItemViewModel(getString(R.string.setting_item_title_license),
+                getString(R.string.setting_item_desc_license),
+                null,
+                false, onClick = {
+            startActivity(LicenseActivity.createIntent(this@SettingActivity))
+        })
+    }
+
+    private fun onCLickSpecifyPatternFormat() {
+        val patternFormatDialogBinding = DialogEditTextBinding.inflate(
+                LayoutInflater.from(this),
+                null,
+                false
+        ).apply {
+            hint = getString(R.string.dialog_hint_pattern_format)
+            editText.setText(this@SettingActivity.formatPattern)
+            editText.setSelection(editText.text.length)
+        }
+
+        AlertDialog.Builder(this).generate(
+                patternFormatDialogBinding.root,
+                getString(R.string.dialog_title_pattern_format),
+                getString(R.string.dialog_desc_pattern_format)
+        ) { dialog, which ->
+            when (which) {
+                DialogInterface.BUTTON_POSITIVE -> {
+                    val pattern = patternFormatDialogBinding.editText.text.toString()
+                    this.formatPattern = pattern
+                    binding.itemFormatPattern.viewModel =
+                            formatPatternViewModel.apply { summary = pattern }
+                }
             }
+            dialog.dismiss()
+        }.show()
+    }
 
     private fun AlertDialog.Builder.generate(
             view: View,
@@ -123,4 +258,7 @@ class SettingActivity : AppCompatActivity() {
 
         return create()
     }
+
+    private val Boolean.switchSummary: String
+        get() = getString(if (this) R.string.setting_switch_on else R.string.setting_switch_off)
 }

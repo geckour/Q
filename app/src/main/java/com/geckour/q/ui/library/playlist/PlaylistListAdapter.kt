@@ -3,6 +3,7 @@ package com.geckour.q.ui.library.playlist
 import android.content.Context
 import android.provider.MediaStore
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
 import androidx.recyclerview.widget.RecyclerView
@@ -12,9 +13,11 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemListPlaylistBinding
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
-import com.geckour.q.ui.MainViewModel
+import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.Dispatchers
+import kotlinx.coroutines.experimental.GlobalScope
+import kotlinx.coroutines.experimental.android.Main
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
 
@@ -47,7 +50,7 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
 
     internal fun onNewQueue(songs: List<Song>, actionType: InsertActionType,
                             classType: OrientedClassType = OrientedClassType.PLAYLIST) {
-        launch(UI) {
+        GlobalScope.launch(Dispatchers.Main) {
             viewModel.onNewQueue(songs, actionType, classType)
         }
     }
@@ -65,26 +68,12 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
     inner class ViewHolder(private val binding: ItemListPlaylistBinding)
         : RecyclerView.ViewHolder(binding.root) {
 
-        private val popupMenu = PopupMenu(binding.root.context, binding.root).apply {
+        private fun getPopupMenu(bindTo: View) = PopupMenu(bindTo.context, bindTo).apply {
             setOnMenuItemClickListener {
-                binding.data?.apply {
-                    when (it.itemId) {
-                        R.id.menu_delete_playlist -> this.delete()
-                        else -> return@setOnMenuItemClickListener false
-                    }
-                } ?: return@setOnMenuItemClickListener false
-
-                return@setOnMenuItemClickListener true
-            }
-            inflate(R.menu.playlist_long)
-        }
-
-        private val optionPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
-            setOnMenuItemClickListener {
-                return@setOnMenuItemClickListener onOptionSelected(binding.root.context,
+                return@setOnMenuItemClickListener onOptionSelected(bindTo.context,
                         it.itemId, binding.data)
             }
-            inflate(R.menu.songs)
+            inflate(R.menu.playlist)
         }
 
         fun bind() {
@@ -93,10 +82,10 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
             binding.duration.text = playlist.totalDuration.getTimeString()
             binding.root.setOnClickListener { viewModel.onRequestNavigate(playlist) }
             binding.root.setOnLongClickListener {
-                popupMenu.show()
+                getPopupMenu(it).show()
                 return@setOnLongClickListener true
             }
-            binding.option.setOnClickListener { optionPopupMenu.show() }
+            binding.option.setOnClickListener { getPopupMenu(it).show() }
             try {
                 Glide.with(binding.thumb).load(playlist.thumb).into(binding.thumb)
             } catch (t: Throwable) {
@@ -125,11 +114,15 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
                 R.id.menu_insert_all_simple_shuffle_next -> InsertActionType.SHUFFLE_SIMPLE_NEXT
                 R.id.menu_insert_all_simple_shuffle_last -> InsertActionType.SHUFFLE_SIMPLE_LAST
                 R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
+                R.id.menu_delete_playlist -> {
+                    playlist.delete()
+                    return true
+                }
                 else -> return false
             }
 
             viewModel.loading.value = true
-            launch {
+            GlobalScope.launch {
                 val songs = playlist.getTrackMediaIds(context)
                         .sortedBy { it.second }
                         .mapNotNull {

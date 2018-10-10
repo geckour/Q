@@ -2,6 +2,7 @@ package com.geckour.q.ui.library.genre
 
 import android.content.Context
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
 import androidx.recyclerview.widget.RecyclerView
@@ -11,9 +12,11 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemListGenreBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Song
-import com.geckour.q.ui.MainViewModel
+import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.Dispatchers
+import kotlinx.coroutines.experimental.GlobalScope
+import kotlinx.coroutines.experimental.android.Main
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
 
@@ -46,7 +49,7 @@ class GenreListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
 
     internal fun onNewQueue(songs: List<Song>, actionType: InsertActionType,
                             classType: OrientedClassType = OrientedClassType.GENRE) {
-        launch(UI) {
+        GlobalScope.launch(Dispatchers.Main) {
             viewModel.onNewQueue(songs, actionType, classType)
         }
     }
@@ -64,9 +67,9 @@ class GenreListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
     inner class ViewHolder(private val binding: ItemListGenreBinding)
         : RecyclerView.ViewHolder(binding.root) {
 
-        private val popupMenu = PopupMenu(binding.root.context, binding.root).apply {
+        private fun getPopupMenu(bindTo: View) = PopupMenu(bindTo.context, bindTo).apply {
             setOnMenuItemClickListener {
-                return@setOnMenuItemClickListener onOptionSelected(binding.root.context,
+                return@setOnMenuItemClickListener onOptionSelected(bindTo.context,
                         it.itemId, binding.data)
             }
             inflate(R.menu.songs)
@@ -77,7 +80,11 @@ class GenreListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             binding.data = genre
             binding.duration.text = genre.totalDuration.getTimeString()
             binding.root.setOnClickListener { viewModel.onRequestNavigate(genre) }
-            binding.option.setOnClickListener { popupMenu.show() }
+            binding.root.setOnLongClickListener {
+                getPopupMenu(it).show()
+                true
+            }
+            binding.option.setOnClickListener { getPopupMenu(it).show() }
             try {
                 Glide.with(binding.thumb).load(genre.thumb).into(binding.thumb)
             } catch (t: Throwable) {
@@ -99,7 +106,7 @@ class GenreListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             }
 
             viewModel.loading.value = true
-            launch {
+            GlobalScope.launch {
                 val songs = genre.getTrackMediaIds(context).mapNotNull {
                     getSong(DB.getInstance(context), it, genreId = genre.id).await()
                 }

@@ -5,7 +5,6 @@ import android.provider.MediaStore
 import android.view.*
 import android.widget.SearchView
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -14,12 +13,11 @@ import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
-import com.geckour.q.ui.MainViewModel
+import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.android.UI
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.android.Main
+import kotlin.coroutines.experimental.CoroutineContext
 
 class SongListFragment : Fragment() {
 
@@ -71,6 +69,9 @@ class SongListFragment : Fragment() {
     }
 
     private var parentJob = Job()
+    private val uiScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
+    }
     private var chatteringCancelFlag: Boolean = false
 
     override fun onCreateView(inflater: LayoutInflater,
@@ -181,12 +182,12 @@ class SongListFragment : Fragment() {
     private fun observeAllSongs() {
         context?.apply {
             DB.getInstance(this).also { db ->
-                db.trackDao().getAllAsync().observe(this@SongListFragment, Observer { dbTrackList ->
-                    if (dbTrackList == null) return@Observer
+                db.trackDao().getAllAsync().observe(this@SongListFragment) { dbTrackList ->
+                    if (dbTrackList == null) return@observe
 
                     mainViewModel.loading.value = true
                     upsertSongListIfPossible(db, dbTrackList, false)
-                })
+                }
             }
         }
     }
@@ -195,12 +196,12 @@ class SongListFragment : Fragment() {
         mainViewModel.loading.value = true
         context?.also {
             DB.getInstance(it).also { db ->
-                db.trackDao().findByAlbumAsync(album.id).observe(this@SongListFragment, Observer { dbTrackList ->
-                    if (dbTrackList == null) return@Observer
+                db.trackDao().findByAlbumAsync(album.id).observe(this@SongListFragment) { dbTrackList ->
+                    if (dbTrackList == null) return@observe
 
                     mainViewModel.loading.value = true
                     upsertSongListIfPossible(db, dbTrackList)
-                })
+                }
             }
         }
     }
@@ -208,7 +209,7 @@ class SongListFragment : Fragment() {
     private fun fetchSongsWithGenre(genre: Genre) {
         mainViewModel.loading.value = true
         context?.also {
-            launch(UI + parentJob) {
+            uiScope.launch {
                 adapter.upsertItems(
                         getSongListFromTrackMediaId(DB.getInstance(it),
                                 genre.getTrackMediaIds(it),
@@ -222,7 +223,7 @@ class SongListFragment : Fragment() {
     private fun fetchSongsWithPlaylist(playlist: Playlist) {
         mainViewModel.loading.value = true
         context?.also {
-            launch(UI + parentJob) {
+            uiScope.launch {
                 adapter.addItems(
                         getSongListFromTrackMediaIdWithTrackNum(DB.getInstance(it),
                                 playlist.getTrackMediaIds(it),
@@ -237,7 +238,7 @@ class SongListFragment : Fragment() {
     private fun upsertSongListIfPossible(db: DB, dbTrackList: List<Track>, sortByTrackOrder: Boolean = true) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
-            launch(UI + parentJob) {
+            uiScope.launch {
                 delay(500)
                 val items = getSongListFromTrackList(db, dbTrackList)
                 adapter.upsertItems(items, sortByTrackOrder)

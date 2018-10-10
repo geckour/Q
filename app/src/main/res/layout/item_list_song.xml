@@ -7,6 +7,8 @@
 
         <import type="android.view.View" />
 
+        <import type="com.geckour.q.R" />
+
         <variable
             name="data"
             type="com.geckour.q.domain.model.Song" />
@@ -15,7 +17,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@{data.nowPlaying ? @color/colorTintNowPlaying : @android:color/white}"
+        app:backgroundAttr="@{data.nowPlaying ? R.attr.colorNowPlaying : R.attr.colorTransparent}"
         android:foreground="?android:attr/selectableItemBackground">
 
         <ImageView
@@ -24,7 +26,7 @@
             android:padding="2dp"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_spectrum"
-            android:tint="@color/colorAccent"
+            android:tint="?attr/colorAccent"
             android:visibility="@{data.nowPlaying ? View.VISIBLE : View.GONE}"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/thumb"
@@ -54,7 +56,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@{data.name}"
-            android:textColor="@color/colorTextPrimary"
+            android:textColor="?attr/colorTextPrimary"
             android:textSize="16sp"
             app:layout_constraintBottom_toTopOf="@id/text_artist"
             app:layout_constraintEnd_toStartOf="@id/barrier_right"
@@ -73,7 +75,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@{data.artist}"
-            android:textColor="@color/colorTextPrimary"
+            android:textColor="?attr/colorTextPrimary"
             android:textSize="12sp"
             app:layout_constraintBottom_toBottomOf="@id/thumb"
             app:layout_constraintEnd_toStartOf="@id/barrier_right"
@@ -101,13 +103,13 @@
 
         <ImageView
             android:id="@+id/option"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_marginEnd="8dp"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginEnd="6dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:padding="4dp"
+            android:padding="6dp"
             android:src="@drawable/ic_remove"
-            android:tint="@color/colorPrimaryDark"
+            android:tint="?attr/colorButtonNormal"
             android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"

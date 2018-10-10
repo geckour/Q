@@ -32,7 +32,7 @@ interface TrackDao {
     fun getByMediaId(trackId: Long): Track?
 
     @Query("select * from track where title like :title")
-    fun searchByTitle(title: String): List<Track>
+    fun findByTitle(title: String): List<Track>
 
     @Query("select * from track where albumId = :albumId")
     fun findByAlbum(albumId: Long): List<Track>

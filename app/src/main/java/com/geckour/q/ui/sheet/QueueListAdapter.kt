@@ -10,12 +10,14 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemListSongBinding
 import com.geckour.q.domain.model.Song
-import com.geckour.q.ui.MainViewModel
+import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.swapped
-import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.Dispatchers
+import kotlinx.coroutines.experimental.GlobalScope
+import kotlinx.coroutines.experimental.android.Main
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
 
@@ -37,17 +39,28 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
                 else -> null
             }
 
-    internal fun setNowPlaying(index: Int?) {
-        items = items.map { it.copy(nowPlaying = false) }
-        items.mapIndexed { i, song -> i to song.nowPlaying }
-                .forEach { notifyItemChanged(it.first) }
+    internal fun getItemsAfter(start: Int): List<Song> =
+            items.subList(start, items.size)
 
-        if (index != null && index in 0..items.lastIndex) {
-            items = items.mapIndexed { i, song ->
-                if (i == index) song.copy(nowPlaying = true)
-                else song
+    internal fun setNowPlayingPosition(index: Int?) {
+
+        if (index != null) {
+            if (index in 0 until items.size) {
+                val changed: MutableList<Int> = mutableListOf()
+                items = items.mapIndexed { i, song ->
+                    val matched = i == index
+                    if (song.nowPlaying != matched) changed.add(i)
+                    song.copy(nowPlaying = matched)
+                }
+                changed.forEach { notifyItemChanged(it) }
             }
-            notifyItemChanged(index)
+        } else {
+            val changed: MutableList<Int> = mutableListOf()
+            items = items.mapIndexed { i, song ->
+                if (song.nowPlaying) changed.add(i)
+                song.copy(nowPlaying = false)
+            }
+            changed.forEach { notifyItemChanged(it) }
         }
     }
 
@@ -102,10 +115,11 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             binding.data = song
             binding.duration.text = song.durationString
             try {
-                launch(UI) {
+                GlobalScope.launch(Dispatchers.Main) {
                     Glide.with(binding.thumb)
                             .load(DB.getInstance(binding.root.context)
-                                    .getArtworkUriStringFromId(song.albumId).await() ?: R.drawable.ic_empty)
+                                    .getArtworkUriStringFromId(song.albumId).await()
+                                    ?: R.drawable.ic_empty)
                             .into(binding.thumb)
                 }
             } catch (t: Throwable) {

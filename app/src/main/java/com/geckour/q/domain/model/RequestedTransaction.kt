@@ -5,9 +5,18 @@ import kotlinx.android.parcel.Parcelize
 
 @Parcelize
 data class RequestedTransaction(
-        val tag: String,
+        val tag: Tag,
         val artist: Artist? = null,
         val album: Album? = null,
         val genre: Genre? = null,
         val playlist: Playlist? = null
-) : Parcelable
+) : Parcelable {
+    enum class Tag {
+        ARTIST,
+        ALBUM,
+        SONG,
+        PLAYLIST,
+        GENRE,
+        EASTER_EGG
+    }
+}

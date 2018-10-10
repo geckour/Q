@@ -13,8 +13,8 @@ android {
     defaultConfig {
         applicationId "com.geckour.q"
         minSdkVersion 24
-        versionCode 2
-        versionName "1.0.1"
+        versionCode 3
+        versionName "1.1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     signingConfigs {
@@ -38,6 +38,13 @@ android {
         experimental = true
     }
     dataBinding.enabled = true
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_1_8
+    }
 }
 
 repositories {
@@ -46,26 +53,26 @@ repositories {
 
 dependencies {
     def support_ver = '1.0.0'
-    def aac_lifecycle_ver = '2.0.0-beta01'
-    def aac_room_ver = '2.0.0-beta01'
+    def aac_lifecycle_ver = '2.0.0'
+    def aac_room_ver = '2.1.0-alpha01'
     def aac_work_ver = '1.0.0-alpha09'
-    def coroutines_ver = '0.25.0'
+    def coroutines_ver = '0.30.0'
     def permission_dispatcher_ver = '3.3.1'
     def stetho_ver = '1.5.0'
-    def glide_ver = '4.7.1'
-    def exo_ver = '2.8.4'
+    def glide_ver = '4.8.0'
+    def exo_ver = '2.9.0'
     def exo_ext_ver = '2.7.0-1'
 
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation 'androidx.constraintlayout:constraintlayout:1.1.3'
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.0-alpha2'
     implementation "androidx.legacy:legacy-support-core-ui:$support_ver"
     implementation "androidx.media:media:$support_ver"
     implementation "androidx.legacy:legacy-support-v13:$support_ver"
     implementation 'com.google.android.material:material:1.0.0'
     testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'androidx.test:runner:1.1.0-alpha4'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0-alpha4'
+    androidTestImplementation 'androidx.test:runner:1.1.0-beta01'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0-beta01'
 
     // Logging
     implementation 'com.jakewharton.timber:timber:4.7.1'
@@ -81,7 +88,7 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.8.5'
 
     // AAC ViewModel
-    implementation 'androidx.lifecycle:lifecycle-extensions:2.0.0'
+    implementation "androidx.lifecycle:lifecycle-extensions:$aac_lifecycle_ver"
     kapt "androidx.lifecycle:lifecycle-compiler:$aac_lifecycle_ver"
     implementation "androidx.lifecycle:lifecycle-common-java8:$aac_lifecycle_ver"
 
@@ -106,4 +113,7 @@ dependencies {
     implementation "com.google.android.exoplayer:exoplayer-core:$exo_ver"
     implementation "com.github.PaulWoitaschek.ExoPlayer-Extensions:flac:$exo_ext_ver"
     implementation "com.github.PaulWoitaschek.ExoPlayer-Extensions:opus:$exo_ext_ver"
+
+    // Vertical SeekBar
+    implementation 'com.h6ah4i.android.widget.verticalseekbar:verticalseekbar:1.0.0'
 }

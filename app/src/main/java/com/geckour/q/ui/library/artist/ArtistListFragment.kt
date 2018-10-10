@@ -4,25 +4,21 @@ import android.os.Bundle
 import android.view.*
 import android.widget.SearchView
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Observer
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Artist
-import com.geckour.q.ui.MainViewModel
-import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.UNKNOWN
-import com.geckour.q.util.getSong
-import com.geckour.q.util.sortedByTrackOrder
+import com.geckour.q.ui.main.MainViewModel
+import com.geckour.q.util.*
 import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.android.UI
+import kotlinx.coroutines.experimental.android.Main
+import kotlin.coroutines.experimental.CoroutineContext
 
 class ArtistListFragment : Fragment() {
 
     companion object {
-        val TAG: String = ArtistListFragment::class.java.simpleName
         fun newInstance(): ArtistListFragment = ArtistListFragment()
     }
 
@@ -36,6 +32,12 @@ class ArtistListFragment : Fragment() {
     private val adapter: ArtistListAdapter by lazy { ArtistListAdapter(mainViewModel) }
 
     private var parentJob = Job()
+    private val bgScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = parentJob
+    }
+    private val uiScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
+    }
     private var latestDbAlbumList: List<Album> = emptyList()
     private var chatteringCancelFlag: Boolean = false
 
@@ -106,7 +108,7 @@ class ArtistListFragment : Fragment() {
             }
 
             mainViewModel.loading.value = true
-            launch(parentJob) {
+            bgScope.launch {
                 val sortByTrackOrder = item.itemId.let {
                     it != R.id.menu_insert_all_simple_shuffle_next
                             || it != R.id.menu_insert_all_simple_shuffle_last
@@ -137,7 +139,7 @@ class ArtistListFragment : Fragment() {
 
         viewModel.forceLoad.observe(this) {
             context?.also { context ->
-                launch(UI + parentJob) {
+                uiScope.launch {
                     mainViewModel.loading.value = true
                     adapter.setItems(fetchArtists(DB.getInstance(context)).await())
                     binding.recyclerView.smoothScrollToPosition(0)
@@ -155,27 +157,27 @@ class ArtistListFragment : Fragment() {
     private fun observeArtists() {
         context?.apply {
             DB.getInstance(this).also { db ->
-                db.albumDao().getAllAsync().observe(this@ArtistListFragment, Observer { dbAlbumList ->
-                    if (dbAlbumList == null) return@Observer
+                db.albumDao().getAllAsync().observe(this@ArtistListFragment) { dbAlbumList ->
+                    if (dbAlbumList == null) return@observe
 
                     mainViewModel.loading.value = true
                     latestDbAlbumList = dbAlbumList
                     upsertArtistListIfPossible(db)
-                })
+                }
             }
         }
     }
 
     private fun fetchArtists(db: DB): Deferred<List<Artist>> =
-            async(parentJob) { db.albumDao().getAll().getArtistList(db) }
+            bgScope.async { db.albumDao().getAll().getArtistList(db) }
 
     private fun upsertArtistListIfPossible(db: DB, albumList: List<Album> = latestDbAlbumList) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
-            launch(parentJob) {
+            bgScope.launch {
                 delay(500)
                 val items = albumList.getArtistList(db)
-                launch(UI + parentJob) {
+                uiScope.launch {
                     adapter.upsertItems(items)
                     binding.recyclerView.smoothScrollToPosition(0)
                     mainViewModel.loading.value = false

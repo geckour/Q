@@ -12,7 +12,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@android:color/white"
+        android:background="?attr/colorBackground"
         android:orientation="vertical">
 
         <TextView
@@ -20,7 +20,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/payment_desc"
-            android:textColor="@color/colorTextSecondary"
+            android:textColor="?attr/colorTextSecondary"
             android:textSize="16sp"
             app:layout_constraintBottom_toTopOf="@id/kyash_qr"
             app:layout_constraintLeft_toLeftOf="parent"
@@ -48,7 +48,7 @@
             android:layout_marginTop="24dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_save"
-            android:tint="@color/colorTintOption"
+            android:tint="?attr/colorOption"
             android:onClick="@{() -> viewModel.onClickSave()}"
             app:layout_constraintBottom_toTopOf="@id/guide_peek_height"
             app:layout_constraintLeft_toLeftOf="parent"

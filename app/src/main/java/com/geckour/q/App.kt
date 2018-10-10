@@ -12,7 +12,7 @@ import timber.log.Timber
 class App : Application() {
 
     companion object {
-        const val REQUEST_CODE_OPEN_DEFAULT_ACTIVITY = 184
+        const val REQUEST_CODE_LAUNCH_APP = 184
     }
 
     override fun onCreate() {

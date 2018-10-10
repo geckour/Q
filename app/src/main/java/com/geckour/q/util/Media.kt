@@ -2,20 +2,27 @@ package com.geckour.q.util
 
 import android.app.Notification
 import android.app.PendingIntent
+import android.content.ContentUris
 import android.content.Context
+import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.drawable.Icon
-import android.media.MediaMetadata
-import android.media.session.MediaSession
+import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
+import android.preference.PreferenceManager
 import android.provider.MediaStore
+import android.support.v4.media.MediaMetadataCompat
+import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
+import androidx.core.app.NotificationCompat
+import androidx.media.session.MediaButtonReceiver
 import com.bumptech.glide.Glide
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.dao.upsert
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Track
@@ -24,12 +31,15 @@ import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.service.PlayerService
 import com.geckour.q.service.PlayerService.Companion.NOTIFICATION_CHANNEL_ID_PLAYER
-import com.geckour.q.ui.MainActivity
+import com.geckour.q.ui.LauncherActivity
+import com.geckour.q.ui.main.MainActivity
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ads.AdsMediaSource
 import kotlinx.coroutines.experimental.Deferred
+import kotlinx.coroutines.experimental.GlobalScope
 import kotlinx.coroutines.experimental.async
 import timber.log.Timber
+import java.io.File
 
 
 const val UNKNOWN: String = "UNKNOWN"
@@ -55,10 +65,13 @@ enum class OrientedClassType {
 }
 
 enum class NotificationCommand {
-    PLAY_OR_PAUSE,
-    NEXT,
-    PREV,
     DESTROY
+}
+
+enum class SettingCommand {
+    SET_EQUALIZER,
+    UNSET_EQUALIZER,
+    REFLECT_EQUALIZER_SETTING
 }
 
 data class QueueMetadata(
@@ -93,7 +106,7 @@ suspend fun getSongListFromTrackMediaIdWithTrackNum(db: DB,
 fun getSong(db: DB, trackMediaId: Long,
             genreId: Long? = null, playlistId: Long? = null,
             trackNum: Int? = null): Deferred<Song?> =
-        async {
+        GlobalScope.async {
             db.trackDao().getByMediaId(trackMediaId)?.let {
                 getSong(db, it, genreId, playlistId, trackNum = trackNum).await()
             }
@@ -102,7 +115,7 @@ fun getSong(db: DB, trackMediaId: Long,
 fun getSong(db: DB, track: Track,
             genreId: Long? = null, playlistId: Long? = null,
             trackNum: Int? = null): Deferred<Song?> =
-        async {
+        GlobalScope.async {
             val artistName = db.artistDao().get(track.artistId)?.title ?: UNKNOWN
             val artwork = db.albumDao().get(track.albumId)?.artworkUriString
             Song(track.id, track.mediaId, track.albumId, track.title,
@@ -110,7 +123,7 @@ fun getSong(db: DB, track: Track,
                     genreId, playlistId, track.sourcePath)
         }
 
-fun fetchPlaylists(context: Context): Deferred<List<Playlist>> = async {
+fun fetchPlaylists(context: Context): Deferred<List<Playlist>> = GlobalScope.async {
     context.contentResolver.query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
             arrayOf(
                     MediaStore.Audio.Playlists._ID,
@@ -140,9 +153,9 @@ fun fetchPlaylists(context: Context): Deferred<List<Playlist>> = async {
     } ?: emptyList()
 }
 
-private fun List<Track>.getPlaylistThumb(context: Context): Deferred<Bitmap?> = async {
+private fun List<Track>.getPlaylistThumb(context: Context): Deferred<Bitmap?> = GlobalScope.async {
     val db = DB.getInstance(context)
-    this@getPlaylistThumb.takeOrFillNull(6)
+    this@getPlaylistThumb.takeOrFillNull(10)
             .map {
                 it?.let { db.getArtworkUriStringFromId(it.albumId).await()?.let { Uri.parse(it) } }
             }
@@ -151,13 +164,13 @@ private fun List<Track>.getPlaylistThumb(context: Context): Deferred<Bitmap?> = 
 }
 
 fun DB.searchArtistByFuzzyTitle(title: String): Deferred<List<Artist>> =
-        async { this@searchArtistByFuzzyTitle.artistDao().searchByTitle("%$title%") }
+        GlobalScope.async { this@searchArtistByFuzzyTitle.artistDao().findByTitle("%$title%") }
 
 fun DB.searchAlbumByFuzzyTitle(title: String): Deferred<List<Album>> =
-        async { this@searchAlbumByFuzzyTitle.albumDao().searchByTitle("%$title%") }
+        GlobalScope.async { this@searchAlbumByFuzzyTitle.albumDao().findByTitle("%$title%") }
 
 fun DB.searchTrackByFuzzyTitle(title: String): Deferred<List<Track>> =
-        async { this@searchTrackByFuzzyTitle.trackDao().searchByTitle("%$title%") }
+        GlobalScope.async { this@searchTrackByFuzzyTitle.trackDao().findByTitle("%$title%") }
 
 fun Context.searchPlaylistByFuzzyTitle(title: String): List<Playlist> =
         contentResolver.query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
@@ -199,7 +212,7 @@ fun Context.searchGenreByFuzzyTitle(title: String): List<Genre> =
 fun <T> List<T>.takeOrFillNull(n: Int): List<T?> =
         this.take(n).let { it + List(n - it.size) { null } }
 
-fun List<Uri?>.getThumb(context: Context): Deferred<Bitmap?> = async {
+fun List<Uri?>.getThumb(context: Context): Deferred<Bitmap?> = GlobalScope.async {
     if (this@getThumb.isEmpty()) return@async null
     val unit = 100
     val bitmap = Bitmap.createBitmap(((this@getThumb.size * 0.9 - 0.1) * unit).toInt(), unit, Bitmap.Config.ARGB_8888)
@@ -254,7 +267,7 @@ fun getTrackMediaIdByPlaylistId(context: Context, playlistId: Long): List<Pair<L
         } ?: emptyList()
 
 fun Song.getMediaSource(mediaSourceFactory: AdsMediaSource.MediaSourceFactory): MediaSource =
-        mediaSourceFactory.createMediaSource(Uri.parse(sourcePath))
+        mediaSourceFactory.createMediaSource(Uri.fromFile(File(sourcePath)))
 
 fun List<Song>.sortedByTrackOrder(): List<Song> = this.asSequence()
         .groupBy { it.discNum }
@@ -293,29 +306,46 @@ fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> =
             }
         }
 
-fun Song.getMediaMetadata(context: Context, albumTitle: String? = null): Deferred<MediaMetadata> =
-        async {
+fun Song.getMediaMetadata(context: Context, albumTitle: String? = null): Deferred<MediaMetadataCompat> =
+        GlobalScope.async {
             val db = DB.getInstance(context)
             val album = albumTitle
                     ?: db.albumDao().get(this@getMediaMetadata.albumId)?.title
                     ?: UNKNOWN
+            val uriString = db.getArtworkUriStringFromId(this@getMediaMetadata.albumId).await()
 
-            MediaMetadata.Builder()
-                    .putString(MediaMetadata.METADATA_KEY_MEDIA_ID,
+            MediaMetadataCompat.Builder()
+                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID,
                             this@getMediaMetadata.mediaId.toString())
-                    .putString(MediaMetadata.METADATA_KEY_TITLE, this@getMediaMetadata.name)
-                    .putString(MediaMetadata.METADATA_KEY_ARTIST, this@getMediaMetadata.artist)
-                    .putString(MediaMetadata.METADATA_KEY_ALBUM, album)
-                    .putString(MediaMetadata.METADATA_KEY_ALBUM_ART_URI,
-                            db.getArtworkUriStringFromId(this@getMediaMetadata.albumId).await().toString())
-                    .putLong(MediaMetadata.METADATA_KEY_DURATION, this@getMediaMetadata.duration)
+                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, this@getMediaMetadata.name)
+                    .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, this@getMediaMetadata.artist)
+                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album)
+                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, uriString)
+                    .apply {
+                        if (uriString != null
+                                && PreferenceManager.getDefaultSharedPreferences(context)
+                                        .showArtworkOnLockScreen) {
+                            val bitmap = try {
+                                Glide.with(context).asBitmap()
+                                        .load(uriString)
+                                        .submit().get()
+                            } catch (t: Throwable) {
+                                Timber.e(t)
+                                null
+                            }
+                            putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
+                        }
+                    }
+                    .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, this@getMediaMetadata.duration)
                     .build()
         }
 
-fun getNotification(context: Context, sessionToken: MediaSession.Token,
+fun getNotification(context: Context, sessionToken: MediaSessionCompat.Token?,
                     song: Song, albumTitle: String,
-                    playWhenReady: Boolean): Deferred<Notification> =
-        async {
+                    playing: Boolean): Deferred<Notification?> =
+        GlobalScope.async {
+            if (sessionToken == null) return@async null
+
             val artwork = try {
                 Glide.with(context)
                         .asBitmap()
@@ -330,51 +360,48 @@ fun getNotification(context: Context, sessionToken: MediaSession.Token,
             }
             val builder =
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                        Notification.Builder(context, NOTIFICATION_CHANNEL_ID_PLAYER)
-                    else Notification.Builder(context)
+                        NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID_PLAYER)
+                    else NotificationCompat.Builder(context)
             builder.setSmallIcon(R.drawable.ic_notification)
                     .setLargeIcon(artwork)
                     .setContentTitle(song.name)
                     .setContentText(song.artist)
                     .setSubText(albumTitle)
-                    .setOngoing(playWhenReady)
-                    .setStyle(Notification.MediaStyle()
+                    .setOngoing(playing)
+                    .setStyle(androidx.media.app.NotificationCompat.MediaStyle()
                             .setShowActionsInCompactView(0, 1, 2)
                             .setMediaSession(sessionToken))
                     .setContentIntent(PendingIntent.getActivity(context,
-                            App.REQUEST_CODE_OPEN_DEFAULT_ACTIVITY,
-                            MainActivity.createIntent(context),
+                            App.REQUEST_CODE_LAUNCH_APP,
+                            LauncherActivity.createIntent(context),
                             PendingIntent.FLAG_UPDATE_CURRENT))
-                    .setActions(
-                            Notification.Action.Builder(
-                                    Icon.createWithResource(context,
-                                            R.drawable.ic_backward),
-                                    context.getString(R.string.notification_action_prev),
-                                    getCommandPendingIntent(context, NotificationCommand.PREV)
-                            ).build(),
-                            if (playWhenReady) {
-                                Notification.Action.Builder(
-                                        Icon.createWithResource(context,
-                                                R.drawable.ic_pause),
-                                        context.getString(R.string.notification_action_pause),
-                                        getCommandPendingIntent(context,
-                                                NotificationCommand.PLAY_OR_PAUSE)
-                                ).build()
-                            } else {
-                                Notification.Action.Builder(
-                                        Icon.createWithResource(context,
-                                                R.drawable.ic_play),
-                                        context.getString(R.string.notification_action_play),
-                                        getCommandPendingIntent(context,
-                                                NotificationCommand.PLAY_OR_PAUSE)
-                                ).build()
-                            },
-                            Notification.Action.Builder(
-                                    Icon.createWithResource(context,
-                                            R.drawable.ic_forward),
-                                    context.getString(R.string.notification_action_next),
-                                    getCommandPendingIntent(context, NotificationCommand.NEXT)
-                            ).build())
+                    .addAction(NotificationCompat.Action.Builder(
+                            R.drawable.ic_backward,
+                            context.getString(R.string.notification_action_prev),
+                            MediaButtonReceiver.buildMediaButtonPendingIntent(context,
+                                    PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
+                    ).build())
+                    .addAction(if (playing) {
+                        NotificationCompat.Action.Builder(
+                                R.drawable.ic_pause,
+                                context.getString(R.string.notification_action_pause),
+                                MediaButtonReceiver.buildMediaButtonPendingIntent(context,
+                                        PlaybackStateCompat.ACTION_PLAY_PAUSE)
+                        ).build()
+                    } else {
+                        NotificationCompat.Action.Builder(
+                                R.drawable.ic_play,
+                                context.getString(R.string.notification_action_play),
+                                MediaButtonReceiver.buildMediaButtonPendingIntent(context,
+                                        PlaybackStateCompat.ACTION_PLAY_PAUSE)
+                        ).build()
+                    })
+                    .addAction(NotificationCompat.Action.Builder(
+                            R.drawable.ic_forward,
+                            context.getString(R.string.notification_action_next),
+                            MediaButtonReceiver.buildMediaButtonPendingIntent(context,
+                                    PlaybackStateCompat.ACTION_SKIP_TO_NEXT)
+                    ).build())
                     .setDeleteIntent(getCommandPendingIntent(context, NotificationCommand.DESTROY))
                     .build()
         }
@@ -393,3 +420,77 @@ fun Long.getTimeString(): String {
     val second = (this % 60000) / 1000
     return (if (hour > 0) String.format("%d:", hour) else "") + String.format("%02d:%02d", minute, second)
 }
+
+fun pushMedia(context: Context, db: DB, cursor: Cursor) {
+    val trackMediaId = cursor.getLong(
+            cursor.getColumnIndex(MediaStore.Audio.Media._ID))
+
+    val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackMediaId)
+
+    val trackPath = cursor.getString(
+            cursor.getColumnIndex(MediaStore.Audio.Media.DATA))
+
+    if (File(trackPath).exists().not()) {
+        context.contentResolver.delete(uri, null, null)
+        return
+    }
+
+    MediaMetadataRetriever().also { retriever ->
+        try {
+            retriever.setDataSource(context, uri)
+
+            val current = cursor.position
+            val total = cursor.count
+
+            val title = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.TITLE))
+            val duration = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DURATION))
+            val trackNum = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Media.TRACK))
+            val albumMediaId = cursor.getLong(
+                    cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID))
+            val albumTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM))
+            val artistMediaId = cursor.getLong(
+                    cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST_ID))
+            val artistTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST))
+            val artworkUriString = albumMediaId.getArtworkUriIfExist(context)?.toString()
+
+            val discNum = retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER)?.split("/")
+                    ?.first()?.toInt()
+            val albumArtistTitle = retriever.extractMetadata(
+                    MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
+
+            val artistId = Artist(0, artistMediaId, artistTitle).upsert(db) ?: return@also
+            val albumArtistId =
+                    if (albumArtistTitle == null) null
+                    else Artist(0, null, albumArtistTitle).upsert(db)
+
+            val albumId = db.albumDao().getByMediaId(albumMediaId).let {
+                if (it == null || it.hasAlbumArtist.not()) {
+                    val album = Album(0, albumMediaId, albumTitle,
+                            albumArtistId ?: artistId,
+                            artworkUriString, albumArtistId != null)
+                    album.upsert(db)
+                } else it.id
+            }
+
+            val track = Track(0, trackMediaId, title, albumId, artistId, albumArtistId, duration,
+                    trackNum, discNum, trackPath)
+            track.upsert(db)
+            context.sendBroadcast(MainActivity.createProgressIntent(current to total))
+        } catch (t: Throwable) {
+            Timber.e(t)
+        }
+    }
+}
+
+private fun Long.getArtworkUriIfExist(context: Context): Uri? =
+        this.getArtworkUriFromMediaId().let { uri ->
+            context.contentResolver.query(uri,
+                    arrayOf(MediaStore.MediaColumns.DATA),
+                    null, null, null)?.use {
+                if (it.moveToFirst()
+                        && File(it.getString(it.getColumnIndex(MediaStore.MediaColumns.DATA))).exists())
+                    uri
+                else null
+            }
+        }

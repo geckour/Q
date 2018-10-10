@@ -1,4 +1,4 @@
-package com.geckour.q.ui.library
+package com.geckour.q.ui.main
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -11,11 +11,13 @@ import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.ItemListSearchCategoryBinding
 import com.geckour.q.databinding.ItemListSearchItemBinding
 import com.geckour.q.domain.model.*
-import com.geckour.q.ui.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.UNKNOWN
-import kotlinx.coroutines.experimental.android.UI
+import com.geckour.q.util.getSong
+import kotlinx.coroutines.experimental.Dispatchers
+import kotlinx.coroutines.experimental.GlobalScope
+import kotlinx.coroutines.experimental.android.Main
 import kotlinx.coroutines.experimental.launch
 import com.geckour.q.data.db.model.Album as DBAlbum
 import com.geckour.q.data.db.model.Artist as DBArtist
@@ -78,22 +80,23 @@ class SearchListAdapter(private val viewModel: MainViewModel)
 
         private val trackPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener {
-                val song = (binding.data?.data as? Track)?.let {
-                    Song(it.id, it.mediaId, it.albumId, it.title, UNKNOWN, null, it.duration,
-                            it.trackNum, it.discNum, null, null, it.sourcePath)
-                } ?: return@setOnMenuItemClickListener false
-                viewModel.onNewQueue(listOf(song), when (it.itemId) {
-                    R.id.menu_insert_all_next -> {
-                        InsertActionType.NEXT
-                    }
-                    R.id.menu_insert_all_last -> {
-                        InsertActionType.LAST
-                    }
-                    R.id.menu_override_all -> {
-                        InsertActionType.OVERRIDE
-                    }
-                    else -> return@setOnMenuItemClickListener false
-                }, OrientedClassType.SONG)
+                GlobalScope.launch(Dispatchers.Main) {
+                    val song = (binding.data?.data as? Track)?.let {
+                        getSong(DB.getInstance(binding.root.context), it).await()
+                    } ?: return@launch
+                    viewModel.onNewQueue(listOf(song), when (it.itemId) {
+                        R.id.menu_insert_all_next -> {
+                            InsertActionType.NEXT
+                        }
+                        R.id.menu_insert_all_last -> {
+                            InsertActionType.LAST
+                        }
+                        R.id.menu_override_all -> {
+                            InsertActionType.OVERRIDE
+                        }
+                        else -> return@launch
+                    }, OrientedClassType.SONG)
+                }
 
                 return@setOnMenuItemClickListener true
             }
@@ -103,7 +106,7 @@ class SearchListAdapter(private val viewModel: MainViewModel)
         fun onBind(item: SearchItem) {
             binding.data = item
             binding.root.setOnClickListener { item.onClick() }
-            launch {
+            GlobalScope.launch {
                 val db = DB.getInstance(binding.root.context)
                 val artwork = when (item.type) {
                     SearchItem.SearchItemType.ARTIST -> (item.data as? DBArtist)?.id?.let {
@@ -117,7 +120,7 @@ class SearchListAdapter(private val viewModel: MainViewModel)
                     }
                     else -> null
                 }
-                launch(UI) {
+                GlobalScope.launch(Dispatchers.Main) {
                     Glide.with(binding.thumb)
                             .load(artwork ?: R.drawable.ic_empty)
                             .into(binding.thumb)

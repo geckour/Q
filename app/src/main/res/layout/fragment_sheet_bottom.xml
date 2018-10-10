@@ -5,6 +5,10 @@
 
     <data>
 
+        <import type="android.view.View" />
+
+        <import type="com.geckour.q.R" />
+
         <variable
             name="viewModel"
             type="com.geckour.q.ui.sheet.BottomSheetViewModel" />
@@ -16,9 +20,13 @@
         <variable
             name="playing"
             type="Boolean" />
+
+        <variable
+            name="queueUnTouchable"
+            type="Boolean" />
     </data>
 
-    <androidx.constraintlayout.widget.ConstraintLayout
+    <androidx.constraintlayout.motion.widget.MotionLayout
         android:id="@+id/sheet"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -26,254 +34,234 @@
         android:clickable="true"
         android:elevation="24dp"
         android:focusable="true"
-        android:orientation="vertical"
+        android:theme="?attr/bottomSheetStyle"
+        app:layoutDescription="@xml/bottom_sheet_motion"
         tools:ignore="Overdraw">
 
         <androidx.constraintlayout.widget.Guideline
             android:id="@+id/guide_peek_height"
             android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:orientation="horizontal"
-            app:layout_constraintGuide_begin="@dimen/bottom_sheet_peek_height" />
+            android:layout_height="0dp" />
+
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/guide_artwork_end"
+            android:layout_width="0dp"
+            android:layout_height="0dp" />
 
         <ImageView
             android:id="@+id/artwork"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_marginLeft="16dp"
-            android:layout_marginTop="16dp"
-            android:layout_marginRight="16dp"
-            android:adjustViewBounds="true"
-            android:scaleType="fitStart"
-            app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toLeftOf="@id/button_controller_left"
-            app:layout_constraintTop_toTopOf="parent"
+            android:scaleType="fitCenter"
             tools:src="@tools:sample/avatars" />
 
         <TextView
             android:id="@+id/text_song"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="12dp"
-            android:layout_marginRight="12dp"
-            android:textColor="@color/colorTextPrimary"
+            android:layout_height="0dp"
+            android:ellipsize="end"
+            android:text="@{viewModel.currentSong.name}"
+            android:textColor="?attr/colorTextPrimary"
             android:textSize="12sp"
-            app:layout_constraintBottom_toTopOf="@id/text_artist"
-            app:layout_constraintLeft_toRightOf="@id/artwork"
-            app:layout_constraintRight_toLeftOf="@id/button_toggle_visible_queue"
-            app:layout_constraintTop_toTopOf="@id/artwork"
-            app:layout_constraintVertical_chainStyle="packed"
             tools:text="曲タイトル" />
 
         <TextView
             android:id="@+id/text_artist"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:textColor="@color/colorTextPrimary"
+            android:layout_height="0dp"
+            android:ellipsize="end"
+            android:text="@{viewModel.currentSong.artist}"
+            android:textColor="?attr/colorTextPrimary"
             android:textSize="10sp"
-            app:layout_constraintBottom_toTopOf="@id/button_controller_center"
-            app:layout_constraintLeft_toLeftOf="@id/text_song"
-            app:layout_constraintRight_toRightOf="@id/text_song"
-            app:layout_constraintTop_toBottomOf="@id/text_song"
             tools:text="アーティスト名" />
 
         <ImageView
             android:id="@+id/button_controller_left"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginRight="24dp"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:onClick="@{() -> isQueueNotEmpty ? viewModel.onPrev() : null}"
             android:onLongClick="@{() -> viewModel.onRewind()}"
             android:padding="8dp"
             android:src="@drawable/ic_backward"
-            android:tint="@{isQueueNotEmpty ? @color/colorPrimaryDark : @color/colorTintInactive}"
-            app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
-            app:layout_constraintRight_toLeftOf="@id/button_controller_center"
+            app:tintAttr="@{isQueueNotEmpty ? R.attr.colorButtonNormal : R.attr.colorInactive}"
             tools:tint="@color/colorPrimaryDark" />
 
         <ImageView
             android:id="@+id/button_controller_center"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginBottom="8dp"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:onClick="@{() -> isQueueNotEmpty ? viewModel.onPlayOrPause() : null}"
             android:padding="8dp"
             android:src="@{playing ? @drawable/ic_pause : @drawable/ic_play}"
-            android:tint="@{isQueueNotEmpty ? @color/colorPrimaryDark : @color/colorTintInactive}"
-            app:layout_constraintBottom_toTopOf="@id/seek_bar"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toRightOf="parent"
+            app:tintAttr="@{isQueueNotEmpty ? R.attr.colorButtonNormal : R.attr.colorInactive}"
             tools:src="@drawable/ic_pause"
             tools:tint="@color/colorPrimaryDark" />
 
         <ImageView
             android:id="@+id/button_controller_right"
-            android:layout_width="44dp"
-            android:layout_height="44dp"
-            android:layout_marginLeft="24dp"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:onClick="@{() -> isQueueNotEmpty ? viewModel.onNext() : null}"
             android:onLongClick="@{() -> viewModel.onFF()}"
             android:padding="8dp"
             android:src="@drawable/ic_forward"
-            android:tint="@{isQueueNotEmpty ? @color/colorPrimaryDark : @color/colorTintInactive}"
-            app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
-            app:layout_constraintLeft_toRightOf="@id/button_controller_center"
+            app:tintAttr="@{isQueueNotEmpty ? R.attr.colorButtonNormal : R.attr.colorInactive}"
             tools:tint="@color/colorPrimaryDark" />
 
         <ImageView
             android:id="@+id/button_repeat"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_marginRight="16dp"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:onClick="@{() -> viewModel.onClickRepeatButton()}"
-            android:padding="4dp"
-            android:tint="@color/colorAccent"
+            android:padding="6dp"
+            android:tint="?attr/colorAccent"
             android:visibility="gone"
-            app:layout_constraintBottom_toBottomOf="@id/button_shuffle"
-            app:layout_constraintRight_toLeftOf="@id/button_shuffle"
-            app:layout_constraintTop_toTopOf="@id/button_shuffle"
             tools:src="@drawable/ic_repeat_off"
-            tools:visibility="visible"
-            tools:tint="@color/colorAccent" />
+            tools:tint="@color/colorAccent"
+            tools:visibility="visible" />
 
         <ImageView
             android:id="@+id/button_shuffle"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_marginTop="4dp"
-            android:layout_marginRight="8dp"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:onClick="@{() -> isQueueNotEmpty ? viewModel.onClickShuffleButton() : null}"
-            android:padding="4dp"
+            android:padding="6dp"
             android:src="@drawable/ic_shuffle"
-            android:tint="@{isQueueNotEmpty ? @color/colorAccent : @color/colorTintInactive}"
-            app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
-            app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toTopOf="@id/button_controller_center"
+            app:tintAttr="@{isQueueNotEmpty ? R.attr.colorAccent : R.attr.colorInactive}"
+            tools:tint="@color/colorAccent" />
+
+        <ImageView
+            android:id="@+id/button_share"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:onClick="@{() -> isQueueNotEmpty ? viewModel.onClickShareButton() : null}"
+            android:padding="6dp"
+            android:src="@drawable/ic_share"
+            app:tintAttr="@{isQueueNotEmpty ? R.attr.colorAccent : R.attr.colorInactive}"
             tools:tint="@color/colorAccent" />
 
         <ImageView
             android:id="@+id/button_toggle_visible_queue"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_marginTop="4dp"
-            android:layout_marginRight="8dp"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:onClick="@{() -> viewModel.onClickQueueButton()}"
-            android:padding="4dp"
+            android:padding="6dp"
             android:src="@drawable/ic_queue"
-            android:tint="@color/colorAccent"
-            app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            android:tint="?attr/colorAccent" />
 
         <TextView
             android:id="@+id/text_time_left"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="@color/colorTextPrimary"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:textAlignment="viewEnd"
+            android:textColor="?attr/colorTextPrimary"
             android:textSize="12sp"
-            app:layout_constraintBottom_toBottomOf="@id/seek_bar"
-            app:layout_constraintRight_toLeftOf="@id/seek_bar"
-            app:layout_constraintTop_toTopOf="@id/seek_bar"
             tools:text="0:51" />
 
         <androidx.appcompat.widget.AppCompatSeekBar
             android:id="@+id/seek_bar"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp"
+            android:layout_height="0dp"
             android:max="10000"
-            android:progressTint="@color/colorPrimary"
-            android:thumbTint="@color/colorPrimaryDark"
-            app:layout_constraintBottom_toTopOf="@id/guide_peek_height"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintWidth_percent="0.75"
+            android:progressTint="?attr/colorButtonNormal"
+            app:thumbTintAttr="@{isQueueNotEmpty ? R.attr.colorButtonNormal : R.attr.colorInactive}"
             tools:progress="2000" />
 
         <TextView
             android:id="@+id/text_time_right"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:textColor="@color/colorTextPrimary"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:onClick="@{() -> viewModel.onClickToggleCurrentRemainButton()}"
+            android:textAlignment="viewStart"
+            android:textColor="?attr/colorTextPrimary"
             android:textSize="12sp"
-            app:layout_constraintBottom_toBottomOf="@id/seek_bar"
-            app:layout_constraintLeft_toRightOf="@id/seek_bar"
-            app:layout_constraintTop_toTopOf="@id/seek_bar"
             tools:text="3:12" />
 
         <ImageView
             android:id="@+id/button_scroll_to_current"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_marginLeft="8dp"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:onClick="@{() -> isQueueNotEmpty ? viewModel.onClickScrollToCurrentButton() : null}"
-            android:padding="4dp"
+            android:padding="6dp"
             android:src="@drawable/ic_current"
-            android:tint="@{isQueueNotEmpty ? @color/colorAccent : @color/colorTintInactive}"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/guide_peek_height"
+            app:tintAttr="@{isQueueNotEmpty ? R.attr.colorAccent : R.attr.colorInactive}"
             tools:tint="@color/colorAccent" />
 
         <TextView
             android:id="@+id/text_time_total"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="8dp"
-            android:textColor="@color/colorTextPrimary"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:textColor="?attr/colorTextPrimary"
             android:textSize="12sp"
-            app:layout_constraintBottom_toBottomOf="@id/button_scroll_to_current"
-            app:layout_constraintLeft_toRightOf="@id/button_scroll_to_current"
-            app:layout_constraintTop_toTopOf="@id/button_scroll_to_current"
             tools:text="Total・1:34:28" />
+
+        <TextView
+            android:id="@+id/text_time_remain"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:textColor="?attr/colorTextPrimary"
+            android:textSize="12sp"
+            tools:text="Remain・-57:12" />
+
+        <ImageView
+            android:id="@+id/button_touch_lock"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:onClick="@{() -> viewModel.onClickTouchOffButton()}"
+            android:padding="6dp"
+            android:src="@drawable/ic_touch_lock"
+            app:tintAttr="@{queueUnTouchable ? R.attr.colorAccent : R.attr.colorInactive}"
+            tools:tint="@color/colorInactive" />
 
         <ImageView
             android:id="@+id/button_add_queue_to_playlist"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_marginRight="16dp"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:onClick="@{() -> isQueueNotEmpty ? viewModel.onClickAddQueueToPlaylistButton() : null}"
-            android:padding="4dp"
+            android:padding="6dp"
             android:src="@drawable/ic_playlist_add"
-            android:tint="@{isQueueNotEmpty ? @color/colorAccent : @color/colorTintInactive}"
-            app:layout_constraintRight_toLeftOf="@id/button_clear_queue"
-            app:layout_constraintTop_toBottomOf="@id/guide_peek_height"
+            app:tintAttr="@{isQueueNotEmpty ? R.attr.colorAccent : R.attr.colorInactive}"
             tools:tint="@color/colorAccent" />
 
         <ImageView
             android:id="@+id/button_clear_queue"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_marginRight="8dp"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:onClick="@{() -> isQueueNotEmpty ? viewModel.onClickClearQueueButton() : null}"
-            android:padding="4dp"
+            android:padding="6dp"
             android:src="@drawable/ic_remove"
-            android:tint="@{isQueueNotEmpty ? @color/colorAccent : @color/colorTintInactive}"
-            app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/guide_peek_height"
+            app:tintAttr="@{isQueueNotEmpty ? R.attr.colorAccent : R.attr.colorInactive}"
             tools:tint="@color/colorAccent" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recycler_view"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_marginTop="8dp"
             android:clipToPadding="false"
             android:orientation="vertical"
+            android:scrollbarStyle="outsideOverlay"
+            android:scrollbars="vertical"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/button_clear_queue"
             tools:listitem="@layout/item_list_song" />
 
-    </androidx.constraintlayout.widget.ConstraintLayout>
+        <FrameLayout
+            android:id="@+id/touch_block_wall"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="@{queueUnTouchable ? View.VISIBLE : View.GONE}" />
+
+    </androidx.constraintlayout.motion.widget.MotionLayout>
 </layout>
