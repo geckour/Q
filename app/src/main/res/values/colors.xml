@@ -1,24 +1,45 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="colorPrimary">#ffd54f</color>
+    <color name="colorPrimaryInverse">#486673</color>
     <color name="colorPrimaryDark">#fbc02d</color>
+    <color name="colorPrimaryDarkInverse">#093042</color>
     <color name="colorAccent">#f095ad</color>
+    <color name="colorAccentInverse">#a6bbbe</color>
 
     <color name="colorStrong">#87b9b4</color>
+    <color name="colorStrongInverse">#5c8581</color>
     <color name="colorShadowTextDrawerHeader">#a033968b</color>
 
     <color name="colorTextPrimary">#c0160900</color>
+    <color name="colorTextPrimaryInverse">#c0f5f3f1</color>
     <color name="colorTextSecondary">#98160900</color>
+    <color name="colorTextSecondaryInverse">#98f5f3f1</color>
     <color name="colorTextStrong">#5fa49d</color>
+    <color name="colorTextStrongInverse">#83d3cb</color>
 
-    <color name="colorTintOption">#707070</color>
-    <color name="colorTintInactive">#dfdcd5</color>
-    <color name="colorTintNowPlaying">#50f095ad</color>
+    <color name="colorInactive">#dfdcd5</color>
+    <color name="colorInactiveInverse">#54524e</color>
+    <color name="colorOption">#707070</color>
+    <color name="colorOptionInverse">#909090</color>
+    <color name="colorNowPlaying">#50f095ad</color>
+    <color name="colorNowPlayingInverse">#50a6bbbe</color>
 
+    <color name="colorBackground">#ffffff</color>
+    <color name="colorBackgroundInverse">#202020</color>
+    <color name="colorBackgroundBottomSheet">#ffffff</color>
+    <color name="colorBackgroundBottomSheetInverse">#303030</color>
     <color name="colorBackgroundInactive">#e8ffffff</color>
+    <color name="colorBackgroundInactiveInverse">#e8202020</color>
     <color name="colorBackgroundSearch">#ffffff</color>
+    <color name="colorBackgroundSearchInverse">#202020</color>
 
     <color name="colorEqualizerScale">#20160900</color>
 
     <color name="colorDivider">#80f095ad</color>
+
+    <color name="colorShadowBottomSheetStart">#30000000</color>
+    <color name="colorShadowBottomSheetCenter">#10000000</color>
+    <color name="colorShadowBottomSheetStartInverse">#20ffffff</color>
+    <color name="colorShadowBottomSheetCenterInverse">#08ffffff</color>
 </resources>

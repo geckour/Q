@@ -36,7 +36,7 @@
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@{data.title}"
-            android:textColor="@color/colorTextPrimary"
+            android:textColor="?attr/colorTextPrimary"
             android:textSize="14sp"
             app:layout_constraintBottom_toBottomOf="@id/thumb"
             app:layout_constraintEnd_toEndOf="parent"

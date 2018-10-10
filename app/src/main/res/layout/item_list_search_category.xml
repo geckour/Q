@@ -17,7 +17,7 @@
         android:paddingStart="16dp"
         android:paddingTop="4dp"
         android:text="@{title}"
-        android:textColor="@color/colorTextPrimary"
+        android:textColor="?attr/colorTextPrimary"
         android:textSize="12sp"
         android:textStyle="bold"
         tools:text="Artist" />

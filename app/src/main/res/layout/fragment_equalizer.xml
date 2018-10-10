@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        xmlns:tools="http://schemas.android.com/tools">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <data>
 
         <import type="android.view.View" />
+
+        <import type="com.geckour.q.R" />
 
         <variable
             name="viewModel"
@@ -15,7 +17,7 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@android:color/white">
+        android:background="?attr/colorBackground">
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/button_flatten"
@@ -23,11 +25,11 @@
             android:layout_width="wrap_content"
             android:layout_height="56dp"
             android:layout_marginTop="12dp"
-            android:backgroundTint="@android:color/white"
+            android:backgroundTint="?attr/colorBackground"
             android:elevation="4dp"
             android:onClick="@{() -> viewModel.onFlatten()}"
             android:text="@string/equalizer_flatten"
-            android:textColor="@color/colorPrimaryDark"
+            android:textColor="?attr/colorPrimaryDark"
             android:textStyle="bold"
             android:visibility="@{viewModel.enabled ? View.VISIBLE : View.INVISIBLE}"
             app:cornerRadius="28dp"
@@ -40,7 +42,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:textColor="@color/colorTextSecondary"
+            android:textColor="?attr/colorTextSecondary"
             android:textSize="10sp"
             app:layout_constraintBottom_toBottomOf="@id/line_scale_top"
             app:layout_constraintStart_toStartOf="@id/seek_bar_container"
@@ -51,9 +53,9 @@
             android:id="@+id/line_scale_top"
             android:layout_width="0dp"
             android:layout_height="1dp"
-            android:layout_marginEnd="8dp"
             android:layout_marginStart="4dp"
             android:layout_marginTop="20dp"
+            android:layout_marginEnd="8dp"
             android:background="@color/colorEqualizerScale"
             app:layout_constraintEnd_toEndOf="@id/seek_bar_container"
             app:layout_constraintStart_toEndOf="@id/text_scale_top"
@@ -64,7 +66,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:textColor="@color/colorTextSecondary"
+            android:textColor="?attr/colorTextSecondary"
             android:textSize="10sp"
             app:layout_constraintBottom_toBottomOf="@id/line_scale_upper_middle"
             app:layout_constraintStart_toStartOf="@id/seek_bar_container"
@@ -75,8 +77,8 @@
             android:id="@+id/line_scale_upper_middle"
             android:layout_width="0dp"
             android:layout_height="1dp"
-            android:layout_marginEnd="8dp"
             android:layout_marginStart="4dp"
+            android:layout_marginEnd="8dp"
             android:background="@color/colorEqualizerScale"
             app:layout_constraintBottom_toBottomOf="@id/line_scale_center"
             app:layout_constraintEnd_toEndOf="@id/seek_bar_container"
@@ -89,7 +91,7 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:text="@string/equalizer_scale_label_center"
-            android:textColor="@color/colorTextSecondary"
+            android:textColor="?attr/colorTextSecondary"
             android:textSize="10sp"
             app:layout_constraintBottom_toBottomOf="@id/line_scale_center"
             app:layout_constraintStart_toStartOf="@id/seek_bar_container"
@@ -99,8 +101,8 @@
             android:id="@+id/line_scale_center"
             android:layout_width="0dp"
             android:layout_height="1dp"
-            android:layout_marginEnd="8dp"
             android:layout_marginStart="4dp"
+            android:layout_marginEnd="8dp"
             android:background="@color/colorEqualizerScale"
             app:layout_constraintBottom_toBottomOf="@id/line_scale_bottom"
             app:layout_constraintEnd_toEndOf="@id/seek_bar_container"
@@ -112,7 +114,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:textColor="@color/colorTextSecondary"
+            android:textColor="?attr/colorTextSecondary"
             android:textSize="10sp"
             app:layout_constraintBottom_toBottomOf="@id/line_scale_lower_middle"
             app:layout_constraintStart_toStartOf="parent"
@@ -123,8 +125,8 @@
             android:id="@+id/line_scale_lower_middle"
             android:layout_width="0dp"
             android:layout_height="1dp"
-            android:layout_marginEnd="8dp"
             android:layout_marginStart="4dp"
+            android:layout_marginEnd="8dp"
             android:background="@color/colorEqualizerScale"
             app:layout_constraintBottom_toBottomOf="@id/line_scale_bottom"
             app:layout_constraintEnd_toEndOf="@id/seek_bar_container"
@@ -136,7 +138,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:textColor="@color/colorTextSecondary"
+            android:textColor="?attr/colorTextSecondary"
             android:textSize="10sp"
             app:layout_constraintBottom_toBottomOf="@id/line_scale_bottom"
             app:layout_constraintStart_toStartOf="@id/seek_bar_container"
@@ -147,9 +149,9 @@
             android:id="@+id/line_scale_bottom"
             android:layout_width="0dp"
             android:layout_height="1dp"
-            android:layout_marginBottom="20dp"
-            android:layout_marginEnd="8dp"
             android:layout_marginStart="4dp"
+            android:layout_marginEnd="8dp"
+            android:layout_marginBottom="20dp"
             android:background="@color/colorEqualizerScale"
             app:layout_constraintBottom_toBottomOf="@id/seek_bar_container"
             app:layout_constraintEnd_toEndOf="@id/seek_bar_container"
@@ -159,8 +161,8 @@
             android:id="@+id/seek_bar_container"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_marginBottom="24dp"
             android:layout_marginTop="12dp"
+            android:layout_marginBottom="24dp"
             android:gravity="center_horizontal|bottom"
             android:orientation="horizontal"
             app:layout_constraintBottom_toTopOf="@id/button_toggle_enabled"
@@ -171,7 +173,7 @@
         <View
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:background="@color/colorBackgroundInactive"
+            android:background="?attr/colorBackgroundInactive"
             android:clickable="true"
             android:focusable="true"
             android:visibility="@{viewModel.enabled ? View.GONE : View.VISIBLE}"
@@ -186,17 +188,17 @@
             style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="64dp"
-            android:layout_marginBottom="12dp"
             android:layout_marginEnd="12dp"
-            android:backgroundTint="@{viewModel.enabled ? @color/colorAccent : @color/colorTintOption}"
+            android:layout_marginBottom="12dp"
             android:elevation="4dp"
             android:onClick="@{() -> viewModel.onToggleEnabled()}"
             android:text="@{viewModel.enabled ? @string/setting_switch_on : @string/setting_switch_off}"
             android:textColor="@android:color/white"
+            app:backgroundTintAttr="@{viewModel.enabled ? R.attr.colorAccent : R.attr.colorOption}"
             app:cornerRadius="32dp"
             app:layout_constraintBottom_toBottomOf="@id/guide_peek_height"
             app:layout_constraintEnd_toEndOf="parent"
-            tools:backgroundTint="@color/colorTintOption"
+            tools:backgroundTint="@color/colorOption"
             tools:text="@string/setting_switch_off" />
 
         <androidx.constraintlayout.widget.Guideline

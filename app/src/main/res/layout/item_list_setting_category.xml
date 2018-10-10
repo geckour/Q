@@ -14,7 +14,7 @@
         android:layout_height="wrap_content"
         android:padding="8dp"
         android:text="@{title}"
-        android:textColor="@color/colorAccent"
+        android:textColor="?attr/colorAccent"
         android:textSize="20sp"
         android:textStyle="bold"
         tools:text="カテゴリ" />

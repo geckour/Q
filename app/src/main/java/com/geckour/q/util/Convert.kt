@@ -5,7 +5,7 @@ import kotlin.math.abs
 
 fun Float.getReadableString(digitToKeep: Int = 3): String {
     fun Float.format(suffix: String): String =
-            String.format("${if (this@getReadableString < 0) "-" else ""}%.${digitToKeep}f", this).apply { Timber.d("qgeck middle result: $this") }
+            String.format("${if (this@getReadableString < 0) "-" else ""}%.${digitToKeep}f", this)
                     .replace(Regex("^(.+\\..*?)0+$"), "$1")
                     .replace(Regex("^(.+)\\.$"), "$1") + suffix
 

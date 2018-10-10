@@ -3,9 +3,11 @@ package com.geckour.q.util
 import android.content.Context
 import android.content.SharedPreferences
 import android.preference.PreferenceManager
+import com.geckour.q.App
 import com.geckour.q.R
 import com.google.gson.Gson
 
+private const val KEY_APP_THEME = "key_app_theme"
 private const val KEY_PREFER_SCREEN = "key_prefer_screen"
 private const val KEY_DUCKING = "key_ducking"
 private const val KEY_PATTERN_FORMAT_SHARE_TEXT = "key_pattern_format_share_text"
@@ -36,6 +38,10 @@ data class EqualizerParams(
 data class EqualizerSettings(
         val levels: List<Int>
 )
+
+var SharedPreferences.appTheme: App.Theme
+    get() = App.Theme.values()[getInt(KEY_APP_THEME, App.Theme.LIGHT.ordinal)]
+    set(value) = edit().putInt(KEY_DUCKING, value.ordinal).apply()
 
 var SharedPreferences.preferScreen: Screen
     get() = Screen.values()[getInt(KEY_PREFER_SCREEN, Screen.ARTIST.ordinal)]

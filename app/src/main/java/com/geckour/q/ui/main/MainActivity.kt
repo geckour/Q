@@ -17,6 +17,7 @@ import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.ViewModelProviders
 import androidx.work.*
+import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ActivityMainBinding
@@ -105,6 +106,7 @@ class MainActivity : AppCompatActivity() {
         ViewModelProviders.of(this)[PaymentViewModel::class.java]
     }
     internal lateinit var binding: ActivityMainBinding
+    private val sharedPreferences by lazy { PreferenceManager.getDefaultSharedPreferences(this) }
     private lateinit var drawerToggle: ActionBarDrawerToggle
     private val searchListAdapter: SearchListAdapter by lazy { SearchListAdapter(viewModel) }
     private var parentJob = Job()
@@ -230,6 +232,11 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        setTheme(when (sharedPreferences.appTheme) {
+            App.Theme.LIGHT -> R.style.AppTheme
+            App.Theme.DARK -> R.style.AppTheme_Dark
+        })
+
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
         binding.coordinatorMain.viewModel = viewModel
         binding.coordinatorMain.contentSearch.recyclerView.adapter = searchListAdapter
@@ -265,6 +272,11 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
 
         paused = false
+
+        setTheme(when (sharedPreferences.appTheme) {
+            App.Theme.LIGHT -> R.style.AppTheme
+            App.Theme.DARK -> R.style.AppTheme_Dark
+        })
 
         if (player == null) {
             bottomSheetViewModel.currentQueue.value = emptyList()
@@ -327,7 +339,6 @@ class MainActivity : AppCompatActivity() {
 
         when (requestCode) {
             RequestCode.RESULT_SETTING.code -> {
-                val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
                 if (player?.getDuking() != sharedPreferences.ducking)
                     rebootPlayer()
             }

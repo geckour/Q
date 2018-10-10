@@ -11,6 +11,11 @@ import timber.log.Timber
 
 class App : Application() {
 
+    enum class Theme {
+        LIGHT,
+        DARK
+    }
+
     companion object {
         const val REQUEST_CODE_LAUNCH_APP = 184
     }

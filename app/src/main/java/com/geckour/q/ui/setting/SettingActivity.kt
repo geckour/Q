@@ -15,6 +15,7 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.ViewModelProviders
+import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivitySettingBinding
 import com.geckour.q.databinding.DialogEditTextBinding
@@ -39,6 +40,11 @@ class SettingActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        setTheme(when (sharedPreferences.appTheme) {
+            App.Theme.LIGHT -> R.style.AppTheme
+            App.Theme.DARK -> R.style.AppTheme_Dark
+        })
+
         binding = DataBindingUtil.setContentView(this, R.layout.activity_setting)
         binding.itemChooseScreen.viewModel = chooseLaunchScreenViewModel
         binding.itemArtworkOnLockScreen.viewModel = artworkOnLockScreenViewModel
@@ -48,6 +54,15 @@ class SettingActivity : AppCompatActivity() {
         binding.itemBundleArtwork.viewModel = bundleArtworkViewModel
 
         observeEvents()
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        setTheme(when (sharedPreferences.appTheme) {
+            App.Theme.LIGHT -> R.style.AppTheme
+            App.Theme.DARK -> R.style.AppTheme_Dark
+        })
     }
 
     private fun observeEvents() {

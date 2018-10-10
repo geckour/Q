@@ -33,7 +33,7 @@
             android:layout_centerHorizontal="true"
             android:ellipsize="end"
             android:maxLines="1"
-            android:textColor="@color/colorTextPrimary"
+            android:textColor="?attr/colorTextPrimary"
             android:textSize="10sp"
             tools:text="2kHz" />
     </RelativeLayout>
