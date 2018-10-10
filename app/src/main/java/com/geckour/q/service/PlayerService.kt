@@ -816,10 +816,10 @@ class PlayerService : Service() {
         getNotification(this@PlayerService,
                 mediaSession?.sessionToken, song, albumTitle, playing)
                 .await()
-                ?.show(playing)
+                ?.show()
     }
 
-    private fun Notification.show(playing: Boolean) {
+    private fun Notification.show() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && playing) {
             startForeground(NOTIFICATION_ID_PLAYER, this)
         } else {
