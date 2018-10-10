@@ -2,6 +2,7 @@ package com.geckour.q.ui.library.artist
 
 import android.content.Context
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
 import androidx.recyclerview.widget.RecyclerView
@@ -94,9 +95,9 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
     inner class ViewHolder(private val binding: ItemListArtistBinding)
         : RecyclerView.ViewHolder(binding.root) {
 
-        private val popupMenu = PopupMenu(binding.option.context, binding.option).apply {
+        private fun getPopupMenu(bindTo: View) = PopupMenu(bindTo.context, bindTo).apply {
             setOnMenuItemClickListener {
-                return@setOnMenuItemClickListener onOptionSelected(binding.option.context,
+                return@setOnMenuItemClickListener onOptionSelected(bindTo.context,
                         it.itemId, binding.data)
             }
             inflate(R.menu.albums)
@@ -107,7 +108,11 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
             binding.data = artist
             binding.duration.text = artist.totalDuration.getTimeString()
             binding.root.setOnClickListener { viewModel.onRequestNavigate(artist) }
-            binding.option.setOnClickListener { popupMenu.show() }
+            binding.root.setOnLongClickListener {
+                getPopupMenu(it).show()
+                true
+            }
+            binding.option.setOnClickListener { getPopupMenu(it).show() }
             try {
                 GlobalScope.launch(Dispatchers.Main) {
                     Glide.with(binding.thumb)

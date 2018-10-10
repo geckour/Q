@@ -260,7 +260,7 @@ class BottomSheetFragment : Fragment() {
                 }
                 adapter.setNowPlayingPosition(it)
 
-                if (it != null && song != null && behavior.state != BottomSheetBehavior.STATE_EXPANDED) {
+                if (it != null && it > -1 && behavior.state != BottomSheetBehavior.STATE_EXPANDED) {
                     binding.recyclerView.smoothScrollToPosition(it)
                 }
                 binding.viewModel = viewModel
