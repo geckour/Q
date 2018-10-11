@@ -7,5 +7,6 @@ import androidx.room.PrimaryKey
 data class Artist(
         @PrimaryKey(autoGenerate = true) var id: Long,
         var mediaId: Long?,
-        var title: String?
+        var title: String?,
+        var playbackCount: Long
 )

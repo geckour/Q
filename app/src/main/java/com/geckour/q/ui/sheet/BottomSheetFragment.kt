@@ -230,9 +230,20 @@ class BottomSheetFragment : Fragment() {
                 viewModel.currentSong = song
                 context?.also { context ->
                     bgScope.launch {
+                        val db = DB.getInstance(context)
+
+                        song?.also {
+                            db.trackDao().increasePlaybackCount(it.id)
+                            db.albumDao().increasePlaybackCount(it.albumId)
+                            db.artistDao().apply {
+                                findArtist(it.artist).firstOrNull()?.apply {
+                                    increasePlaybackCount(this.id)
+                                }
+                            }
+                        }
+
                         val model = viewModel.currentSong?.albumId?.let {
-                            DB.getInstance(context)
-                                    .getArtworkUriStringFromId(it).await() ?: R.drawable.ic_empty
+                            db.getArtworkUriStringFromId(it).await() ?: R.drawable.ic_empty
                         }
                         val drawable = model?.let {
                             Glide.with(requireContext())

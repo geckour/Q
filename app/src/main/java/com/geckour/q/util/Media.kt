@@ -459,22 +459,22 @@ fun pushMedia(context: Context, db: DB, cursor: Cursor) {
             val albumArtistTitle = retriever.extractMetadata(
                     MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
 
-            val artistId = Artist(0, artistMediaId, artistTitle).upsert(db) ?: return@also
+            val artistId = Artist(0, artistMediaId, artistTitle, 0).upsert(db) ?: return@also
             val albumArtistId =
                     if (albumArtistTitle == null) null
-                    else Artist(0, null, albumArtistTitle).upsert(db)
+                    else Artist(0, null, albumArtistTitle, 0).upsert(db)
 
             val albumId = db.albumDao().getByMediaId(albumMediaId).let {
                 if (it == null || it.hasAlbumArtist.not()) {
                     val album = Album(0, albumMediaId, albumTitle,
                             albumArtistId ?: artistId,
-                            artworkUriString, albumArtistId != null)
+                            artworkUriString, albumArtistId != null, 0)
                     album.upsert(db)
                 } else it.id
             }
 
             val track = Track(0, trackMediaId, title, albumId, artistId, albumArtistId, duration,
-                    trackNum, discNum, trackPath)
+                    trackNum, discNum, trackPath, 0)
             track.upsert(db)
             context.sendBroadcast(MainActivity.createProgressIntent(current to total))
         } catch (t: Throwable) {

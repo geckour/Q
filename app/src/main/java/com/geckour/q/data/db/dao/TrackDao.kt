@@ -43,6 +43,9 @@ interface TrackDao {
     @Query("select * from track where artistId = :artistId")
     fun findByArtist(artistId: Long): List<Track>
 
+    @Query("update track set playbackCount = (select playbackCount from track where id = :trackId) + 1 where id = :trackId")
+    fun increasePlaybackCount(trackId: Long)
+
     @Query("select count(*) from track")
     fun count(): Int
 }

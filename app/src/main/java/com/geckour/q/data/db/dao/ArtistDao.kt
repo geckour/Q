@@ -32,6 +32,9 @@ interface ArtistDao {
 
     @Query("select * from artist where mediaId = :artistId")
     fun getByMediaId(artistId: Long): Artist?
+
+    @Query("update artist set playbackCount = (select playbackCount from artist where id = :artistId) + 1 where id = :artistId")
+    fun increasePlaybackCount(artistId: Long)
 }
 
 fun Artist.upsert(db: DB): Long? =
