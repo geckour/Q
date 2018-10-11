@@ -6,10 +6,6 @@
     <data>
 
         <variable
-            name="song"
-            type="com.geckour.q.domain.model.Song" />
-
-        <variable
             name="viewModel"
             type="com.geckour.q.ui.easteregg.EasterEggViewModel" />
     </data>
@@ -53,7 +49,7 @@
             android:ellipsize="end"
             android:lines="1"
             android:maxLines="1"
-            android:text="@{song.name}"
+            android:text="@{viewModel.song.name}"
             android:textColor="?attr/colorAccent"
             android:textSize="16sp"
             app:layout_constraintBottom_toTopOf="@id/artist"
@@ -71,7 +67,7 @@
             android:ellipsize="end"
             android:lines="1"
             android:maxLines="1"
-            android:text="@{song.artist}"
+            android:text="@{viewModel.song.artist}"
             android:textColor="?attr/colorAccent"
             android:textSize="16sp"
             app:layout_constraintBottom_toTopOf="@id/guide_peek_height"

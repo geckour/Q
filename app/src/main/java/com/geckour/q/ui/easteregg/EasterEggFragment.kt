@@ -10,7 +10,6 @@ import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentEasterEggBinding
-import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -43,8 +42,6 @@ class EasterEggFragment : Fragment() {
         override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
     }
 
-    private var song: Song? = null
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         binding = FragmentEasterEggBinding.inflate(inflater, container, false)
 
@@ -54,17 +51,24 @@ class EasterEggFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        binding.viewModel = viewModel
-
         bgScope.launch {
-            if (song == null) {
-                val db = DB.getInstance(requireContext())
-                val max = db.trackDao().count()
-                val seed = Calendar.getInstance(TimeZone.getDefault())
-                        .let { it.get(Calendar.DAY_OF_YEAR) * 1000 + it.get(Calendar.YEAR) }
-                val trackId = Random(seed.toLong()).nextInt(max)
-                song = db.trackDao().get(trackId.toLong())?.let { getSong(db, it).await() }
-                setSong()
+            val db = DB.getInstance(requireContext())
+            val trackList = db.trackDao().getAll()
+            if (trackList.isEmpty()) return@launch
+
+            val max = trackList.size
+            val seed = Calendar.getInstance(TimeZone.getDefault())
+                    .let { it.get(Calendar.DAY_OF_YEAR) * 1000 + it.get(Calendar.YEAR) }
+            val random = Random(seed.toLong())
+            while (true) {
+                val index = random.nextInt(max)
+                val song = trackList[index].let { getSong(db, it).await() }
+                if (song != null) {
+                    viewModel.song = song
+
+                    setSong()
+                    return@launch
+                }
             }
         }
     }
@@ -95,17 +99,17 @@ class EasterEggFragment : Fragment() {
     }
 
     private fun setSong() {
-        binding.song = song
+        binding.viewModel = viewModel
         uiScope.launch {
             Glide.with(binding.artwork)
-                    .load(song?.thumbUriString ?: R.drawable.ic_empty)
+                    .load(viewModel.song?.thumbUriString ?: R.drawable.ic_empty)
                     .into(binding.artwork)
         }
     }
 
     private fun observeEvents() {
         viewModel.tap.observe(this) {
-            song?.apply {
+            viewModel.song?.apply {
                 mainViewModel.onNewQueue(listOf(this),
                         InsertActionType.NEXT, OrientedClassType.SONG)
             }
