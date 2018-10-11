@@ -179,7 +179,6 @@ class ArtistListFragment : Fragment() {
                 val items = albumList.getArtistList(db)
                 uiScope.launch {
                     adapter.upsertItems(items)
-                    binding.recyclerView.smoothScrollToPosition(0)
                     mainViewModel.loading.value = false
                     chatteringCancelFlag = false
                 }

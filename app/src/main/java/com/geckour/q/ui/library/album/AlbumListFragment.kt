@@ -203,7 +203,6 @@ class AlbumListFragment : Fragment() {
             uiScope.launch {
                 delay(500)
                 adapter.upsertItems(items)
-                binding.recyclerView.smoothScrollToPosition(0)
                 mainViewModel.loading.value = false
                 chatteringCancelFlag = false
             }

@@ -242,7 +242,6 @@ class SongListFragment : Fragment() {
                 delay(500)
                 val items = getSongListFromTrackList(db, dbTrackList)
                 adapter.upsertItems(items, sortByTrackOrder)
-                binding.recyclerView.smoothScrollToPosition(0)
                 mainViewModel.loading.value = false
                 chatteringCancelFlag = false
             }
