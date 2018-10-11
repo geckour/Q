@@ -21,7 +21,7 @@
     <color name="colorInactive">#dfdcd5</color>
     <color name="colorInactiveInverse">#54524e</color>
     <color name="colorOption">#707070</color>
-    <color name="colorOptionInverse">#909090</color>
+    <color name="colorOptionInverse">#c0f5f3f1</color>
     <color name="colorNowPlaying">#50f095ad</color>
     <color name="colorNowPlayingInverse">#50a6bbbe</color>
 
