@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name" translatable="false">Q</string>
+
+
     <string name="title_activity_main" translatable="false">Q</string>
     <string name="title_activity_setting">Settings</string>
     <string name="title_activity_equalizer">Equalizer</string>
