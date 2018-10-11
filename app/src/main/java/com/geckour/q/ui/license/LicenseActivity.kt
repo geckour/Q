@@ -12,6 +12,7 @@ import com.geckour.q.databinding.ActivityLicenseBinding
 import com.geckour.q.domain.model.LicenseItem
 import com.geckour.q.util.AppTheme
 import com.geckour.q.util.appTheme
+import com.geckour.q.setCrashlytics
 
 class LicenseActivity : AppCompatActivity() {
 
@@ -26,6 +27,8 @@ class LicenseActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        setCrashlytics()
 
         setTheme(when (sharedPreferences.appTheme) {
             AppTheme.LIGHT -> R.style.AppTheme

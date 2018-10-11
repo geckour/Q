@@ -57,6 +57,8 @@ import permissions.dispatcher.RuntimePermissions
 import timber.log.Timber
 import java.io.File
 import kotlin.coroutines.experimental.CoroutineContext
+import com.geckour.q.setCrashlytics
+import com.google.firebase.analytics.FirebaseAnalytics
 
 @RuntimePermissions
 class MainActivity : AppCompatActivity() {
@@ -153,6 +155,14 @@ class MainActivity : AppCompatActivity() {
             }
             R.id.nav_equalizer -> EqualizerFragment.newInstance()
             R.id.nav_sync -> {
+                FirebaseAnalytics.getInstance(this)
+                        .logEvent(
+                                FirebaseAnalytics.Event.SELECT_CONTENT,
+                                Bundle().apply {
+                                    putString(FirebaseAnalytics.Param.ITEM_NAME, "Invoked force sync")
+                                }
+                        )
+
                 retrieveMediaWithPermissionCheck()
                 null
             }
@@ -232,6 +242,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        setCrashlytics()
 
         currentAppTheme = sharedPreferences.appTheme
         setTheme(when (currentAppTheme) {

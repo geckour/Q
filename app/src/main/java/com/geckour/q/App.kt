@@ -1,12 +1,16 @@
 package com.geckour.q
 
+import android.app.Activity
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
+import com.crashlytics.android.Crashlytics
 import com.facebook.stetho.Stetho
 import com.geckour.q.service.PlayerService.Companion.NOTIFICATION_CHANNEL_ID_PLAYER
+import io.fabric.sdk.android.Fabric
 import timber.log.Timber
 
 class App : Application() {
@@ -41,4 +45,8 @@ class App : Application() {
 
         getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
+}
+
+fun AppCompatActivity.setCrashlytics() {
+    Fabric.with(this, Crashlytics())
 }

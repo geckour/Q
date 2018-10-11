@@ -15,6 +15,7 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.getSong
 import com.geckour.q.util.observe
+import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.experimental.CoroutineScope
 import kotlinx.coroutines.experimental.Dispatchers
 import kotlinx.coroutines.experimental.Job
@@ -50,6 +51,14 @@ class EasterEggFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        FirebaseAnalytics.getInstance(requireContext())
+                .logEvent(
+                        FirebaseAnalytics.Event.SELECT_CONTENT,
+                        Bundle().apply {
+                            putString(FirebaseAnalytics.Param.ITEM_NAME, "Show easter egg screen")
+                        }
+                )
 
         bgScope.launch {
             val db = DB.getInstance(requireContext())
@@ -109,6 +118,14 @@ class EasterEggFragment : Fragment() {
 
     private fun observeEvents() {
         viewModel.tap.observe(this) {
+            FirebaseAnalytics.getInstance(requireContext())
+                    .logEvent(
+                            FirebaseAnalytics.Event.SELECT_CONTENT,
+                            Bundle().apply {
+                                putString(FirebaseAnalytics.Param.ITEM_NAME, "Tapped today's song")
+                            }
+                    )
+
             viewModel.song?.apply {
                 mainViewModel.onNewQueue(listOf(this),
                         InsertActionType.NEXT, OrientedClassType.SONG)

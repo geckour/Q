@@ -22,6 +22,7 @@ import kotlinx.coroutines.experimental.android.Main
 import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
 import kotlin.coroutines.experimental.CoroutineContext
+import com.geckour.q.setCrashlytics
 
 class SharingActivity : AppCompatActivity() {
 
@@ -57,6 +58,8 @@ class SharingActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        setCrashlytics()
 
         onNewIntent(intent)
         finish()

@@ -22,6 +22,7 @@ import com.geckour.q.databinding.DialogEditTextBinding
 import com.geckour.q.databinding.DialogSpinnerBinding
 import com.geckour.q.ui.license.LicenseActivity
 import com.geckour.q.util.*
+import com.geckour.q.setCrashlytics
 
 class SettingActivity : AppCompatActivity() {
 
@@ -39,6 +40,8 @@ class SettingActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        setCrashlytics()
 
         setTheme(when (sharedPreferences.appTheme) {
             AppTheme.LIGHT -> R.style.AppTheme
