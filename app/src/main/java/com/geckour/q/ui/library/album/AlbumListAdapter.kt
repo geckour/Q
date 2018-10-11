@@ -49,9 +49,9 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
     }
 
     internal fun upsertItems(items: List<Album>) {
-        val increased = items - this.items
-        val decreased = this.items - items
-        increased.forEach { upsertItem(it) }
+        val increased = items.map { it.id } - this.items.map { it.id }
+        val decreased = this.items.map { it.id } - items.map { it.id }
+        increased.forEach { id -> upsertItem(items.first { it.id == id }) }
         decreased.forEach { removeItem(it) }
     }
 

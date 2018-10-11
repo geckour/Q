@@ -191,8 +191,8 @@ class ArtistListFragment : Fragment() {
             this.asSequence()
                     .groupBy { it.artistId }
                     .map {
-                        val artwork = it.value.firstOrNull { it.artworkUriString != null }
-                                ?.artworkUriString
+                        val artwork = it.value.filter { it.artworkUriString != null }
+                                .sortedByDescending { it.playbackCount }.firstOrNull()?.artworkUriString
                         val totalDuration = it.value
                                 .map { db.trackDao().findByAlbum(it.id) }.flatten()
                                 .map { it.duration }.sum()
