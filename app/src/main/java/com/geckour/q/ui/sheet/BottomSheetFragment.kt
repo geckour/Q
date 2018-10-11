@@ -257,6 +257,7 @@ class BottomSheetFragment : Fragment() {
                 }
                 if (song == null) {
                     binding.textTimeLeft.text = null
+                    binding.textTimeRight.text = null
                     binding.seekBar.progress = 0
                     binding.textTimeTotal.text = null
                     binding.textTimeRemain.text = null
