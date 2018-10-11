@@ -80,7 +80,7 @@ class SettingActivity : AppCompatActivity() {
                                     super.getDropDownView(position, convertView, parent).apply {
                                         if (position == spinner.selectedItemPosition) {
                                             (this as TextView).setTextColor(
-                                                    theme.getColor(R.attr.colorPrimaryDark))
+                                                    theme.getColor(R.attr.colorButtonNormal))
                                         }
                                     }
                         }.apply {
@@ -130,7 +130,7 @@ class SettingActivity : AppCompatActivity() {
                                     super.getDropDownView(position, convertView, parent).apply {
                                         if (position == spinner.selectedItemPosition) {
                                             (this as TextView).setTextColor(
-                                                    theme.getColor(R.attr.colorPrimaryDark))
+                                                    theme.getColor(R.attr.colorButtonNormal))
                                         }
                                     }
                         }.apply {
