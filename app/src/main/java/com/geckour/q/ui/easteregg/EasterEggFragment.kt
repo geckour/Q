@@ -78,7 +78,7 @@ class EasterEggFragment : Fragment() {
 
         mainViewModel.resumedFragmentId.value = R.layout.fragment_easter_egg
 
-        setSong()
+        if (viewModel.song != null) setSong()
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
