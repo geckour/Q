@@ -720,21 +720,28 @@ class PlayerService : Service() {
     private fun setEqualizer(audioSessionId: Int?) {
         if (audioSessionId != null) {
             if (equalizer == null) {
-                equalizer = Equalizer(0, audioSessionId).apply {
-                    val params = EqualizerParams(
-                            bandLevelRange.let { Pair(it.first().toInt(), it.last().toInt()) },
-                            (0 until numberOfBands).map {
-                                val short = it.toShort()
-                                EqualizerParams.Band(
-                                        getBandFreqRange(short).let { Pair(it.first(), it.last()) },
-                                        getCenterFreq(short)
-                                )
-                            }
-                    )
-                    sharedPreferences.equalizerParams = params
-                    if (sharedPreferences.equalizerSettings == null) {
-                        sharedPreferences.equalizerSettings = EqualizerSettings(params.bands.map { 0 })
+                try {
+                    equalizer = Equalizer(0, audioSessionId).apply {
+                        val params = EqualizerParams(
+                                bandLevelRange.let { Pair(it.first().toInt(), it.last().toInt()) },
+                                (0 until numberOfBands).map {
+                                    val short = it.toShort()
+                                    EqualizerParams.Band(
+                                            getBandFreqRange(short).let {
+                                                Pair(it.first(), it.last())
+                                            },
+                                            getCenterFreq(short)
+                                    )
+                                }
+                        )
+                        sharedPreferences.equalizerParams = params
+                        if (sharedPreferences.equalizerSettings == null) {
+                            sharedPreferences.equalizerSettings =
+                                    EqualizerSettings(params.bands.map { 0 })
+                        }
                     }
+                } catch (t: Throwable) {
+                    Timber.e(t)
                 }
             }
             if (sharedPreferences.equalizerEnabled) {
