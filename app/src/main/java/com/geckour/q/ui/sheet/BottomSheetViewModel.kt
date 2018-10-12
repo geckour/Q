@@ -89,4 +89,13 @@ class BottomSheetViewModel : ViewModel() {
         playbackButton.value = PlaybackButton.REWIND
         return true
     }
+
+    internal fun reAttatch() {
+        currentQueue.value = currentQueue.value
+        currentPosition.value = currentPosition.value
+        playing.value = playing.value
+        playbackRatio.value = playbackRatio.value
+        repeatMode.value = repeatMode.value
+        touchLock.value = touchLock.value
+    }
 }

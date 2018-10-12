@@ -167,6 +167,8 @@ class BottomSheetFragment : Fragment() {
         }
 
         viewModel.currentQueue.value = emptyList()
+
+        observeEvents()
     }
 
     override fun onStart() {
@@ -177,7 +179,8 @@ class BottomSheetFragment : Fragment() {
     override fun onResume() {
         super.onResume()
 
-        observeEvents()
+        viewModel.reAttatch()
+        binding.viewModel = viewModel
     }
 
     override fun onStop() {
