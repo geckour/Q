@@ -359,6 +359,9 @@ class PlayerService : Service() {
             if (contains(PREF_KEY_PLAYER_STATE).not()) storeState()
         }
 
+        mediaSession?.isActive = false
+        mediaSession = null
+        destroyNotification()
         unregisterReceiver(headsetStateReceiver)
         parentJob.cancel()
         equalizer = null
