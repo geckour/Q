@@ -26,10 +26,8 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
     private var items: List<Song> = emptyList()
 
     internal fun setItems(items: List<Song>) {
-        if (items.map { it.id } != this.items.map { it.id }) {
-            this.items = items
-            notifyDataSetChanged()
-        }
+        this.items = items
+        notifyDataSetChanged()
     }
 
     internal fun getItem(index: Int?): Song? =

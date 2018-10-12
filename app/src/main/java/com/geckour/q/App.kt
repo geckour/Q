@@ -1,6 +1,5 @@
 package com.geckour.q
 
-import android.app.Activity
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager

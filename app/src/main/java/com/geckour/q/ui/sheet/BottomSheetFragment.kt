@@ -224,6 +224,7 @@ class BottomSheetFragment : Fragment() {
 
         viewModel.currentPosition.observe(this) {
             val song = adapter.getItem(it)
+
             binding.seekBar.setOnTouchListener { _, _ -> song == null }
 
             if (song?.id != viewModel.currentSong?.id) {
