@@ -157,6 +157,9 @@ class BottomSheetFragment : Fragment() {
                             BottomSheetBehavior.STATE_EXPANDED -> R.drawable.ic_collapse
                             else -> R.drawable.ic_queue
                         })
+                if (state == BottomSheetBehavior.STATE_EXPANDED) {
+                    viewModel.scrollToCurrent.call()
+                }
             }
         })
 
@@ -230,6 +233,8 @@ class BottomSheetFragment : Fragment() {
 
             binding.seekBar.setOnTouchListener { _, _ -> song == null }
 
+            adapter.setNowPlayingPosition(it)
+
             if (song?.id != viewModel.currentSong?.id) {
                 viewModel.currentSong = song
                 context?.also { context ->
@@ -273,11 +278,6 @@ class BottomSheetFragment : Fragment() {
                                     "-${remain.getTimeString()}"
                                 }
                             } else song.duration.getTimeString()
-                }
-                adapter.setNowPlayingPosition(it)
-
-                if (it != null && it > -1 && behavior.state != BottomSheetBehavior.STATE_EXPANDED) {
-                    binding.recyclerView.smoothScrollToPosition(it)
                 }
                 binding.viewModel = viewModel
             }
