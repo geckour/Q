@@ -26,7 +26,7 @@ class BottomSheetViewModel : ViewModel() {
 
     internal val repeatMode: SingleLiveEvent<Int> = SingleLiveEvent()
     internal val changeRepeatMode: SingleLiveEvent<Unit> = SingleLiveEvent()
-    internal val toggleCurrentRmeain: SingleLiveEvent<Unit> = SingleLiveEvent()
+    internal val toggleCurrentRemain: SingleLiveEvent<Unit> = SingleLiveEvent()
     internal val touchLock: SingleLiveEvent<Boolean> = SingleLiveEvent()
     internal val share: SingleLiveEvent<Song> = SingleLiveEvent()
 
@@ -57,7 +57,7 @@ class BottomSheetViewModel : ViewModel() {
     }
 
     fun onClickToggleCurrentRemainButton() {
-        toggleCurrentRmeain.call()
+        toggleCurrentRemain.call()
     }
 
     fun onClickTouchOffButton() {

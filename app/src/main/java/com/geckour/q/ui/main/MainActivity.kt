@@ -3,10 +3,12 @@ package com.geckour.q.ui.main
 import android.Manifest
 import android.app.AlertDialog
 import android.content.*
+import android.media.session.PlaybackState
 import android.os.Bundle
 import android.os.IBinder
 import android.preference.PreferenceManager
 import android.provider.MediaStore
+import android.view.KeyEvent
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -16,6 +18,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.ViewModelProviders
+import androidx.media.session.MediaButtonReceiver
 import androidx.work.*
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -26,6 +29,7 @@ import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.Song
 import com.geckour.q.service.PlayerService
+import com.geckour.q.setCrashlytics
 import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
 import com.geckour.q.ui.easteregg.EasterEggFragment
 import com.geckour.q.ui.equalizer.EqualizerFragment
@@ -46,6 +50,7 @@ import com.geckour.q.util.*
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.snackbar.Snackbar
+import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.experimental.CoroutineScope
 import kotlinx.coroutines.experimental.Dispatchers
 import kotlinx.coroutines.experimental.Job
@@ -57,8 +62,6 @@ import permissions.dispatcher.RuntimePermissions
 import timber.log.Timber
 import java.io.File
 import kotlin.coroutines.experimental.CoroutineContext
-import com.geckour.q.setCrashlytics
-import com.google.firebase.analytics.FirebaseAnalytics
 
 @RuntimePermissions
 class MainActivity : AppCompatActivity() {
@@ -603,13 +606,19 @@ class MainActivity : AppCompatActivity() {
 
         bottomSheetViewModel.playbackButton.observe(this) {
             if (it == null) return@observe
-            when (it) {
-                PlaybackButton.PLAY_OR_PAUSE -> player?.togglePlayPause()
-                PlaybackButton.NEXT -> player?.next()
-                PlaybackButton.PREV -> player?.headOrPrev()
-                PlaybackButton.FF -> player?.fastForward()
-                PlaybackButton.REWIND -> player?.rewind()
-                PlaybackButton.UNDEFINED -> player?.stopRunningButtonAction()
+            if (it == PlaybackButton.UNDEFINED) {
+                PlayerService.mediaSession?.controller
+                        ?.dispatchMediaButtonEvent(
+                                KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE))
+            } else {
+                MediaButtonReceiver.buildMediaButtonPendingIntent(this, when (it) {
+                    PlaybackButton.PLAY_OR_PAUSE -> PlaybackState.ACTION_PLAY_PAUSE
+                    PlaybackButton.NEXT -> PlaybackState.ACTION_SKIP_TO_NEXT
+                    PlaybackButton.PREV -> PlaybackState.ACTION_SKIP_TO_PREVIOUS
+                    PlaybackButton.FF -> PlaybackState.ACTION_FAST_FORWARD
+                    PlaybackButton.REWIND -> PlaybackState.ACTION_REWIND
+                    PlaybackButton.UNDEFINED -> throw IllegalStateException()
+                }).send()
             }
         }
 

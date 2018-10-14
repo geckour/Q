@@ -117,7 +117,7 @@ class PlayerService : Service() {
                             true
                         }
                         KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
-                            togglePlayPause()
+                            onPlayPause()
                             true
                         }
                         KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD -> {
@@ -141,12 +141,10 @@ class PlayerService : Service() {
                 }
                 KeyEvent.ACTION_UP -> {
                     when (keyEvent.keyCode) {
-                        KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
-                            stopRunningButtonAction()
-                            true
-                        }
-                        KeyEvent.KEYCODE_MEDIA_REWIND -> {
-                            stopRunningButtonAction()
+                        KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,
+                        KeyEvent.KEYCODE_MEDIA_REWIND,
+                        KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+                            stopFastSeek()
                             true
                         }
                         else -> false
@@ -154,6 +152,10 @@ class PlayerService : Service() {
                 }
                 else -> false
             }
+        }
+
+        private fun onPlayPause() {
+            togglePlayPause()
         }
     }
 
@@ -665,9 +667,8 @@ class PlayerService : Service() {
         }
     }
 
-    fun stopRunningButtonAction() {
-        seekJob?.cancel()
-    }
+    fun stopFastSeek(): Boolean =
+            seekJob?.cancel() == true
 
     private fun seekToHead() {
         seek(0)

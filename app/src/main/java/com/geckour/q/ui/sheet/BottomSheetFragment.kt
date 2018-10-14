@@ -319,7 +319,7 @@ class BottomSheetFragment : Fragment() {
             binding.recyclerView.smoothScrollToPosition(viewModel.currentPosition.value ?: 0)
         }
 
-        viewModel.toggleCurrentRmeain.observe(this) {
+        viewModel.toggleCurrentRemain.observe(this) {
             val changeTo = sharedPreferences
                     .getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false)
                     .not()
