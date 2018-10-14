@@ -245,7 +245,12 @@ class BottomSheetFragment : Fragment() {
                             db.trackDao().increasePlaybackCount(it.id)
                             db.albumDao().increasePlaybackCount(it.albumId)
                             db.artistDao().apply {
-                                findArtist(it.artist).firstOrNull()?.apply {
+                                var artist = findArtist(it.artist).firstOrNull()
+                                if (artist == null) {
+                                    db.albumDao().get(it.albumId)
+                                            ?.artistId?.apply { artist = get(this) }
+                                }
+                                artist?.apply {
                                     increasePlaybackCount(this.id)
                                 }
                             }
