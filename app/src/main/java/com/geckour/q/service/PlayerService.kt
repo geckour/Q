@@ -377,9 +377,23 @@ class PlayerService : Service() {
             val key = intent.extras?.getInt(ARGS_KEY_CONTROL_COMMAND, -1) ?: return
             val command = NotificationCommand.values()[key]
             when (command) {
+                NotificationCommand.PLAY_PAUSE ->
+                    sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+                NotificationCommand.NEXT ->
+                    sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_NEXT)
+                NotificationCommand.PREV ->
+                    sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
                 NotificationCommand.DESTROY -> onRequestedStopService()
             }
         }
+    }
+
+    private fun sendMediaButtonDownEvent(keyCode: Int) {
+        mediaSession?.controller?.dispatchMediaButtonEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
+    }
+
+    private fun sendMediaButtonUpEvent(keyCode: Int) {
+        mediaSession?.controller?.dispatchMediaButtonEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
     }
 
     private fun onSettingAction(intent: Intent) {

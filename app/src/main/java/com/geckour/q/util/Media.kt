@@ -65,6 +65,9 @@ enum class OrientedClassType {
 }
 
 enum class NotificationCommand {
+    PLAY_PAUSE,
+    NEXT,
+    PREV,
     DESTROY
 }
 
@@ -378,36 +381,32 @@ fun getNotification(context: Context, sessionToken: MediaSessionCompat.Token?,
                     .addAction(NotificationCompat.Action.Builder(
                             R.drawable.ic_backward,
                             context.getString(R.string.notification_action_prev),
-                            MediaButtonReceiver.buildMediaButtonPendingIntent(context,
-                                    PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
+                            getCommandPendingIntent(context, NotificationCommand.PREV)
                     ).build())
                     .addAction(if (playing) {
                         NotificationCompat.Action.Builder(
                                 R.drawable.ic_pause,
                                 context.getString(R.string.notification_action_pause),
-                                MediaButtonReceiver.buildMediaButtonPendingIntent(context,
-                                        PlaybackStateCompat.ACTION_PLAY_PAUSE)
+                                getCommandPendingIntent(context, NotificationCommand.PLAY_PAUSE)
                         ).build()
                     } else {
                         NotificationCompat.Action.Builder(
                                 R.drawable.ic_play,
                                 context.getString(R.string.notification_action_play),
-                                MediaButtonReceiver.buildMediaButtonPendingIntent(context,
-                                        PlaybackStateCompat.ACTION_PLAY_PAUSE)
+                                getCommandPendingIntent(context, NotificationCommand.PLAY_PAUSE)
                         ).build()
                     })
                     .addAction(NotificationCompat.Action.Builder(
                             R.drawable.ic_forward,
                             context.getString(R.string.notification_action_next),
-                            MediaButtonReceiver.buildMediaButtonPendingIntent(context,
-                                    PlaybackStateCompat.ACTION_SKIP_TO_NEXT)
+                            getCommandPendingIntent(context, NotificationCommand.NEXT)
                     ).build())
                     .setDeleteIntent(getCommandPendingIntent(context, NotificationCommand.DESTROY))
                     .build()
         }
 
 private fun getCommandPendingIntent(context: Context, command: NotificationCommand): PendingIntent =
-        PendingIntent.getService(context, 0,
+        PendingIntent.getService(context, 343,
                 PlayerService.createIntent(context).apply {
                     action = command.name
                     putExtra(PlayerService.ARGS_KEY_CONTROL_COMMAND, command.ordinal)
