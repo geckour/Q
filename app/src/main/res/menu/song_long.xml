@@ -1,7 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android">
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/menu_insert_all_next"
+        android:title="@string/menu_insert_next"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_insert_all_last"
+        android:title="@string/menu_insert_last"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_override_all"
+        android:title="@string/menu_override"
+        app:showAsAction="never" />
     <item
         android:id="@+id/menu_delete_song"
-        android:showAsAction="never"
-        android:title="@string/menu_delete_song" />
+        android:title="@string/menu_delete_song"
+        app:showAsAction="never" />
 </menu>

@@ -76,6 +76,7 @@ class SongListFragment : Fragment() {
 
     override fun onCreateView(inflater: LayoutInflater,
                               container: ViewGroup?, savedInstanceState: Bundle?): View? {
+        GlobalScope
         observeEvents()
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
         return binding.root

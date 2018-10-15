@@ -143,11 +143,23 @@ class SongListAdapter(private val viewModel: MainViewModel,
 
         private val longPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener {
-                when (it.itemId) {
-                    R.id.menu_delete_song -> {
-                        deleteSong(viewModel.selectedSong)
-                    }
-                    else -> return@setOnMenuItemClickListener false
+                if (it.itemId == R.id.menu_delete_song) {
+                    deleteSong(viewModel.selectedSong)
+                } else {
+                    viewModel.selectedSong?.apply {
+                        viewModel.onNewQueue(listOf(this), when (it.itemId) {
+                            R.id.menu_insert_all_next -> {
+                                InsertActionType.NEXT
+                            }
+                            R.id.menu_insert_all_last -> {
+                                InsertActionType.LAST
+                            }
+                            R.id.menu_override_all -> {
+                                InsertActionType.OVERRIDE
+                            }
+                            else -> return@setOnMenuItemClickListener false
+                        }, OrientedClassType.SONG)
+                    } ?: return@setOnMenuItemClickListener false
                 }
 
                 return@setOnMenuItemClickListener true
