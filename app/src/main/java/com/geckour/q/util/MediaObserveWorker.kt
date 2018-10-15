@@ -5,16 +5,14 @@ import android.content.ContentUris
 import android.content.Context
 import android.content.pm.PackageManager
 import android.provider.MediaStore
-import androidx.work.*
+import androidx.work.Worker
+import androidx.work.WorkerParameters
 import com.geckour.q.data.db.DB
 import com.geckour.q.util.MediaRetrieveWorker.Companion.projection
 import timber.log.Timber
 
-class MediaObserveWorker : Worker {
-
-    constructor() : super()
-    constructor(context: Context, parameters: WorkerParameters)
-            : super(context.applicationContext, parameters)
+class MediaObserveWorker(context: Context, parameters: WorkerParameters)
+    : Worker(context.applicationContext, parameters) {
 
     override fun doWork(): Result =
             if (applicationContext.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)

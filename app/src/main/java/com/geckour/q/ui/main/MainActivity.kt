@@ -422,7 +422,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun WorkManager.monitorSyncState() {
-        getStatusesForUniqueWork(MediaRetrieveWorker.WORK_NAME)
+        getStatusesForUniqueWorkLiveData(MediaRetrieveWorker.WORK_NAME)
                 .observe(this@MainActivity) {
                     viewModel.syncing.value =
                             it?.firstOrNull { it.state == State.RUNNING } != null

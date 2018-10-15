@@ -9,11 +9,8 @@ import androidx.work.WorkerParameters
 import com.geckour.q.data.db.DB
 import timber.log.Timber
 
-class MediaRetrieveWorker : Worker {
-
-    constructor() : super()
-    constructor(context: Context, parameters: WorkerParameters)
-            : super(context.applicationContext, parameters)
+class MediaRetrieveWorker(context: Context, parameters: WorkerParameters)
+    : Worker(context.applicationContext, parameters) {
 
     companion object {
         const val WORK_NAME = "media_retrieve_work"
