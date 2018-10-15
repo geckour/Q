@@ -3,7 +3,6 @@ package com.geckour.q.ui.main
 import android.Manifest
 import android.app.AlertDialog
 import android.content.*
-import android.media.session.PlaybackState
 import android.os.Bundle
 import android.os.IBinder
 import android.preference.PreferenceManager
@@ -18,7 +17,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.ViewModelProviders
-import androidx.media.session.MediaButtonReceiver
 import androidx.work.*
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -608,23 +606,23 @@ class MainActivity : AppCompatActivity() {
 
         bottomSheetViewModel.playbackButton.observe(this) {
             if (it == null) return@observe
-            if (it == PlaybackButton.UNDEFINED) {
-                PlayerService.mediaSession?.controller
-                        ?.dispatchMediaButtonEvent(
-                                KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE))
-            } else {
-                MediaButtonReceiver.buildMediaButtonPendingIntent(this, when (it) {
-                    PlaybackButton.PLAY_OR_PAUSE -> PlaybackState.ACTION_PLAY_PAUSE
-                    PlaybackButton.NEXT -> PlaybackState.ACTION_SKIP_TO_NEXT
-                    PlaybackButton.PREV -> PlaybackState.ACTION_SKIP_TO_PREVIOUS
-                    PlaybackButton.FF -> PlaybackState.ACTION_FAST_FORWARD
-                    PlaybackButton.REWIND -> PlaybackState.ACTION_REWIND
-                    PlaybackButton.UNDEFINED -> throw IllegalStateException()
-                }).send()
-            }
+            PlayerService.mediaSession?.controller
+                    ?.dispatchMediaButtonEvent(KeyEvent(
+                            if (it == PlaybackButton.UNDEFINED) KeyEvent.ACTION_UP
+                            else KeyEvent.ACTION_DOWN,
+                            when (it) {
+                                PlaybackButton.PLAY_OR_PAUSE -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+                                PlaybackButton.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
+                                PlaybackButton.PREV -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
+                                PlaybackButton.FF -> KeyEvent.KEYCODE_MEDIA_FAST_FORWARD
+                                PlaybackButton.REWIND -> KeyEvent.KEYCODE_MEDIA_REWIND
+                                PlaybackButton.UNDEFINED -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+                            }
+                    ))
         }
 
-        bottomSheetViewModel.addQueueToPlaylist.observe(this) { queue ->
+        bottomSheetViewModel.addQueueToPlaylist.observe(this)
+        { queue ->
             if (queue == null) return@observe
             uiScope.launch {
                 val playlists = fetchPlaylists(this@MainActivity).await()
@@ -683,32 +681,39 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        bottomSheetViewModel.clearQueue.observe(this) {
+        bottomSheetViewModel.clearQueue.observe(this)
+        {
             player?.clear(true)
         }
 
-        bottomSheetViewModel.newSeekBarProgress.observe(this) {
+        bottomSheetViewModel.newSeekBarProgress.observe(this)
+        {
             if (it == null) return@observe
             player?.seek(it)
         }
 
-        bottomSheetViewModel.shuffle.observe(this) { player?.shuffle() }
+        bottomSheetViewModel.shuffle.observe(this)
+        { player?.shuffle() }
 
-        bottomSheetViewModel.changeRepeatMode.observe(this) { player?.rotateRepeatMode() }
+        bottomSheetViewModel.changeRepeatMode.observe(this)
+        { player?.rotateRepeatMode() }
 
-        bottomSheetViewModel.changedQueue.observe(this) {
+        bottomSheetViewModel.changedQueue.observe(this)
+        {
             if (it == null) return@observe
             player?.submitQueue(InsertQueue(
                     QueueMetadata(InsertActionType.OVERRIDE,
                             OrientedClassType.SONG), it))
         }
 
-        bottomSheetViewModel.changedPosition.observe(this) {
+        bottomSheetViewModel.changedPosition.observe(this)
+        {
             if (it == null) return@observe
             player?.forcePosition(it)
         }
 
-        paymentViewModel.saveSuccess.observe(this) {
+        paymentViewModel.saveSuccess.observe(this)
+        {
             if (it == null) return@observe
             Snackbar.make(binding.root,
                     if (it) R.string.payment_save_success

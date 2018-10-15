@@ -44,12 +44,6 @@
 
         <service android:name=".service.PlayerService" />
 
-        <receiver android:name=".receiver.MediaButtonReceiver">
-            <intent-filter>
-                <action android:name="android.intent.action.MEDIA_BUTTON" />
-            </intent-filter>
-        </receiver>
-
         <meta-data
             android:name="preloaded_fonts"
             android:resource="@array/preloaded_fonts" />
