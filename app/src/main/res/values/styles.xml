@@ -29,6 +29,7 @@
         <item name="colorShadowBottomSheetStart">@color/colorShadowBottomSheetStart</item>
         <item name="colorShadowBottomSheetCenter">@color/colorShadowBottomSheetCenter</item>
         <item name="colorButtonNormal">@color/colorPrimary</item>
+        <item name="colorDivider">@color/colorDivider</item>
     </style>
 
     <style name="SearchStyle" parent="AppTheme">
@@ -63,6 +64,7 @@
         <item name="colorShadowBottomSheetStart">@color/colorShadowBottomSheetStartInverse</item>
         <item name="colorShadowBottomSheetCenter">@color/colorShadowBottomSheetCenterInverse</item>
         <item name="colorButtonNormal">@color/colorStrong</item>
+        <item name="colorDivider">@color/colorDividerInverse</item>
     </style>
 
     <style name="SearchStyle.Dark" parent="AppTheme.Dark">

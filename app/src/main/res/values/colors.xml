@@ -37,6 +37,7 @@
     <color name="colorEqualizerScale">#20160900</color>
 
     <color name="colorDivider">#80f095ad</color>
+    <color name="colorDividerInverse">#80a6bbbe</color>
 
     <color name="colorShadowBottomSheetStart">#30000000</color>
     <color name="colorShadowBottomSheetCenter">#10000000</color>
