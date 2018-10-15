@@ -47,6 +47,8 @@ import com.geckour.q.ui.pay.PaymentViewModel
 import com.geckour.q.ui.setting.SettingActivity
 import com.geckour.q.ui.sheet.BottomSheetViewModel
 import com.geckour.q.util.*
+import com.geckour.q.worker.MediaObserveWorker
+import com.geckour.q.worker.MediaRetrieveWorker
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.snackbar.Snackbar

@@ -1,4 +1,4 @@
-package com.geckour.q.util
+package com.geckour.q.worker
 
 import android.Manifest
 import android.content.ContentUris
@@ -8,7 +8,8 @@ import android.provider.MediaStore
 import androidx.work.Worker
 import androidx.work.WorkerParameters
 import com.geckour.q.data.db.DB
-import com.geckour.q.util.MediaRetrieveWorker.Companion.projection
+import com.geckour.q.util.pushMedia
+import com.geckour.q.worker.MediaRetrieveWorker.Companion.projection
 import timber.log.Timber
 
 class MediaObserveWorker(context: Context, parameters: WorkerParameters)
