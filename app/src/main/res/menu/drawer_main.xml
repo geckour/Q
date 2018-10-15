@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
+
+    <item android:title="@string/nav_category_library">
+        <menu>
     <group android:checkableBehavior="single">
         <item
             android:id="@+id/nav_artist"
@@ -23,26 +26,34 @@
             android:icon="@drawable/ic_playlist"
             android:title="@string/nav_playlist" />
     </group>
-
-    <item android:title="@string/nav_category_others">
-        <menu>
-            <item
-                android:id="@+id/nav_setting"
-                android:icon="@drawable/ic_setting"
-                android:title="@string/nav_setting" />
-            <item
-                android:id="@+id/nav_equalizer"
-                android:icon="@drawable/ic_spectrum"
-                android:title="@string/nav_equalizer" />
-            <item
-                android:id="@+id/nav_sync"
-                android:icon="@drawable/ic_sync"
-                android:title="@string/nav_sync" />
-            <item
-                android:id="@+id/nav_pay"
-                android:icon="@drawable/ic_motive"
-                android:title="@string/nav_pay" />
         </menu>
     </item>
 
+    <item android:title="@string/nav_category_others">
+        <menu>
+            <group android:checkableBehavior="single">
+                <item
+                    android:id="@+id/nav_setting"
+                    android:icon="@drawable/ic_setting"
+                    android:title="@string/nav_setting" />
+                <item
+                    android:id="@+id/nav_equalizer"
+                    android:icon="@drawable/ic_spectrum"
+                    android:title="@string/nav_equalizer" />
+                <item
+                    android:id="@+id/nav_pay"
+                    android:icon="@drawable/ic_motive"
+                    android:title="@string/nav_pay" />
+            </group>
+        </menu>
+    </item>
+
+    <item android:title="@string/nav_category_on_trouble">
+        <menu>
+            <item android:checkable="false"
+                android:id="@+id/nav_sync"
+                android:icon="@drawable/ic_sync"
+                android:title="@string/nav_sync" />
+        </menu>
+    </item>
 </menu>

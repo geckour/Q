@@ -103,7 +103,6 @@ class PlayerService : Service() {
 
         override fun onMediaButtonEvent(mediaButtonEvent: Intent): Boolean {
             val keyEvent: KeyEvent = mediaButtonEvent.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
-            Timber.d("qgeck key event: $keyEvent")
             return when (keyEvent.action) {
                 KeyEvent.ACTION_DOWN -> {
                     when (keyEvent.keyCode) {
