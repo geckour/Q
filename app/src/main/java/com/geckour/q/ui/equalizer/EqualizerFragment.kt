@@ -23,9 +23,6 @@ import com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBar
 class EqualizerFragment : Fragment() {
 
     companion object {
-        const val ACTION_EQUALIZER_STATE = "action_equalizer_state"
-        const val EXTRA_KEY_EQUALIZER_ENABLED = "extra_key_equalizer_enabled"
-
         fun newInstance(): EqualizerFragment = EqualizerFragment()
     }
 
@@ -40,9 +37,8 @@ class EqualizerFragment : Fragment() {
         PreferenceManager.getDefaultSharedPreferences(requireContext())
     }
 
-    private var changeEnabledTo: Boolean? = null
-
-    private var initialSettingState: Boolean = false
+    private var initialStoredState = false
+    private var errorThrown = false
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
@@ -54,10 +50,9 @@ class EqualizerFragment : Fragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
-        if (savedInstanceState == null) {
-            initialSettingState = sharedPreferences.equalizerEnabled
-            if (initialSettingState) sendCommand(SettingCommand.SET_EQUALIZER)
-        }
+        initialStoredState = sharedPreferences.equalizerEnabled
+        if (initialStoredState)
+            sendCommand(SettingCommand.SET_EQUALIZER)
 
         observeEvents()
 
@@ -74,15 +69,15 @@ class EqualizerFragment : Fragment() {
 
     override fun onStop() {
         super.onStop()
-        if (initialSettingState.not())
-            sharedPreferences.equalizerEnabled = viewModel.enabled
+
+        if (errorThrown)
+            sharedPreferences.equalizerEnabled = initialStoredState
     }
 
     private fun observeEvents() {
         viewModel.toggleEnabled.observe(this) {
             val changeTo = viewModel.enabled.not()
             sharedPreferences.equalizerEnabled = changeTo
-            changeEnabledTo = changeTo
             sendCommand(
                     if (changeTo) SettingCommand.SET_EQUALIZER
                     else SettingCommand.UNSET_EQUALIZER)
@@ -93,15 +88,16 @@ class EqualizerFragment : Fragment() {
         viewModel.equalizerState.observe(this) {
             if (it == null) return@observe
 
-            if (changeEnabledTo == true && it.not())
+            errorThrown = sharedPreferences.equalizerEnabled && it.not()
+            if (errorThrown) {
                 Toast.makeText(requireContext(),
                         R.string.equalizer_message_error_turn_on, Toast.LENGTH_LONG).show()
+            }
 
             if (viewModel.enabled != it) {
                 viewModel.enabled = it
                 binding.viewModel = viewModel
             }
-            changeEnabledTo = null
         }
     }
 

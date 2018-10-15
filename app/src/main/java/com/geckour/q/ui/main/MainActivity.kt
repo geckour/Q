@@ -125,12 +125,6 @@ class MainActivity : ScopedActivity() {
             }
         }
     }
-    private val equalizerStateReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val enabled = intent.getBooleanExtra(EqualizerFragment.EXTRA_KEY_EQUALIZER_ENABLED, false)
-            onReceiveEnabled(enabled)
-        }
-    }
 
     private val onNavigationItemSelected: (MenuItem) -> Boolean = {
         val fragment = when (it.itemId) {
@@ -181,9 +175,7 @@ class MainActivity : ScopedActivity() {
             if (name == ComponentName(applicationContext, PlayerService::class.java)) {
                 isBoundService = true
                 player = (service as? PlayerService.PlayerBinder)?.service?.apply {
-                    setOnQueueChangedListener {
-                        bottomSheetViewModel.currentQueue.value = it
-                    }
+                    setOnQueueChangedListener { bottomSheetViewModel.currentQueue.value = it }
                     setOnCurrentPositionChangedListener {
                         bottomSheetViewModel.currentPosition.value = it
                     }
@@ -198,9 +190,8 @@ class MainActivity : ScopedActivity() {
                     setOnPlaybackRatioChangedListener {
                         bottomSheetViewModel.playbackRatio.value = it
                     }
-                    setOnRepeatModeChangedListener {
-                        bottomSheetViewModel.repeatMode.value = it
-                    }
+                    setOnRepeatModeChangedListener { bottomSheetViewModel.repeatMode.value = it }
+                    setOnEqualizerStateChangedListener { equalizerViewModel.equalizerState.value = it }
                     setOnDestroyedListener { onDestroyPlayer() }
 
                     publishStatus()
@@ -248,8 +239,6 @@ class MainActivity : ScopedActivity() {
 
         observeEvents()
         registerReceiver(syncingProgressReceiver, IntentFilter(ACTION_PROGRESS_SYNCING))
-        registerReceiver(equalizerStateReceiver,
-                IntentFilter(EqualizerFragment.ACTION_EQUALIZER_STATE))
 
         setSupportActionBar(binding.coordinatorMain.toolbar)
         setupDrawer()
@@ -309,7 +298,6 @@ class MainActivity : ScopedActivity() {
         player?.onRequestedStopService()
         unbindPlayer()
         unregisterReceiver(syncingProgressReceiver)
-        unregisterReceiver(equalizerStateReceiver)
     }
 
     override fun onBackPressed() {
@@ -341,10 +329,6 @@ class MainActivity : ScopedActivity() {
                 }
             }
         }
-    }
-
-    private fun onReceiveEnabled(enabled: Boolean) {
-        equalizerViewModel.equalizerState.value = enabled
     }
 
     private fun bindPlayer() {

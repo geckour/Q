@@ -19,7 +19,6 @@ import android.view.KeyEvent
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.Song
-import com.geckour.q.ui.equalizer.EqualizerFragment
 import com.geckour.q.util.*
 import com.google.android.exoplayer2.*
 import com.google.android.exoplayer2.audio.AudioAttributes
@@ -193,6 +192,7 @@ class PlayerService : Service() {
     private var onPlaybackStateChanged: ((Int, Boolean) -> Unit)? = null
     private var onPlaybackRatioChanged: ((Float) -> Unit)? = null
     private var onRepeatModeChanged: ((Int) -> Unit)? = null
+    private var onEqualizerStateChanged: ((Boolean) -> Unit)? = null
     private var onDestroyed: (() -> Unit)? = null
 
     private lateinit var mediaSourceFactory: ExtractorMediaSource.Factory
@@ -428,6 +428,10 @@ class PlayerService : Service() {
 
     fun setOnRepeatModeChangedListener(listener: (Int) -> Unit) {
         this.onRepeatModeChanged = listener
+    }
+
+    fun setOnEqualizerStateChangedListener(listener: (Boolean) -> Unit) {
+        this.onEqualizerStateChanged = listener
     }
 
     fun setOnDestroyedListener(listener: () -> Unit) {
@@ -768,10 +772,7 @@ class PlayerService : Service() {
             equalizer = null
         }
 
-        sendBroadcast(Intent().apply {
-            action = EqualizerFragment.ACTION_EQUALIZER_STATE
-            putExtra(EqualizerFragment.EXTRA_KEY_EQUALIZER_ENABLED, equalizer?.enabled ?: false)
-        })
+        onEqualizerStateChanged?.invoke(equalizer?.enabled ?: false)
     }
 
     private fun reflectEqualizerSettings() {
