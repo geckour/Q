@@ -3,7 +3,6 @@ package com.geckour.q.ui.library.artist
 import android.os.Bundle
 import android.view.*
 import android.widget.SearchView
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -13,10 +12,8 @@ import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
 import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.android.Main
-import kotlin.coroutines.experimental.CoroutineContext
 
-class ArtistListFragment : Fragment() {
+class ArtistListFragment : ScopedFragment() {
 
     companion object {
         fun newInstance(): ArtistListFragment = ArtistListFragment()
@@ -31,13 +28,6 @@ class ArtistListFragment : Fragment() {
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: ArtistListAdapter by lazy { ArtistListAdapter(mainViewModel) }
 
-    private var parentJob = Job()
-    private val bgScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = parentJob
-    }
-    private val uiScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
-    }
     private var latestDbAlbumList: List<Album> = emptyList()
     private var chatteringCancelFlag: Boolean = false
 
@@ -58,11 +48,6 @@ class ArtistListFragment : Fragment() {
         if (adapter.itemCount == 0) observeArtists()
     }
 
-    override fun onStart() {
-        super.onStart()
-        parentJob = Job()
-    }
-
     override fun onResume() {
         super.onResume()
         mainViewModel.resumedFragmentId.value = R.id.nav_artist
@@ -70,7 +55,6 @@ class ArtistListFragment : Fragment() {
 
     override fun onStop() {
         super.onStop()
-        parentJob.cancel()
         mainViewModel.loading.value = false
     }
 
@@ -108,7 +92,7 @@ class ArtistListFragment : Fragment() {
             }
 
             mainViewModel.loading.value = true
-            bgScope.launch {
+            launch(Dispatchers.IO) {
                 val sortByTrackOrder = item.itemId.let {
                     it != R.id.menu_insert_all_simple_shuffle_next
                             || it != R.id.menu_insert_all_simple_shuffle_last
@@ -119,7 +103,7 @@ class ArtistListFragment : Fragment() {
                     artistAlbumMap[it.id]?.map {
                         DB.getInstance(context).let { db ->
                             db.trackDao().findByAlbum(it.id)
-                                    .mapNotNull { getSong(db, it).await() }
+                                    .mapNotNull { getSong(db, it) }
                                     .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                         }
                     }?.flatten()
@@ -139,9 +123,9 @@ class ArtistListFragment : Fragment() {
 
         viewModel.forceLoad.observe(this) {
             context?.also { context ->
-                uiScope.launch {
+                launch {
                     mainViewModel.loading.value = true
-                    adapter.setItems(fetchArtists(DB.getInstance(context)).await())
+                    adapter.setItems(fetchArtists(DB.getInstance(context)))
                     binding.recyclerView.smoothScrollToPosition(0)
                     mainViewModel.loading.value = false
                 }
@@ -168,35 +152,37 @@ class ArtistListFragment : Fragment() {
         }
     }
 
-    private fun fetchArtists(db: DB): Deferred<List<Artist>> =
-            bgScope.async { db.albumDao().getAll().getArtistList(db) }
+    private suspend fun fetchArtists(db: DB): List<Artist> =
+            withContext(Dispatchers.IO) { db.albumDao().getAll().getArtistList(db) }
 
     private fun upsertArtistListIfPossible(db: DB, albumList: List<Album> = latestDbAlbumList) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
-            bgScope.launch {
+            launch {
                 delay(500)
                 val items = albumList.getArtistList(db)
-                uiScope.launch {
-                    adapter.upsertItems(items)
-                    mainViewModel.loading.value = false
-                    chatteringCancelFlag = false
-                }
+
+                adapter.upsertItems(items)
+                mainViewModel.loading.value = false
+                chatteringCancelFlag = false
             }
         }
     }
 
-    private fun List<Album>.getArtistList(db: DB): List<Artist> =
-            this.asSequence()
-                    .groupBy { it.artistId }
-                    .map {
-                        val artwork = it.value.filter { it.artworkUriString != null }
-                                .sortedByDescending { it.playbackCount }.firstOrNull()?.artworkUriString
-                        val totalDuration = it.value
-                                .map { db.trackDao().findByAlbum(it.id) }.flatten()
-                                .map { it.duration }.sum()
-                        val artistName = db.artistDao().get(it.key)?.title ?: UNKNOWN
-                        Artist(it.key, artistName, artwork, totalDuration)
-                    }
-
+    private suspend fun List<Album>.getArtistList(db: DB): List<Artist> =
+            withContext(Dispatchers.IO) {
+                this@getArtistList.asSequence()
+                        .groupBy { it.artistId }
+                        .map {
+                            val artwork = it.value.filter { it.artworkUriString != null }
+                                    .sortedByDescending { it.playbackCount }
+                                    .firstOrNull()
+                                    ?.artworkUriString
+                            val totalDuration = it.value
+                                    .map { db.trackDao().findByAlbum(it.id) }.flatten()
+                                    .map { it.duration }.sum()
+                            val artistName = db.artistDao().get(it.key)?.title ?: UNKNOWN
+                            Artist(it.key, artistName, artwork, totalDuration)
+                        }
+            }
 }

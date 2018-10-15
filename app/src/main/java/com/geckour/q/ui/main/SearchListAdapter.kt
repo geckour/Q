@@ -82,7 +82,7 @@ class SearchListAdapter(private val viewModel: MainViewModel)
             setOnMenuItemClickListener {
                 GlobalScope.launch(Dispatchers.Main) {
                     val song = (binding.data?.data as? Track)?.let {
-                        getSong(DB.getInstance(binding.root.context), it).await()
+                        getSong(DB.getInstance(binding.root.context), it)
                     } ?: return@launch
                     viewModel.onNewQueue(listOf(song), when (it.itemId) {
                         R.id.menu_insert_all_next -> {

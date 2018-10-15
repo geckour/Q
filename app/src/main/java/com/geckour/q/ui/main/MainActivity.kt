@@ -13,7 +13,6 @@ import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
 import androidx.appcompat.app.ActionBarDrawerToggle
-import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.ViewModelProviders
@@ -51,20 +50,16 @@ import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.analytics.FirebaseAnalytics
-import kotlinx.coroutines.experimental.CoroutineScope
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.Job
+import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.Main
-import kotlinx.coroutines.experimental.launch
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
 import timber.log.Timber
 import java.io.File
-import kotlin.coroutines.experimental.CoroutineContext
 
 @RuntimePermissions
-class MainActivity : AppCompatActivity() {
+class MainActivity : ScopedActivity() {
 
     enum class RequestCode(val code: Int) {
         RESULT_SETTING(333)
@@ -113,13 +108,6 @@ class MainActivity : AppCompatActivity() {
     private val sharedPreferences by lazy { PreferenceManager.getDefaultSharedPreferences(this) }
     private lateinit var drawerToggle: ActionBarDrawerToggle
     private val searchListAdapter: SearchListAdapter by lazy { SearchListAdapter(viewModel) }
-    private var parentJob = Job()
-    private val bgScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = parentJob
-    }
-    private val uiScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
-    }
     private var searchJob = Job()
 
     private var requestedTransaction: RequestedTransaction? = null
@@ -184,7 +172,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     .commit()
         }
-        uiScope.launch { binding.drawerLayout.closeDrawers() }
+        launch { binding.drawerLayout.closeDrawers() }
         true
     }
 
@@ -300,7 +288,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onStart() {
         super.onStart()
-        parentJob = Job()
         startService(PlayerService.createIntent(this))
     }
 
@@ -315,11 +302,6 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         paused = true
-    }
-
-    override fun onStop() {
-        super.onStop()
-        parentJob.cancel()
     }
 
     override fun onDestroy() {
@@ -400,9 +382,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun retrieveMediaIfEmpty() {
-        bgScope.launch {
+        launch(Dispatchers.IO) {
             if (DB.getInstance(this@MainActivity).trackDao().count() == 0)
-                uiScope.launch { retrieveMediaWithPermissionCheck() }
+                withContext(Dispatchers.Main) { retrieveMediaWithPermissionCheck() }
         }
     }
 
@@ -559,9 +541,9 @@ class MainActivity : AppCompatActivity() {
 
             val db = DB.getInstance(this@MainActivity)
             searchJob.cancel()
-            searchJob = uiScope.launch {
+            searchJob = launch {
                 searchListAdapter.clearItems()
-                val tracks = db.searchTrackByFuzzyTitle(it).await().take(3)
+                val tracks = db.searchTrackByFuzzyTitle(it).take(3)
                 if (tracks.isNotEmpty()) {
                     searchListAdapter.addItem(SearchItem(getString(R.string.search_category_song),
                             Unit, SearchItem.SearchItemType.CATEGORY))
@@ -569,7 +551,7 @@ class MainActivity : AppCompatActivity() {
                         SearchItem(it.title ?: UNKNOWN, it, SearchItem.SearchItemType.TRACK)
                     })
                 }
-                val albums = db.searchAlbumByFuzzyTitle(it).await().take(3)
+                val albums = db.searchAlbumByFuzzyTitle(it).take(3)
                 if (albums.isNotEmpty()) {
                     searchListAdapter.addItem(SearchItem(getString(R.string.search_category_album),
                             Unit, SearchItem.SearchItemType.CATEGORY))
@@ -577,7 +559,7 @@ class MainActivity : AppCompatActivity() {
                         SearchItem(it.title ?: UNKNOWN, it, SearchItem.SearchItemType.ALBUM)
                     })
                 }
-                val artists = db.searchArtistByFuzzyTitle(it).await().take(3)
+                val artists = db.searchArtistByFuzzyTitle(it).take(3)
                 if (artists.isNotEmpty()) {
                     searchListAdapter.addItem(SearchItem(getString(R.string.search_category_artist),
                             Unit, SearchItem.SearchItemType.CATEGORY))
@@ -624,8 +606,8 @@ class MainActivity : AppCompatActivity() {
         bottomSheetViewModel.addQueueToPlaylist.observe(this)
         { queue ->
             if (queue == null) return@observe
-            uiScope.launch {
-                val playlists = fetchPlaylists(this@MainActivity).await()
+            launch {
+                val playlists = fetchPlaylists(this@MainActivity)
                 val binding = DialogAddQueuePlaylistBinding.inflate(layoutInflater)
                 val dialog = AlertDialog.Builder(this@MainActivity)
                         .setTitle(R.string.dialog_title_add_queue_to_playlist)
@@ -846,7 +828,7 @@ class MainActivity : AppCompatActivity() {
                 "${android.provider.MediaStore.Files.FileColumns.DATA}=?",
                 kotlin.arrayOf(song.sourcePath))
 
-        bgScope.launch {
+        launch(Dispatchers.IO) {
             val db = com.geckour.q.data.db.DB.getInstance(this@MainActivity)
             val track = db.trackDao().get(song.id) ?: return@launch
 
@@ -854,20 +836,20 @@ class MainActivity : AppCompatActivity() {
 
             var deleted = db.trackDao().delete(track.id) > 0
             if (deleted)
-                uiScope.launch {
+                withContext(Dispatchers.Main) {
                     songListViewModel.songIdDeleted.value = track.id
                 }
             if (db.trackDao().findByAlbum(track.albumId).isEmpty()) {
                 deleted = db.albumDao().delete(track.albumId) > 0
                 if (deleted)
-                    uiScope.launch {
+                    withContext(Dispatchers.Main) {
                         albumListViewModel.albumIdDeleted.value = track.albumId
                     }
             }
             if (db.trackDao().findByArtist(track.artistId).isEmpty()) {
                 deleted = db.artistDao().delete(track.artistId) > 0
                 if (deleted)
-                    uiScope.launch {
+                    withContext(Dispatchers.Main) {
                         artistListViewModel.artistIdDeleted.value = track.artistId
                     }
             }

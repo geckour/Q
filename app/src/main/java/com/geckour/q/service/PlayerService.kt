@@ -837,10 +837,9 @@ class PlayerService : Service() {
                 .get(song.albumId)?.title ?: UNKNOWN
 
         mediaSession?.setMetadata(
-                song.getMediaMetadata(this@PlayerService, albumTitle).await())
+                song.getMediaMetadata(this@PlayerService, albumTitle))
         getNotification(this@PlayerService,
                 mediaSession?.sessionToken, song, albumTitle, playing)
-                .await()
                 ?.show()
     }
 

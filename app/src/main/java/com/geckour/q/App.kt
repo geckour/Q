@@ -47,5 +47,5 @@ class App : Application() {
 }
 
 fun AppCompatActivity.setCrashlytics() {
-    Fabric.with(this, Crashlytics())
+    if (BuildConfig.DEBUG.not()) Fabric.with(this, Crashlytics())
 }

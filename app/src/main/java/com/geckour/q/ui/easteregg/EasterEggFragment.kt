@@ -4,27 +4,22 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentEasterEggBinding
 import com.geckour.q.ui.main.MainViewModel
-import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.getSong
-import com.geckour.q.util.observe
+import com.geckour.q.util.*
 import com.google.firebase.analytics.FirebaseAnalytics
-import kotlinx.coroutines.experimental.CoroutineScope
 import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.Job
+import kotlinx.coroutines.experimental.IO
 import kotlinx.coroutines.experimental.android.Main
 import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.experimental.withContext
 import java.util.*
-import kotlin.coroutines.experimental.CoroutineContext
 
-class EasterEggFragment : Fragment() {
+class EasterEggFragment : ScopedFragment() {
 
     companion object {
         fun newInstance(): EasterEggFragment = EasterEggFragment()
@@ -35,13 +30,6 @@ class EasterEggFragment : Fragment() {
         ViewModelProviders.of(this)[EasterEggViewModel::class.java]
     }
     private lateinit var mainViewModel: MainViewModel
-    private var parentJob = Job()
-    private val bgScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = parentJob
-    }
-    private val uiScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
-    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         binding = FragmentEasterEggBinding.inflate(inflater, container, false)
@@ -60,7 +48,7 @@ class EasterEggFragment : Fragment() {
                         }
                 )
 
-        bgScope.launch {
+        launch(Dispatchers.IO) {
             val db = DB.getInstance(requireContext())
             val trackList = db.trackDao().getAll()
             if (trackList.isEmpty()) return@launch
@@ -71,11 +59,11 @@ class EasterEggFragment : Fragment() {
             val random = Random(seed.toLong())
             while (true) {
                 val index = random.nextInt(max)
-                val song = trackList[index].let { getSong(db, it).await() }
+                val song = trackList[index].let { getSong(db, it) }
                 if (song != null) {
                     viewModel.song = song
 
-                    setSong()
+                    withContext(Dispatchers.Main) { setSong() }
                     return@launch
                 }
             }
@@ -97,23 +85,11 @@ class EasterEggFragment : Fragment() {
         observeEvents()
     }
 
-    override fun onStart() {
-        super.onStart()
-        parentJob = Job()
-    }
-
-    override fun onStop() {
-        super.onStop()
-        parentJob.cancel()
-    }
-
     private fun setSong() {
         binding.viewModel = viewModel
-        uiScope.launch {
-            Glide.with(binding.artwork)
-                    .load(viewModel.song?.thumbUriString ?: R.drawable.ic_empty)
-                    .into(binding.artwork)
-        }
+        Glide.with(binding.artwork)
+                .load(viewModel.song?.thumbUriString ?: R.drawable.ic_empty)
+                .into(binding.artwork)
     }
 
     private fun observeEvents() {

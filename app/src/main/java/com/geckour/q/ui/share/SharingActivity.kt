@@ -7,24 +7,23 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.preference.PreferenceManager
-import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ShareCompat
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.Song
+import com.geckour.q.setCrashlytics
+import com.geckour.q.util.ScopedActivity
 import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.bundleArtwork
 import com.geckour.q.util.formatPattern
-import kotlinx.coroutines.experimental.CoroutineScope
 import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.Job
+import kotlinx.coroutines.experimental.IO
 import kotlinx.coroutines.experimental.android.Main
 import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.experimental.withContext
 import timber.log.Timber
-import kotlin.coroutines.experimental.CoroutineContext
-import com.geckour.q.setCrashlytics
 
-class SharingActivity : AppCompatActivity() {
+class SharingActivity : ScopedActivity() {
 
     enum class IntentRequestCode(val code: Int) {
         SHARE(666)
@@ -39,14 +38,6 @@ class SharingActivity : AppCompatActivity() {
                     putExtra(ARGS_KEY_SONG, song)
                     putExtra(ARGS_KEY_REQUIRE_UNLOCK, requireUnlock)
                 }
-    }
-
-    val parentJob = Job()
-    private val uiScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
-    }
-    private val bgScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = parentJob
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -77,12 +68,12 @@ class SharingActivity : AppCompatActivity() {
         if (requireUnlock.not() || keyguardManager?.isDeviceLocked != true) {
             val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
 
-            bgScope.launch {
+            launch(Dispatchers.IO) {
                 val albumName: String? = DB.getInstance(this@SharingActivity)
                         .albumDao().get(song.albumId)?.title
                 val sharingText: String =
                         song.getSharingText(this@SharingActivity, albumName)
-                uiScope.launch {
+                withContext(Dispatchers.Main) {
                     ShareCompat.IntentBuilder.from(this@SharingActivity)
                             .setChooserTitle(R.string.share_chooser_title)
                             .setText(sharingText)
@@ -112,12 +103,6 @@ class SharingActivity : AppCompatActivity() {
         return if (this.hasExtra(ARGS_KEY_REQUIRE_UNLOCK))
             this.getBooleanExtra(ARGS_KEY_REQUIRE_UNLOCK, default)
         else default
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-
-        parentJob.cancel()
     }
 
     private fun Intent.getSong(): Song? = getParcelableExtra(ARGS_KEY_SONG)

@@ -3,7 +3,6 @@ package com.geckour.q.ui.library.playlist
 import android.os.Bundle
 import android.view.*
 import android.widget.SearchView
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.DividerItemDecoration
 import com.geckour.q.R
@@ -11,14 +10,9 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.CoroutineScope
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.android.Main
 import kotlinx.coroutines.experimental.launch
-import kotlin.coroutines.experimental.CoroutineContext
 
-class PlaylistListFragment : Fragment() {
+class PlaylistListFragment : ScopedFragment() {
 
     companion object {
         fun newInstance(): PlaylistListFragment = PlaylistListFragment()
@@ -32,14 +26,6 @@ class PlaylistListFragment : Fragment() {
     }
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: PlaylistListAdapter by lazy { PlaylistListAdapter(mainViewModel) }
-
-    private var parentJob = Job()
-    private val bgScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = parentJob
-    }
-    private val uiScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
-    }
 
     override fun onCreateView(inflater: LayoutInflater,
                               container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -59,9 +45,9 @@ class PlaylistListFragment : Fragment() {
 
 
         if (adapter.itemCount == 0) {
-            uiScope.launch {
+            launch {
                 mainViewModel.loading.value = true
-                context?.apply { adapter.setItems(fetchPlaylists(this).await()) }
+                context?.apply { adapter.setItems(fetchPlaylists(this)) }
                 binding.recyclerView.smoothScrollToPosition(0)
                 mainViewModel.loading.value = false
             }
@@ -73,14 +59,8 @@ class PlaylistListFragment : Fragment() {
         mainViewModel.resumedFragmentId.value = R.id.nav_playlist
     }
 
-    override fun onStart() {
-        super.onStart()
-        parentJob = Job()
-    }
-
     override fun onStop() {
         super.onStop()
-        parentJob.cancel()
         mainViewModel.loading.value = false
     }
 
@@ -118,14 +98,13 @@ class PlaylistListFragment : Fragment() {
             }
 
             mainViewModel.loading.value = true
-            bgScope.launch {
+            launch {
                 val songs = adapter.getItems().map { playlist ->
                     playlist.getTrackMediaIds(context)
                             .mapNotNull {
                                 getSong(DB.getInstance(context),
                                         it.first,
                                         playlistId = playlist.id)
-                                        .await()
                             }
                 }.flatten()
                 adapter.onNewQueue(songs, actionType)
@@ -141,10 +120,10 @@ class PlaylistListFragment : Fragment() {
         }
 
         viewModel.forceLoad.observe(this) {
-            uiScope.launch {
+            launch {
                 context?.apply {
                     mainViewModel.loading.value = true
-                    adapter.setItems(fetchPlaylists(this).await())
+                    adapter.setItems(fetchPlaylists(this))
                     binding.recyclerView.smoothScrollToPosition(0)
                     mainViewModel.loading.value = false
                 }

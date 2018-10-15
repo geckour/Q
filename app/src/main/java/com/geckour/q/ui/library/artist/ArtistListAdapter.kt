@@ -150,7 +150,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
                 val songs = DB.getInstance(context).let { db ->
                     db.albumDao().findByArtistId(artist.id).map {
                         db.trackDao().findByAlbum(it.id)
-                                .mapNotNull { getSong(db, it).await() }
+                                .mapNotNull { getSong(db, it) }
                                 .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                     }.flatten()
                 }

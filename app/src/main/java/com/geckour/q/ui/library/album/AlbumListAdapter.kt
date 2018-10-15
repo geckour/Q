@@ -145,7 +145,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
                 }
                 val songs = DB.getInstance(context).let { db ->
                     db.trackDao().findByAlbum(album.id)
-                            .mapNotNull { getSong(db, it).await() }
+                            .mapNotNull { getSong(db, it) }
                             .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                 }
 

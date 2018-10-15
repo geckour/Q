@@ -3,7 +3,6 @@ package com.geckour.q.ui.library.album
 import android.os.Bundle
 import android.view.*
 import android.widget.SearchView
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -11,16 +10,11 @@ import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.main.MainViewModel
-import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.getSong
-import com.geckour.q.util.observe
-import com.geckour.q.util.sortedByTrackOrder
+import com.geckour.q.util.*
 import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.android.Main
-import kotlin.coroutines.experimental.CoroutineContext
 import com.geckour.q.data.db.model.Album as DBAlbum
 
-class AlbumListFragment : Fragment() {
+class AlbumListFragment : ScopedFragment() {
 
     companion object {
         private const val ARGS_KEY_ARTIST = "args_key_artist"
@@ -45,14 +39,6 @@ class AlbumListFragment : Fragment() {
     private var latestDbAlbumList: List<DBAlbum> = emptyList()
     private var chatteringCancelFlag: Boolean = false
 
-    private var parentJob = Job()
-    private val bgScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = parentJob
-    }
-    private val uiScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
-    }
-
     private var artist: Artist? = null
 
     override fun onCreateView(inflater: LayoutInflater,
@@ -72,11 +58,6 @@ class AlbumListFragment : Fragment() {
         if (adapter.itemCount == 0) observeAlbums()
     }
 
-    override fun onStart() {
-        super.onStart()
-        parentJob = Job()
-    }
-
     override fun onResume() {
         super.onResume()
         mainViewModel.resumedFragmentId.value = R.id.nav_album
@@ -84,7 +65,6 @@ class AlbumListFragment : Fragment() {
 
     override fun onStop() {
         super.onStop()
-        parentJob.cancel()
         mainViewModel.loading.value = false
     }
 
@@ -122,7 +102,7 @@ class AlbumListFragment : Fragment() {
             }
 
             mainViewModel.loading.value = true
-            bgScope.launch {
+            launch(Dispatchers.IO) {
                 val sortByTrackOrder = item.itemId.let {
                     it != R.id.menu_insert_all_simple_shuffle_next
                             || it != R.id.menu_insert_all_simple_shuffle_last
@@ -131,7 +111,7 @@ class AlbumListFragment : Fragment() {
                 val songs = adapter.getItems().map {
                     DB.getInstance(context).let { db ->
                         db.trackDao().findByAlbum(it.id)
-                                .mapNotNull { getSong(db, it).await() }
+                                .mapNotNull { getSong(db, it) }
                                 .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                     }
                 }.flatten()
@@ -150,9 +130,9 @@ class AlbumListFragment : Fragment() {
 
         viewModel.forceLoad.observe(this) {
             context?.also { context ->
-                uiScope.launch {
+                launch {
                     mainViewModel.loading.value = true
-                    val items = fetchAlbums(DB.getInstance(context)).await()
+                    val items = withContext(Dispatchers.IO) { fetchAlbums(DB.getInstance(context)) }
                     adapter.setItems(items)
                     binding.recyclerView.smoothScrollToPosition(0)
                     mainViewModel.loading.value = false
@@ -183,16 +163,15 @@ class AlbumListFragment : Fragment() {
         }
     }
 
-    private fun fetchAlbums(db: DB): Deferred<List<Album>> =
-            bgScope.async {
-                (artist?.let { db.albumDao().findByArtistId(it.id) }
-                        ?: db.albumDao().getAll())
-                        .getAlbumList(db).await()
-            }
+    private fun fetchAlbums(db: DB): List<Album> =
+
+            (artist?.let { db.albumDao().findByArtistId(it.id) }
+                    ?: db.albumDao().getAll())
+                    .getAlbumList(db)
 
     private fun upsertAlbumListIfPossible(db: DB) {
-        uiScope.launch {
-            val items = latestDbAlbumList.getAlbumList(db).await()
+        launch {
+            val items = withContext(Dispatchers.IO) { latestDbAlbumList.getAlbumList(db) }
             upsertAlbumListIfPossible(items)
         }
     }
@@ -200,7 +179,7 @@ class AlbumListFragment : Fragment() {
     private fun upsertAlbumListIfPossible(items: List<Album>) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
-            uiScope.launch {
+            launch {
                 delay(500)
                 adapter.upsertItems(items)
                 mainViewModel.loading.value = false
@@ -209,14 +188,12 @@ class AlbumListFragment : Fragment() {
         }
     }
 
-    private fun List<DBAlbum>.getAlbumList(db: DB): Deferred<List<Album>> =
-            bgScope.async {
-                this@getAlbumList.mapNotNull {
-                    val artistName = db.artistDao().get(it.artistId)?.title
-                            ?: return@mapNotNull null
-                    val totalDuration = db.trackDao().findByAlbum(it.id).map { it.duration }.sum()
-                    Album(it.id, it.mediaId,
-                            it.title, artistName, it.artworkUriString, totalDuration)
-                }
+    private fun List<DBAlbum>.getAlbumList(db: DB): List<Album> =
+            this@getAlbumList.mapNotNull {
+                val artistName = db.artistDao().get(it.artistId)?.title
+                        ?: return@mapNotNull null
+                val totalDuration = db.trackDao().findByAlbum(it.id).map { it.duration }.sum()
+                Album(it.id, it.mediaId,
+                        it.title, artistName, it.artworkUriString, totalDuration)
             }
 }

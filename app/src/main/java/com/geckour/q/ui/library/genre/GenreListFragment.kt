@@ -7,7 +7,6 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.view.*
 import android.widget.SearchView
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.DividerItemDecoration
 import com.geckour.q.R
@@ -17,11 +16,12 @@ import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.android.Main
-import kotlin.coroutines.experimental.CoroutineContext
+import kotlinx.coroutines.experimental.Dispatchers
+import kotlinx.coroutines.experimental.IO
+import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.experimental.withContext
 
-class GenreListFragment : Fragment() {
+class GenreListFragment : ScopedFragment() {
 
     companion object {
         fun newInstance(): GenreListFragment = GenreListFragment()
@@ -35,14 +35,6 @@ class GenreListFragment : Fragment() {
     }
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: GenreListAdapter by lazy { GenreListAdapter(mainViewModel) }
-
-    private var parentJob = Job()
-    private val bgScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = parentJob
-    }
-    private val uiScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
-    }
 
     override fun onCreateView(inflater: LayoutInflater,
                               container: ViewGroup?, savedInstanceState: Bundle?): View? {
@@ -62,9 +54,9 @@ class GenreListFragment : Fragment() {
 
 
         if (adapter.itemCount == 0) {
-            uiScope.launch {
+            launch {
                 mainViewModel.loading.value = true
-                adapter.setItems(fetchGenres().await())
+                adapter.setItems(fetchGenres())
                 binding.recyclerView.smoothScrollToPosition(0)
                 mainViewModel.loading.value = false
             }
@@ -76,14 +68,8 @@ class GenreListFragment : Fragment() {
         mainViewModel.resumedFragmentId.value = R.id.nav_genre
     }
 
-    override fun onStart() {
-        super.onStart()
-        parentJob = Job()
-    }
-
     override fun onStop() {
         super.onStop()
-        parentJob.cancel()
         mainViewModel.loading.value = false
     }
 
@@ -121,10 +107,10 @@ class GenreListFragment : Fragment() {
             }
 
             mainViewModel.loading.value = true
-            bgScope.launch {
+            launch(Dispatchers.IO) {
                 val songs = adapter.getItems().map { genre ->
                     genre.getTrackMediaIds(context).mapNotNull {
-                        getSong(DB.getInstance(context), it, genreId = genre.id).await()
+                        getSong(DB.getInstance(context), it, genreId = genre.id)
                     }
                 }.flatten()
 
@@ -141,46 +127,46 @@ class GenreListFragment : Fragment() {
         }
 
         viewModel.forceLoad.observe(this) {
-            uiScope.launch {
+            launch {
                 mainViewModel.loading.value = true
-                adapter.setItems(fetchGenres().await())
+                adapter.setItems(fetchGenres())
                 binding.recyclerView.smoothScrollToPosition(0)
                 mainViewModel.loading.value = false
             }
         }
     }
 
-    private fun fetchGenres(): Deferred<List<Genre>> = bgScope.async {
-        context?.let { context ->
-            context.contentResolver?.query(MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
-                    arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME),
-                    null, null, null)?.use {
-                val db = DB.getInstance(context)
-                val list: ArrayList<Genre> = ArrayList()
-                while (it.moveToNext()) {
-                    val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Genres._ID))
-                    val tracks = getTrackMediaIdsByGenreId(context, id)
-                            .mapNotNull { db.trackDao().getByMediaId(it) }
-                    val totalDuration = tracks.map { it.duration }.sum()
-                    val genre = Genre(id, tracks.getGenreThumb(context).await(),
-                            it.getString(it.getColumnIndex(MediaStore.Audio.Genres.NAME)).let {
-                                if (it.isBlank()) UNKNOWN else it
-                            }, totalDuration)
-                    list.add(genre)
+    private suspend fun fetchGenres(): List<Genre> =
+            context?.let { context ->
+                withContext(Dispatchers.IO) {
+                    context.contentResolver?.query(MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
+                            arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME),
+                            null, null, null)?.use {
+                        val db = DB.getInstance(context)
+                        val list: ArrayList<Genre> = ArrayList()
+                        while (it.moveToNext()) {
+                            val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Genres._ID))
+                            val tracks = getTrackMediaIdsByGenreId(context, id)
+                                    .mapNotNull { db.trackDao().getByMediaId(it) }
+                            val totalDuration = tracks.map { it.duration }.sum()
+                            val genre = Genre(id, tracks.getGenreThumb(context),
+                                    it.getString(it.getColumnIndex(MediaStore.Audio.Genres.NAME)).let {
+                                        if (it.isBlank()) UNKNOWN else it
+                                    }, totalDuration)
+                            list.add(genre)
+                        }
+
+                        return@use list.toList().sortedBy { it.name }
+                    }
                 }
+            } ?: emptyList()
 
-                return@use list.toList().sortedBy { it.name }
-            }
-        } ?: emptyList()
-    }
-
-    private fun List<Track>.getGenreThumb(context: Context): Deferred<Bitmap?> = bgScope.async {
+    private suspend fun List<Track>.getGenreThumb(context: Context): Bitmap? {
         val db = DB.getInstance(context)
-        this@getGenreThumb.distinctBy { it.albumId }.takeOrFillNull(5)
+        return this.distinctBy { it.albumId }.takeOrFillNull(5)
                 .map {
-                    it?.let { db.getArtworkUriStringFromId(it.albumId).await()?.let { Uri.parse(it) } }
+                    it?.let { db.getArtworkUriStringFromId(it.albumId)?.let { Uri.parse(it) } }
                 }
                 .getThumb(context)
-                .await()
     }
 }

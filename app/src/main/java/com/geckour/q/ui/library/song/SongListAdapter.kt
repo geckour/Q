@@ -176,7 +176,7 @@ class SongListAdapter(private val viewModel: MainViewModel,
                     Glide.with(binding.thumb)
                             .load(DB.getInstance(binding.root.context)
                                     .getArtworkUriStringFromId(song.albumId)
-                                    .await() ?: R.drawable.ic_empty)
+                                    ?: R.drawable.ic_empty)
                             .into(binding.thumb)
                 }
             } catch (t: Throwable) {

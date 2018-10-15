@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.provider.MediaStore
 import android.view.*
 import android.widget.SearchView
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -15,11 +14,11 @@ import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.android.Main
-import kotlin.coroutines.experimental.CoroutineContext
+import kotlinx.coroutines.experimental.GlobalScope
+import kotlinx.coroutines.experimental.delay
+import kotlinx.coroutines.experimental.launch
 
-class SongListFragment : Fragment() {
+class SongListFragment : ScopedFragment() {
 
     companion object {
         private const val ARGS_KEY_CLASS_TYPE = "args_key_class_type"
@@ -67,11 +66,6 @@ class SongListFragment : Fragment() {
                 arguments?.getSerializable(ARGS_KEY_CLASS_TYPE)
                         as? OrientedClassType ?: OrientedClassType.SONG)
     }
-
-    private var parentJob = Job()
-    private val uiScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
-    }
     private var chatteringCancelFlag: Boolean = false
 
     override fun onCreateView(inflater: LayoutInflater,
@@ -97,14 +91,8 @@ class SongListFragment : Fragment() {
         mainViewModel.resumedFragmentId.value = R.id.nav_song
     }
 
-    override fun onStart() {
-        super.onStart()
-        parentJob = Job()
-    }
-
     override fun onStop() {
         super.onStop()
-        parentJob.cancel()
         mainViewModel.loading.value = false
     }
 
@@ -210,7 +198,7 @@ class SongListFragment : Fragment() {
     private fun fetchSongsWithGenre(genre: Genre) {
         mainViewModel.loading.value = true
         context?.also {
-            uiScope.launch {
+            launch {
                 adapter.upsertItems(
                         getSongListFromTrackMediaId(DB.getInstance(it),
                                 genre.getTrackMediaIds(it),
@@ -224,7 +212,7 @@ class SongListFragment : Fragment() {
     private fun fetchSongsWithPlaylist(playlist: Playlist) {
         mainViewModel.loading.value = true
         context?.also {
-            uiScope.launch {
+            launch {
                 adapter.addItems(
                         getSongListFromTrackMediaIdWithTrackNum(DB.getInstance(it),
                                 playlist.getTrackMediaIds(it),
@@ -239,7 +227,7 @@ class SongListFragment : Fragment() {
     private fun upsertSongListIfPossible(db: DB, dbTrackList: List<Track>, sortByTrackOrder: Boolean = true) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
-            uiScope.launch {
+            launch {
                 delay(500)
                 val items = getSongListFromTrackList(db, dbTrackList)
                 adapter.upsertItems(items, sortByTrackOrder)

@@ -127,7 +127,6 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
                         .sortedBy { it.second }
                         .mapNotNull {
                             getSong(DB.getInstance(context), it.first, playlistId = playlist.id)
-                                    .await()
                         }.toList()
 
                 onNewQueue(songs, actionType, OrientedClassType.SONG)

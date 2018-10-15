@@ -116,7 +116,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
                 GlobalScope.launch(Dispatchers.Main) {
                     Glide.with(binding.thumb)
                             .load(DB.getInstance(binding.root.context)
-                                    .getArtworkUriStringFromId(song.albumId).await()
+                                    .getArtworkUriStringFromId(song.albumId)
                                     ?: R.drawable.ic_empty)
                             .into(binding.thumb)
                 }

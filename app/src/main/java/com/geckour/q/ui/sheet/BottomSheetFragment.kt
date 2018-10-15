@@ -10,7 +10,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
 import androidx.constraintlayout.motion.widget.MotionLayout
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
@@ -22,6 +21,7 @@ import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.ui.share.SharingActivity
+import com.geckour.q.util.ScopedFragment
 import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.observe
@@ -29,9 +29,8 @@ import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.Main
-import kotlin.coroutines.experimental.CoroutineContext
 
-class BottomSheetFragment : Fragment() {
+class BottomSheetFragment : ScopedFragment() {
 
     companion object {
         private const val PREF_KEY_SHOW_CURRENT_REMAIN = "pref_key_show_current_remain"
@@ -47,14 +46,6 @@ class BottomSheetFragment : Fragment() {
     private lateinit var binding: FragmentSheetBottomBinding
     private lateinit var adapter: QueueListAdapter
     private lateinit var behavior: BottomSheetBehavior<MotionLayout>
-
-    private var parentJob = Job()
-    private val uiScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
-    }
-    private val bgScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = parentJob
-    }
 
     private val sharedPreferences: SharedPreferences by lazy {
         PreferenceManager.getDefaultSharedPreferences(requireContext())
@@ -174,21 +165,11 @@ class BottomSheetFragment : Fragment() {
         observeEvents()
     }
 
-    override fun onStart() {
-        super.onStart()
-        parentJob = Job()
-    }
-
     override fun onResume() {
         super.onResume()
 
         viewModel.reAttatch()
         binding.viewModel = viewModel
-    }
-
-    override fun onStop() {
-        super.onStop()
-        parentJob.cancel()
     }
 
     private fun observeEvents() {
@@ -213,7 +194,7 @@ class BottomSheetFragment : Fragment() {
             viewModel.currentPosition.value = if (state) viewModel.currentPosition.value else -1
 
             if (behavior.state == BottomSheetBehavior.STATE_COLLAPSED) {
-                uiScope.launch {
+                launch {
                     var direction = 1
                     var count = 0
                     while (count++ < 4) {
@@ -238,10 +219,11 @@ class BottomSheetFragment : Fragment() {
             if (song?.id != viewModel.currentSong?.id) {
                 viewModel.currentSong = song
                 context?.also { context ->
-                    bgScope.launch {
-                        val db = DB.getInstance(context)
+                    val db = DB.getInstance(context)
 
-                        song?.also {
+
+                    song?.also {
+                        launch(Dispatchers.IO) {
                             db.trackDao().increasePlaybackCount(it.id)
                             db.albumDao().increasePlaybackCount(it.albumId)
                             db.artistDao().apply {
@@ -255,9 +237,12 @@ class BottomSheetFragment : Fragment() {
                                 }
                             }
                         }
+                    }
 
+                    launch(Dispatchers.IO) {
                         val model = viewModel.currentSong?.albumId?.let {
-                            db.getArtworkUriStringFromId(it).await() ?: R.drawable.ic_empty
+                            db.getArtworkUriStringFromId(it)
+                                    ?: R.drawable.ic_empty
                         }
                         val drawable = model?.let {
                             Glide.with(requireContext())
@@ -266,7 +251,9 @@ class BottomSheetFragment : Fragment() {
                                     .submit()
                                     .get()
                         }
-                        uiScope.launch { binding.artwork.setImageDrawable(drawable) }
+                        withContext(Dispatchers.Main) {
+                            binding.artwork.setImageDrawable(drawable)
+                        }
                     }
                 }
                 if (song == null) {

@@ -14,7 +14,6 @@ import com.geckour.q.R
 import com.geckour.q.databinding.FragmentPaymentBinding
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.observe
-import kotlinx.coroutines.experimental.Job
 
 class PaymentFragment : Fragment() {
 
@@ -29,8 +28,6 @@ class PaymentFragment : Fragment() {
     private val mainViewModel: MainViewModel by lazy {
         ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
     }
-
-    private var parentJob = Job()
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
                               savedInstanceState: Bundle?): View? {
@@ -53,16 +50,6 @@ class PaymentFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         mainViewModel.resumedFragmentId.value = R.id.nav_pay
-    }
-
-    override fun onStart() {
-        super.onStart()
-        parentJob = Job()
-    }
-
-    override fun onStop() {
-        super.onStop()
-        parentJob.cancel()
     }
 
     private fun observeEvents() {

@@ -108,7 +108,7 @@ class GenreListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             viewModel.loading.value = true
             GlobalScope.launch {
                 val songs = genre.getTrackMediaIds(context).mapNotNull {
-                    getSong(DB.getInstance(context), it, genreId = genre.id).await()
+                    getSong(DB.getInstance(context), it, genreId = genre.id)
                 }
 
                 onNewQueue(songs, actionType, OrientedClassType.SONG)
