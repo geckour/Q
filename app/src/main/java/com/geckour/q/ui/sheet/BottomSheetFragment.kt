@@ -21,14 +21,14 @@ import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.ui.share.SharingActivity
-import com.geckour.q.util.ScopedFragment
-import com.geckour.q.util.getArtworkUriStringFromId
-import com.geckour.q.util.getTimeString
-import com.geckour.q.util.observe
+import com.geckour.q.util.*
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.Dispatchers
+import kotlinx.coroutines.experimental.IO
 import kotlinx.coroutines.experimental.android.Main
+import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.experimental.withContext
 
 class BottomSheetFragment : ScopedFragment() {
 
@@ -181,9 +181,11 @@ class BottomSheetFragment : ScopedFragment() {
         }
 
         viewModel.currentQueue.observe(this) {
+            val changed = (adapter.getItemIds() == it?.map { it.id }).not()
+            val state = it?.isNotEmpty() ?: false
+
             adapter.setItems(it ?: emptyList())
 
-            val state = it?.isNotEmpty() ?: false
             binding.isQueueNotEmpty = state
 
             val totalTime = it?.asSequence()?.map { it.duration }?.sum()
@@ -193,18 +195,8 @@ class BottomSheetFragment : ScopedFragment() {
 
             viewModel.currentPosition.value = if (state) viewModel.currentPosition.value else -1
 
-            if (behavior.state == BottomSheetBehavior.STATE_COLLAPSED) {
-                launch {
-                    var direction = 1
-                    var count = 0
-                    while (count++ < 4) {
-                        binding.buttonToggleVisibleQueue.rotation = 20f * direction
-                        direction *= -1
-                        delay(80)
-                    }
-                    binding.buttonToggleVisibleQueue.rotation = 0f
-                }
-            }
+            if (changed && behavior.state == BottomSheetBehavior.STATE_COLLAPSED)
+                binding.buttonToggleVisibleQueue.shake()
 
             mainViewModel.loading.value = false
         }

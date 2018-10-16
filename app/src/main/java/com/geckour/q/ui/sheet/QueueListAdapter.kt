@@ -14,7 +14,7 @@ import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.getArtworkUriStringFromId
-import com.geckour.q.util.swapped
+import com.geckour.q.util.swap
 import kotlinx.coroutines.experimental.Dispatchers
 import kotlinx.coroutines.experimental.GlobalScope
 import kotlinx.coroutines.experimental.android.Main
@@ -23,10 +23,11 @@ import timber.log.Timber
 
 class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adapter<QueueListAdapter.ViewHolder>() {
 
-    private var items: List<Song> = emptyList()
+    private val items: MutableList<Song> = mutableListOf()
 
     internal fun setItems(items: List<Song>) {
-        this.items = items
+        this.items.clear()
+        this.items.addAll(items)
         notifyDataSetChanged()
     }
 
@@ -37,6 +38,8 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
                 else -> null
             }
 
+    internal fun getItemIds(): List<Long> = items.map { it.id }
+
     internal fun getItemsAfter(start: Int): List<Song> =
             items.subList(start, items.size)
 
@@ -45,32 +48,34 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
         if (index != null) {
             if (index in 0 until items.size) {
                 val changed: MutableList<Int> = mutableListOf()
-                items = items.mapIndexed { i, song ->
+                items.mapIndexed { i, song ->
                     val matched = i == index
                     if (song.nowPlaying != matched) changed.add(i)
-                    song.copy(nowPlaying = matched)
                 }
-                changed.forEach { notifyItemChanged(it) }
+                changed.forEach {
+                    items[it] = items[it].let { it.copy(nowPlaying = it.nowPlaying.not()) }
+                    notifyItemChanged(it)
+                }
             }
         } else {
             val changed: MutableList<Int> = mutableListOf()
-            items = items.mapIndexed { i, song ->
-                if (song.nowPlaying) changed.add(i)
-                song.copy(nowPlaying = false)
+            items.mapIndexed { i, song -> if (song.nowPlaying) changed.add(i) }
+            changed.forEach {
+                items[it] = items[it].copy(nowPlaying = false)
+                notifyItemChanged(it)
             }
-            changed.forEach { notifyItemChanged(it) }
         }
     }
 
     internal fun move(from: Int, to: Int) {
         if (from !in items.indices || to !in items.indices) return
-        items = items.toMutableList().swapped(from, to)
+        items.swap(from, to)
         notifyItemMoved(from, to)
     }
 
     private fun remove(index: Int) {
         if (index !in items.indices) return
-        items = items.toMutableList().apply { removeAt(index) }
+        items.removeAt(index)
         notifyItemRemoved(index)
         viewModel.onQueueRemove(index)
     }
