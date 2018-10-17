@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import android.widget.PopupMenu
 import android.widget.SeekBar
 import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.lifecycle.ViewModelProviders
@@ -173,6 +174,45 @@ class BottomSheetFragment : ScopedFragment() {
     }
 
     private fun observeEvents() {
+        viewModel.artworkLongClick.observe(this) { _ ->
+            context?.also { context ->
+                PopupMenu(context, binding.artwork).apply {
+                    setOnMenuItemClickListener {
+                        return@setOnMenuItemClickListener when (it.itemId) {
+                            R.id.menu_transition_to_artist -> {
+                                launch {
+                                    mainViewModel.selectedArtist.value =
+                                            withContext((Dispatchers.IO)) {
+                                                viewModel.currentSong?.artist?.let {
+                                                    DB.getInstance(context).artistDao()
+                                                            .findArtist(it).firstOrNull()
+                                                            ?.toDomainModel()
+                                                }
+                                            }
+                                }
+                                true
+                            }
+                            R.id.menu_transition_to_album -> {
+                                launch {
+                                    mainViewModel.selectedAlbum.value =
+                                            withContext(Dispatchers.IO) {
+                                                viewModel.currentSong?.albumId?.let {
+                                                    DB.getInstance(context).albumDao()
+                                                            .get(it)
+                                                            ?.toDomainModel()
+                                                }
+                                            }
+                                }
+                                true
+                            }
+                            else -> false
+                        }
+                    }
+                    inflate(R.menu.song_transition)
+                }.show()
+            }
+        }
+
         viewModel.toggleSheetState.observe(this) {
             behavior.state = when (behavior.state) {
                 BottomSheetBehavior.STATE_EXPANDED -> BottomSheetBehavior.STATE_COLLAPSED

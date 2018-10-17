@@ -12,10 +12,8 @@ import com.geckour.q.databinding.ItemListSongBinding
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.GlobalScope
+import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.Main
-import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
 
 class SongListAdapter(private val viewModel: MainViewModel,
@@ -143,23 +141,50 @@ class SongListAdapter(private val viewModel: MainViewModel,
 
         private val longPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener {
-                if (it.itemId == R.id.menu_delete_song) {
-                    deleteSong(viewModel.selectedSong)
-                } else {
-                    viewModel.selectedSong?.apply {
-                        viewModel.onNewQueue(listOf(this), when (it.itemId) {
-                            R.id.menu_insert_all_next -> {
-                                InsertActionType.NEXT
-                            }
-                            R.id.menu_insert_all_last -> {
-                                InsertActionType.LAST
-                            }
-                            R.id.menu_override_all -> {
-                                InsertActionType.OVERRIDE
-                            }
-                            else -> return@setOnMenuItemClickListener false
-                        }, OrientedClassType.SONG)
-                    } ?: return@setOnMenuItemClickListener false
+                when (it.itemId) {
+                    R.id.menu_transition_to_artist -> {
+                        GlobalScope.launch(Dispatchers.Main) {
+                            viewModel.selectedArtist.value =
+                                    withContext((Dispatchers.IO)) {
+                                        binding.data?.artist?.let {
+                                            DB.getInstance(binding.root.context).artistDao()
+                                                    .findArtist(it).firstOrNull()
+                                                    ?.toDomainModel()
+                                        }
+                                    }
+                        }
+                    }
+                    R.id.menu_transition_to_album -> {
+                        GlobalScope.launch(Dispatchers.Main) {
+                            viewModel.selectedAlbum.value =
+                                    withContext(Dispatchers.IO) {
+                                        binding.data?.albumId?.let {
+                                            DB.getInstance(binding.root.context).albumDao()
+                                                    .get(it)
+                                                    ?.toDomainModel()
+                                        }
+                                    }
+                        }
+                    }
+                    R.id.menu_delete_song -> deleteSong(viewModel.selectedSong)
+                    R.id.menu_insert_all_next,
+                    R.id.menu_insert_all_last,
+                    R.id.menu_override_all -> {
+                        viewModel.selectedSong?.apply {
+                            viewModel.onNewQueue(listOf(this), when (it.itemId) {
+                                R.id.menu_insert_all_next -> {
+                                    InsertActionType.NEXT
+                                }
+                                R.id.menu_insert_all_last -> {
+                                    InsertActionType.LAST
+                                }
+                                R.id.menu_override_all -> {
+                                    InsertActionType.OVERRIDE
+                                }
+                                else -> return@setOnMenuItemClickListener false
+                            }, OrientedClassType.SONG)
+                        } ?: return@setOnMenuItemClickListener false
+                    }
                 }
 
                 return@setOnMenuItemClickListener true

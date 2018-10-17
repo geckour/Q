@@ -1,9 +1,11 @@
 package com.geckour.q.ui.easteregg
 
 import android.os.Bundle
+import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.PopupMenu
 import androidx.lifecycle.ViewModelProviders
 import com.bumptech.glide.Glide
 import com.geckour.q.R
@@ -105,6 +107,45 @@ class EasterEggFragment : ScopedFragment() {
             viewModel.song?.apply {
                 mainViewModel.onNewQueue(listOf(this),
                         InsertActionType.NEXT, OrientedClassType.SONG)
+            }
+        }
+
+        viewModel.longTap.observe(this) { _ ->
+            context?.also { context ->
+                PopupMenu(context, binding.artwork, Gravity.BOTTOM).apply {
+                    setOnMenuItemClickListener {
+                        return@setOnMenuItemClickListener when (it.itemId) {
+                            R.id.menu_transition_to_artist -> {
+                                launch {
+                                    mainViewModel.selectedArtist.value =
+                                            withContext((Dispatchers.IO)) {
+                                                viewModel.song?.artist?.let {
+                                                    DB.getInstance(context).artistDao()
+                                                            .findArtist(it).firstOrNull()
+                                                            ?.toDomainModel()
+                                                }
+                                            }
+                                }
+                                true
+                            }
+                            R.id.menu_transition_to_album -> {
+                                launch {
+                                    mainViewModel.selectedAlbum.value =
+                                            withContext(Dispatchers.IO) {
+                                                viewModel.song?.albumId?.let {
+                                                    DB.getInstance(context).albumDao()
+                                                            .get(it)
+                                                            ?.toDomainModel()
+                                                }
+                                            }
+                                }
+                                true
+                            }
+                            else -> false
+                        }
+                    }
+                    inflate(R.menu.song_transition)
+                }.show()
             }
         }
     }

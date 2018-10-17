@@ -19,7 +19,7 @@ interface ArtistDao {
     fun delete(id: Long): Int
 
     @Query("select * from artist where title like :title")
-    fun findByTitle(title: String): List<Artist>
+    fun findLikeTitle(title: String): List<Artist>
 
     @Query("select * from artist where title = :title")
     fun findArtist(title: String): List<Artist>

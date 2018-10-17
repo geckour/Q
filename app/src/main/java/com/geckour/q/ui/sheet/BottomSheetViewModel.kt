@@ -9,6 +9,7 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 class BottomSheetViewModel : ViewModel() {
 
     internal var sheetState: Int = BottomSheetBehavior.STATE_COLLAPSED
+    internal val artworkLongClick: SingleLiveEvent<Unit> = SingleLiveEvent()
     internal val toggleSheetState: SingleLiveEvent<Unit> = SingleLiveEvent()
     internal val playbackButton: SingleLiveEvent<PlaybackButton> = SingleLiveEvent()
     internal val currentQueue: SingleLiveEvent<List<Song>> = SingleLiveEvent()
@@ -31,6 +32,14 @@ class BottomSheetViewModel : ViewModel() {
     internal val share: SingleLiveEvent<Song> = SingleLiveEvent()
 
     var currentSong: Song? = null
+
+    fun onLongClickArtwork(): Boolean {
+        if (currentQueue.value?.isNotEmpty() == true) {
+            artworkLongClick.call()
+            return true
+        }
+        return false
+    }
 
     fun onClickQueueButton() {
         toggleSheetState.call()

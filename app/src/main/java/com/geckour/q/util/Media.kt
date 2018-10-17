@@ -167,7 +167,7 @@ private suspend fun List<Track>.getPlaylistThumb(context: Context): Bitmap? =
 
 suspend fun DB.searchArtistByFuzzyTitle(title: String): List<Artist> =
         withContext(Dispatchers.IO) {
-            this@searchArtistByFuzzyTitle.artistDao().findByTitle("%$title%")
+            this@searchArtistByFuzzyTitle.artistDao().findLikeTitle("%$title%")
         }
 
 suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<Album> =

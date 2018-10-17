@@ -11,10 +11,7 @@ import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.ItemListSearchCategoryBinding
 import com.geckour.q.databinding.ItemListSearchItemBinding
 import com.geckour.q.domain.model.*
-import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.UNKNOWN
-import com.geckour.q.util.getSong
+import com.geckour.q.util.*
 import kotlinx.coroutines.experimental.Dispatchers
 import kotlinx.coroutines.experimental.GlobalScope
 import kotlinx.coroutines.experimental.android.Main
@@ -132,12 +129,12 @@ class SearchListAdapter(private val viewModel: MainViewModel)
             when (type) {
                 SearchItem.SearchItemType.ARTIST -> {
                     viewModel.selectedArtist.value = (data as? DBArtist)?.let {
-                        Artist(it.id, it.title ?: UNKNOWN, null, 0)
+                        it.toDomainModel()
                     }
                 }
                 SearchItem.SearchItemType.ALBUM -> {
                     viewModel.selectedAlbum.value = (data as? DBAlbum)?.let {
-                        Album(it.id, it.mediaId, it.title, null, it.artworkUriString, 0)
+                        it.toDomainModel()
                     }
                 }
                 SearchItem.SearchItemType.TRACK -> trackPopupMenu.show()

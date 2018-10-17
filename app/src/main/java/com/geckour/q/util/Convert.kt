@@ -1,7 +1,10 @@
 package com.geckour.q.util
 
-import timber.log.Timber
+import com.geckour.q.domain.model.Album
+import com.geckour.q.domain.model.Artist
 import kotlin.math.abs
+import com.geckour.q.data.db.model.Album as DBAlbum
+import com.geckour.q.data.db.model.Artist as DBArtist
 
 fun Float.getReadableString(digitToKeep: Int = 3): String {
     fun Float.format(suffix: String): String =
@@ -30,3 +33,9 @@ fun Float.getReadableString(digitToKeep: Int = 3): String {
         returnValue.format(suffix)
     }
 }
+
+fun DBArtist.toDomainModel(): Artist =
+        Artist(this.id, this.title ?: UNKNOWN, null, 0)
+
+fun DBAlbum.toDomainModel(): Album =
+        Album(this.id, this.mediaId, this.title, null, this.artworkUriString, 0)

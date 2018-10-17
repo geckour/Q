@@ -11,14 +11,9 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemListSongBinding
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.main.MainViewModel
-import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.getArtworkUriStringFromId
-import com.geckour.q.util.swap
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.GlobalScope
+import com.geckour.q.util.*
+import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.android.Main
-import kotlinx.coroutines.experimental.launch
 import timber.log.Timber
 
 class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adapter<QueueListAdapter.ViewHolder>() {
@@ -93,20 +88,54 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             RecyclerView.ViewHolder(binding.root) {
         private val popupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener {
-                viewModel.selectedSong?.apply {
-                    viewModel.onNewQueue(listOf(this), when (it.itemId) {
-                        R.id.menu_insert_all_next -> {
-                            InsertActionType.NEXT
+                when (it.itemId) {
+                    R.id.menu_transition_to_artist -> {
+                        GlobalScope.launch(Dispatchers.Main) {
+                            viewModel.selectedArtist.value =
+                                    withContext((Dispatchers.IO)) {
+                                        binding.data?.artist?.let {
+                                            DB.getInstance(binding.root.context).artistDao()
+                                                    .findArtist(it).firstOrNull()
+                                                    ?.toDomainModel()
+                                        }
+                                    }
                         }
-                        R.id.menu_insert_all_last -> {
-                            InsertActionType.LAST
+                    }
+                    R.id.menu_transition_to_album -> {
+                        GlobalScope.launch(Dispatchers.Main) {
+                            viewModel.selectedAlbum.value =
+                                    withContext(Dispatchers.IO) {
+                                        binding.data?.albumId?.let {
+                                            DB.getInstance(binding.root.context).albumDao()
+                                                    .get(it)
+                                                    ?.toDomainModel()
+                                        }
+                                    }
                         }
-                        R.id.menu_override_all -> {
-                            InsertActionType.OVERRIDE
-                        }
-                        else -> return@setOnMenuItemClickListener false
-                    }, OrientedClassType.SONG)
-                } ?: return@setOnMenuItemClickListener false
+                    }
+                    R.id.menu_insert_all_next,
+                    R.id.menu_insert_all_last,
+                    R.id.menu_override_all -> {
+                        viewModel.selectedSong?.apply {
+                            viewModel.onNewQueue(listOf(this), when (it.itemId) {
+                                R.id.menu_insert_all_next -> {
+                                    InsertActionType.NEXT
+                                }
+                                R.id.menu_insert_all_last -> {
+                                    InsertActionType.LAST
+                                }
+                                R.id.menu_override_all -> {
+                                    InsertActionType.OVERRIDE
+                                }
+                                else -> return@setOnMenuItemClickListener false
+                            }, OrientedClassType.SONG)
+                        } ?: return@setOnMenuItemClickListener false
+                    }
+                    R.id.menu_delete_song -> {
+                        remove(adapterPosition)
+                        deleteSong(binding.data)
+                    }
+                }
 
                 return@setOnMenuItemClickListener true
             }
@@ -131,10 +160,10 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
 
             binding.option.apply {
                 visibility = View.VISIBLE
-                setOnClickListener { remove(position) }
+                setOnClickListener { remove(adapterPosition) }
             }
 
-            binding.root.setOnClickListener { onSongSelected(song, position) }
+            binding.root.setOnClickListener { onSongSelected(song, adapterPosition) }
             binding.root.setOnLongClickListener { onSongLongTapped(song) }
         }
 
@@ -150,6 +179,11 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             }
 
             return true
+        }
+
+        private fun deleteSong(song: Song?) {
+            if (song == null) return
+            viewModel.songToDelete.value = song
         }
 
         fun dismissPopupMenu() {
