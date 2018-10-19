@@ -56,6 +56,8 @@
 
     <string name="menu_delete_song">Delete from device</string>
 
+    <string name="menu_edit_song">Edit metadata</string>
+
     <string name="menu_delete_playlist">Delete this playlist</string>
 
     <string name="menu_insert_next">Insert to next</string>
@@ -108,6 +110,16 @@
     <string name="dialog_title_pattern_format">Specify formatting pattern of a sentence to post</string>
     <string name="dialog_desc_pattern_format">Track name: TI\nArtist name: AR\nAlbum name: AL\nescape sequence: Wrap by \' \'\nline break: \\n</string>
     <string name="dialog_hint_pattern_format">ex: #NowPlaying TI - AR (AL)</string>
+
+    <string name="dialog_title_edit_song">Edit song metadata</string>
+
+    <string name="dialog_title_edit_album">Edit album metadata</string>
+
+    <string name="dialog_title_edit_artist">Edit artist name</string>
+
+    <string name="dialog_content_label_edit_title">Name:</string>
+    <string name="dialog_content_label_edit_album">Album name:</string>
+    <string name="dialog_content_label_edit_artist">Artist name:</string>
 
 
     <string name="payment_desc">Available donation with Kyash</string>

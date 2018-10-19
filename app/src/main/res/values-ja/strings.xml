@@ -48,6 +48,8 @@
 
     <string name="menu_delete_song">端末から削除</string>
 
+    <string name="menu_edit_song">メタデータを編集</string>
+
     <string name="menu_delete_playlist">プレイリストを削除</string>
 
     <string name="menu_insert_next">次へ挿入</string>
@@ -100,6 +102,16 @@
     <string name="dialog_title_pattern_format">投稿文のフォーマットを指定</string>
     <string name="dialog_desc_pattern_format">曲名: TI\nアーティスト名: AR\nアルバム名: AL\nエスケープ: \' \' で囲む\n改行: \\n</string>
     <string name="dialog_hint_pattern_format">例: #NowPlaying TI - AR (AL)</string>
+
+    <string name="dialog_title_edit_song">曲のメタデータを編集</string>
+
+    <string name="dialog_title_edit_album">アルバムのメタデータを編集</string>
+
+    <string name="dialog_title_edit_artist">アーティスト名を編集</string>
+
+    <string name="dialog_content_label_edit_title">タイトル:</string>
+    <string name="dialog_content_label_edit_album">アルバム名:</string>
+    <string name="dialog_content_label_edit_artist">アーティスト名:</string>
 
 
     <string name="payment_desc">Kyashを利用した投げ銭を受け付けています</string>

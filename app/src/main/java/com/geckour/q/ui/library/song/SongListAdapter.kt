@@ -167,6 +167,7 @@ class SongListAdapter(private val viewModel: MainViewModel,
                         }
                     }
                     R.id.menu_delete_song -> deleteSong(viewModel.selectedSong)
+                    R.id.menu_edit_song -> viewModel.songToEdit.value = binding.data
                     R.id.menu_insert_all_next,
                     R.id.menu_insert_all_last,
                     R.id.menu_override_all -> {

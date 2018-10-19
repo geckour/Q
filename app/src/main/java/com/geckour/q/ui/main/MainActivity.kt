@@ -21,6 +21,7 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogAddQueuePlaylistBinding
+import com.geckour.q.databinding.DialogEditSongBinding
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.domain.model.SearchItem
@@ -570,6 +571,65 @@ class MainActivity : ScopedActivity() {
             }
         }
 
+        viewModel.songToEdit.observe(this) {
+            if (it == null) return@observe
+            val binding = DialogEditSongBinding.inflate(layoutInflater)
+            launch {
+                binding.song = it
+                val album = withContext(Dispatchers.IO) {
+                    DB.getInstance(this@MainActivity).albumDao()
+                            .get(it.albumId)
+                }
+                val albumMediaId = album?.mediaId
+                val albumTitle = album?.title
+                val artistMediaId = withContext(Dispatchers.IO) {
+                    DB.getInstance(this@MainActivity).artistDao()
+                            .findArtist(it.artist).firstOrNull()
+                            ?.mediaId
+                }
+                binding.album = albumTitle
+                AlertDialog.Builder(this@MainActivity)
+                        .setTitle(R.string.dialog_title_add_queue_to_playlist)
+                        .setMessage(R.string.dialog_desc_add_queue_to_playlist)
+                        .setView(binding.root)
+                        .setCancelable(true)
+                        .setNegativeButton(R.string.dialog_ng) { dialog, _ ->
+                            dialog.dismiss()
+                        }
+                        .setPositiveButton(R.string.dialog_ok) { dialog, _ ->
+                            val editedTitle = binding.editTextTitle.text?.toString()
+                            if (editedTitle.isNullOrBlank().not() &&
+                                    editedTitle != it.name) {
+                                contentResolver.updateSongTitle(it.mediaId, editedTitle)
+                            }
+                            val editedAlbumTitle = binding.editTextAlbum.text?.toString()
+                            if (albumMediaId != null &&
+                                    editedAlbumTitle.isNullOrBlank().not() &&
+                                    editedAlbumTitle != albumTitle) {
+                                contentResolver.updateAlbumTitle(this@MainActivity, albumMediaId, editedAlbumTitle)
+                            }
+                            val editedArtistTitle = binding.editTextArtist.text?.toString()
+                            if (artistMediaId != null &&
+                                    editedArtistTitle.isNullOrBlank().not() &&
+                                    editedArtistTitle != it.artist) {
+                                contentResolver.updateArtistTitle(artistMediaId, editedArtistTitle)
+                            }
+                            dialog.dismiss()
+                        }
+                        .show()
+            }
+        }
+
+        viewModel.albumToEdit.observe(this) {
+            if (it == null) return@observe
+            // TODO: Implement
+        }
+
+        viewModel.artistToEdit.observe(this) {
+            if (it == null) return@observe
+            // TODO: Implement
+        }
+
         bottomSheetViewModel.playbackButton.observe(this) {
             if (it == null) return@observe
             PlayerService.mediaSession?.controller
@@ -600,7 +660,34 @@ class MainActivity : ScopedActivity() {
                         .setNegativeButton(R.string.dialog_ng) { dialog, _ ->
                             dialog.dismiss()
                         }
-                        .setPositiveButton(R.string.dialog_ok) { _, _ -> }
+                        .setPositiveButton(R.string.dialog_ok) { dialog, _ ->
+                            val title = binding.editText.text?.toString()
+                            if (title.isNullOrBlank()) {
+                                // TODO: エラーメッセージ表示
+                            } else {
+                                val playlistId = contentResolver.insert(
+                                        MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
+                                        ContentValues().apply {
+                                            val now = System.currentTimeMillis()
+                                            put(MediaStore.Audio.PlaylistsColumns.NAME, title)
+                                            put(MediaStore.Audio.PlaylistsColumns.DATE_ADDED, now)
+                                            put(MediaStore.Audio.PlaylistsColumns.DATE_MODIFIED, now)
+                                        })?.let { ContentUris.parseId(it) } ?: kotlin.run {
+                                    dialog.dismiss()
+                                    return@setPositiveButton
+                                }
+                                queue.forEachIndexed { i, song ->
+                                    contentResolver.insert(
+                                            MediaStore.Audio.Playlists.Members
+                                                    .getContentUri("external", playlistId),
+                                            ContentValues().apply {
+                                                put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, i + 1)
+                                                put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
+                                            })
+                                }
+                                dialog.dismiss()
+                            }
+                        }
                         .setCancelable(true)
                         .create()
                 binding.recyclerView.adapter = QueueAddPlaylistListAdapter(playlists) {
@@ -616,34 +703,6 @@ class MainActivity : ScopedActivity() {
                     dialog.dismiss()
                 }
                 dialog.show()
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                    val title = binding.editText.text?.toString()
-                    if (title.isNullOrBlank()) {
-                        // TODO: エラーメッセージ表示
-                    } else {
-                        val playlistId = contentResolver.insert(
-                                MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
-                                ContentValues().apply {
-                                    val now = System.currentTimeMillis()
-                                    put(MediaStore.Audio.PlaylistsColumns.NAME, title)
-                                    put(MediaStore.Audio.PlaylistsColumns.DATE_ADDED, now)
-                                    put(MediaStore.Audio.PlaylistsColumns.DATE_MODIFIED, now)
-                                })?.let { ContentUris.parseId(it) } ?: kotlin.run {
-                            dialog.dismiss()
-                            return@setOnClickListener
-                        }
-                        queue.forEachIndexed { i, song ->
-                            contentResolver.insert(
-                                    MediaStore.Audio.Playlists.Members
-                                            .getContentUri("external", playlistId),
-                                    ContentValues().apply {
-                                        put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, i + 1)
-                                        put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
-                                    })
-                        }
-                        dialog.dismiss()
-                    }
-                }
             }
         }
 

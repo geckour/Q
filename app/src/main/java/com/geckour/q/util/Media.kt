@@ -2,7 +2,9 @@ package com.geckour.q.util
 
 import android.app.Notification
 import android.app.PendingIntent
+import android.content.ContentResolver
 import android.content.ContentUris
+import android.content.ContentValues
 import android.content.Context
 import android.database.Cursor
 import android.graphics.Bitmap
@@ -33,9 +35,7 @@ import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.ui.main.MainActivity
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ads.AdsMediaSource
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.IO
-import kotlinx.coroutines.experimental.withContext
+import kotlinx.coroutines.experimental.*
 import timber.log.Timber
 import java.io.File
 
@@ -498,3 +498,52 @@ private fun Long.getArtworkUriIfExist(context: Context): Uri? =
                 else null
             }
         }
+
+fun ContentResolver.updateSongTitle(mediaId: Long, title: String?) {
+    Timber.d("qgeck updating song media id: $mediaId, title: $title")
+    update(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+            ContentValues().apply {
+                put(MediaStore.Audio.Media.TITLE, title)
+            },
+            "${MediaStore.Audio.Media._ID}=$mediaId",
+            null)
+}
+
+fun ContentResolver.updateAlbumTitle(context: Context, mediaId: Long, title: String?) {
+    Timber.d("qgeck updating album media id: $mediaId, title: $title")
+
+    GlobalScope.launch(Dispatchers.IO) {
+        val artwork = Glide.with(context).asBitmap()
+                .load(mediaId.getArtworkUriFromMediaId())
+                .submit().get()
+
+        update(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                ContentValues().apply {
+                    put(MediaStore.Audio.Media.ALBUM, title)
+                },
+                "${MediaStore.Audio.Media.ALBUM_ID}=$mediaId",
+                null)
+        if (artwork != null) updateAlbumArtwork(mediaId, artwork)
+    }
+}
+
+fun ContentResolver.updateArtistTitle(mediaId: Long, title: String?) {
+    Timber.d("qgeck updating artist media id: $mediaId, title: $title")
+    update(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+            ContentValues().apply {
+                put(MediaStore.Audio.Media.ARTIST, title)
+            },
+            "${MediaStore.Audio.Media.ARTIST_ID}=$mediaId",
+            null)
+}
+
+fun ContentResolver.updateAlbumArtwork(mediaId: Long, artwork: Bitmap) {
+    this@updateAlbumArtwork.openOutputStream(mediaId.getArtworkUriFromMediaId())?.apply {
+        artwork.compress(
+                if (artwork.hasAlpha()) Bitmap.CompressFormat.PNG else Bitmap.CompressFormat.JPEG,
+                100,
+                this
+        )
+        close()
+    }
+}
