@@ -478,7 +478,7 @@ fun pushMedia(context: Context, db: DB, cursor: Cursor) {
             }
 
             val track = Track(0, trackMediaId, title, albumId, artistId, albumArtistId, duration,
-                    trackNum, discNum, trackPath, 0)
+                    trackNum, discNum, trackPath, 0, false)
             track.upsert(db)
             context.sendBroadcast(MainActivity.createProgressIntent(current to total))
         } catch (t: Throwable) {
