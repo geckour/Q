@@ -19,11 +19,11 @@ interface TrackDao {
     @Query("delete from track where id = :id")
     fun delete(id: Long): Int
 
-    @Query("select * from track")
-    fun getAllAsync(): LiveData<List<Track>>
+    @Query("select * from track where ignored != :ignore")
+    fun getAllAsync(ignore: Boolean? = null): LiveData<List<Track>>
 
-    @Query("select * from track")
-    fun getAll(): List<Track>
+    @Query("select * from track where ignored != :ignore")
+    fun getAll(ignore: Boolean? = null): List<Track>
 
     @Query("select * from track where id = :id")
     fun get(id: Long): Track?
@@ -31,17 +31,17 @@ interface TrackDao {
     @Query("select * from track where mediaId = :trackId")
     fun getByMediaId(trackId: Long): Track?
 
-    @Query("select * from track where title like :title")
-    fun findByTitle(title: String): List<Track>
+    @Query("select * from track where title like :title and ignored != :ignore")
+    fun findByTitle(title: String, ignore: Boolean? = null): List<Track>
 
-    @Query("select * from track where albumId = :albumId")
-    fun findByAlbum(albumId: Long): List<Track>
+    @Query("select * from track where albumId = :albumId and ignored != :ignore")
+    fun findByAlbum(albumId: Long, ignore: Boolean? = null): List<Track>
 
-    @Query("select * from track where albumId = :albumId")
-    fun findByAlbumAsync(albumId: Long): LiveData<List<Track>>
+    @Query("select * from track where albumId = :albumId and ignored != :ignore")
+    fun findByAlbumAsync(albumId: Long, ignore: Boolean? = null): LiveData<List<Track>>
 
-    @Query("select * from track where artistId = :artistId")
-    fun findByArtist(artistId: Long): List<Track>
+    @Query("select * from track where artistId = :artistId and ignored != :ignore")
+    fun findByArtist(artistId: Long, ignore: Boolean? = null): List<Track>
 
     @Query("update track set playbackCount = (select playbackCount from track where id = :trackId) + 1 where id = :trackId")
     fun increasePlaybackCount(trackId: Long)

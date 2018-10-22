@@ -16,5 +16,5 @@ data class Track(
         var discNum: Int?,
         var sourcePath: String,
         var playbackCount: Long,
-        var ignoreOnMultipleAdd: Boolean
+        var ignored: Boolean
 )
