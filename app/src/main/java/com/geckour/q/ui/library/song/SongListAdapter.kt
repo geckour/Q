@@ -1,5 +1,7 @@
 package com.geckour.q.ui.library.song
 
+import android.content.Context
+import android.preference.PreferenceManager
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Bool
 import com.geckour.q.databinding.ItemListSongBinding
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.main.MainViewModel
@@ -96,8 +99,16 @@ class SongListAdapter(private val viewModel: MainViewModel,
         notifyDataSetChanged()
     }
 
-    internal fun onNewQueue(actionType: InsertActionType) {
-        viewModel.onNewQueue(items, actionType, OrientedClassType.SONG)
+    internal fun onNewQueue(context: Context, actionType: InsertActionType) {
+        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+        viewModel.onNewQueue(
+                items.let {
+                    if (sharedPreferences.ignoringEnabled) it.filter { it.ignored != true }
+                    else it
+                },
+                actionType,
+                OrientedClassType.SONG
+        )
     }
 
     internal fun onSongDeleted(id: Long) {
@@ -119,20 +130,22 @@ class SongListAdapter(private val viewModel: MainViewModel,
 
         private val shortPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener {
-                viewModel.selectedSong?.apply {
-                    viewModel.onNewQueue(listOf(this), when (it.itemId) {
-                        R.id.menu_insert_all_next -> {
-                            InsertActionType.NEXT
-                        }
-                        R.id.menu_insert_all_last -> {
-                            InsertActionType.LAST
-                        }
-                        R.id.menu_override_all -> {
-                            InsertActionType.OVERRIDE
-                        }
-                        else -> return@setOnMenuItemClickListener false
-                    }, OrientedClassType.SONG)
-                } ?: return@setOnMenuItemClickListener false
+                when (it.itemId) {
+                    R.id.menu_insert_all_next,
+                    R.id.menu_insert_all_last,
+                    R.id.menu_override_all -> {
+                        viewModel.selectedSong?.apply {
+                            viewModel.onNewQueue(listOf(this), when (it.itemId) {
+                                R.id.menu_insert_all_next -> InsertActionType.NEXT
+                                R.id.menu_insert_all_last -> InsertActionType.LAST
+                                R.id.menu_override_all -> InsertActionType.OVERRIDE
+                                else -> return@setOnMenuItemClickListener false
+                            }, OrientedClassType.SONG)
+                        } ?: return@setOnMenuItemClickListener false
+                    }
+                    R.id.menu_ignore -> toggleIgnored()
+                    else -> return@setOnMenuItemClickListener false
+                }
 
                 return@setOnMenuItemClickListener true
             }
@@ -166,6 +179,7 @@ class SongListAdapter(private val viewModel: MainViewModel,
                                     }
                         }
                     }
+                    R.id.menu_ignore -> toggleIgnored()
                     R.id.menu_delete_song -> deleteSong(viewModel.selectedSong)
                     R.id.menu_insert_all_next,
                     R.id.menu_insert_all_last,
@@ -229,13 +243,47 @@ class SongListAdapter(private val viewModel: MainViewModel,
         private fun onSongSelected(song: Song) {
             viewModel.onRequestNavigate(song)
             shortPopupMenu.show()
+            shortPopupMenu.menu.findItem(R.id.menu_ignore).title =
+                    binding.root.context.let {
+                        it.getString(
+                                if (binding.data?.ignored == true)
+                                    R.string.menu_ignore_to_false
+                                else R.string.menu_ignore_to_true
+                        )
+                    }
         }
 
         private fun onSongLongTapped(song: Song): Boolean {
             viewModel.onRequestNavigate(song)
             longPopupMenu.show()
+            longPopupMenu.menu.findItem(R.id.menu_ignore).title =
+                    binding.root.context.let {
+                        it.getString(
+                                if (binding.data?.ignored == true)
+                                    R.string.menu_ignore_to_false
+                                else R.string.menu_ignore_to_true
+                        )
+                    }
 
             return true
+        }
+
+        private fun toggleIgnored() {
+            binding.data?.id?.also { trackId ->
+                GlobalScope.launch(Dispatchers.IO) {
+                    DB.getInstance(binding.root.context).trackDao().apply {
+                        val ignored = when (this.get(trackId)?.ignored ?: Bool.FALSE) {
+                            Bool.TRUE -> Bool.FALSE
+                            Bool.FALSE -> Bool.TRUE
+                            Bool.UNDEFINED -> Bool.UNDEFINED
+                        }.apply { Timber.d("qgeck saved ignored value: $this") }
+                        setIgnored(trackId, ignored)
+                        withContext(Dispatchers.Main) {
+                            binding.data = binding.data?.let { it.copy(ignored = it.ignored?.not()) }
+                        }
+                    }
+                }
+            }
         }
     }
 }

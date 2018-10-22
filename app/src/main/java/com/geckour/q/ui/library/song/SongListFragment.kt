@@ -116,7 +116,7 @@ class SongListFragment : ScopedFragment() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         mainViewModel.loading.value = true
-        adapter.onNewQueue(when (item.itemId) {
+        adapter.onNewQueue(requireContext(), when (item.itemId) {
             R.id.menu_insert_all_next -> InsertActionType.NEXT
             R.id.menu_insert_all_last -> InsertActionType.LAST
             R.id.menu_override_all -> InsertActionType.OVERRIDE

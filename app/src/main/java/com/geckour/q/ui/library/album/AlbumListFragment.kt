@@ -1,11 +1,14 @@
 package com.geckour.q.ui.library.album
 
+import android.content.SharedPreferences
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.view.*
 import android.widget.SearchView
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Bool
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Artist
@@ -35,6 +38,10 @@ class AlbumListFragment : ScopedFragment() {
     }
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: AlbumListAdapter by lazy { AlbumListAdapter(mainViewModel) }
+
+    private val sharedPreferences: SharedPreferences by lazy {
+        PreferenceManager.getDefaultSharedPreferences(requireContext())
+    }
 
     private var latestDbAlbumList: List<DBAlbum> = emptyList()
     private var chatteringCancelFlag: Boolean = false
@@ -110,7 +117,7 @@ class AlbumListFragment : ScopedFragment() {
                 }
                 val songs = adapter.getItems().map {
                     DB.getInstance(context).let { db ->
-                        db.trackDao().findByAlbum(it.id)
+                        db.trackDao().findByAlbum(it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled))
                                 .mapNotNull { getSong(db, it) }
                                 .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                     }

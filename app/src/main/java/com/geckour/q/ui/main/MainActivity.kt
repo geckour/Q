@@ -19,6 +19,7 @@ import androidx.lifecycle.ViewModelProviders
 import androidx.work.*
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Bool
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogAddQueuePlaylistBinding
 import com.geckour.q.domain.model.PlaybackButton
@@ -823,14 +824,14 @@ class MainActivity : ScopedActivity() {
                 withContext(Dispatchers.Main) {
                     songListViewModel.songIdDeleted.value = track.id
                 }
-            if (db.trackDao().findByAlbum(track.albumId).isEmpty()) {
+            if (db.trackDao().findByAlbum(track.albumId, Bool.UNDEFINED).isEmpty()) {
                 deleted = db.albumDao().delete(track.albumId) > 0
                 if (deleted)
                     withContext(Dispatchers.Main) {
                         albumListViewModel.albumIdDeleted.value = track.albumId
                     }
             }
-            if (db.trackDao().findByArtist(track.artistId).isEmpty()) {
+            if (db.trackDao().findByArtist(track.artistId, Bool.UNDEFINED).isEmpty()) {
                 deleted = db.artistDao().delete(track.artistId) > 0
                 if (deleted)
                     withContext(Dispatchers.Main) {
