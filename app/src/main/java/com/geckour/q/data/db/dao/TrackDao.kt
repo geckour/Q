@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.Track
 
 @Dao
@@ -20,10 +21,10 @@ interface TrackDao {
     fun delete(id: Long): Int
 
     @Query("select * from track where ignored != :ignore")
-    fun getAllAsync(ignore: Boolean? = null): LiveData<List<Track>>
+    fun getAllAsync(ignore: Bool = Bool.UNDEFINED): LiveData<List<Track>>
 
     @Query("select * from track where ignored != :ignore")
-    fun getAll(ignore: Boolean? = null): List<Track>
+    fun getAll(ignore: Bool = Bool.UNDEFINED): List<Track>
 
     @Query("select * from track where id = :id")
     fun get(id: Long): Track?
@@ -32,19 +33,22 @@ interface TrackDao {
     fun getByMediaId(trackId: Long): Track?
 
     @Query("select * from track where title like :title and ignored != :ignore")
-    fun findByTitle(title: String, ignore: Boolean? = null): List<Track>
+    fun findByTitle(title: String, ignore: Bool = Bool.UNDEFINED): List<Track>
 
     @Query("select * from track where albumId = :albumId and ignored != :ignore")
-    fun findByAlbum(albumId: Long, ignore: Boolean? = null): List<Track>
+    fun findByAlbum(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
 
     @Query("select * from track where albumId = :albumId and ignored != :ignore")
-    fun findByAlbumAsync(albumId: Long, ignore: Boolean? = null): LiveData<List<Track>>
+    fun findByAlbumAsync(albumId: Long, ignore: Bool = Bool.UNDEFINED): LiveData<List<Track>>
 
     @Query("select * from track where artistId = :artistId and ignored != :ignore")
-    fun findByArtist(artistId: Long, ignore: Boolean? = null): List<Track>
+    fun findByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
 
     @Query("update track set playbackCount = (select playbackCount from track where id = :trackId) + 1 where id = :trackId")
     fun increasePlaybackCount(trackId: Long)
+
+    @Query("update track set ignored = :ignored where id = :trackId")
+    fun setIgnored(trackId: Long, ignored: Bool)
 
     @Query("select count(*) from track")
     fun count(): Int
