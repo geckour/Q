@@ -16,5 +16,11 @@ data class Track(
         var discNum: Int?,
         var sourcePath: String,
         var playbackCount: Long,
-        var ignored: Boolean
+        var ignored: Bool = Bool.FALSE
 )
+
+enum class Bool {
+    TRUE,
+    FALSE,
+    UNDEFINED;
+}
