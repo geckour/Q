@@ -42,10 +42,7 @@ class SettingActivity : AppCompatActivity() {
 
         setCrashlytics()
 
-        setTheme(when (sharedPreferences.appTheme) {
-            AppTheme.LIGHT -> R.style.AppTheme
-            AppTheme.DARK -> R.style.AppTheme_Dark
-        })
+        setTheme(sharedPreferences.appTheme.value.styleResId)
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_setting)
         binding.itemChooseAppTheme.viewModel = chooseAppThemeViewModel
@@ -67,7 +64,7 @@ class SettingActivity : AppCompatActivity() {
         SettingItemViewModel(
                 getString(R.string.setting_item_title_app_theme),
                 getString(R.string.setting_item_desc_app_theme),
-                getString(sharedPreferences.appTheme.displayNameResId),
+                getString(sharedPreferences.appTheme.value.stringResId),
                 false, onClick = {
             val binding = DialogSpinnerBinding.inflate(
                     LayoutInflater.from(this@SettingActivity), null, false).apply {
@@ -75,7 +72,7 @@ class SettingActivity : AppCompatActivity() {
                         object : ArrayAdapter<String>(
                                 this@SettingActivity,
                                 android.R.layout.simple_spinner_item,
-                                AppTheme.values().map { getString(it.displayNameResId) }) {
+                                Pref.Enum.appThemes.map { getString(it.value.stringResId) }) {
                             override fun getDropDownView(position: Int,
                                                          convertView: View?,
                                                          parent: ViewGroup): View =
@@ -91,7 +88,7 @@ class SettingActivity : AppCompatActivity() {
                         }
                 spinner.apply {
                     adapter = arrayAdapter
-                    setSelection(sharedPreferences.appTheme.ordinal)
+                    setSelection(Pref.Enum.appThemes.indexOf(sharedPreferences.appTheme))
                 }
             }
 
@@ -102,9 +99,9 @@ class SettingActivity : AppCompatActivity() {
                 when (which) {
                     DialogInterface.BUTTON_POSITIVE -> {
                         val themeIndex = binding.spinner.selectedItemPosition
-                        val appTheme = AppTheme.values()[themeIndex]
+                        val appTheme = Pref.Enum.appThemes[themeIndex]
                         sharedPreferences.appTheme = appTheme
-                        summary = getString(appTheme.displayNameResId)
+                        summary = getString(appTheme.value.stringResId)
                         this@SettingActivity.binding.itemChooseAppTheme.viewModel = this
                     }
                 }
@@ -117,7 +114,7 @@ class SettingActivity : AppCompatActivity() {
         SettingItemViewModel(
                 getString(R.string.setting_item_title_screen_on_launch),
                 getString(R.string.setting_item_desc_screen_on_launch),
-                getString(sharedPreferences.preferScreen.displayNameResId),
+                getString(sharedPreferences.preferScreen.value.stringResId),
                 false, onClick = {
             val binding = DialogSpinnerBinding.inflate(
                     LayoutInflater.from(this@SettingActivity), null, false).apply {
@@ -125,7 +122,7 @@ class SettingActivity : AppCompatActivity() {
                         object : ArrayAdapter<String>(
                                 this@SettingActivity,
                                 android.R.layout.simple_spinner_item,
-                                Screen.values().map { getString(it.displayNameResId) }) {
+                                Pref.Enum.screens.map { getString(it.value.stringResId) }) {
                             override fun getDropDownView(position: Int,
                                                          convertView: View?,
                                                          parent: ViewGroup): View =
@@ -141,7 +138,7 @@ class SettingActivity : AppCompatActivity() {
                         }
                 spinner.apply {
                     adapter = arrayAdapter
-                    setSelection(sharedPreferences.preferScreen.ordinal)
+                    setSelection(Pref.Enum.screens.indexOf(sharedPreferences.preferScreen))
                 }
             }
 
@@ -152,9 +149,9 @@ class SettingActivity : AppCompatActivity() {
                 when (which) {
                     DialogInterface.BUTTON_POSITIVE -> {
                         val screenIndex = binding.spinner.selectedItemPosition
-                        val screen = Screen.values()[screenIndex]
+                        val screen = Pref.Enum.screens[screenIndex]
                         sharedPreferences.preferScreen = screen
-                        summary = getString(screen.displayNameResId)
+                        summary = getString(screen.value.stringResId)
                         this@SettingActivity.binding.itemChooseScreen.viewModel = this
                     }
                 }

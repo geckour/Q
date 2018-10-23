@@ -221,7 +221,7 @@ class MainActivity : ScopedActivity() {
         }
     }
 
-    private lateinit var currentAppTheme: AppTheme
+    private lateinit var currentAppTheme: Pref.Enum.Content.AppTheme
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -229,10 +229,7 @@ class MainActivity : ScopedActivity() {
         setCrashlytics()
 
         currentAppTheme = sharedPreferences.appTheme
-        setTheme(when (currentAppTheme) {
-            AppTheme.LIGHT -> R.style.AppTheme
-            AppTheme.DARK -> R.style.AppTheme_Dark
-        })
+        setTheme(currentAppTheme.value.styleResId)
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
         binding.coordinatorMain.viewModel = viewModel
@@ -248,13 +245,7 @@ class MainActivity : ScopedActivity() {
             retrieveMediaIfEmpty()
             WorkManager.getInstance().observeMediaChange()
 
-            val navId = when (PreferenceManager.getDefaultSharedPreferences(this).preferScreen) {
-                Screen.ARTIST -> R.id.nav_artist
-                Screen.ALBUM -> R.id.nav_album
-                Screen.SONG -> R.id.nav_song
-                Screen.GENRE -> R.id.nav_genre
-                Screen.PLAYLIST -> R.id.nav_playlist
-            }
+            val navId = PreferenceManager.getDefaultSharedPreferences(this).preferScreen.value.navId
             onNavigationItemSelected(binding.navigationView.menu.findItem(navId))
         } else if (savedInstanceState.containsKey(STATE_KEY_REQUESTED_TRANSACTION)) {
             requestedTransaction =

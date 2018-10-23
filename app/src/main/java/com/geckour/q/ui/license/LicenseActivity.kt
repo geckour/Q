@@ -10,9 +10,8 @@ import androidx.databinding.DataBindingUtil
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivityLicenseBinding
 import com.geckour.q.domain.model.LicenseItem
-import com.geckour.q.util.AppTheme
-import com.geckour.q.util.appTheme
 import com.geckour.q.setCrashlytics
+import com.geckour.q.util.appTheme
 
 class LicenseActivity : AppCompatActivity() {
 
@@ -30,10 +29,7 @@ class LicenseActivity : AppCompatActivity() {
 
         setCrashlytics()
 
-        setTheme(when (sharedPreferences.appTheme) {
-            AppTheme.LIGHT -> R.style.AppTheme
-            AppTheme.DARK -> R.style.AppTheme_Dark
-        })
+        setTheme(sharedPreferences.appTheme.value.styleResId)
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_license)
         binding.recyclerView.adapter = LicenseListAdapter(listOf(
