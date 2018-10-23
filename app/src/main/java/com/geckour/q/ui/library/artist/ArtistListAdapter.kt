@@ -1,6 +1,7 @@
 package com.geckour.q.ui.library.artist
 
 import android.content.Context
+import android.preference.PreferenceManager
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -148,8 +149,9 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
                             || it != R.id.menu_override_all_simple_shuffle
                 }
                 val songs = DB.getInstance(context).let { db ->
+                    val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
                     db.albumDao().findByArtistId(artist.id).map {
-                        db.trackDao().findByAlbum(it.id)
+                        db.trackDao().findByAlbum(it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled))
                                 .mapNotNull { getSong(db, it) }
                                 .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                     }.flatten()

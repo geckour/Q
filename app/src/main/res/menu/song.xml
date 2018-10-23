@@ -13,4 +13,8 @@
         android:id="@+id/menu_override_all"
         android:title="@string/menu_override"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_ignore"
+        android:title="@string/menu_ignore_to_true"
+        app:showAsAction="never" />
 </menu>

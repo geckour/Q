@@ -1,6 +1,8 @@
 package com.geckour.q.ui.library.artist
 
+import android.content.SharedPreferences
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.view.*
 import android.widget.SearchView
 import androidx.lifecycle.ViewModelProviders
@@ -27,6 +29,10 @@ class ArtistListFragment : ScopedFragment() {
     }
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: ArtistListAdapter by lazy { ArtistListAdapter(mainViewModel) }
+
+    private val sharedPreferences: SharedPreferences by lazy {
+        PreferenceManager.getDefaultSharedPreferences(requireContext())
+    }
 
     private var latestDbAlbumList: List<Album> = emptyList()
     private var chatteringCancelFlag: Boolean = false
@@ -102,7 +108,7 @@ class ArtistListFragment : ScopedFragment() {
                 val songs = adapter.getItems().mapNotNull {
                     artistAlbumMap[it.id]?.map {
                         DB.getInstance(context).let { db ->
-                            db.trackDao().findByAlbum(it.id)
+                            db.trackDao().findByAlbum(it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled))
                                     .mapNotNull { getSong(db, it) }
                                     .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                         }

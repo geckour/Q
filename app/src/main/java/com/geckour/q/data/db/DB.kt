@@ -4,14 +4,17 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import com.geckour.q.data.db.dao.AlbumDao
 import com.geckour.q.data.db.dao.ArtistDao
 import com.geckour.q.data.db.dao.TrackDao
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Track
+import com.geckour.q.util.BoolConverter
 
 @Database(entities = [Track::class, Album::class, Artist::class], version = 1)
+@TypeConverters(BoolConverter::class)
 abstract class DB : RoomDatabase() {
 
     companion object {

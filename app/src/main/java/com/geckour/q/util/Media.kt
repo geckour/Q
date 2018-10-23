@@ -23,6 +23,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.dao.upsert
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
@@ -120,7 +121,7 @@ suspend fun getSong(db: DB, track: Track,
             val artwork = db.albumDao().get(track.albumId)?.artworkUriString
             Song(track.id, track.mediaId, track.albumId, track.title,
                     artistName, artwork, track.duration, trackNum ?: track.trackNum, track.discNum,
-                    genreId, playlistId, track.sourcePath)
+                    genreId, playlistId, track.sourcePath, BoolConverter().toBoolean(track.ignored))
         }
 
 suspend fun fetchPlaylists(context: Context): List<Playlist> = withContext(Dispatchers.IO) {
@@ -177,7 +178,7 @@ suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<Album> =
 
 suspend fun DB.searchTrackByFuzzyTitle(title: String): List<Track> =
         withContext(Dispatchers.IO) {
-            this@searchTrackByFuzzyTitle.trackDao().findByTitle("%$title%")
+            this@searchTrackByFuzzyTitle.trackDao().findByTitle("%$title%", Bool.UNDEFINED)
         }
 
 fun Context.searchPlaylistByFuzzyTitle(title: String): List<Playlist> =

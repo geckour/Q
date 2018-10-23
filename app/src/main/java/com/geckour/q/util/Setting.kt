@@ -15,6 +15,7 @@ private const val KEY_SHOW_ARTWORK_ON_LOCK_SCREEN = "key_show_artwork_on_lock_sc
 private const val KEY_EQUALIZER_ENABLED = "key_equalizer_enabled"
 private const val KEY_EQUALIZER_PARAMS = "key_equalizer_params"
 private const val KEY_EQUALIZER_SETTINGS = "key_equalizer_settings"
+private const val KEY_IGNORING_ENABLED = "key_enabled_ignoring"
 
 enum class AppTheme(val displayNameResId: Int) {
     LIGHT(R.string.app_theme_light),
@@ -90,3 +91,7 @@ fun SharedPreferences.setEqualizerLevel(bandNum: Int, level: Int) {
                 EqualizerSettings(levels.toMutableList().apply { this[bandNum] = level })
     }
 }
+
+var SharedPreferences.ignoringEnabled: Boolean
+    get() = getBoolean(KEY_IGNORING_ENABLED, true)
+    set(value) = edit().putBoolean(KEY_IGNORING_ENABLED, value).apply()

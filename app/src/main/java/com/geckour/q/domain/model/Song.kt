@@ -18,6 +18,7 @@ data class Song(
         val genreId: Long?,
         val playlistId: Long?,
         val sourcePath: String,
+        val ignored: Boolean?,
         val nowPlaying: Boolean = false
 ) : Parcelable {
     val durationString: String get() = duration.getTimeString()
