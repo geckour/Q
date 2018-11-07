@@ -58,9 +58,9 @@ repositories {
 
 dependencies {
     def support_ver = '1.0.0'
-    def firebase_ver = '16.0.4'
+    def firebase_ver = '16.0.5'
     def aac_lifecycle_ver = '2.0.0'
-    def aac_room_ver = '2.1.0-alpha01'
+    def aac_room_ver = '2.1.0-alpha02'
     def aac_work_ver = '1.0.0-alpha10'
     def coroutines_ver = '0.30.0'
     def permission_dispatcher_ver = '3.3.1'
@@ -77,12 +77,12 @@ dependencies {
     implementation "androidx.legacy:legacy-support-v13:$support_ver"
     implementation 'com.google.android.material:material:1.0.0'
     testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'androidx.test:runner:1.1.0-beta02'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0-beta02'
+    androidTestImplementation 'androidx.test:runner:1.1.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0'
 
     // Logging
     implementation "com.google.firebase:firebase-core:$firebase_ver"
-    implementation 'com.crashlytics.sdk.android:crashlytics:2.9.5'
+    implementation 'com.crashlytics.sdk.android:crashlytics:2.9.6'
     implementation 'com.jakewharton.timber:timber:4.7.1'
 
     // Inspect
