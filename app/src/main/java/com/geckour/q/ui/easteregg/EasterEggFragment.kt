@@ -14,11 +14,9 @@ import com.geckour.q.databinding.FragmentEasterEggBinding
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
 import com.google.firebase.analytics.FirebaseAnalytics
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.IO
-import kotlinx.coroutines.experimental.android.Main
-import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.withContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.*
 
 class EasterEggFragment : ScopedFragment() {

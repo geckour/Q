@@ -14,9 +14,9 @@ import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.GlobalScope
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 class SongListFragment : ScopedFragment() {
 

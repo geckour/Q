@@ -53,9 +53,8 @@ class MediaRetrieveWorker(context: Context, parameters: WorkerParameters)
         }
     }
 
-    override fun onStopped(cancelled: Boolean) {
-        super.onStopped(cancelled)
-
-        if (cancelled) forceStop = true
+    override fun onStopped() {
+        super.onStopped()
+        forceStop = true
     }
 }

@@ -16,10 +16,9 @@ import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.IO
-import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.withContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class GenreListFragment : ScopedFragment() {
 

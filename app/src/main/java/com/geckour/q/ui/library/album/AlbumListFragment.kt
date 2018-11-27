@@ -13,7 +13,7 @@ import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.*
 import com.geckour.q.data.db.model.Album as DBAlbum
 
 class AlbumListFragment : ScopedFragment() {

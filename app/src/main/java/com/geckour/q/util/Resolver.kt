@@ -6,9 +6,8 @@ import android.net.Uri
 import android.util.TypedValue
 import androidx.annotation.AttrRes
 import com.geckour.q.data.db.DB
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.IO
-import kotlinx.coroutines.experimental.withContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import com.geckour.q.data.db.model.Album as DBAlbum
 import com.geckour.q.domain.model.Album as DomainAlbum
 
