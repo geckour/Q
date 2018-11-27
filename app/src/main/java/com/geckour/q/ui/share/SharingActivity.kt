@@ -12,12 +12,13 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.Song
 import com.geckour.q.setCrashlytics
-import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.IO
-import kotlinx.coroutines.experimental.android.Main
-import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.withContext
+import com.geckour.q.util.ScopedActivity
+import com.geckour.q.util.UNKNOWN
+import com.geckour.q.util.bundleArtwork
+import com.geckour.q.util.formatPattern
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class SharingActivity : ScopedActivity() {

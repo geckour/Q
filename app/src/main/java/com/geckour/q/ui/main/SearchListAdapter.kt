@@ -10,12 +10,16 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.ItemListSearchCategoryBinding
 import com.geckour.q.databinding.ItemListSearchItemBinding
-import com.geckour.q.domain.model.*
-import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.GlobalScope
-import kotlinx.coroutines.experimental.android.Main
-import kotlinx.coroutines.experimental.launch
+import com.geckour.q.domain.model.Genre
+import com.geckour.q.domain.model.Playlist
+import com.geckour.q.domain.model.SearchItem
+import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.getSong
+import com.geckour.q.util.toDomainModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import com.geckour.q.data.db.model.Album as DBAlbum
 import com.geckour.q.data.db.model.Artist as DBArtist
 

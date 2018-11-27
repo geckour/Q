@@ -32,10 +32,9 @@ import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.Util
 import com.google.gson.Gson
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.android.Main
+import kotlinx.coroutines.*
 import timber.log.Timber
-import kotlin.coroutines.experimental.CoroutineContext
+import kotlin.coroutines.CoroutineContext
 
 class PlayerService : Service() {
 
@@ -684,8 +683,9 @@ class PlayerService : Service() {
         }
     }
 
-    fun stopFastSeek(): Boolean =
-            seekJob?.cancel() == true
+    fun stopFastSeek() {
+        seekJob?.cancel()
+    }
 
     private fun seekToHead() {
         seek(0)

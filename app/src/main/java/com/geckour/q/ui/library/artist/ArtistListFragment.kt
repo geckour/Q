@@ -13,7 +13,7 @@ import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.*
 
 class ArtistListFragment : ScopedFragment() {
 

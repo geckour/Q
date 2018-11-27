@@ -14,10 +14,9 @@ import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.GlobalScope
-import kotlinx.coroutines.experimental.android.Main
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 class GenreListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adapter<GenreListAdapter.ViewHolder>() {

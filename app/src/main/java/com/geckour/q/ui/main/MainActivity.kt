@@ -51,8 +51,10 @@ import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.analytics.FirebaseAnalytics
-import kotlinx.coroutines.experimental.*
-import kotlinx.coroutines.experimental.android.Main
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
@@ -380,11 +382,11 @@ class MainActivity : ScopedActivity() {
     }
 
     private fun WorkManager.monitorSyncState() {
-        getStatusesForUniqueWorkLiveData(MediaRetrieveWorker.WORK_NAME)
+        getWorkInfosForUniqueWorkLiveData(MediaRetrieveWorker.WORK_NAME)
                 .observe(this@MainActivity) {
                     viewModel.syncing.value =
-                            it?.firstOrNull { it.state == State.RUNNING } != null
-                    if (it?.any { status -> status.state == State.SUCCEEDED } == true) {
+                            it?.firstOrNull { it.state == WorkInfo.State.RUNNING } != null
+                    if (it?.any { status -> status.state == WorkInfo.State.SUCCEEDED } == true) {
                         Timber.d("qgeck sync succeeded")
                         val fragment = supportFragmentManager.fragments.lastOrNull { it.isVisible }
                         when (fragment) {

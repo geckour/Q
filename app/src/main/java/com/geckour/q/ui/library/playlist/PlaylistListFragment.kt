@@ -10,7 +10,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.launch
 
 class PlaylistListFragment : ScopedFragment() {
 
