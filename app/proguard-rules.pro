@@ -20,14 +20,12 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
-# Coroutines
--keepclassmembernames class kotlinx.** {
-    volatile <fields>;
-}
-
 -keep class com.geckour.q.service.** { *; }
 
 -dontwarn androidx.concurrent.futures.**
+
+
+# Coroutines
 
 # ServiceLoader support
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
