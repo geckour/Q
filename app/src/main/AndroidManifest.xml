@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest package="com.geckour.q"
-          xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.geckour.q">
 
-    <meta-data android:name="google_analytics_adid_collection_enabled" android:value="false" />
+    <meta-data
+        android:name="google_analytics_adid_collection_enabled"
+        android:value="false" />
 
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
@@ -42,7 +44,14 @@
             android:noHistory="true"
             android:theme="@android:style/Theme.NoDisplay" />
 
-        <service android:name=".service.PlayerService" />
+        <service
+            android:name=".service.PlayerService"
+            android:exported="true"
+            android:label="@string/service_name">
+            <intent-filter>
+                <action android:name="android.media.browse.MediaBrowserService" />
+            </intent-filter>
+        </service>
 
         <meta-data
             android:name="preloaded_fonts"

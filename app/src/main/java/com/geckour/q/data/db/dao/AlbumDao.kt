@@ -37,8 +37,8 @@ interface AlbumDao {
     @Query("select * from album where artistId = :id")
     fun findByArtistIdAsync(id: Long): LiveData<List<Album>>
 
-    @Query("select * from album where title like :title")
-    fun findByTitle(title: String): List<Album>
+    @Query("select * from album where title like '%' || :title || '%'")
+    fun findLikeTitle(title: String): List<Album>
 
     @Query("update album set playbackCount = (select playbackCount from album where id = :albumId) + 1 where id = :albumId")
     fun increasePlaybackCount(albumId: Long)

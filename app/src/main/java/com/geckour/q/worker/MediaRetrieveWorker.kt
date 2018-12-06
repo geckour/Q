@@ -29,10 +29,10 @@ class MediaRetrieveWorker(context: Context, parameters: WorkerParameters)
 
     private var forceStop = false
 
-    override fun doWork(): Result {
+    override fun doWork(): androidx.work.Result {
         return if (applicationContext.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
-            Result.FAILURE
+            androidx.work.Result.failure()
         } else {
             Timber.d("qgeck media retrieve worker started")
             val db = DB.getInstance(applicationContext)
@@ -48,8 +48,8 @@ class MediaRetrieveWorker(context: Context, parameters: WorkerParameters)
                         }
                         Timber.d("qgeck track in db count: ${db.trackDao().count()}")
                         Timber.d("qgeck media retrieve worker completed, successfully: ${forceStop.not()}")
-                        if (forceStop) Result.FAILURE else Result.SUCCESS
-                    } ?: Result.FAILURE
+                        if (forceStop) androidx.work.Result.failure() else androidx.work.Result.success()
+                    } ?: androidx.work.Result.failure()
         }
     }
 

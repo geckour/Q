@@ -153,6 +153,40 @@ suspend fun fetchPlaylists(context: Context): List<Playlist> = withContext(Dispa
     } ?: emptyList()
 }
 
+
+
+suspend fun fetchGenres(context: Context?): List<Genre> =
+        withContext(Dispatchers.IO) {
+            context?.contentResolver?.query(MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
+                    arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME),
+                    null, null, null)?.use {
+                val db = DB.getInstance(context)
+                val list: ArrayList<Genre> = ArrayList()
+                while (it.moveToNext()) {
+                    val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Genres._ID))
+                    val tracks = getTrackMediaIdsByGenreId(context, id)
+                            .mapNotNull { db.trackDao().getByMediaId(it) }
+                    val totalDuration = tracks.map { it.duration }.sum()
+                    val genre = Genre(id, tracks.getGenreThumb(context),
+                            it.getString(it.getColumnIndex(MediaStore.Audio.Genres.NAME)).let {
+                                if (it.isBlank()) UNKNOWN else it
+                            }, totalDuration)
+                    list.add(genre)
+                }
+
+                return@use list.toList().sortedBy { it.name }
+            }
+        } ?: emptyList()
+
+private suspend fun List<Track>.getGenreThumb(context: Context): Bitmap? {
+    val db = DB.getInstance(context)
+    return this.distinctBy { it.albumId }.takeOrFillNull(5)
+            .map {
+                it?.let { db.getArtworkUriStringFromId(it.albumId)?.let { Uri.parse(it) } }
+            }
+            .getThumb(context)
+}
+
 private suspend fun List<Track>.getPlaylistThumb(context: Context): Bitmap? =
         withContext(Dispatchers.IO) {
             val db = DB.getInstance(context)
@@ -163,21 +197,6 @@ private suspend fun List<Track>.getPlaylistThumb(context: Context): Bitmap? =
                         }
                     }
                     .getThumb(context)
-        }
-
-suspend fun DB.searchArtistByFuzzyTitle(title: String): List<Artist> =
-        withContext(Dispatchers.IO) {
-            this@searchArtistByFuzzyTitle.artistDao().findLikeTitle("%$title%")
-        }
-
-suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<Album> =
-        withContext(Dispatchers.IO) {
-            this@searchAlbumByFuzzyTitle.albumDao().findByTitle("%$title%")
-        }
-
-suspend fun DB.searchTrackByFuzzyTitle(title: String): List<Track> =
-        withContext(Dispatchers.IO) {
-            this@searchTrackByFuzzyTitle.trackDao().findByTitle("%$title%", Bool.UNDEFINED)
         }
 
 fun Context.searchPlaylistByFuzzyTitle(title: String): List<Playlist> =

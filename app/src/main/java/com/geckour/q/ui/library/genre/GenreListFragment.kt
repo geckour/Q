@@ -1,24 +1,17 @@
 package com.geckour.q.ui.library.genre
 
-import android.content.Context
-import android.graphics.Bitmap
-import android.net.Uri
 import android.os.Bundle
-import android.provider.MediaStore
 import android.view.*
 import android.widget.SearchView
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.DividerItemDecoration
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.FragmentListLibraryBinding
-import com.geckour.q.domain.model.Genre
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class GenreListFragment : ScopedFragment() {
 
@@ -52,14 +45,7 @@ class GenreListFragment : ScopedFragment() {
                 DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL))
 
 
-        if (adapter.itemCount == 0) {
-            launch {
-                mainViewModel.loading.value = true
-                adapter.setItems(fetchGenres())
-                binding.recyclerView.smoothScrollToPosition(0)
-                mainViewModel.loading.value = false
-            }
-        }
+        if (adapter.itemCount == 0) loadItems()
     }
 
     override fun onResume() {
@@ -125,47 +111,15 @@ class GenreListFragment : ScopedFragment() {
             binding.recyclerView.smoothScrollToPosition(0)
         }
 
-        viewModel.forceLoad.observe(this) {
-            launch {
-                mainViewModel.loading.value = true
-                adapter.setItems(fetchGenres())
-                binding.recyclerView.smoothScrollToPosition(0)
-                mainViewModel.loading.value = false
-            }
-        }
+        viewModel.forceLoad.observe(this) { loadItems() }
     }
 
-    private suspend fun fetchGenres(): List<Genre> =
-            context?.let { context ->
-                withContext(Dispatchers.IO) {
-                    context.contentResolver?.query(MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
-                            arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME),
-                            null, null, null)?.use {
-                        val db = DB.getInstance(context)
-                        val list: ArrayList<Genre> = ArrayList()
-                        while (it.moveToNext()) {
-                            val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Genres._ID))
-                            val tracks = getTrackMediaIdsByGenreId(context, id)
-                                    .mapNotNull { db.trackDao().getByMediaId(it) }
-                            val totalDuration = tracks.map { it.duration }.sum()
-                            val genre = Genre(id, tracks.getGenreThumb(context),
-                                    it.getString(it.getColumnIndex(MediaStore.Audio.Genres.NAME)).let {
-                                        if (it.isBlank()) UNKNOWN else it
-                                    }, totalDuration)
-                            list.add(genre)
-                        }
-
-                        return@use list.toList().sortedBy { it.name }
-                    }
-                }
-            } ?: emptyList()
-
-    private suspend fun List<Track>.getGenreThumb(context: Context): Bitmap? {
-        val db = DB.getInstance(context)
-        return this.distinctBy { it.albumId }.takeOrFillNull(5)
-                .map {
-                    it?.let { db.getArtworkUriStringFromId(it.albumId)?.let { Uri.parse(it) } }
-                }
-                .getThumb(context)
+    private fun loadItems() {
+        launch {
+            mainViewModel.loading.value = true
+            adapter.setItems(fetchGenres(context))
+            binding.recyclerView.smoothScrollToPosition(0)
+            mainViewModel.loading.value = false
+        }
     }
 }

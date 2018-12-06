@@ -11,11 +11,16 @@ import android.media.audiofx.Equalizer
 import android.media.session.PlaybackState
 import android.os.Binder
 import android.os.Build
+import android.os.Bundle
 import android.os.IBinder
 import android.preference.PreferenceManager
+import android.provider.MediaStore
+import android.provider.MediaStore.EXTRA_MEDIA_GENRE
+import android.support.v4.media.MediaBrowserCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.view.KeyEvent
+import androidx.media.MediaBrowserServiceCompat
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.Song
@@ -36,7 +41,14 @@ import kotlinx.coroutines.*
 import timber.log.Timber
 import kotlin.coroutines.CoroutineContext
 
-class PlayerService : Service() {
+class PlayerService : MediaBrowserServiceCompat() {
+
+    override fun onGetRoot(clientPackageName: String, clientUid: Int,
+                           rootHints: Bundle?): BrowserRoot? = BrowserRoot("/", null)
+
+    override fun onLoadChildren(parentId: String, result: Result<MutableList<MediaBrowserCompat.MediaItem>>) {
+        result.sendResult(mutableListOf())
+    }
 
     inner class PlayerBinder : Binder() {
         val service: PlayerService get() = this@PlayerService
@@ -68,6 +80,11 @@ class PlayerService : Service() {
         override fun onPlay() {
             super.onPlay()
             play()
+        }
+
+        override fun onPlayFromSearch(query: String?, extras: Bundle?) {
+            super.onPlayFromSearch(query, extras)
+            playFromSearch(query, extras)
         }
 
         override fun onPause() {
@@ -328,6 +345,7 @@ class PlayerService : Service() {
                     .setActions(PlaybackStateCompat.ACTION_PLAY or
                             PlaybackStateCompat.ACTION_PAUSE or
                             PlaybackStateCompat.ACTION_PLAY_PAUSE or
+                            PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH or
                             PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
                             PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
                             PlaybackStateCompat.ACTION_FAST_FORWARD or
@@ -338,6 +356,7 @@ class PlayerService : Service() {
                     or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS)
             setCallback(mediaSessionCallback)
             isActive = true
+            this@PlayerService.sessionToken = this.sessionToken
         }
 
         mediaSourceFactory = ExtractorMediaSource.Factory(DefaultDataSourceFactory(applicationContext,
@@ -549,6 +568,115 @@ class PlayerService : Service() {
         if (currentPosition != position) forcePosition(position)
     }
 
+    private fun playFromSearch(query: String?, extras: Bundle?) {
+        GlobalScope.launch(Dispatchers.IO) {
+            Timber.d("qgeck query: $query, extras: ${extras?.keySet()?.toList()}")
+            val db = DB.getInstance(this@PlayerService)
+            val focusSearchResult = when {
+                query != null ->
+                    getSongListFromTrackList(db, db.trackDao().findLikeTitle(query))
+                extras != null -> extras.getFocusSearchResult(db)
+                else -> getSongListFromTrackList(db, db.trackDao().getAllByRandom(20))
+            }
+
+            withContext(Dispatchers.Main) {
+                if (focusSearchResult.isNotEmpty())
+                    submitQueue(InsertQueue(
+                            QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.SONG),
+                            focusSearchResult
+                    ))
+
+                delay(500)
+                play()
+            }
+        }
+    }
+
+    private suspend fun Bundle.getFocusSearchResult(db: DB) = when (this[MediaStore.EXTRA_MEDIA_FOCUS]) {
+        MediaStore.Audio.Genres.ENTRY_CONTENT_TYPE -> {
+            // For a Genre focused search, only genre is set.
+            this.getString(EXTRA_MEDIA_GENRE)?.let { argGenre ->
+                Timber.d("Focused genre search: '$argGenre'")
+                fetchGenres(this@PlayerService).filter { it.name.contains(argGenre) }
+                        .flatMap { genre ->
+                            genre.getTrackMediaIds(this@PlayerService).let {
+                                getSongListFromTrackMediaId(db, it, genre.id)
+                            }
+                        }
+            } ?: emptyList()
+        }
+        MediaStore.Audio.Artists.ENTRY_CONTENT_TYPE -> {
+            // For an Artist focused search, only the artist is set.
+            this.getString(MediaStore.EXTRA_MEDIA_ARTIST)?.let { argArtist ->
+                Timber.d("Focused artist search: '$argArtist'")
+                db.artistDao().findLikeTitle(argArtist).flatMap {
+                    getSongListFromTrackList(db, db.trackDao().findByArtistId(it.id))
+                }
+            } ?: emptyList()
+        }
+        MediaStore.Audio.Albums.ENTRY_CONTENT_TYPE -> {
+            // For an Album focused search, album and artist are set.
+            val argArtist = this.getString(MediaStore.EXTRA_MEDIA_ARTIST)
+            val argAlbum = this.getString(MediaStore.EXTRA_MEDIA_ALBUM)
+
+            if (argArtist == null || argAlbum == null) emptyList()
+            else {
+                Timber.d("Focused album search: album='$argAlbum' artist='$argArtist")
+                db.artistDao().findLikeTitle(argArtist).flatMap {
+                    db.albumDao().findByArtistId(it.id).first {
+                        it.title?.contains(argAlbum) == true
+                    }.let {
+                        getSongListFromTrackList(db,
+                                db.trackDao().findByAlbumId(it.id))
+                    }
+                }
+            }
+
+        }
+        MediaStore.Audio.Media.ENTRY_CONTENT_TYPE -> {
+            // For a Song (aka Media) focused search, title, album, and artist are set.
+            val argTitle = this.getString(MediaStore.EXTRA_MEDIA_TITLE)
+            val argAlbum = this.getString(MediaStore.EXTRA_MEDIA_ALBUM)
+            val argArtist = this.getString(MediaStore.EXTRA_MEDIA_ARTIST)
+            Timber.d("Focused media search: title='$argTitle' album='$argAlbum' artist='$argArtist")
+            if (argTitle == null) emptyList()
+            else {
+                db.trackDao().findLikeTitle(argTitle).let {
+                    when {
+                        argAlbum != null && argArtist != null -> {
+                            it.filter {
+                                db.albumDao().get(it.albumId)
+                                        ?.title.containsCaseInsensitive(argAlbum)
+                            }.let {
+                                it.filter {
+                                    db.artistDao().get(it.artistId)
+                                            ?.title.containsCaseInsensitive(argArtist)
+                                }
+                            }
+                        }
+
+                        argAlbum != null -> {
+                            it.filter {
+                                db.albumDao().get(it.albumId)
+                                        ?.title.containsCaseInsensitive(argAlbum)
+                            }
+                        }
+
+                        argArtist != null -> {
+                            it.filter {
+                                db.artistDao().get(it.artistId)
+                                        ?.title.containsCaseInsensitive(argArtist)
+                            }
+                        }
+
+                        else -> it
+                    }
+                }.let { getSongListFromTrackList(db, it) }
+            }
+        }
+        else -> emptyList()
+    }
+
     private fun resume() {
         Timber.d("qgeck resume invoked")
         notifyPlaybackRatioJob?.cancel()
@@ -702,7 +830,7 @@ class PlayerService : Service() {
     }
 
     fun seek(ratio: Float) {
-        if (ratio !in 0..1) return
+        if (ratio !in 0f..1f) return
         val current = currentSong ?: return
         seek((current.duration * ratio).toLong())
     }

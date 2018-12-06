@@ -145,7 +145,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
                 }
                 val songs = DB.getInstance(context).let { db ->
                     val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-                    db.trackDao().findByAlbum(album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled))
+                    db.trackDao().findByAlbumId(album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled))
                             .mapNotNull { getSong(db, it) }
                             .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                 }

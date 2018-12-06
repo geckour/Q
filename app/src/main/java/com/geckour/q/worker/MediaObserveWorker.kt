@@ -15,15 +15,15 @@ import timber.log.Timber
 class MediaObserveWorker(context: Context, parameters: WorkerParameters)
     : Worker(context.applicationContext, parameters) {
 
-    override fun doWork(): Result =
+    override fun doWork(): androidx.work.Result =
             if (applicationContext.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED
                     || applicationContext.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
-                Result.FAILURE
+                androidx.work.Result.failure()
             } else {
-                Timber.d("qgeck uris: ${triggeredContentUris?.toList()}")
-                triggeredContentUris?.mapNotNull {
+                Timber.d("qgeck uris: ${triggeredContentUris.toList()}")
+                triggeredContentUris.mapNotNull {
                     it?.let {
                         try {
                             ContentUris.parseId(it)
@@ -31,7 +31,7 @@ class MediaObserveWorker(context: Context, parameters: WorkerParameters)
                             null
                         }
                     }
-                }?.firstOrNull()?.also { mediaId ->
+                }.firstOrNull()?.also { mediaId ->
                     Timber.d("qgeck media id: $mediaId")
                     try {
                         applicationContext.contentResolver
@@ -48,7 +48,7 @@ class MediaObserveWorker(context: Context, parameters: WorkerParameters)
                         Timber.e(t)
                     }
                 }
-                Result.RETRY
+                androidx.work.Result.retry()
             }
 
     private fun deleteFromDB(mediaId: Long) {
@@ -56,9 +56,9 @@ class MediaObserveWorker(context: Context, parameters: WorkerParameters)
         DB.getInstance(applicationContext).apply {
             trackDao().getByMediaId(mediaId)?.apply {
                 trackDao().delete(this.id)
-                if (trackDao().findByAlbum(this.albumId).isEmpty())
+                if (trackDao().findByAlbumId(this.albumId).isEmpty())
                     albumDao().delete(this.albumId)
-                if (trackDao().findByArtist(this.artistId).isEmpty())
+                if (trackDao().findByArtistId(this.artistId).isEmpty())
                     artistDao().delete(this.artistId)
             }
         }

@@ -26,23 +26,29 @@ interface TrackDao {
     @Query("select * from track where ignored != :ignore")
     fun getAll(ignore: Bool = Bool.UNDEFINED): List<Track>
 
+    @Query("select * from track where ignored != :ignore order by random()")
+    fun getAllByRandom(ignore: Bool = Bool.UNDEFINED): List<Track>
+
+    @Query("select * from track where ignored != :ignore order by random() limit :toTake")
+    fun getAllByRandom(toTake: Int, ignore: Bool = Bool.UNDEFINED): List<Track>
+
     @Query("select * from track where id = :id")
     fun get(id: Long): Track?
 
     @Query("select * from track where mediaId = :trackId")
     fun getByMediaId(trackId: Long): Track?
 
-    @Query("select * from track where title like :title and ignored != :ignore")
-    fun findByTitle(title: String, ignore: Bool = Bool.UNDEFINED): List<Track>
+    @Query("select * from track where title like '%' || :title || '%' and ignored != :ignore")
+    fun findLikeTitle(title: String, ignore: Bool = Bool.UNDEFINED): List<Track>
 
     @Query("select * from track where albumId = :albumId and ignored != :ignore")
-    fun findByAlbum(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
+    fun findByAlbumId(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
 
     @Query("select * from track where albumId = :albumId and ignored != :ignore")
     fun findByAlbumAsync(albumId: Long, ignore: Bool = Bool.UNDEFINED): LiveData<List<Track>>
 
     @Query("select * from track where artistId = :artistId and ignored != :ignore")
-    fun findByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
+    fun findByArtistId(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
 
     @Query("update track set playbackCount = (select playbackCount from track where id = :trackId) + 1 where id = :trackId")
     fun increasePlaybackCount(trackId: Long)

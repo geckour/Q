@@ -178,23 +178,31 @@ class MainActivity : ScopedActivity() {
             if (name == ComponentName(applicationContext, PlayerService::class.java)) {
                 isBoundService = true
                 player = (service as? PlayerService.PlayerBinder)?.service?.apply {
-                    setOnQueueChangedListener { bottomSheetViewModel.currentQueue.value = it }
+                    setOnQueueChangedListener {
+                        launch { bottomSheetViewModel.currentQueue.value = it }
+                    }
                     setOnCurrentPositionChangedListener {
-                        bottomSheetViewModel.currentPosition.value = it
+                        launch { bottomSheetViewModel.currentPosition.value = it }
                     }
                     setOnPlaybackStateChangeListener { playbackState, playWhenReady ->
-                        bottomSheetViewModel.playing.value = when (playbackState) {
-                            Player.STATE_READY -> {
-                                playWhenReady
+                        launch {
+                            bottomSheetViewModel.playing.value = when (playbackState) {
+                                Player.STATE_READY -> {
+                                    playWhenReady
+                                }
+                                else -> false
                             }
-                            else -> false
                         }
                     }
                     setOnPlaybackRatioChangedListener {
-                        bottomSheetViewModel.playbackRatio.value = it
+                        launch { bottomSheetViewModel.playbackRatio.value = it }
                     }
-                    setOnRepeatModeChangedListener { bottomSheetViewModel.repeatMode.value = it }
-                    setOnEqualizerStateChangedListener { equalizerViewModel.equalizerState.value = it }
+                    setOnRepeatModeChangedListener {
+                        launch { bottomSheetViewModel.repeatMode.value = it }
+                    }
+                    setOnEqualizerStateChangedListener {
+                        launch { equalizerViewModel.equalizerState.value = it }
+                    }
                     setOnDestroyedListener { onDestroyPlayer() }
 
                     publishStatus()
@@ -375,9 +383,9 @@ class MainActivity : ScopedActivity() {
     private fun WorkManager.observeMediaChange() {
         enqueue(OneTimeWorkRequestBuilder<MediaObserveWorker>().setConstraints(Constraints().apply {
             requiredNetworkType = NetworkType.NOT_REQUIRED
-            contentUriTriggers = ContentUriTriggers().apply {
+            setContentUriTriggers(ContentUriTriggers().apply {
                 add(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, true)
-            }
+            })
         }).build())
     }
 
@@ -521,7 +529,7 @@ class MainActivity : ScopedActivity() {
             searchJob.cancel()
             searchJob = launch {
                 searchListAdapter.clearItems()
-                val tracks = db.searchTrackByFuzzyTitle(it).take(3)
+                val tracks = db.trackDao().findLikeTitle(it).take(3)
                 if (tracks.isNotEmpty()) {
                     searchListAdapter.addItem(SearchItem(getString(R.string.search_category_song),
                             Unit, SearchItem.SearchItemType.CATEGORY))
@@ -529,7 +537,7 @@ class MainActivity : ScopedActivity() {
                         SearchItem(it.title ?: UNKNOWN, it, SearchItem.SearchItemType.TRACK)
                     })
                 }
-                val albums = db.searchAlbumByFuzzyTitle(it).take(3)
+                val albums = db.albumDao().findLikeTitle(it).take(3)
                 if (albums.isNotEmpty()) {
                     searchListAdapter.addItem(SearchItem(getString(R.string.search_category_album),
                             Unit, SearchItem.SearchItemType.CATEGORY))
@@ -537,7 +545,7 @@ class MainActivity : ScopedActivity() {
                         SearchItem(it.title ?: UNKNOWN, it, SearchItem.SearchItemType.ALBUM)
                     })
                 }
-                val artists = db.searchArtistByFuzzyTitle(it).take(3)
+                val artists = db.artistDao().findLikeTitle(it).take(3)
                 if (artists.isNotEmpty()) {
                     searchListAdapter.addItem(SearchItem(getString(R.string.search_category_artist),
                             Unit, SearchItem.SearchItemType.CATEGORY))
@@ -817,14 +825,14 @@ class MainActivity : ScopedActivity() {
                 withContext(Dispatchers.Main) {
                     songListViewModel.songIdDeleted.value = track.id
                 }
-            if (db.trackDao().findByAlbum(track.albumId, Bool.UNDEFINED).isEmpty()) {
+            if (db.trackDao().findByAlbumId(track.albumId, Bool.UNDEFINED).isEmpty()) {
                 deleted = db.albumDao().delete(track.albumId) > 0
                 if (deleted)
                     withContext(Dispatchers.Main) {
                         albumListViewModel.albumIdDeleted.value = track.albumId
                     }
             }
-            if (db.trackDao().findByArtist(track.artistId, Bool.UNDEFINED).isEmpty()) {
+            if (db.trackDao().findByArtistId(track.artistId, Bool.UNDEFINED).isEmpty()) {
                 deleted = db.artistDao().delete(track.artistId) > 0
                 if (deleted)
                     withContext(Dispatchers.Main) {

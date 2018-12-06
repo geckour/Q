@@ -150,7 +150,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
                 val songs = DB.getInstance(context).let { db ->
                     val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
                     db.albumDao().findByArtistId(artist.id).map {
-                        db.trackDao().findByAlbum(it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled))
+                        db.trackDao().findByAlbumId(it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled))
                                 .mapNotNull { getSong(db, it) }
                                 .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                     }.flatten()

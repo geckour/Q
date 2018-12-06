@@ -18,7 +18,7 @@ interface ArtistDao {
     @Query("delete from artist where id = :id")
     fun delete(id: Long): Int
 
-    @Query("select * from artist where title like :title")
+    @Query("select * from artist where title like '%' || :title || '%'")
     fun findLikeTitle(title: String): List<Artist>
 
     @Query("select * from artist where title = :title")

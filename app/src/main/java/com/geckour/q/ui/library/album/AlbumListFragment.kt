@@ -116,7 +116,7 @@ class AlbumListFragment : ScopedFragment() {
                 }
                 val songs = adapter.getItems().map {
                     DB.getInstance(context).let { db ->
-                        db.trackDao().findByAlbum(it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled))
+                        db.trackDao().findByAlbumId(it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled))
                                 .mapNotNull { getSong(db, it) }
                                 .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                     }
@@ -198,7 +198,7 @@ class AlbumListFragment : ScopedFragment() {
             this@getAlbumList.mapNotNull {
                 val artistName = db.artistDao().get(it.artistId)?.title
                         ?: return@mapNotNull null
-                val totalDuration = db.trackDao().findByAlbum(it.id).map { it.duration }.sum()
+                val totalDuration = db.trackDao().findByAlbumId(it.id).map { it.duration }.sum()
                 Album(it.id, it.mediaId,
                         it.title, artistName, it.artworkUriString, totalDuration)
             }
