@@ -379,6 +379,7 @@ suspend fun getNotification(context: Context, sessionToken: MediaSessionCompat.T
                     .setStyle(androidx.media.app.NotificationCompat.MediaStyle()
                             .setShowActionsInCompactView(0, 1, 2)
                             .setMediaSession(sessionToken))
+                    .setShowWhen(false)
                     .setContentIntent(PendingIntent.getActivity(context,
                             App.REQUEST_CODE_LAUNCH_APP,
                             LauncherActivity.createIntent(context),
