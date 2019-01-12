@@ -788,10 +788,12 @@ class PlayerService : Service() {
 
     fun onRequestedStopService() {
         if (player.playWhenReady.not()) {
-            if (sharedPreferences.contains(PREF_KEY_PLAYER_STATE).not())
-                storeState()
-
-            stopSelf()
+            bgScope.launch {
+                if (sharedPreferences.contains(PREF_KEY_PLAYER_STATE).not()) {
+                    storeState()
+                }
+                stopSelf()
+            }
         }
     }
 
@@ -803,8 +805,9 @@ class PlayerService : Service() {
                 player.playWhenReady,
                 player.repeatMode
         )
-        sharedPreferences.edit().putString(PREF_KEY_PLAYER_STATE, Gson().toJson(state))
-                .apply()
+        sharedPreferences.edit()
+                .putString(PREF_KEY_PLAYER_STATE, Gson().toJson(state))
+                .commit()
     }
 
     private fun restoreState() {
