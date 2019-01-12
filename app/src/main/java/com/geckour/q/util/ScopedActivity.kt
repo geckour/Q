@@ -10,7 +10,7 @@ import kotlin.coroutines.CoroutineContext
 
 abstract class ScopedActivity : AppCompatActivity(), CoroutineScope {
 
-    protected lateinit var job: Job
+    private var job: Job = Job()
     override val coroutineContext: CoroutineContext
         get() = job + Dispatchers.Main
 
