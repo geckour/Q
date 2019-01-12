@@ -375,9 +375,9 @@ class MainActivity : ScopedActivity() {
     private fun WorkManager.observeMediaChange() {
         enqueue(OneTimeWorkRequestBuilder<MediaObserveWorker>().setConstraints(Constraints().apply {
             requiredNetworkType = NetworkType.NOT_REQUIRED
-            contentUriTriggers = ContentUriTriggers().apply {
+            setContentUriTriggers(ContentUriTriggers().apply {
                 add(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, true)
-            }
+            })
         }).build())
     }
 

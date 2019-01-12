@@ -20,10 +20,10 @@ class MediaObserveWorker(context: Context, parameters: WorkerParameters)
                     != PackageManager.PERMISSION_GRANTED
                     || applicationContext.checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
-                Result.FAILURE
+                Result.failure()
             } else {
-                Timber.d("qgeck uris: ${triggeredContentUris?.toList()}")
-                triggeredContentUris?.mapNotNull {
+                Timber.d("qgeck uris: ${triggeredContentUris.toList()}")
+                triggeredContentUris.mapNotNull {
                     it?.let {
                         try {
                             ContentUris.parseId(it)
@@ -31,7 +31,7 @@ class MediaObserveWorker(context: Context, parameters: WorkerParameters)
                             null
                         }
                     }
-                }?.firstOrNull()?.also { mediaId ->
+                }.firstOrNull()?.also { mediaId ->
                     Timber.d("qgeck media id: $mediaId")
                     try {
                         applicationContext.contentResolver
@@ -48,7 +48,7 @@ class MediaObserveWorker(context: Context, parameters: WorkerParameters)
                         Timber.e(t)
                     }
                 }
-                Result.RETRY
+                Result.retry()
             }
 
     private fun deleteFromDB(mediaId: Long) {
