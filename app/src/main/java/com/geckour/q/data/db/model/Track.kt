@@ -11,6 +11,7 @@ data class Track(
         var albumId: Long,
         var artistId: Long,
         var albumArtistId: Long?,
+        var composer: String?,
         var duration: Long,
         var trackNum: Int?,
         var discNum: Int?,

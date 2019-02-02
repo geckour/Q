@@ -22,6 +22,7 @@ class MediaRetrieveWorker(context: Context, parameters: WorkerParameters)
                 MediaStore.Audio.Media.ALBUM,
                 MediaStore.Audio.Media.ARTIST_ID,
                 MediaStore.Audio.Media.ARTIST,
+                MediaStore.Audio.Media.COMPOSER,
                 MediaStore.Audio.Media.DURATION,
                 MediaStore.Audio.Media.TRACK,
                 MediaStore.Audio.Media.DATA)

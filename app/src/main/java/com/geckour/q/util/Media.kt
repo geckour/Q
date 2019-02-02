@@ -119,7 +119,7 @@ suspend fun getSong(db: DB, track: Track,
             val artistName = db.artistDao().get(track.artistId)?.title ?: UNKNOWN
             val artwork = db.albumDao().get(track.albumId)?.artworkUriString
             Song(track.id, track.mediaId, track.albumId, track.title,
-                    artistName, artwork, track.duration, trackNum ?: track.trackNum, track.discNum,
+                    artistName, track.composer, artwork, track.duration, trackNum ?: track.trackNum, track.discNum,
                     genreId, playlistId, track.sourcePath, BoolConverter().toBoolean(track.ignored))
         }
 
@@ -329,6 +329,7 @@ suspend fun Song.getMediaMetadata(context: Context, albumTitle: String? = null):
                     .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, this@getMediaMetadata.artist)
                     .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album)
                     .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, uriString)
+                    .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, this@getMediaMetadata.composer)
                     .apply {
                         if (uriString != null
                                 && PreferenceManager.getDefaultSharedPreferences(context)
@@ -456,6 +457,7 @@ fun pushMedia(context: Context, db: DB, cursor: Cursor) {
             val artistMediaId = cursor.getLong(
                     cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST_ID))
             val artistTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST))
+            val composerTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.COMPOSER))
             val artworkUriString = albumMediaId.getArtworkUriIfExist(context)?.toString()
 
             val discNum = retriever.extractMetadata(
@@ -478,7 +480,7 @@ fun pushMedia(context: Context, db: DB, cursor: Cursor) {
                 } else it.id
             }
 
-            val track = Track(0, trackMediaId, title, albumId, artistId, albumArtistId, duration,
+            val track = Track(0, trackMediaId, title, albumId, artistId, albumArtistId, composerTitle, duration,
                     trackNum, discNum, trackPath, 0)
             track.upsert(db)
             context.sendBroadcast(MainActivity.createProgressIntent(current to total))

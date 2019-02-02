@@ -338,7 +338,10 @@ class BottomSheetFragment : ScopedFragment() {
         }
 
         viewModel.scrollToCurrent.observe(this) {
-            binding.recyclerView.smoothScrollToPosition(viewModel.currentPosition.value ?: 0)
+            if (adapter.itemCount > 0) {
+                binding.recyclerView
+                        .smoothScrollToPosition(viewModel.currentPosition.value ?: 0)
+            }
         }
 
         viewModel.toggleCurrentRemain.observe(this) {

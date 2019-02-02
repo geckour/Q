@@ -58,10 +58,10 @@ repositories {
 
 dependencies {
     def support_ver = '1.0.0'
-    def firebase_ver = '16.0.6'
+    def firebase_ver = '16.0.7'
     def aac_lifecycle_ver = '2.0.0'
-    def aac_room_ver = '2.1.0-alpha03'
-    def aac_work_ver = '1.0.0-beta01'
+    def aac_room_ver = '2.1.0-alpha04'
+    def aac_work_ver = '1.0.0-beta03'
     def coroutines_ver = '1.0.1'
     def permission_dispatcher_ver = '3.3.1'
     def stetho_ver = '1.5.0'
@@ -73,7 +73,7 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'androidx.constraintlayout:constraintlayout:2.0.0-alpha3'
     implementation "androidx.legacy:legacy-support-core-ui:$support_ver"
-    implementation "androidx.media:media:$support_ver"
+    implementation "androidx.media:media:1.0.1"
     implementation "androidx.legacy:legacy-support-v13:$support_ver"
     implementation 'com.google.android.material:material:1.0.0'
     testImplementation 'junit:junit:4.12'
