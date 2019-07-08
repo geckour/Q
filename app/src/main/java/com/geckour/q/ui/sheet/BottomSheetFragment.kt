@@ -251,7 +251,6 @@ class BottomSheetFragment : ScopedFragment() {
                 context?.also { context ->
                     val db = DB.getInstance(context)
 
-
                     song?.also {
                         launch(Dispatchers.IO) {
                             db.trackDao().increasePlaybackCount(it.id)
@@ -269,20 +268,17 @@ class BottomSheetFragment : ScopedFragment() {
                         }
                     }
 
-                    launch(Dispatchers.IO) {
-                        val model = viewModel.currentSong?.albumId?.let {
-                            db.getArtworkUriStringFromId(it)
-                                    ?: R.drawable.ic_empty
-                        }
-                        val drawable = model?.let {
-                            Glide.with(requireContext())
+                    viewModel.currentSong?.let {
+                        val source = it.thumbUriString ?: R.drawable.ic_empty
+                        launch(Dispatchers.IO) {
+                            val drawable = Glide.with(requireContext())
                                     .asDrawable()
-                                    .load(it)
+                                    .load(source)
                                     .submit()
                                     .get()
-                        }
-                        withContext(Dispatchers.Main) {
-                            binding.artwork.setImageDrawable(drawable)
+                            withContext(Dispatchers.Main) {
+                                binding.artwork.setImageDrawable(drawable)
+                            }
                         }
                     }
                 }

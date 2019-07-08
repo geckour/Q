@@ -18,6 +18,7 @@ import com.geckour.q.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class ArtistListAdapter(private val viewModel: MainViewModel)
@@ -113,14 +114,19 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
                 true
             }
             binding.option.setOnClickListener { getPopupMenu(it).show() }
-            try {
-                GlobalScope.launch(Dispatchers.Main) {
-                    Glide.with(binding.thumb)
+            GlobalScope.launch(Dispatchers.IO) {
+                try {
+                    val drawable = Glide.with(binding.thumb.context)
+                            .asDrawable()
                             .load(artist.thumbUriString ?: R.drawable.ic_empty)
-                            .into(binding.thumb)
+                            .submit()
+                            .get()
+                    withContext(Dispatchers.Main) {
+                        binding.thumb.setImageDrawable(drawable)
+                    }
+                } catch (t: Throwable) {
+                    Timber.e(t)
                 }
-            } catch (t: Throwable) {
-                Timber.e(t)
             }
         }
 
