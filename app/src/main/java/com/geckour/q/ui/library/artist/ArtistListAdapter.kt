@@ -14,7 +14,13 @@ import com.geckour.q.databinding.ItemListArtistBinding
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.main.MainViewModel
-import com.geckour.q.util.*
+import com.geckour.q.util.BoolConverter
+import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.getSong
+import com.geckour.q.util.getTimeString
+import com.geckour.q.util.ignoringEnabled
+import com.geckour.q.util.sortedByTrackOrder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -146,7 +152,6 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
                 else -> return false
             }
 
-            viewModel.loading.value = true
             GlobalScope.launch {
                 val sortByTrackOrder = id.let {
                     it != R.id.menu_insert_all_simple_shuffle_next
@@ -155,10 +160,13 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
                 }
                 val songs = DB.getInstance(context).let { db ->
                     val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+                    viewModel.loading.postValue(true)
                     db.albumDao().findByArtistId(artist.id).map {
                         db.trackDao().findByAlbum(it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled))
                                 .mapNotNull { getSong(db, it) }
                                 .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
+                    }.apply {
+                        viewModel.loading.postValue(false)
                     }.flatten()
                 }
 

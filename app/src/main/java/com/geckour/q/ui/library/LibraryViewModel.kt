@@ -5,6 +5,6 @@ import com.geckour.q.util.SingleLiveEvent
 
 open class LibraryViewModel : ViewModel() {
 
-    val requireScrollTop: SingleLiveEvent<Unit> = SingleLiveEvent()
-    val forceLoad: SingleLiveEvent<Unit> = SingleLiveEvent()
+    internal val scrollToTop: SingleLiveEvent<Unit> = SingleLiveEvent()
+    internal val forceLoad: SingleLiveEvent<Unit> = SingleLiveEvent()
 }

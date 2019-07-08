@@ -21,7 +21,15 @@ import com.geckour.q.databinding.DialogEditTextBinding
 import com.geckour.q.databinding.DialogSpinnerBinding
 import com.geckour.q.setCrashlytics
 import com.geckour.q.ui.license.LicenseActivity
-import com.geckour.q.util.*
+import com.geckour.q.util.Pref
+import com.geckour.q.util.appTheme
+import com.geckour.q.util.bundleArtwork
+import com.geckour.q.util.ducking
+import com.geckour.q.util.formatPattern
+import com.geckour.q.util.getColor
+import com.geckour.q.util.observe
+import com.geckour.q.util.preferScreen
+import com.geckour.q.util.showArtworkOnLockScreen
 
 class SettingActivity : AppCompatActivity() {
 

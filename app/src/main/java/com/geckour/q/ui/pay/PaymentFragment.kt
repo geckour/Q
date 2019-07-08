@@ -49,7 +49,7 @@ class PaymentFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
-        mainViewModel.resumedFragmentId.value = R.id.nav_pay
+        mainViewModel.currentFragmentId.value = R.id.nav_pay
     }
 
     private fun observeEvents() {

@@ -80,7 +80,7 @@ data class QueueMetadata(
         val classType: OrientedClassType
 )
 
-data class InsertQueue(
+data class QueueInfo(
         val metadata: QueueMetadata,
         val queue: List<Song>
 )
@@ -119,7 +119,8 @@ suspend fun getSong(db: DB, track: Track,
             val artistName = db.artistDao().get(track.artistId)?.title ?: UNKNOWN
             val artwork = db.albumDao().get(track.albumId)?.artworkUriString
             Song(track.id, track.mediaId, track.albumId, track.title,
-                    artistName, track.composer, artwork, track.duration, trackNum ?: track.trackNum, track.discNum,
+                    artistName, track.composer, artwork, track.duration, trackNum
+                    ?: track.trackNum, track.discNum,
                     genreId, playlistId, track.sourcePath, BoolConverter().toBoolean(track.ignored))
         }
 
@@ -427,7 +428,7 @@ fun Long.getTimeString(): String {
     return (if (hour > 0) String.format("%d:", hour) else "") + String.format("%02d:%02d", minute, second)
 }
 
-fun pushMedia(context: Context, db: DB, cursor: Cursor) {
+fun MediaMetadataRetriever.pushMedia(context: Context, db: DB, cursor: Cursor) {
     val trackMediaId = cursor.getLong(
             cursor.getColumnIndex(MediaStore.Audio.Media._ID))
 
@@ -441,52 +442,50 @@ fun pushMedia(context: Context, db: DB, cursor: Cursor) {
         return
     }
 
-    MediaMetadataRetriever().also { retriever ->
-        try {
-            retriever.setDataSource(context, uri)
+    try {
+        setDataSource(context, uri)
 
-            val current = cursor.position
-            val total = cursor.count
+        val current = cursor.position
+        val total = cursor.count
 
-            val title = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.TITLE))
-            val duration = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DURATION))
-            val trackNum = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Media.TRACK))
-            val albumMediaId = cursor.getLong(
-                    cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID))
-            val albumTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM))
-            val artistMediaId = cursor.getLong(
-                    cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST_ID))
-            val artistTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST))
-            val composerTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.COMPOSER))
-            val artworkUriString = albumMediaId.getArtworkUriIfExist(context)?.toString()
+        val title = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.TITLE))
+        val duration = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DURATION))
+        val trackNum = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Media.TRACK))
+        val albumMediaId = cursor.getLong(
+                cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID))
+        val albumTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM))
+        val artistMediaId = cursor.getLong(
+                cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST_ID))
+        val artistTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST))
+        val composerTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.COMPOSER))
+        val artworkUriString = albumMediaId.getArtworkUriIfExist(context)?.toString()
 
-            val discNum = retriever.extractMetadata(
-                    MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER)?.split("/")
-                    ?.first()?.toInt()
-            val albumArtistTitle = retriever.extractMetadata(
-                    MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
+        val discNum = extractMetadata(
+                MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER)?.split("/")
+                ?.first()?.toInt()
+        val albumArtistTitle = extractMetadata(
+                MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
 
-            val artistId = Artist(0, artistMediaId, artistTitle, 0).upsert(db) ?: return@also
-            val albumArtistId =
-                    if (albumArtistTitle == null) null
-                    else Artist(0, null, albumArtistTitle, 0).upsert(db)
+        val artistId = Artist(0, artistMediaId, artistTitle, 0).upsert(db) ?: return
+        val albumArtistId =
+                if (albumArtistTitle == null) null
+                else Artist(0, null, albumArtistTitle, 0).upsert(db)
 
-            val albumId = db.albumDao().getByMediaId(albumMediaId).let {
-                if (it == null || it.hasAlbumArtist.not()) {
-                    val album = Album(0, albumMediaId, albumTitle,
-                            albumArtistId ?: artistId,
-                            artworkUriString, albumArtistId != null, 0)
-                    album.upsert(db)
-                } else it.id
-            }
-
-            val track = Track(0, trackMediaId, title, albumId, artistId, albumArtistId, composerTitle, duration,
-                    trackNum, discNum, trackPath, 0)
-            track.upsert(db)
-            context.sendBroadcast(MainActivity.createProgressIntent(current to total))
-        } catch (t: Throwable) {
-            Timber.e(t)
+        val albumId = db.albumDao().getByMediaId(albumMediaId).let {
+            if (it == null || it.hasAlbumArtist.not()) {
+                val album = Album(0, albumMediaId, albumTitle,
+                        albumArtistId ?: artistId,
+                        artworkUriString, albumArtistId != null, 0)
+                album.upsert(db)
+            } else it.id
         }
+
+        val track = Track(0, trackMediaId, title, albumId, artistId, albumArtistId, composerTitle, duration,
+                trackNum, discNum, trackPath, 0)
+        track.upsert(db)
+        context.sendBroadcast(MainActivity.createProgressIntent(current to total))
+    } catch (t: Throwable) {
+        Timber.e(t)
     }
 }
 

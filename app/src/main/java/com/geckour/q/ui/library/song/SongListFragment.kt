@@ -2,7 +2,12 @@ package com.geckour.q.ui.library.song
 
 import android.os.Bundle
 import android.provider.MediaStore
-import android.view.*
+import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import android.widget.SearchView
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
@@ -13,7 +18,14 @@ import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.ui.main.MainViewModel
-import com.geckour.q.util.*
+import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.ScopedFragment
+import com.geckour.q.util.getSongListFromTrackList
+import com.geckour.q.util.getSongListFromTrackMediaId
+import com.geckour.q.util.getSongListFromTrackMediaIdWithTrackNum
+import com.geckour.q.util.getTrackMediaIds
+import com.geckour.q.util.observe
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -88,7 +100,7 @@ class SongListFragment : ScopedFragment() {
 
     override fun onResume() {
         super.onResume()
-        mainViewModel.resumedFragmentId.value = R.id.nav_song
+        mainViewModel.currentFragmentId.value = R.id.nav_song
     }
 
     override fun onStop() {
@@ -96,18 +108,18 @@ class SongListFragment : ScopedFragment() {
         mainViewModel.loading.value = false
     }
 
-    override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
-        inflater?.inflate(R.menu.songs_toolbar, menu)
-        (menu?.findItem(R.id.menu_search)?.actionView as? SearchView)?.apply {
+        inflater.inflate(R.menu.songs_toolbar, menu)
+        (menu.findItem(R.id.menu_search)?.actionView as? SearchView?)?.apply {
             setOnQueryTextListener(object : SearchView.OnQueryTextListener {
                 override fun onQueryTextSubmit(newText: String?): Boolean {
-                    mainViewModel.searchQuery.value = newText
+                    mainViewModel.search(requireContext(), newText)
                     return true
                 }
 
                 override fun onQueryTextChange(query: String?): Boolean {
-                    mainViewModel.searchQuery.value = query
+                    mainViewModel.search(requireContext(), query)
                     return true
                 }
             })
@@ -115,7 +127,6 @@ class SongListFragment : ScopedFragment() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        mainViewModel.loading.value = true
         adapter.onNewQueue(requireContext(), when (item.itemId) {
             R.id.menu_insert_all_next -> InsertActionType.NEXT
             R.id.menu_insert_all_last -> InsertActionType.LAST
@@ -130,7 +141,7 @@ class SongListFragment : ScopedFragment() {
     }
 
     private fun observeEvents() {
-        mainViewModel.removePlayOrderOfPlaylist.observe(this) {
+        mainViewModel.playOrderOfPlaylistToRemove.observe(this) {
             if (it == null) return@observe
             val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST) ?: return@observe
             val removed = context?.contentResolver
@@ -140,7 +151,7 @@ class SongListFragment : ScopedFragment() {
             if (removed) adapter.removeByTrackNum(it)
         }
 
-        viewModel.requireScrollTop.observe(this) {
+        viewModel.scrollToTop.observe(this) {
             binding.recyclerView.smoothScrollToPosition(0)
         }
 
@@ -149,7 +160,7 @@ class SongListFragment : ScopedFragment() {
             fetchSongs()
         }
 
-        viewModel.songIdDeleted.observe(this) {
+        mainViewModel.deletedSongId.observe(this) {
             if (it == null) return@observe
             adapter.onSongDeleted(it)
         }
@@ -174,7 +185,6 @@ class SongListFragment : ScopedFragment() {
                 db.trackDao().getAllAsync().observe(this@SongListFragment) { dbTrackList ->
                     if (dbTrackList == null) return@observe
 
-                    mainViewModel.loading.value = true
                     upsertSongListIfPossible(db, dbTrackList, false)
                 }
             }
@@ -182,13 +192,11 @@ class SongListFragment : ScopedFragment() {
     }
 
     private fun observeSongsWithAlbum(album: Album) {
-        mainViewModel.loading.value = true
         context?.also {
             DB.getInstance(it).also { db ->
                 db.trackDao().findByAlbumAsync(album.id).observe(this@SongListFragment) { dbTrackList ->
                     if (dbTrackList == null) return@observe
 
-                    mainViewModel.loading.value = true
                     upsertSongListIfPossible(db, dbTrackList)
                 }
             }
@@ -196,30 +204,30 @@ class SongListFragment : ScopedFragment() {
     }
 
     private fun fetchSongsWithGenre(genre: Genre) {
-        mainViewModel.loading.value = true
         context?.also {
             launch {
+                mainViewModel.loading.value = true
                 adapter.upsertItems(
                         getSongListFromTrackMediaId(DB.getInstance(it),
                                 genre.getTrackMediaIds(it),
                                 genreId = genre.id), false)
-                binding.recyclerView.smoothScrollToPosition(0)
                 mainViewModel.loading.value = false
+                binding.recyclerView.smoothScrollToPosition(0)
             }
         }
     }
 
     private fun fetchSongsWithPlaylist(playlist: Playlist) {
-        mainViewModel.loading.value = true
         context?.also {
             launch {
+                mainViewModel.loading.value = true
                 adapter.addItems(
                         getSongListFromTrackMediaIdWithTrackNum(DB.getInstance(it),
                                 playlist.getTrackMediaIds(it),
                                 playlistId = playlist.id)
                 )
-                binding.recyclerView.smoothScrollToPosition(0)
                 mainViewModel.loading.value = false
+                binding.recyclerView.smoothScrollToPosition(0)
             }
         }
     }
@@ -229,6 +237,7 @@ class SongListFragment : ScopedFragment() {
             chatteringCancelFlag = true
             launch {
                 delay(500)
+                mainViewModel.loading.value = true
                 val items = getSongListFromTrackList(db, dbTrackList)
                 adapter.upsertItems(items, sortByTrackOrder)
                 mainViewModel.loading.value = false

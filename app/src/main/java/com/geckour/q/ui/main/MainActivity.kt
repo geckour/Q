@@ -1,10 +1,11 @@
 package com.geckour.q.ui.main
 
 import android.Manifest
-import android.app.AlertDialog
-import android.content.*
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
-import android.os.IBinder
 import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.view.KeyEvent
@@ -16,19 +17,14 @@ import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.ViewModelProviders
-import androidx.work.*
 import com.geckour.q.R
-import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.Bool
 import com.geckour.q.databinding.ActivityMainBinding
-import com.geckour.q.databinding.DialogAddQueuePlaylistBinding
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.RequestedTransaction
-import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.Song
+import com.geckour.q.service.MediaRetrieveService
 import com.geckour.q.service.PlayerService
 import com.geckour.q.setCrashlytics
-import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
 import com.geckour.q.ui.easteregg.EasterEggFragment
 import com.geckour.q.ui.equalizer.EqualizerFragment
 import com.geckour.q.ui.equalizer.EqualizerViewModel
@@ -44,17 +40,20 @@ import com.geckour.q.ui.pay.PaymentFragment
 import com.geckour.q.ui.pay.PaymentViewModel
 import com.geckour.q.ui.setting.SettingActivity
 import com.geckour.q.ui.sheet.BottomSheetViewModel
-import com.geckour.q.util.*
-import com.geckour.q.worker.MediaObserveWorker
-import com.geckour.q.worker.MediaRetrieveWorker
+import com.geckour.q.util.CrashlyticsBundledActivity
+import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.Pref
+import com.geckour.q.util.QueueInfo
+import com.geckour.q.util.QueueMetadata
+import com.geckour.q.util.appTheme
+import com.geckour.q.util.ducking
+import com.geckour.q.util.observe
+import com.geckour.q.util.preferScreen
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.analytics.FirebaseAnalytics
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import permissions.dispatcher.NeedsPermission
 import permissions.dispatcher.OnPermissionDenied
 import permissions.dispatcher.RuntimePermissions
@@ -62,27 +61,33 @@ import timber.log.Timber
 import java.io.File
 
 @RuntimePermissions
-class MainActivity : ScopedActivity() {
+class MainActivity : CrashlyticsBundledActivity() {
 
     enum class RequestCode(val code: Int) {
         RESULT_SETTING(333)
     }
 
     companion object {
-        private const val ACTION_PROGRESS_SYNCING = "action_progress_syncing"
-        private const val EXTRA_PROGRESS_SYNCING = "extra_progress_syncing"
+        private const val ACTION_SYNCING = "action_syncing"
+        private const val EXTRA_SYNCING_PROGRESS = "extra_syncing_progress"
+        private const val EXTRA_SYNCING_COMPLETE = "extra_syncing_complete"
         private const val STATE_KEY_REQUESTED_TRANSACTION = "state_key_requested_transaction"
 
         fun createIntent(context: Context): Intent = Intent(context, MainActivity::class.java)
 
-        fun createProgressIntent(progress: Pair<Int, Int>) = Intent(ACTION_PROGRESS_SYNCING).apply {
-            putExtra(EXTRA_PROGRESS_SYNCING, progress)
+        fun createProgressIntent(progress: Pair<Int, Int>) = Intent(ACTION_SYNCING).apply {
+            putExtra(EXTRA_SYNCING_PROGRESS, progress)
+        }
+
+        fun createSyncCompleteIntent(complete: Boolean) = Intent(ACTION_SYNCING).apply {
+            putExtra(EXTRA_SYNCING_COMPLETE, complete)
         }
     }
 
     private val viewModel: MainViewModel by lazy {
         ViewModelProviders.of(this)[MainViewModel::class.java]
     }
+
     private val bottomSheetViewModel: BottomSheetViewModel by lazy {
         ViewModelProviders.of(this)[BottomSheetViewModel::class.java]
     }
@@ -107,24 +112,37 @@ class MainActivity : ScopedActivity() {
     private val paymentViewModel: PaymentViewModel by lazy {
         ViewModelProviders.of(this)[PaymentViewModel::class.java]
     }
+
     internal lateinit var binding: ActivityMainBinding
     private val sharedPreferences by lazy { PreferenceManager.getDefaultSharedPreferences(this) }
+
     private lateinit var drawerToggle: ActionBarDrawerToggle
+
     private val searchListAdapter: SearchListAdapter by lazy { SearchListAdapter(viewModel) }
-    private var searchJob = Job()
 
     private var requestedTransaction: RequestedTransaction? = null
     private var paused = true
 
-    private var player: PlayerService? = null
-
-    private var isBoundService = false
-
     private val syncingProgressReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            (intent?.extras?.get(EXTRA_PROGRESS_SYNCING) as? Pair<Int, Int>)?.apply {
-                binding.coordinatorMain.indicatorLocking.progressSync.text =
-                        getString(R.string.progress_sync, this.first, this.second)
+            intent?.apply {
+                extras?.getBoolean(EXTRA_SYNCING_COMPLETE, false)?.apply {
+                    if (this) {
+                        viewModel.syncing = false
+                        setLockingIndicator()
+                        when (supportFragmentManager.fragments.lastOrNull { it.isVisible }) {
+                            is ArtistListFragment -> artistListViewModel.forceLoad.call()
+                            is AlbumListFragment -> albumListViewModel.forceLoad.call()
+                            is SongListFragment -> songListViewModel.forceLoad.call()
+                            is GenreListFragment -> genreListViewModel.forceLoad.call()
+                            is PlaylistListFragment -> playlistListViewModel.forceLoad.call()
+                        }
+                    }
+                }
+                (extras?.get(EXTRA_SYNCING_PROGRESS) as? Pair<Int, Int>)?.apply {
+                    binding.coordinatorMain.indicatorLocking.progressSync.text =
+                            getString(R.string.progress_sync, this.first, this.second)
+                }
             }
         }
     }
@@ -169,58 +187,8 @@ class MainActivity : ScopedActivity() {
                     }
                     .commit()
         }
-        launch { binding.drawerLayout.closeDrawers() }
+        binding.drawerLayout.post { binding.drawerLayout.closeDrawers() }
         true
-    }
-
-    private val serviceConnection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            if (name == ComponentName(applicationContext, PlayerService::class.java)) {
-                isBoundService = true
-                player = (service as? PlayerService.PlayerBinder)?.service?.apply {
-                    setOnQueueChangedListener { bottomSheetViewModel.currentQueue.value = it }
-                    setOnCurrentPositionChangedListener {
-                        bottomSheetViewModel.currentPosition.value = it
-                    }
-                    setOnPlaybackStateChangeListener { playbackState, playWhenReady ->
-                        bottomSheetViewModel.playing.value = when (playbackState) {
-                            Player.STATE_READY -> {
-                                playWhenReady
-                            }
-                            else -> false
-                        }
-                    }
-                    setOnPlaybackRatioChangedListener {
-                        bottomSheetViewModel.playbackRatio.value = it
-                    }
-                    setOnRepeatModeChangedListener { bottomSheetViewModel.repeatMode.value = it }
-                    setOnEqualizerStateChangedListener { equalizerViewModel.equalizerState.value = it }
-                    setOnDestroyedListener { onDestroyPlayer() }
-
-                    publishStatus()
-                }
-            }
-        }
-
-        override fun onServiceDisconnected(name: ComponentName?) {
-            if (name == ComponentName(applicationContext, PlayerService::class.java)) {
-                onDestroyPlayer()
-            }
-        }
-
-        override fun onBindingDied(name: ComponentName?) {
-            super.onBindingDied(name)
-            if (name == ComponentName(applicationContext, PlayerService::class.java)) {
-                onDestroyPlayer()
-            }
-        }
-
-        override fun onNullBinding(name: ComponentName?) {
-            super.onNullBinding(name)
-            if (name == ComponentName(applicationContext, PlayerService::class.java)) {
-                onDestroyPlayer()
-            }
-        }
     }
 
     private lateinit var currentAppTheme: Pref.Enum.Content.AppTheme
@@ -238,14 +206,13 @@ class MainActivity : ScopedActivity() {
         binding.coordinatorMain.contentSearch.recyclerView.adapter = searchListAdapter
 
         observeEvents()
-        registerReceiver(syncingProgressReceiver, IntentFilter(ACTION_PROGRESS_SYNCING))
+        registerReceiver(syncingProgressReceiver, IntentFilter(ACTION_SYNCING))
 
         setSupportActionBar(binding.coordinatorMain.toolbar)
         setupDrawer()
 
         if (savedInstanceState == null) {
-            retrieveMediaIfEmpty()
-            WorkManager.getInstance().observeMediaChange()
+            viewModel.checkDBIsEmpty()
 
             val navId = PreferenceManager.getDefaultSharedPreferences(this).preferScreen.value.navId
             onNavigationItemSelected(binding.navigationView.menu.findItem(navId))
@@ -260,11 +227,6 @@ class MainActivity : ScopedActivity() {
         super.onResume()
 
         paused = false
-
-        if (player == null) {
-            bottomSheetViewModel.currentQueue.value = emptyList()
-            bindPlayer()
-        }
 
         tryTransaction()
     }
@@ -284,13 +246,13 @@ class MainActivity : ScopedActivity() {
 
     override fun onPause() {
         super.onPause()
+
         paused = true
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        player?.onRequestedStopService()
-        unbindPlayer()
+
         unregisterReceiver(syncingProgressReceiver)
     }
 
@@ -315,93 +277,26 @@ class MainActivity : ScopedActivity() {
 
         when (requestCode) {
             RequestCode.RESULT_SETTING.code -> {
-                if (player?.getDuking() != sharedPreferences.ducking)
-                    rebootPlayer()
+                if (viewModel.player.value?.getDuking() != sharedPreferences.ducking)
+                    viewModel.rebootPlayer()
                 if (currentAppTheme != sharedPreferences.appTheme) {
                     finish()
-                    startActivity(MainActivity.createIntent(this))
+                    startActivity(createIntent(this))
                 }
             }
         }
     }
 
-    private fun bindPlayer() {
-        if (isBoundService.not()) {
-            bindService(PlayerService.createIntent(this),
-                    serviceConnection, Context.BIND_AUTO_CREATE)
-            isBoundService = true
-        }
-    }
-
-    private fun unbindPlayer() {
-        if (isBoundService) {
-            unbindService(serviceConnection)
-            isBoundService = false
-        }
-    }
-
-    private fun onDestroyPlayer() {
-        player = null
-    }
-
-    private fun rebootPlayer() {
-        player?.storeState()
-        player?.pause()
-        unbindPlayer()
-        player?.onRequestedStopService()
-        startService(PlayerService.createIntent(this))
-        bindPlayer()
-    }
-
     @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.WRITE_EXTERNAL_STORAGE)
     internal fun retrieveMedia() {
-        WorkManager.getInstance().invokeRetrieveMediaWorker()
+        invokeRetrieveMedia()
     }
 
-    private fun retrieveMediaIfEmpty() {
-        launch(Dispatchers.IO) {
-            if (DB.getInstance(this@MainActivity).trackDao().count() == 0)
-                withContext(Dispatchers.Main) { retrieveMediaWithPermissionCheck() }
-        }
-    }
-
-    private fun WorkManager.invokeRetrieveMediaWorker() {
-        beginUniqueWork(MediaRetrieveWorker.WORK_NAME, ExistingWorkPolicy.KEEP,
-                OneTimeWorkRequestBuilder<MediaRetrieveWorker>().build()).enqueue()
-        viewModel.syncing.value = true
-    }
-
-    private fun WorkManager.observeMediaChange() {
-        enqueue(OneTimeWorkRequestBuilder<MediaObserveWorker>().setConstraints(Constraints().apply {
-            requiredNetworkType = NetworkType.NOT_REQUIRED
-            setContentUriTriggers(ContentUriTriggers().apply {
-                add(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, true)
-            })
-        }).build())
-    }
-
-    private fun WorkManager.monitorSyncState() {
-        getWorkInfosForUniqueWorkLiveData(MediaRetrieveWorker.WORK_NAME)
-                .observe(this@MainActivity) {
-                    viewModel.syncing.value =
-                            it?.firstOrNull { it.state == WorkInfo.State.RUNNING } != null
-                    if (it?.any { status -> status.state == WorkInfo.State.SUCCEEDED } == true) {
-                        Timber.d("qgeck sync succeeded")
-                        val fragment = supportFragmentManager.fragments.lastOrNull { it.isVisible }
-                        when (fragment) {
-                            is ArtistListFragment -> artistListViewModel.forceLoad.call()
-                            is AlbumListFragment -> albumListViewModel.forceLoad.call()
-                            is SongListFragment -> songListViewModel.forceLoad.call()
-                            is GenreListFragment -> genreListViewModel.forceLoad.call()
-                            is PlaylistListFragment -> playlistListViewModel.forceLoad.call()
-                        }
-                    }
-                }
-    }
-
-    private fun WorkManager.cancelSync() {
-        cancelUniqueWork(MediaRetrieveWorker.WORK_NAME)
+    private fun invokeRetrieveMedia() {
+        viewModel.syncing = true
+        setLockingIndicator()
+        startService(MediaRetrieveService.getIntent(this))
     }
 
     @OnPermissionDenied(Manifest.permission.READ_EXTERNAL_STORAGE,
@@ -411,9 +306,37 @@ class MainActivity : ScopedActivity() {
     }
 
     private fun observeEvents() {
-        WorkManager.getInstance().monitorSyncState()
+        viewModel.player.observe(this) { player ->
+            Timber.d("qgeck player: $player")
+            player ?: return@observe
 
-        viewModel.resumedFragmentId.observe(this) { navId ->
+            player.setOnQueueChangedListener { bottomSheetViewModel.currentQueue.value = it }
+            player.setOnCurrentPositionChangedListener {
+                bottomSheetViewModel.currentPosition.value = it
+            }
+            player.setOnPlaybackStateChangeListener { playbackState, playWhenReady ->
+                bottomSheetViewModel.playing.value = when (playbackState) {
+                    Player.STATE_READY -> {
+                        playWhenReady
+                    }
+                    else -> false
+                }
+            }
+            player.setOnPlaybackRatioChangedListener {
+                bottomSheetViewModel.playbackRatio.value = it
+            }
+            player.setOnRepeatModeChangedListener { bottomSheetViewModel.repeatMode.value = it }
+            player.setOnEqualizerStateChangedListener { equalizerViewModel.equalizerState.value = it }
+            player.setOnDestroyedListener { viewModel.onDestroyPlayer() }
+
+            player.publishStatus()
+        }
+
+        viewModel.dbEmpty.observe(this) {
+            retrieveMediaWithPermissionCheck()
+        }
+
+        viewModel.currentFragmentId.observe(this) { navId ->
             if (navId == null) return@observe
             binding.navigationView.setCheckedItem(navId)
             val title = supportFragmentManager.fragments.firstOrNull {
@@ -439,22 +362,17 @@ class MainActivity : ScopedActivity() {
             supportActionBar?.title = title
         }
 
-        viewModel.syncing.observe(this) {
-            if (it == null) return@observe
-            setLockingIndicator(it, viewModel.loading.value == true)
-        }
-
         viewModel.loading.observe(this) {
             if (it == null) return@observe
-            setLockingIndicator(viewModel.syncing.value == true, it)
+            setLockingIndicator()
         }
 
-        viewModel.requireScrollTop.observe(this) {
-            artistListViewModel.requireScrollTop.call()
-            albumListViewModel.requireScrollTop.call()
-            songListViewModel.requireScrollTop.call()
-            genreListViewModel.requireScrollTop.call()
-            playlistListViewModel.requireScrollTop.call()
+        viewModel.scrollToTop.observe(this) {
+            artistListViewModel.scrollToTop.call()
+            albumListViewModel.scrollToTop.call()
+            songListViewModel.scrollToTop.call()
+            genreListViewModel.scrollToTop.call()
+            playlistListViewModel.scrollToTop.call()
         }
 
         viewModel.selectedArtist.observe(this) {
@@ -481,24 +399,24 @@ class MainActivity : ScopedActivity() {
             tryTransaction()
         }
 
-        viewModel.newQueue.observe(this) {
+        viewModel.newQueueInfo.observe(this) {
             if (it == null) return@observe
-            player?.submitQueue(it)
+            viewModel.player.value?.submitQueue(it)
         }
 
         viewModel.requestedPositionInQueue.observe(this) {
             if (it == null) return@observe
-            player?.play(it)
+            viewModel.player.value?.play(it)
         }
 
         viewModel.swappedQueuePositions.observe(this) {
             if (it == null) return@observe
-            player?.swapQueuePosition(it.first, it.second)
+            viewModel.player.value?.swapQueuePosition(it.first, it.second)
         }
 
         viewModel.removedQueueIndex.observe(this) {
             if (it == null) return@observe
-            player?.removeQueue(it)
+            viewModel.player.value?.removeQueue(it)
         }
 
         viewModel.songToDelete.observe(this) {
@@ -507,61 +425,13 @@ class MainActivity : ScopedActivity() {
             deleteFromDeviceWithPermissionCheck(it)
         }
 
-        viewModel.cancelSync.observe(this) {
-            WorkManager.getInstance().cancelSync()
-        }
-
-        viewModel.searchQuery.observe(this) {
-            if (it == null || it.isBlank() || it.filterNot { it.isWhitespace() }.length < 2) {
+        viewModel.searchItems.observe(this) {
+            if (it == null) {
                 binding.coordinatorMain.contentSearch.root.visibility = View.GONE
                 return@observe
             } else binding.coordinatorMain.contentSearch.root.visibility = View.VISIBLE
 
-            val db = DB.getInstance(this@MainActivity)
-            searchJob.cancel()
-            searchJob = launch {
-                searchListAdapter.clearItems()
-                val tracks = db.searchTrackByFuzzyTitle(it).take(3)
-                if (tracks.isNotEmpty()) {
-                    searchListAdapter.addItem(SearchItem(getString(R.string.search_category_song),
-                            Unit, SearchItem.SearchItemType.CATEGORY))
-                    searchListAdapter.addItems(tracks.map {
-                        SearchItem(it.title ?: UNKNOWN, it, SearchItem.SearchItemType.TRACK)
-                    })
-                }
-                val albums = db.searchAlbumByFuzzyTitle(it).take(3)
-                if (albums.isNotEmpty()) {
-                    searchListAdapter.addItem(SearchItem(getString(R.string.search_category_album),
-                            Unit, SearchItem.SearchItemType.CATEGORY))
-                    searchListAdapter.addItems(albums.map {
-                        SearchItem(it.title ?: UNKNOWN, it, SearchItem.SearchItemType.ALBUM)
-                    })
-                }
-                val artists = db.searchArtistByFuzzyTitle(it).take(3)
-                if (artists.isNotEmpty()) {
-                    searchListAdapter.addItem(SearchItem(getString(R.string.search_category_artist),
-                            Unit, SearchItem.SearchItemType.CATEGORY))
-                    searchListAdapter.addItems(artists.map {
-                        SearchItem(it.title ?: UNKNOWN, it, SearchItem.SearchItemType.ARTIST)
-                    })
-                }
-                val playlists = searchPlaylistByFuzzyTitle(it).take(3)
-                if (playlists.isNotEmpty()) {
-                    searchListAdapter.addItem(SearchItem(getString(R.string.search_category_playlist),
-                            Unit, SearchItem.SearchItemType.CATEGORY))
-                    searchListAdapter.addItems(playlists.map {
-                        SearchItem(it.name, it, SearchItem.SearchItemType.PLAYLIST)
-                    })
-                }
-                val genres = searchGenreByFuzzyTitle(it).take(3)
-                if (genres.isNotEmpty()) {
-                    searchListAdapter.addItem(SearchItem(getString(R.string.search_category_genre),
-                            Unit, SearchItem.SearchItemType.CATEGORY))
-                    searchListAdapter.addItems(genres.map {
-                        SearchItem(it.name, it, SearchItem.SearchItemType.GENRE)
-                    })
-                }
-            }
+            searchListAdapter.clearItems()
         }
 
         bottomSheetViewModel.playbackButton.observe(this) {
@@ -581,99 +451,34 @@ class MainActivity : ScopedActivity() {
                     ))
         }
 
-        bottomSheetViewModel.addQueueToPlaylist.observe(this)
-        { queue ->
-            if (queue == null) return@observe
-            launch {
-                val playlists = fetchPlaylists(this@MainActivity)
-                val binding = DialogAddQueuePlaylistBinding.inflate(layoutInflater)
-                val dialog = AlertDialog.Builder(this@MainActivity)
-                        .setTitle(R.string.dialog_title_add_queue_to_playlist)
-                        .setMessage(R.string.dialog_desc_add_queue_to_playlist)
-                        .setView(binding.root)
-                        .setNegativeButton(R.string.dialog_ng) { dialog, _ ->
-                            dialog.dismiss()
-                        }
-                        .setPositiveButton(R.string.dialog_ok) { _, _ -> }
-                        .setCancelable(true)
-                        .create()
-                binding.recyclerView.adapter = QueueAddPlaylistListAdapter(playlists) {
-                    queue.forEachIndexed { i, song ->
-                        contentResolver.insert(
-                                MediaStore.Audio.Playlists.Members
-                                        .getContentUri("external", it.id),
-                                ContentValues().apply {
-                                    put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, it.memberCount + 1 + i)
-                                    put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
-                                })
-                    }
-                    dialog.dismiss()
-                }
-                dialog.show()
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                    val title = binding.editText.text?.toString()
-                    if (title.isNullOrBlank()) {
-                        // TODO: エラーメッセージ表示
-                    } else {
-                        val playlistId = contentResolver.insert(
-                                MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
-                                ContentValues().apply {
-                                    val now = System.currentTimeMillis()
-                                    put(MediaStore.Audio.PlaylistsColumns.NAME, title)
-                                    put(MediaStore.Audio.PlaylistsColumns.DATE_ADDED, now)
-                                    put(MediaStore.Audio.PlaylistsColumns.DATE_MODIFIED, now)
-                                })?.let { ContentUris.parseId(it) } ?: kotlin.run {
-                            dialog.dismiss()
-                            return@setOnClickListener
-                        }
-                        queue.forEachIndexed { i, song ->
-                            contentResolver.insert(
-                                    MediaStore.Audio.Playlists.Members
-                                            .getContentUri("external", playlistId),
-                                    ContentValues().apply {
-                                        put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, i + 1)
-                                        put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
-                                    })
-                        }
-                        dialog.dismiss()
-                    }
-                }
-            }
+        bottomSheetViewModel.clearQueue.observe(this) {
+            viewModel.player.value?.clear(true)
         }
 
-        bottomSheetViewModel.clearQueue.observe(this)
-        {
-            player?.clear(true)
-        }
-
-        bottomSheetViewModel.newSeekBarProgress.observe(this)
-        {
+        bottomSheetViewModel.newSeekBarProgress.observe(this) {
             if (it == null) return@observe
-            player?.seek(it)
+            viewModel.player.value?.seek(it)
         }
 
-        bottomSheetViewModel.shuffle.observe(this)
-        { player?.shuffle() }
+        bottomSheetViewModel.shuffle.observe(this) { viewModel.player.value?.shuffle() }
 
-        bottomSheetViewModel.changeRepeatMode.observe(this)
-        { player?.rotateRepeatMode() }
+        bottomSheetViewModel.changeRepeatMode.observe(this) {
+            viewModel.player.value?.rotateRepeatMode()
+        }
 
-        bottomSheetViewModel.changedQueue.observe(this)
-        {
+        bottomSheetViewModel.changedQueue.observe(this) {
             if (it == null) return@observe
-            player?.submitQueue(InsertQueue(
+            viewModel.player.value?.submitQueue(QueueInfo(
                     QueueMetadata(InsertActionType.OVERRIDE,
                             OrientedClassType.SONG), it))
         }
 
-        bottomSheetViewModel.changedPosition.observe(this)
-        {
+        bottomSheetViewModel.changedPosition.observe(this) {
             if (it == null) return@observe
-            player?.forcePosition(it)
+            viewModel.player.value?.forcePosition(it)
         }
 
-        paymentViewModel.saveSuccess.observe(this)
-        {
+        paymentViewModel.saveSuccess.observe(this) {
             if (it == null) return@observe
             Snackbar.make(binding.root,
                     if (it) R.string.payment_save_success
@@ -696,17 +501,17 @@ class MainActivity : ScopedActivity() {
         }
     }
 
-    private fun setLockingIndicator(syncing: Boolean, loading: Boolean) {
+    private fun setLockingIndicator() {
         when {
-            syncing -> {
+            viewModel.syncing -> {
                 indicateSync()
                 toggleIndicateLock(true)
             }
-            syncing.not() && loading -> {
+            viewModel.syncing.not() && viewModel.loading.value == true -> {
                 indicateLoad()
                 toggleIndicateLock(true)
             }
-            syncing.not() && loading.not() -> {
+            else -> {
                 toggleIndicateLock(false)
             }
         }
@@ -781,6 +586,7 @@ class MainActivity : ScopedActivity() {
                                 .commit()
                         binding.drawerLayout.closeDrawer(binding.navigationView)
                     }
+                    else -> Unit
                 }
                 requestedTransaction = null
             }
@@ -797,40 +603,16 @@ class MainActivity : ScopedActivity() {
     internal fun deleteFromDevice(song: Song) {
         File(song.sourcePath).apply {
             if (this.exists()) {
-                player?.removeQueue(song.id)
+                viewModel.player.value?.removeQueue(song.id)
                 this.delete()
             }
         }
         contentResolver.delete(
-                android.provider.MediaStore.Files.getContentUri("external"),
-                "${android.provider.MediaStore.Files.FileColumns.DATA}=?",
-                kotlin.arrayOf(song.sourcePath))
+                MediaStore.Files.getContentUri("external"),
+                "${MediaStore.Files.FileColumns.DATA}=?",
+                arrayOf(song.sourcePath)
+        )
 
-        launch(Dispatchers.IO) {
-            val db = com.geckour.q.data.db.DB.getInstance(this@MainActivity)
-            val track = db.trackDao().get(song.id) ?: return@launch
-
-            player?.removeQueue(track.id)
-
-            var deleted = db.trackDao().delete(track.id) > 0
-            if (deleted)
-                withContext(Dispatchers.Main) {
-                    songListViewModel.songIdDeleted.value = track.id
-                }
-            if (db.trackDao().findByAlbum(track.albumId, Bool.UNDEFINED).isEmpty()) {
-                deleted = db.albumDao().delete(track.albumId) > 0
-                if (deleted)
-                    withContext(Dispatchers.Main) {
-                        albumListViewModel.albumIdDeleted.value = track.albumId
-                    }
-            }
-            if (db.trackDao().findByArtist(track.artistId, Bool.UNDEFINED).isEmpty()) {
-                deleted = db.artistDao().delete(track.artistId) > 0
-                if (deleted)
-                    withContext(Dispatchers.Main) {
-                        artistListViewModel.artistIdDeleted.value = track.artistId
-                    }
-            }
-        }
+        viewModel.deleteSongFromDB(song)
     }
 }

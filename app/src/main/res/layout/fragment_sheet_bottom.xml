@@ -228,7 +228,7 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> isQueueNotEmpty ? viewModel.onClickAddQueueToPlaylistButton() : null}"
+            android:onClick="@{() -> isQueueNotEmpty ? viewModel.onClickAddQueueToPlaylistButton(context) : null}"
             android:padding="6dp"
             android:src="@drawable/ic_playlist_add"
             app:tintAttr="@{isQueueNotEmpty ? R.attr.colorAccent : R.attr.colorInactive}"

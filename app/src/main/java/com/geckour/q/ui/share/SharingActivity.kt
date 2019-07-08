@@ -12,16 +12,19 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.Song
 import com.geckour.q.setCrashlytics
-import com.geckour.q.util.ScopedActivity
+import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.bundleArtwork
 import com.geckour.q.util.formatPattern
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import kotlin.coroutines.CoroutineContext
 
-class SharingActivity : ScopedActivity() {
+class SharingActivity : CrashlyticsBundledActivity() {
 
     enum class IntentRequestCode(val code: Int) {
         SHARE(666)
@@ -38,6 +41,12 @@ class SharingActivity : ScopedActivity() {
                 }
     }
 
+    private var job = Job()
+    private val coroutineScope = object : CoroutineScope {
+        override val coroutineContext: CoroutineContext
+            get() = job + Dispatchers.Main
+    }
+
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         if (intent == null) return
@@ -48,10 +57,18 @@ class SharingActivity : ScopedActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        job = Job()
+
         setCrashlytics()
 
         onNewIntent(intent)
         finish()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        job.cancel()
     }
 
     private fun startShare(song: Song, requireUnlock: Boolean) {
@@ -66,7 +83,7 @@ class SharingActivity : ScopedActivity() {
         if (requireUnlock.not() || keyguardManager?.isDeviceLocked != true) {
             val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
 
-            launch(Dispatchers.IO) {
+            coroutineScope.launch(Dispatchers.IO) {
                 val albumName: String? = DB.getInstance(this@SharingActivity)
                         .albumDao().get(song.albumId)?.title
                 val sharingText: String =
@@ -84,7 +101,7 @@ class SharingActivity : ScopedActivity() {
                             .apply {
                                 PendingIntent.getActivity(
                                         this@SharingActivity,
-                                        IntentRequestCode.SHARE.ordinal,
+                                        IntentRequestCode.SHARE.code,
                                         this@apply,
                                         PendingIntent.FLAG_CANCEL_CURRENT
                                 ).send()

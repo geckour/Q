@@ -22,7 +22,11 @@ import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.ui.share.SharingActivity
-import com.geckour.q.util.*
+import com.geckour.q.util.ScopedFragment
+import com.geckour.q.util.getTimeString
+import com.geckour.q.util.observe
+import com.geckour.q.util.shake
+import com.geckour.q.util.toDomainModel
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.Dispatchers
@@ -235,8 +239,6 @@ class BottomSheetFragment : ScopedFragment() {
 
             if (changed && behavior.state == BottomSheetBehavior.STATE_COLLAPSED)
                 binding.buttonToggleVisibleQueue.shake()
-
-            mainViewModel.loading.value = false
         }
 
         viewModel.currentPosition.observe(this) {
@@ -268,17 +270,17 @@ class BottomSheetFragment : ScopedFragment() {
                         }
                     }
 
-                    viewModel.currentSong?.let {
-                        val source = it.thumbUriString ?: R.drawable.ic_empty
-                        launch(Dispatchers.IO) {
-                            val drawable = Glide.with(requireContext())
+                    launch(Dispatchers.IO) {
+                        val drawable = viewModel.currentSong?.let {
+                            val source = it.thumbUriString ?: R.drawable.ic_empty
+                            Glide.with(requireContext())
                                     .asDrawable()
                                     .load(source)
                                     .submit()
                                     .get()
-                            withContext(Dispatchers.Main) {
-                                binding.artwork.setImageDrawable(drawable)
-                            }
+                        }
+                        withContext(Dispatchers.Main) {
+                            binding.artwork.setImageDrawable(drawable)
                         }
                     }
                 }

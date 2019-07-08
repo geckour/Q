@@ -1,7 +1,12 @@
 package com.geckour.q.ui.library.playlist
 
 import android.os.Bundle
-import android.view.*
+import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import android.widget.SearchView
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.DividerItemDecoration
@@ -9,7 +14,12 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.ui.main.MainViewModel
-import com.geckour.q.util.*
+import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.ScopedFragment
+import com.geckour.q.util.fetchPlaylists
+import com.geckour.q.util.getSong
+import com.geckour.q.util.getTrackMediaIds
+import com.geckour.q.util.observe
 import kotlinx.coroutines.launch
 
 class PlaylistListFragment : ScopedFragment() {
@@ -48,15 +58,15 @@ class PlaylistListFragment : ScopedFragment() {
             launch {
                 mainViewModel.loading.value = true
                 context?.apply { adapter.setItems(fetchPlaylists(this)) }
-                binding.recyclerView.smoothScrollToPosition(0)
                 mainViewModel.loading.value = false
+                binding.recyclerView.smoothScrollToPosition(0)
             }
         }
     }
 
     override fun onResume() {
         super.onResume()
-        mainViewModel.resumedFragmentId.value = R.id.nav_playlist
+        mainViewModel.currentFragmentId.value = R.id.nav_playlist
     }
 
     override fun onStop() {
@@ -64,18 +74,18 @@ class PlaylistListFragment : ScopedFragment() {
         mainViewModel.loading.value = false
     }
 
-    override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
-        inflater?.inflate(R.menu.playlists_toolbar, menu)
-        (menu?.findItem(R.id.menu_search)?.actionView as? SearchView)?.apply {
+        inflater.inflate(R.menu.playlists_toolbar, menu)
+        (menu.findItem(R.id.menu_search)?.actionView as? SearchView?)?.apply {
             setOnQueryTextListener(object : SearchView.OnQueryTextListener {
                 override fun onQueryTextSubmit(newText: String?): Boolean {
-                    mainViewModel.searchQuery.value = newText
+                    mainViewModel.search(requireContext(), newText)
                     return true
                 }
 
                 override fun onQueryTextChange(query: String?): Boolean {
-                    mainViewModel.searchQuery.value = query
+                    mainViewModel.search(requireContext(), query)
                     return true
                 }
             })
@@ -97,8 +107,8 @@ class PlaylistListFragment : ScopedFragment() {
                 else -> return false
             }
 
-            mainViewModel.loading.value = true
             launch {
+                mainViewModel.loading.postValue(true)
                 val songs = adapter.getItems().map { playlist ->
                     playlist.getTrackMediaIds(context)
                             .mapNotNull {
@@ -106,6 +116,8 @@ class PlaylistListFragment : ScopedFragment() {
                                         it.first,
                                         playlistId = playlist.id)
                             }
+                }.apply {
+                    mainViewModel.loading.postValue(false)
                 }.flatten()
                 adapter.onNewQueue(songs, actionType)
             }
@@ -115,7 +127,7 @@ class PlaylistListFragment : ScopedFragment() {
     }
 
     private fun observeEvents() {
-        viewModel.requireScrollTop.observe(this) {
+        viewModel.scrollToTop.observe(this) {
             binding.recyclerView.smoothScrollToPosition(0)
         }
 
@@ -124,8 +136,8 @@ class PlaylistListFragment : ScopedFragment() {
                 context?.apply {
                     mainViewModel.loading.value = true
                     adapter.setItems(fetchPlaylists(this))
-                    binding.recyclerView.smoothScrollToPosition(0)
                     mainViewModel.loading.value = false
+                    binding.recyclerView.smoothScrollToPosition(0)
                 }
             }
         }

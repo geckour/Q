@@ -1,81 +1,309 @@
 package com.geckour.q.ui.main
 
-import androidx.lifecycle.ViewModel
-import com.geckour.q.domain.model.*
-import com.geckour.q.util.*
+import android.app.Application
+import android.content.ComponentName
+import android.content.Context
+import android.content.ServiceConnection
+import android.os.IBinder
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import com.geckour.q.App
+import com.geckour.q.R
+import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Bool
+import com.geckour.q.domain.model.Album
+import com.geckour.q.domain.model.Artist
+import com.geckour.q.domain.model.Genre
+import com.geckour.q.domain.model.Playlist
+import com.geckour.q.domain.model.SearchCategory
+import com.geckour.q.domain.model.SearchItem
+import com.geckour.q.domain.model.Song
+import com.geckour.q.service.MediaRetrieveService
+import com.geckour.q.service.PlayerService
+import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.QueueInfo
+import com.geckour.q.util.QueueMetadata
+import com.geckour.q.util.SingleLiveEvent
+import com.geckour.q.util.UNKNOWN
+import com.geckour.q.util.getSong
+import com.geckour.q.util.searchAlbumByFuzzyTitle
+import com.geckour.q.util.searchArtistByFuzzyTitle
+import com.geckour.q.util.searchGenreByFuzzyTitle
+import com.geckour.q.util.searchPlaylistByFuzzyTitle
+import com.geckour.q.util.searchTrackByFuzzyTitle
+import com.geckour.q.util.toDomainModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class MainViewModel : ViewModel() {
+class MainViewModel(
+        application: Application
+) : AndroidViewModel(application) {
 
-    internal val resumedFragmentId: SingleLiveEvent<Int> = SingleLiveEvent()
+    internal var player: SingleLiveEvent<PlayerService> = SingleLiveEvent()
+
+    private var isBoundService = false
+
+    internal val currentFragmentId: SingleLiveEvent<Int> = SingleLiveEvent()
     internal val selectedArtist: SingleLiveEvent<Artist> = SingleLiveEvent()
     internal val selectedAlbum: SingleLiveEvent<Album> = SingleLiveEvent()
     internal var selectedSong: Song? = null
     internal val selectedGenre: SingleLiveEvent<Genre> = SingleLiveEvent()
     internal val selectedPlaylist: SingleLiveEvent<Playlist> = SingleLiveEvent()
-    internal val newQueue: SingleLiveEvent<InsertQueue> = SingleLiveEvent()
+
+    internal val dbEmpty: SingleLiveEvent<Unit> = SingleLiveEvent()
+
+    internal val newQueueInfo: SingleLiveEvent<QueueInfo> = SingleLiveEvent()
+
     internal val requestedPositionInQueue: SingleLiveEvent<Int> = SingleLiveEvent()
     internal val swappedQueuePositions: SingleLiveEvent<Pair<Int, Int>> = SingleLiveEvent()
     internal val removedQueueIndex: SingleLiveEvent<Int> = SingleLiveEvent()
-    internal val removePlayOrderOfPlaylist: SingleLiveEvent<Int> = SingleLiveEvent()
+
+    internal val playOrderOfPlaylistToRemove: SingleLiveEvent<Int> = SingleLiveEvent()
     internal val songToDelete: SingleLiveEvent<Song> = SingleLiveEvent()
-    internal val cancelSync: SingleLiveEvent<Unit> = SingleLiveEvent()
-    internal val requireScrollTop: SingleLiveEvent<Unit> = SingleLiveEvent()
-    internal val searchQuery: SingleLiveEvent<String> = SingleLiveEvent()
+
+    internal val deletedSongId: SingleLiveEvent<Long> = SingleLiveEvent()
+    internal val deletedAlbumId: SingleLiveEvent<Long> = SingleLiveEvent()
+    internal val deletedArtistId: SingleLiveEvent<Long> = SingleLiveEvent()
+
+    internal val searchItems: SingleLiveEvent<List<SearchItem>> = SingleLiveEvent()
+
+    internal val scrollToTop: SingleLiveEvent<Unit> = SingleLiveEvent()
 
     private var currentOrientedClassType: OrientedClassType? = null
 
-    val syncing: SingleLiveEvent<Boolean> = SingleLiveEvent()
+    internal var syncing: Boolean = false
     val loading: SingleLiveEvent<Boolean> = SingleLiveEvent()
 
+    private var searchJob = Job()
+
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
+            if (name == ComponentName(getApplication(), PlayerService::class.java)) {
+                isBoundService = true
+                player.value = (service as? PlayerService.PlayerBinder)?.service
+            }
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            if (name == ComponentName(getApplication(), PlayerService::class.java)) {
+                onDestroyPlayer()
+            }
+        }
+
+        override fun onBindingDied(name: ComponentName?) {
+            super.onBindingDied(name)
+            if (name == ComponentName(getApplication(), PlayerService::class.java)) {
+                onDestroyPlayer()
+            }
+        }
+
+        override fun onNullBinding(name: ComponentName?) {
+            super.onNullBinding(name)
+            if (name == ComponentName(getApplication(), PlayerService::class.java)) {
+                onDestroyPlayer()
+            }
+        }
+    }
+
+    init {
+        bindPlayer()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+
+        player.value?.onRequestedStopService()
+        unbindPlayer()
+    }
+
+    private fun bindPlayer() {
+        if (isBoundService.not()) {
+            val app = getApplication<App>()
+            app.bindService(PlayerService.createIntent(app),
+                    serviceConnection, Context.BIND_AUTO_CREATE)
+            isBoundService = true
+        }
+    }
+
+    private fun unbindPlayer() {
+        if (isBoundService) {
+            getApplication<App>().unbindService(serviceConnection)
+            isBoundService = false
+        }
+    }
+
+    internal fun onDestroyPlayer() {
+        player.value = null
+    }
+
+    internal fun rebootPlayer() {
+        player.value?.storeState()
+        player.value?.pause()
+        unbindPlayer()
+        player.value?.onRequestedStopService()
+        val app = getApplication<App>()
+        app.startService(PlayerService.createIntent(app))
+        bindPlayer()
+    }
+
+    internal fun search(context: Context, query: String?) {
+        if (query.isNullOrBlank() || query.filterNot { it.isWhitespace() }.length < 2) {
+            searchItems.call()
+            return
+        }
+
+        val db = DB.getInstance(getApplication())
+        searchJob.cancel()
+        searchJob = viewModelScope.launch(Dispatchers.IO) {
+            val items = mutableListOf<SearchItem>()
+
+            val tracks = db.searchTrackByFuzzyTitle(query).take(3).mapNotNull {
+                SearchItem(
+                        it.title ?: UNKNOWN,
+                        getSong(db, it) ?: return@mapNotNull null,
+                        SearchItem.SearchItemType.TRACK
+                )
+            }
+            if (tracks.isNotEmpty()) {
+                items.add(SearchItem(context.getString(R.string.search_category_song),
+                        SearchCategory(), SearchItem.SearchItemType.CATEGORY))
+                items.addAll(tracks)
+            }
+
+            val albums = db.searchAlbumByFuzzyTitle(query).take(3).map {
+                SearchItem(
+                        it.title ?: UNKNOWN,
+                        it.toDomainModel(),
+                        SearchItem.SearchItemType.ALBUM
+                )
+            }
+            if (albums.isNotEmpty()) {
+                items.add(SearchItem(context.getString(R.string.search_category_album),
+                        SearchCategory(), SearchItem.SearchItemType.CATEGORY))
+                items.addAll(albums)
+            }
+
+            val artists = db.searchArtistByFuzzyTitle(query).take(3).map {
+                SearchItem(
+                        it.title ?: UNKNOWN,
+                        it.toDomainModel(),
+                        SearchItem.SearchItemType.ARTIST
+                )
+            }
+            if (artists.isNotEmpty()) {
+                items.add(SearchItem(context.getString(R.string.search_category_artist),
+                        SearchCategory(), SearchItem.SearchItemType.CATEGORY))
+                items.addAll(artists)
+            }
+
+            val playlists = getApplication<App>().searchPlaylistByFuzzyTitle(query).take(3).map {
+                SearchItem(it.name, it, SearchItem.SearchItemType.PLAYLIST)
+            }
+            if (playlists.isNotEmpty()) {
+                items.add(SearchItem(context.getString(R.string.search_category_playlist),
+                        SearchCategory(), SearchItem.SearchItemType.CATEGORY))
+                items.addAll(playlists)
+            }
+
+            val genres = getApplication<App>().searchGenreByFuzzyTitle(query).take(3).map {
+                SearchItem(it.name, it, SearchItem.SearchItemType.GENRE)
+            }
+            if (genres.isNotEmpty()) {
+                items.add(SearchItem(context.getString(R.string.search_category_genre),
+                        SearchCategory(), SearchItem.SearchItemType.CATEGORY))
+                items.addAll(genres)
+            }
+
+            withContext(Dispatchers.Main) {
+                searchItems.value = items
+            }
+        }
+    }
+
     fun onRequestNavigate(artist: Artist) {
-        selectedAlbum.value = null
-        selectedSong = null
+        clearSelections()
         selectedArtist.value = artist
-        selectedGenre.value = null
-        selectedPlaylist.value = null
         currentOrientedClassType = OrientedClassType.ARTIST
     }
 
     fun onRequestNavigate(album: Album) {
-        selectedArtist.value = null
-        selectedSong = null
+        clearSelections()
         selectedAlbum.value = album
-        selectedGenre.value = null
-        selectedPlaylist.value = null
         currentOrientedClassType = OrientedClassType.ALBUM
     }
 
     fun onRequestNavigate(song: Song) {
-        selectedArtist.value = null
-        selectedAlbum.value = null
+        clearSelections()
         selectedSong = song
-        selectedGenre.value = null
-        selectedPlaylist.value = null
         currentOrientedClassType = OrientedClassType.SONG
     }
 
     fun onRequestNavigate(genre: Genre) {
-        selectedArtist.value = null
-        selectedAlbum.value = null
-        selectedSong = null
+        clearSelections()
         selectedGenre.value = genre
-        selectedPlaylist.value = null
         currentOrientedClassType = OrientedClassType.GENRE
     }
 
     fun onRequestNavigate(playlist: Playlist) {
+        clearSelections()
+        selectedPlaylist.value = playlist
+        currentOrientedClassType = OrientedClassType.PLAYLIST
+    }
+
+    private fun clearSelections() {
         selectedArtist.value = null
         selectedAlbum.value = null
         selectedSong = null
         selectedGenre.value = null
-        selectedPlaylist.value = playlist
-        currentOrientedClassType = OrientedClassType.PLAYLIST
+        selectedPlaylist.value = null
+    }
+
+    internal fun checkDBIsEmpty() {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (DB.getInstance(this@MainViewModel.getApplication()).trackDao().count() == 0)
+                withContext(Dispatchers.Main) { dbEmpty.call() }
+        }
+    }
+
+    internal fun deleteSongFromDB(song: Song) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val db = DB.getInstance(this@MainViewModel.getApplication())
+            val track = db.trackDao().get(song.id) ?: return@launch
+
+            player.value?.removeQueue(track.id)
+
+            var deleted = db.trackDao().delete(track.id) > 0
+            if (deleted) {
+                withContext(Dispatchers.Main) {
+                    deletedSongId.value = track.id
+                }
+            }
+            if (db.trackDao().findByAlbum(track.albumId, Bool.UNDEFINED).isEmpty()) {
+                deleted = db.albumDao().delete(track.albumId) > 0
+                if (deleted) {
+                    withContext(Dispatchers.Main) {
+                        deletedAlbumId.value = track.albumId
+                    }
+                }
+            }
+            if (db.trackDao().findByArtist(track.artistId, Bool.UNDEFINED).isEmpty()) {
+                deleted = db.artistDao().delete(track.artistId) > 0
+                if (deleted) {
+                    withContext(Dispatchers.Main) {
+                        deletedArtistId.value = track.artistId
+                    }
+                }
+            }
+        }
     }
 
     fun onNewQueue(songs: List<Song>,
                    actionType: InsertActionType,
                    classType: OrientedClassType) {
-        newQueue.value = InsertQueue(
+        newQueueInfo.value = QueueInfo(
                 QueueMetadata(actionType, classType),
                 songs)
     }
@@ -89,14 +317,14 @@ class MainViewModel : ViewModel() {
     }
 
     fun onRequestRemoveSongFromPlaylist(playOrder: Int) {
-        removePlayOrderOfPlaylist.value = playOrder
+        playOrderOfPlaylistToRemove.value = playOrder
     }
 
-    fun onCancelSync() {
-        cancelSync.call()
+    fun onCancelSync(context: Context) {
+        MediaRetrieveService.cancel(context)
     }
 
     fun onToolbarClick() {
-        requireScrollTop.call()
+        scrollToTop.call()
     }
 }

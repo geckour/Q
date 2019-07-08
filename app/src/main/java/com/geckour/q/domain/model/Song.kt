@@ -21,6 +21,6 @@ data class Song(
         val sourcePath: String,
         val ignored: Boolean?,
         val nowPlaying: Boolean = false
-) : Parcelable {
+) : Parcelable, MediaItem {
     val durationString: String get() = duration.getTimeString()
 }

@@ -10,4 +10,4 @@ data class Genre(
         val thumb: Bitmap?,
         val name: String,
         val totalDuration: Long
-) : Parcelable
+) : Parcelable, MediaItem

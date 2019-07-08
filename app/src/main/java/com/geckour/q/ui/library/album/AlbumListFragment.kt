@@ -3,7 +3,12 @@ package com.geckour.q.ui.library.album
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.preference.PreferenceManager
-import android.view.*
+import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import android.widget.SearchView
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
@@ -12,8 +17,18 @@ import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.main.MainViewModel
-import com.geckour.q.util.*
-import kotlinx.coroutines.*
+import com.geckour.q.util.BoolConverter
+import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.ScopedFragment
+import com.geckour.q.util.getSong
+import com.geckour.q.util.ignoringEnabled
+import com.geckour.q.util.observe
+import com.geckour.q.util.sortedByTrackOrder
+import com.geckour.q.util.toDomainModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import com.geckour.q.data.db.model.Album as DBAlbum
 
 class AlbumListFragment : ScopedFragment() {
@@ -66,7 +81,7 @@ class AlbumListFragment : ScopedFragment() {
 
     override fun onResume() {
         super.onResume()
-        mainViewModel.resumedFragmentId.value = R.id.nav_album
+        mainViewModel.currentFragmentId.value = R.id.nav_album
     }
 
     override fun onStop() {
@@ -74,18 +89,18 @@ class AlbumListFragment : ScopedFragment() {
         mainViewModel.loading.value = false
     }
 
-    override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
-        inflater?.inflate(R.menu.albums_toolbar, menu)
-        (menu?.findItem(R.id.menu_search)?.actionView as? SearchView)?.apply {
+        inflater.inflate(R.menu.albums_toolbar, menu)
+        (menu.findItem(R.id.menu_search)?.actionView as? SearchView?)?.apply {
             setOnQueryTextListener(object : SearchView.OnQueryTextListener {
                 override fun onQueryTextSubmit(newText: String?): Boolean {
-                    mainViewModel.searchQuery.value = newText
+                    mainViewModel.search(requireContext(), newText)
                     return true
                 }
 
                 override fun onQueryTextChange(query: String?): Boolean {
-                    mainViewModel.searchQuery.value = query
+                    mainViewModel.search(requireContext(), query)
                     return true
                 }
             })
@@ -107,19 +122,21 @@ class AlbumListFragment : ScopedFragment() {
                 else -> return false
             }
 
-            mainViewModel.loading.value = true
             launch(Dispatchers.IO) {
                 val sortByTrackOrder = item.itemId.let {
                     it != R.id.menu_insert_all_simple_shuffle_next
                             || it != R.id.menu_insert_all_simple_shuffle_last
                             || it != R.id.menu_override_all_simple_shuffle
                 }
+                mainViewModel.loading.postValue(true)
                 val songs = adapter.getItems().map {
                     DB.getInstance(context).let { db ->
                         db.trackDao().findByAlbum(it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled))
                                 .mapNotNull { getSong(db, it) }
                                 .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                     }
+                }.apply {
+                    mainViewModel.loading.postValue(false)
                 }.flatten()
 
                 adapter.onNewQueue(songs, actionType)
@@ -130,7 +147,7 @@ class AlbumListFragment : ScopedFragment() {
     }
 
     private fun observeEvents() {
-        viewModel.requireScrollTop.observe(this) {
+        viewModel.scrollToTop.observe(this) {
             binding.recyclerView.smoothScrollToPosition(0)
         }
 
@@ -139,9 +156,9 @@ class AlbumListFragment : ScopedFragment() {
                 launch {
                     mainViewModel.loading.value = true
                     val items = withContext(Dispatchers.IO) { fetchAlbums(DB.getInstance(context)) }
+                    mainViewModel.loading.value = false
                     adapter.setItems(items)
                     binding.recyclerView.smoothScrollToPosition(0)
-                    mainViewModel.loading.value = false
                 }
             }
         }
@@ -157,14 +174,14 @@ class AlbumListFragment : ScopedFragment() {
             DB.getInstance(this).also { db ->
                 (artist?.let {
                     db.albumDao().findByArtistIdAsync(it.id)
-                } ?: db.albumDao().getAllAsync())
-                        .observe(this@AlbumListFragment) { dbAlbumList ->
-                            if (dbAlbumList == null) return@observe
+                } ?: db.albumDao().getAllAsync()).observe(this@AlbumListFragment) { dbAlbumList ->
+                    if (dbAlbumList == null) return@observe
 
-                            mainViewModel.loading.value = true
-                            latestDbAlbumList = dbAlbumList
-                            upsertAlbumListIfPossible(db)
-                        }
+                    mainViewModel.loading.value = true
+                    latestDbAlbumList = dbAlbumList
+                    upsertAlbumListIfPossible(db)
+                    mainViewModel.loading.value = false
+                }
             }
         }
     }
@@ -177,7 +194,9 @@ class AlbumListFragment : ScopedFragment() {
 
     private fun upsertAlbumListIfPossible(db: DB) {
         launch {
+            mainViewModel.loading.value = true
             val items = withContext(Dispatchers.IO) { latestDbAlbumList.getAlbumList(db) }
+            mainViewModel.loading.value = false
             upsertAlbumListIfPossible(items)
         }
     }
@@ -188,7 +207,6 @@ class AlbumListFragment : ScopedFragment() {
             launch {
                 delay(500)
                 adapter.upsertItems(items)
-                mainViewModel.loading.value = false
                 chatteringCancelFlag = false
             }
         }
@@ -199,7 +217,6 @@ class AlbumListFragment : ScopedFragment() {
                 val artistName = db.artistDao().get(it.artistId)?.title
                         ?: return@mapNotNull null
                 val totalDuration = db.trackDao().findByAlbum(it.id).map { it.duration }.sum()
-                Album(it.id, it.mediaId,
-                        it.title, artistName, it.artworkUriString, totalDuration)
+                it.toDomainModel(artistName, totalDuration)
             }
 }

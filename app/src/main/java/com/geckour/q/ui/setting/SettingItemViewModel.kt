@@ -2,13 +2,14 @@ package com.geckour.q.ui.setting
 
 import androidx.lifecycle.ViewModel
 
-class SettingItemViewModel(val title: String,
-                           val desc: String,
-                           var summary: String?,
-                           val hasSwitch: Boolean,
-                           private val onClick: SettingItemViewModel.() -> Unit = {},
-                           private val onSwitchClick: SettingItemViewModel.(Boolean) -> Unit = {})
-    : ViewModel() {
+class SettingItemViewModel(
+        val title: String,
+        val desc: String,
+        var summary: String?,
+        val hasSwitch: Boolean,
+        private val onClick: SettingItemViewModel.() -> Unit = {},
+        private val onSwitchClick: SettingItemViewModel.(Boolean) -> Unit = {}
+) : ViewModel() {
     var switchState: Boolean = false
 
     fun onClick() {

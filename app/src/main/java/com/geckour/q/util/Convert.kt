@@ -35,7 +35,7 @@ fun Float.getReadableString(digitToKeep: Int = 3): String {
 }
 
 fun DBArtist.toDomainModel(): Artist =
-        Artist(this.id, this.title ?: UNKNOWN, null, 0)
+        Artist(id, title ?: UNKNOWN, null, 0)
 
-fun DBAlbum.toDomainModel(): Album =
-        Album(this.id, this.mediaId, this.title, null, this.artworkUriString, 0)
+fun DBAlbum.toDomainModel(artistName: String? = null, totalDuration: Long = 0): Album =
+        Album(id, mediaId, title, artistName, artworkUriString, totalDuration)

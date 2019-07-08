@@ -12,7 +12,12 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentEasterEggBinding
 import com.geckour.q.ui.main.MainViewModel
-import com.geckour.q.util.*
+import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.ScopedFragment
+import com.geckour.q.util.getSong
+import com.geckour.q.util.observe
+import com.geckour.q.util.toDomainModel
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -73,7 +78,7 @@ class EasterEggFragment : ScopedFragment() {
     override fun onResume() {
         super.onResume()
 
-        mainViewModel.resumedFragmentId.value = R.layout.fragment_easter_egg
+        mainViewModel.currentFragmentId.value = R.layout.fragment_easter_egg
 
         if (viewModel.song != null) setSong()
     }

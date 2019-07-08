@@ -5,7 +5,12 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
-import android.view.*
+import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import android.widget.SearchView
 import androidx.lifecycle.ViewModelProviders
 import androidx.recyclerview.widget.DividerItemDecoration
@@ -15,7 +20,16 @@ import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.ui.main.MainViewModel
-import com.geckour.q.util.*
+import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.ScopedFragment
+import com.geckour.q.util.UNKNOWN
+import com.geckour.q.util.getArtworkUriStringFromId
+import com.geckour.q.util.getSong
+import com.geckour.q.util.getThumb
+import com.geckour.q.util.getTrackMediaIds
+import com.geckour.q.util.getTrackMediaIdsByGenreId
+import com.geckour.q.util.observe
+import com.geckour.q.util.takeOrFillNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -56,15 +70,15 @@ class GenreListFragment : ScopedFragment() {
             launch {
                 mainViewModel.loading.value = true
                 adapter.setItems(fetchGenres())
-                binding.recyclerView.smoothScrollToPosition(0)
                 mainViewModel.loading.value = false
+                binding.recyclerView.smoothScrollToPosition(0)
             }
         }
     }
 
     override fun onResume() {
         super.onResume()
-        mainViewModel.resumedFragmentId.value = R.id.nav_genre
+        mainViewModel.currentFragmentId.value = R.id.nav_genre
     }
 
     override fun onStop() {
@@ -72,18 +86,18 @@ class GenreListFragment : ScopedFragment() {
         mainViewModel.loading.value = false
     }
 
-    override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
-        inflater?.inflate(R.menu.genres_toolbar, menu)
-        (menu?.findItem(R.id.menu_search)?.actionView as? SearchView)?.apply {
+        inflater.inflate(R.menu.genres_toolbar, menu)
+        (menu.findItem(R.id.menu_search)?.actionView as? SearchView?)?.apply {
             setOnQueryTextListener(object : SearchView.OnQueryTextListener {
                 override fun onQueryTextSubmit(newText: String?): Boolean {
-                    mainViewModel.searchQuery.value = newText
+                    mainViewModel.search(requireContext(), newText)
                     return true
                 }
 
                 override fun onQueryTextChange(query: String?): Boolean {
-                    mainViewModel.searchQuery.value = query
+                    mainViewModel.search(requireContext(), query)
                     return true
                 }
             })
@@ -105,12 +119,14 @@ class GenreListFragment : ScopedFragment() {
                 else -> return false
             }
 
-            mainViewModel.loading.value = true
             launch(Dispatchers.IO) {
+                mainViewModel.loading.postValue(true)
                 val songs = adapter.getItems().map { genre ->
                     genre.getTrackMediaIds(context).mapNotNull {
                         getSong(DB.getInstance(context), it, genreId = genre.id)
                     }
+                }.apply {
+                    mainViewModel.loading.postValue(false)
                 }.flatten()
 
                 adapter.onNewQueue(songs, actionType)
@@ -121,7 +137,7 @@ class GenreListFragment : ScopedFragment() {
     }
 
     private fun observeEvents() {
-        viewModel.requireScrollTop.observe(this) {
+        viewModel.scrollToTop.observe(this) {
             binding.recyclerView.smoothScrollToPosition(0)
         }
 
@@ -129,8 +145,8 @@ class GenreListFragment : ScopedFragment() {
             launch {
                 mainViewModel.loading.value = true
                 adapter.setItems(fetchGenres())
-                binding.recyclerView.smoothScrollToPosition(0)
                 mainViewModel.loading.value = false
+                binding.recyclerView.smoothScrollToPosition(0)
             }
         }
     }

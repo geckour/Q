@@ -13,7 +13,11 @@ import com.geckour.q.databinding.ItemListGenreBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.main.MainViewModel
-import com.geckour.q.util.*
+import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.getSong
+import com.geckour.q.util.getTimeString
+import com.geckour.q.util.getTrackMediaIds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -104,11 +108,12 @@ class GenreListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
                 else -> return false
             }
 
-            viewModel.loading.value = true
             GlobalScope.launch {
+                viewModel.loading.postValue(true)
                 val songs = genre.getTrackMediaIds(context).mapNotNull {
                     getSong(DB.getInstance(context), it, genreId = genre.id)
                 }
+                viewModel.loading.postValue(false)
 
                 onNewQueue(songs, actionType, OrientedClassType.SONG)
             }

@@ -4,28 +4,28 @@
 
     <item android:title="@string/nav_category_library">
         <menu>
-    <group android:checkableBehavior="single">
-        <item
-            android:id="@+id/nav_artist"
-            android:icon="@drawable/ic_artist"
-            android:title="@string/nav_artist" />
-        <item
-            android:id="@+id/nav_album"
-            android:icon="@drawable/ic_album"
-            android:title="@string/nav_album" />
-        <item
-            android:id="@+id/nav_song"
-            android:icon="@drawable/ic_song"
-            android:title="@string/nav_song" />
-        <item
-            android:id="@+id/nav_genre"
-            android:icon="@drawable/ic_genre"
-            android:title="@string/nav_genre" />
-        <item
-            android:id="@+id/nav_playlist"
-            android:icon="@drawable/ic_playlist"
-            android:title="@string/nav_playlist" />
-    </group>
+            <group android:checkableBehavior="single">
+                <item
+                    android:id="@+id/nav_artist"
+                    android:icon="@drawable/ic_artist"
+                    android:title="@string/nav_artist" />
+                <item
+                    android:id="@+id/nav_album"
+                    android:icon="@drawable/ic_album"
+                    android:title="@string/nav_album" />
+                <item
+                    android:id="@+id/nav_song"
+                    android:icon="@drawable/ic_song"
+                    android:title="@string/nav_song" />
+                <item
+                    android:id="@+id/nav_genre"
+                    android:icon="@drawable/ic_genre"
+                    android:title="@string/nav_genre" />
+                <item
+                    android:id="@+id/nav_playlist"
+                    android:icon="@drawable/ic_playlist"
+                    android:title="@string/nav_playlist" />
+            </group>
         </menu>
     </item>
 
@@ -50,7 +50,8 @@
 
     <item android:title="@string/nav_category_on_trouble">
         <menu>
-            <item android:checkable="false"
+            <item
+                android:checkable="false"
                 android:id="@+id/nav_sync"
                 android:icon="@drawable/ic_sync"
                 android:title="@string/nav_sync" />

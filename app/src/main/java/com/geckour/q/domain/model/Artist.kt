@@ -9,4 +9,4 @@ data class Artist(
         val name: String,
         val thumbUriString: String?,
         val totalDuration: Long
-) : Parcelable
+) : Parcelable, MediaItem

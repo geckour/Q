@@ -3,7 +3,12 @@ package com.geckour.q.ui.library.artist
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.preference.PreferenceManager
-import android.view.*
+import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import android.widget.SearchView
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
@@ -12,8 +17,18 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.main.MainViewModel
-import com.geckour.q.util.*
-import kotlinx.coroutines.*
+import com.geckour.q.util.BoolConverter
+import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.ScopedFragment
+import com.geckour.q.util.UNKNOWN
+import com.geckour.q.util.getSong
+import com.geckour.q.util.ignoringEnabled
+import com.geckour.q.util.observe
+import com.geckour.q.util.sortedByTrackOrder
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class ArtistListFragment : ScopedFragment() {
 
@@ -56,7 +71,7 @@ class ArtistListFragment : ScopedFragment() {
 
     override fun onResume() {
         super.onResume()
-        mainViewModel.resumedFragmentId.value = R.id.nav_artist
+        mainViewModel.currentFragmentId.value = R.id.nav_artist
     }
 
     override fun onStop() {
@@ -64,18 +79,18 @@ class ArtistListFragment : ScopedFragment() {
         mainViewModel.loading.value = false
     }
 
-    override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
-        inflater?.inflate(R.menu.artists_toolbar, menu)
-        (menu?.findItem(R.id.menu_search)?.actionView as? SearchView)?.apply {
+        inflater.inflate(R.menu.artists_toolbar, menu)
+        (menu.findItem(R.id.menu_search)?.actionView as? SearchView?)?.apply {
             setOnQueryTextListener(object : SearchView.OnQueryTextListener {
                 override fun onQueryTextSubmit(newText: String?): Boolean {
-                    mainViewModel.searchQuery.value = newText
+                    mainViewModel.search(requireContext(), newText)
                     return true
                 }
 
                 override fun onQueryTextChange(query: String?): Boolean {
-                    mainViewModel.searchQuery.value = query
+                    mainViewModel.search(requireContext(), query)
                     return true
                 }
             })
@@ -97,7 +112,6 @@ class ArtistListFragment : ScopedFragment() {
                 else -> return false
             }
 
-            mainViewModel.loading.value = true
             launch(Dispatchers.IO) {
                 val sortByTrackOrder = item.itemId.let {
                     it != R.id.menu_insert_all_simple_shuffle_next
@@ -105,6 +119,7 @@ class ArtistListFragment : ScopedFragment() {
                             || it != R.id.menu_override_all_simple_shuffle
                 }
                 val artistAlbumMap = latestDbAlbumList.groupBy { it.artistId }
+                mainViewModel.loading.postValue(true)
                 val songs = adapter.getItems().mapNotNull {
                     artistAlbumMap[it.id]?.map {
                         DB.getInstance(context).let { db ->
@@ -113,6 +128,8 @@ class ArtistListFragment : ScopedFragment() {
                                     .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                         }
                     }?.flatten()
+                }.apply {
+                    mainViewModel.loading.postValue(true)
                 }.flatten()
 
                 adapter.onNewQueue(songs, actionType)
@@ -123,7 +140,7 @@ class ArtistListFragment : ScopedFragment() {
     }
 
     private fun observeEvents() {
-        viewModel.requireScrollTop.observe(this) {
+        viewModel.scrollToTop.observe(this) {
             binding.recyclerView.smoothScrollToPosition(0)
         }
 
@@ -132,8 +149,8 @@ class ArtistListFragment : ScopedFragment() {
                 launch {
                     mainViewModel.loading.value = true
                     adapter.setItems(fetchArtists(DB.getInstance(context)))
-                    binding.recyclerView.smoothScrollToPosition(0)
                     mainViewModel.loading.value = false
+                    binding.recyclerView.smoothScrollToPosition(0)
                 }
             }
         }
@@ -150,7 +167,6 @@ class ArtistListFragment : ScopedFragment() {
                 db.albumDao().getAllAsync().observe(this@ArtistListFragment) { dbAlbumList ->
                     if (dbAlbumList == null) return@observe
 
-                    mainViewModel.loading.value = true
                     latestDbAlbumList = dbAlbumList
                     upsertArtistListIfPossible(db)
                 }
@@ -166,10 +182,11 @@ class ArtistListFragment : ScopedFragment() {
             chatteringCancelFlag = true
             launch {
                 delay(500)
+                mainViewModel.loading.value = true
                 val items = albumList.getArtistList(db)
+                mainViewModel.loading.value = false
 
                 adapter.upsertItems(items)
-                mainViewModel.loading.value = false
                 chatteringCancelFlag = false
             }
         }
@@ -180,15 +197,14 @@ class ArtistListFragment : ScopedFragment() {
                 this@getArtistList.asSequence()
                         .groupBy { it.artistId }
                         .map {
-                            val artwork = it.value.filter { it.artworkUriString != null }
-                                    .sortedByDescending { it.playbackCount }
+                            val artworkUriString = it.value.sortedByDescending { it.playbackCount }
+                                    .mapNotNull { it.artworkUriString }
                                     .firstOrNull()
-                                    ?.artworkUriString
                             val totalDuration = it.value
                                     .map { db.trackDao().findByAlbum(it.id) }.flatten()
                                     .map { it.duration }.sum()
                             val artistName = db.artistDao().get(it.key)?.title ?: UNKNOWN
-                            Artist(it.key, artistName, artwork, totalDuration)
+                            Artist(it.key, artistName, artworkUriString, totalDuration)
                         }
             }
 }

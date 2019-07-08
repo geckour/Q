@@ -14,7 +14,14 @@ import com.geckour.q.databinding.ItemListAlbumBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.main.MainViewModel
-import com.geckour.q.util.*
+import com.geckour.q.util.BoolConverter
+import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.UNKNOWN
+import com.geckour.q.util.getSong
+import com.geckour.q.util.getTimeString
+import com.geckour.q.util.ignoringEnabled
+import com.geckour.q.util.sortedByTrackOrder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -136,7 +143,6 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
                 else -> return false
             }
 
-            viewModel.loading.value = true
             GlobalScope.launch {
                 val sortByTrackOrder = id.let {
                     it != R.id.menu_insert_all_simple_shuffle_next
@@ -145,9 +151,11 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
                 }
                 val songs = DB.getInstance(context).let { db ->
                     val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+                    viewModel.loading.postValue(true)
                     db.trackDao().findByAlbum(album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled))
                             .mapNotNull { getSong(db, it) }
                             .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
+                            .apply { viewModel.loading.postValue(false) }
                 }
 
                 onNewQueue(songs, actionType, OrientedClassType.SONG)

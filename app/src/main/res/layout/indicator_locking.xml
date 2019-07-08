@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        xmlns:tools="http://schemas.android.com/tools">
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <data>
 
@@ -58,7 +58,7 @@
             android:layout_height="wrap_content"
             android:layout_marginBottom="16dp"
             android:backgroundTint="?attr/colorAccent"
-            android:onClick="@{() -> viewModel.onCancelSync()}"
+            android:onClick="@{() -> viewModel.onCancelSync(context)}"
             android:text="@string/button_cancel_sync"
             android:textColor="@android:color/white"
             app:layout_constraintBottom_toTopOf="@id/guide_peek_height"

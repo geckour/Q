@@ -8,8 +8,6 @@ import androidx.annotation.AttrRes
 import com.geckour.q.data.db.DB
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import com.geckour.q.data.db.model.Album as DBAlbum
-import com.geckour.q.domain.model.Album as DomainAlbum
 
 suspend fun DB.getArtworkUriStringFromId(albumId: Long): String? =
         withContext(Dispatchers.IO) {

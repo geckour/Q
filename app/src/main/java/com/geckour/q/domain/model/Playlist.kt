@@ -11,4 +11,4 @@ data class Playlist(
         val name: String,
         val memberCount: Int,
         val totalDuration: Long
-) : Parcelable
+) : Parcelable, MediaItem
