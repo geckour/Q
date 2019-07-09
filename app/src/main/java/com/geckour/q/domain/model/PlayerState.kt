@@ -4,6 +4,5 @@ data class PlayerState(
         val queue: List<Song>,
         val currentPosition: Int,
         val progress: Long,
-        val playWhenReady: Boolean,
         val repeatMode: Int
 )

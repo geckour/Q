@@ -465,7 +465,6 @@ class PlayerService : Service() {
         submitQueue(insertQueue, true)
         forcePosition(currentPosition)
         seek(progress)
-        player.playWhenReady = playWhenReady
         player.repeatMode = repeatMode
     }
 
@@ -828,7 +827,6 @@ class PlayerService : Service() {
                 queue,
                 currentPosition,
                 player.currentPosition,
-                player.playWhenReady,
                 player.repeatMode
         )
         sharedPreferences.edit()
