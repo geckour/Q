@@ -45,12 +45,14 @@ class MediaRetrieveService : IntentService(NAME) {
             intent?.apply {
                 when (action) {
                     ACTION_CANCEL -> {
-                        stopSelf()
+                        expired = true
                     }
                 }
             }
         }
     }
+
+    private var expired = false
 
     override fun onCreate() {
         super.onCreate()
@@ -70,12 +72,12 @@ class MediaRetrieveService : IntentService(NAME) {
                             null,
                             "${MediaStore.Audio.Media.TITLE} ASC")?.use { cursor ->
                         val retriever = MediaMetadataRetriever()
-                        while (cursor.moveToNext()) {
+                        while (expired.not() && cursor.moveToNext()) {
                             retriever.pushMedia(applicationContext, db, cursor)
                         }
 
                         Timber.d("qgeck track in db count: ${db.trackDao().count()}")
-                        Timber.d("qgeck media retrieve worker completed")
+                        Timber.d("qgeck media retrieve worker with state: ${expired.not()}")
                         sendBroadcast(MainActivity.createSyncCompleteIntent(true))
                     }
         }
