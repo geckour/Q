@@ -383,10 +383,6 @@ class PlayerService : Service() {
     override fun onDestroy() {
         super.onDestroy()
 
-        sharedPreferences.apply {
-            if (contains(PREF_KEY_PLAYER_STATE).not()) storeState()
-        }
-
         mediaSession?.isActive = false
         mediaSession = null
         destroyNotification()
@@ -577,6 +573,7 @@ class PlayerService : Service() {
 
     private fun resume() {
         Timber.d("qgeck resume invoked")
+
         notifyPlaybackRatioJob?.cancel()
         notifyPlaybackRatioJob = serviceScope.launch {
             while (true) {
@@ -596,6 +593,9 @@ class PlayerService : Service() {
 
     fun pause() {
         Timber.d("qgeck pause invoked")
+
+        if (player.playWhenReady) storeState()
+
         player.playWhenReady = false
         notifyPlaybackRatioJob?.cancel()
         getSystemService(AudioManager::class.java).apply {
@@ -638,6 +638,7 @@ class PlayerService : Service() {
             destroyNotification()
             source.clear()
             this.queue.clear()
+            storeState()
             return
         }
         val after = source.size - 1 - before
@@ -651,8 +652,8 @@ class PlayerService : Service() {
             this.queue.removeAt(1)
         }
 
+        pause()
         if (player.playWhenReady) {
-            pause()
             resume()
         }
     }
@@ -818,12 +819,7 @@ class PlayerService : Service() {
 
     fun onRequestedStopService() {
         if (player.playWhenReady.not()) {
-            serviceScope.launch {
-                if (sharedPreferences.contains(PREF_KEY_PLAYER_STATE).not()) {
-                    storeState()
-                }
-                stopSelf()
-            }
+            stopSelf()
         }
     }
 

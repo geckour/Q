@@ -140,7 +140,6 @@ class MainViewModel(
     }
 
     internal fun rebootPlayer() {
-        player.value?.storeState()
         player.value?.pause()
         unbindPlayer()
         player.value?.onRequestedStopService()
