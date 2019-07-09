@@ -8,30 +8,33 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import android.preference.PreferenceManager
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivitySettingBinding
 import com.geckour.q.databinding.DialogEditTextBinding
 import com.geckour.q.databinding.DialogSpinnerBinding
-import com.geckour.q.setCrashlytics
 import com.geckour.q.ui.license.LicenseActivity
+import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.Pref
-import com.geckour.q.util.appTheme
 import com.geckour.q.util.bundleArtwork
 import com.geckour.q.util.ducking
 import com.geckour.q.util.formatPattern
 import com.geckour.q.util.getColor
+import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
 import com.geckour.q.util.preferScreen
+import com.geckour.q.util.setIconTint
 import com.geckour.q.util.showArtworkOnLockScreen
+import com.geckour.q.util.toNightModeInt
 
-class SettingActivity : AppCompatActivity() {
+class SettingActivity : CrashlyticsBundledActivity() {
 
     companion object {
         fun createIntent(context: Context): Intent = Intent(context, SettingActivity::class.java)
@@ -48,12 +51,7 @@ class SettingActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setCrashlytics()
-
-        setTheme(sharedPreferences.appTheme.value.styleResId)
-
         binding = DataBindingUtil.setContentView(this, R.layout.activity_setting)
-        binding.itemChooseAppTheme.viewModel = chooseAppThemeViewModel
         binding.itemChooseScreen.viewModel = chooseLaunchScreenViewModel
         binding.itemArtworkOnLockScreen.viewModel = artworkOnLockScreenViewModel
         binding.itemDucking.viewModel = duckingViewModel
@@ -61,61 +59,37 @@ class SettingActivity : AppCompatActivity() {
         binding.itemFormatPattern.viewModel = formatPatternViewModel
         binding.itemBundleArtwork.viewModel = bundleArtworkViewModel
 
+        setSupportActionBar(binding.toolbar)
+
         observeEvents()
+    }
+
+    override fun onResume() {
+        super.onResume()
+
+        delegate.localNightMode = sharedPreferences.isNightMode.toNightModeInt
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.toggle_theme_toolbar, menu)
+        menu?.setIconTint()
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
+        when (item?.itemId) {
+            R.id.menu_toggle_daynight -> {
+                val toggleTo = sharedPreferences.isNightMode.not()
+                sharedPreferences.isNightMode = toggleTo
+                delegate.localNightMode = toggleTo.toNightModeInt
+            }
+            else -> return false
+        }
+        return true
     }
 
     private fun observeEvents() {
         viewModel.scrollToTop.observe(this) { binding.scrollView.smoothScrollTo(0, 0) }
-    }
-
-    private val chooseAppThemeViewModel: SettingItemViewModel by lazy {
-        SettingItemViewModel(
-                getString(R.string.setting_item_title_app_theme),
-                getString(R.string.setting_item_desc_app_theme),
-                getString(sharedPreferences.appTheme.value.stringResId),
-                false, onClick = {
-            val binding = DialogSpinnerBinding.inflate(
-                    LayoutInflater.from(this@SettingActivity), null, false).apply {
-                val arrayAdapter =
-                        object : ArrayAdapter<String>(
-                                this@SettingActivity,
-                                android.R.layout.simple_spinner_item,
-                                Pref.Enum.appThemes.map { getString(it.value.stringResId) }) {
-                            override fun getDropDownView(position: Int,
-                                                         convertView: View?,
-                                                         parent: ViewGroup): View =
-                                    super.getDropDownView(position, convertView, parent).apply {
-                                        if (position == spinner.selectedItemPosition) {
-                                            (this as TextView).setTextColor(
-                                                    theme.getColor(R.attr.colorButtonNormal))
-                                        }
-                                    }
-                        }.apply {
-                            setDropDownViewResource(
-                                    android.R.layout.simple_spinner_dropdown_item)
-                        }
-                spinner.apply {
-                    adapter = arrayAdapter
-                    setSelection(Pref.Enum.appThemes.indexOf(sharedPreferences.appTheme))
-                }
-            }
-
-            AlertDialog.Builder(this@SettingActivity).generate(
-                    binding.root,
-                    getString(R.string.dialog_title_choose_app_theme),
-                    getString(R.string.dialog_desc_choose_app_theme)) { dialog, which ->
-                when (which) {
-                    DialogInterface.BUTTON_POSITIVE -> {
-                        val themeIndex = binding.spinner.selectedItemPosition
-                        val appTheme = Pref.Enum.appThemes[themeIndex]
-                        sharedPreferences.appTheme = appTheme
-                        summary = getString(appTheme.value.stringResId)
-                        this@SettingActivity.binding.itemChooseAppTheme.viewModel = this
-                    }
-                }
-                dialog.dismiss()
-            }.show()
-        })
     }
 
     private val chooseLaunchScreenViewModel: SettingItemViewModel by lazy {
@@ -130,7 +104,7 @@ class SettingActivity : AppCompatActivity() {
                         object : ArrayAdapter<String>(
                                 this@SettingActivity,
                                 android.R.layout.simple_spinner_item,
-                                Pref.Enum.screens.map { getString(it.value.stringResId) }) {
+                                Pref.PrefEnum.screens.map { getString(it.value.stringResId) }) {
                             override fun getDropDownView(position: Int,
                                                          convertView: View?,
                                                          parent: ViewGroup): View =
@@ -146,7 +120,7 @@ class SettingActivity : AppCompatActivity() {
                         }
                 spinner.apply {
                     adapter = arrayAdapter
-                    setSelection(Pref.Enum.screens.indexOf(sharedPreferences.preferScreen))
+                    setSelection(Pref.PrefEnum.screens.indexOf(sharedPreferences.preferScreen))
                 }
             }
 
@@ -157,7 +131,7 @@ class SettingActivity : AppCompatActivity() {
                 when (which) {
                     DialogInterface.BUTTON_POSITIVE -> {
                         val screenIndex = binding.spinner.selectedItemPosition
-                        val screen = Pref.Enum.screens[screenIndex]
+                        val screen = Pref.PrefEnum.screens[screenIndex]
                         sharedPreferences.preferScreen = screen
                         summary = getString(screen.value.stringResId)
                         this@SettingActivity.binding.itemChooseScreen.viewModel = this

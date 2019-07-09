@@ -5,15 +5,18 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.preference.PreferenceManager
-import androidx.appcompat.app.AppCompatActivity
+import android.view.Menu
+import android.view.MenuItem
 import androidx.databinding.DataBindingUtil
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivityLicenseBinding
 import com.geckour.q.domain.model.LicenseItem
-import com.geckour.q.setCrashlytics
-import com.geckour.q.util.appTheme
+import com.geckour.q.util.CrashlyticsBundledActivity
+import com.geckour.q.util.isNightMode
+import com.geckour.q.util.setIconTint
+import com.geckour.q.util.toNightModeInt
 
-class LicenseActivity : AppCompatActivity() {
+class LicenseActivity : CrashlyticsBundledActivity() {
 
     companion object {
         fun createIntent(context: Context): Intent = Intent(context, LicenseActivity::class.java)
@@ -27,9 +30,7 @@ class LicenseActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        setCrashlytics()
-
-        setTheme(sharedPreferences.appTheme.value.styleResId)
+        delegate.localNightMode = sharedPreferences.isNightMode.toNightModeInt
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_license)
         binding.recyclerView.adapter = LicenseListAdapter(listOf(
@@ -46,5 +47,25 @@ class LicenseActivity : AppCompatActivity() {
                 LicenseItem(getString(R.string.license_name_seek_bar), getString(R.string.license_text_seek_bar))
         ))
         binding.toolbar.setOnClickListener { binding.recyclerView.smoothScrollToPosition(0) }
+
+        setSupportActionBar(binding.toolbar)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.toggle_theme_toolbar, menu)
+        menu?.setIconTint()
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
+        when (item?.itemId) {
+            R.id.menu_toggle_daynight -> {
+                val toggleTo = sharedPreferences.isNightMode.not()
+                sharedPreferences.isNightMode = toggleTo
+                delegate.localNightMode = toggleTo.toNightModeInt
+            }
+            else -> return false
+        }
+        return true
     }
 }

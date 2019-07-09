@@ -1,8 +1,12 @@
 package com.geckour.q.ui.easteregg
 
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupMenu
@@ -12,12 +16,16 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentEasterEggBinding
 import com.geckour.q.ui.main.MainViewModel
+import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ScopedFragment
 import com.geckour.q.util.getSong
+import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
+import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toDomainModel
+import com.geckour.q.util.toNightModeInt
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -86,8 +94,32 @@ class EasterEggFragment : ScopedFragment() {
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
 
+        setHasOptionsMenu(true)
+
         mainViewModel = ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
         observeEvents()
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        super.onCreateOptionsMenu(menu, inflater)
+
+        inflater.inflate(R.menu.toggle_theme_toolbar, menu)
+
+        menu.setIconTint()
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.menu_toggle_daynight -> {
+                val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(requireContext())
+                val toggleTo = sharedPreferences.isNightMode.not()
+                sharedPreferences.isNightMode = toggleTo
+                (requireActivity() as CrashlyticsBundledActivity).delegate
+                        .localNightMode = toggleTo.toNightModeInt
+            }
+            else -> return false
+        }
+        return true
     }
 
     private fun setSong() {

@@ -24,7 +24,6 @@ import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.domain.model.Song
 import com.geckour.q.service.MediaRetrieveService
 import com.geckour.q.service.PlayerService
-import com.geckour.q.setCrashlytics
 import com.geckour.q.ui.easteregg.EasterEggFragment
 import com.geckour.q.ui.equalizer.EqualizerFragment
 import com.geckour.q.ui.equalizer.EqualizerViewModel
@@ -43,13 +42,13 @@ import com.geckour.q.ui.sheet.BottomSheetViewModel
 import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.Pref
 import com.geckour.q.util.QueueInfo
 import com.geckour.q.util.QueueMetadata
-import com.geckour.q.util.appTheme
 import com.geckour.q.util.ducking
+import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
 import com.geckour.q.util.preferScreen
+import com.geckour.q.util.toNightModeInt
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.snackbar.Snackbar
@@ -191,15 +190,8 @@ class MainActivity : CrashlyticsBundledActivity() {
         true
     }
 
-    private lateinit var currentAppTheme: Pref.Enum.Content.AppTheme
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        setCrashlytics()
-
-        currentAppTheme = sharedPreferences.appTheme
-        setTheme(currentAppTheme.value.styleResId)
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
         binding.coordinatorMain.viewModel = viewModel
@@ -225,6 +217,8 @@ class MainActivity : CrashlyticsBundledActivity() {
 
     override fun onResume() {
         super.onResume()
+
+        delegate.localNightMode = sharedPreferences.isNightMode.toNightModeInt
 
         paused = false
 
@@ -277,11 +271,8 @@ class MainActivity : CrashlyticsBundledActivity() {
 
         when (requestCode) {
             RequestCode.RESULT_SETTING.code -> {
-                if (viewModel.player.value?.getDuking() != sharedPreferences.ducking)
+                if (viewModel.player.value?.getDuking() != sharedPreferences.ducking) {
                     viewModel.rebootPlayer()
-                if (currentAppTheme != sharedPreferences.appTheme) {
-                    finish()
-                    startActivity(createIntent(this))
                 }
             }
         }

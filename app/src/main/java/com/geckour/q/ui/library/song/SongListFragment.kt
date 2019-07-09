@@ -1,6 +1,7 @@
 package com.geckour.q.ui.library.song
 
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.Menu
@@ -18,6 +19,7 @@ import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.ui.main.MainViewModel
+import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ScopedFragment
@@ -25,7 +27,10 @@ import com.geckour.q.util.getSongListFromTrackList
 import com.geckour.q.util.getSongListFromTrackMediaId
 import com.geckour.q.util.getSongListFromTrackMediaIdWithTrackNum
 import com.geckour.q.util.getTrackMediaIds
+import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
+import com.geckour.q.util.setIconTint
+import com.geckour.q.util.toNightModeInt
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -100,16 +105,19 @@ class SongListFragment : ScopedFragment() {
 
     override fun onResume() {
         super.onResume()
+
         mainViewModel.currentFragmentId.value = R.id.nav_song
     }
 
     override fun onStop() {
         super.onStop()
+
         mainViewModel.loading.value = false
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
+
         inflater.inflate(R.menu.songs_toolbar, menu)
         (menu.findItem(R.id.menu_search)?.actionView as? SearchView?)?.apply {
             setOnQueryTextListener(object : SearchView.OnQueryTextListener {
@@ -124,9 +132,20 @@ class SongListFragment : ScopedFragment() {
                 }
             })
         }
+
+        menu.setIconTint()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == R.id.menu_toggle_daynight) {
+            val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(requireContext())
+            val toggleTo = sharedPreferences.isNightMode.not()
+            sharedPreferences.isNightMode = toggleTo
+            (requireActivity() as CrashlyticsBundledActivity).delegate
+                    .localNightMode = toggleTo.toNightModeInt
+            return true
+        }
+
         adapter.onNewQueue(requireContext(), when (item.itemId) {
             R.id.menu_insert_all_next -> InsertActionType.NEXT
             R.id.menu_insert_all_last -> InsertActionType.LAST

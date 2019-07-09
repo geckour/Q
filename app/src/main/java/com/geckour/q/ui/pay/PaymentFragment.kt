@@ -4,8 +4,12 @@ import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
@@ -13,7 +17,11 @@ import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentPaymentBinding
 import com.geckour.q.ui.main.MainViewModel
+import com.geckour.q.util.CrashlyticsBundledActivity
+import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
+import com.geckour.q.util.setIconTint
+import com.geckour.q.util.toNightModeInt
 
 class PaymentFragment : Fragment() {
 
@@ -49,7 +57,30 @@ class PaymentFragment : Fragment() {
 
     override fun onResume() {
         super.onResume()
+
         mainViewModel.currentFragmentId.value = R.id.nav_pay
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        super.onCreateOptionsMenu(menu, inflater)
+
+        inflater.inflate(R.menu.toggle_theme_toolbar, menu)
+
+        menu.setIconTint()
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.menu_toggle_daynight -> {
+                val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(requireContext())
+                val toggleTo = sharedPreferences.isNightMode.not()
+                sharedPreferences.isNightMode = toggleTo
+                (requireActivity() as CrashlyticsBundledActivity).delegate
+                        .localNightMode = toggleTo.toNightModeInt
+            }
+            else -> return false
+        }
+        return true
     }
 
     private fun observeEvents() {

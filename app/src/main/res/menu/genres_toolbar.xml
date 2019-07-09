@@ -7,6 +7,11 @@
         app:showAsAction="ifRoom"
         android:title="@string/menu_search" />
     <item
+        android:id="@+id/menu_toggle_daynight"
+        android:icon="@drawable/ic_daynight"
+        android:title="@string/menu_search"
+        app:showAsAction="ifRoom" />
+    <item
         android:id="@+id/menu_insert_all_next"
         app:showAsAction="never"
         android:title="@string/menu_insert_all_next" />

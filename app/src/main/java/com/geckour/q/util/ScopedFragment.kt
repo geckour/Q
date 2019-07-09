@@ -1,7 +1,12 @@
 package com.geckour.q.util
 
+import android.graphics.Color
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuInflater
+import androidx.core.graphics.drawable.DrawableCompat
 import androidx.fragment.app.Fragment
+import com.geckour.q.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job

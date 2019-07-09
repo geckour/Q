@@ -18,13 +18,17 @@ import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.BoolConverter
+import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.ScopedFragment
 import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.getSong
 import com.geckour.q.util.ignoringEnabled
+import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
+import com.geckour.q.util.setIconTint
 import com.geckour.q.util.sortedByTrackOrder
+import com.geckour.q.util.toNightModeInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -71,16 +75,19 @@ class ArtistListFragment : ScopedFragment() {
 
     override fun onResume() {
         super.onResume()
+
         mainViewModel.currentFragmentId.value = R.id.nav_artist
     }
 
     override fun onStop() {
         super.onStop()
+
         mainViewModel.loading.value = false
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
+
         inflater.inflate(R.menu.artists_toolbar, menu)
         (menu.findItem(R.id.menu_search)?.actionView as? SearchView?)?.apply {
             setOnQueryTextListener(object : SearchView.OnQueryTextListener {
@@ -95,10 +102,21 @@ class ArtistListFragment : ScopedFragment() {
                 }
             })
         }
+
+        menu.setIconTint()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         context?.also { context ->
+            if (item.itemId == R.id.menu_toggle_daynight) {
+                val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+                val toggleTo = sharedPreferences.isNightMode.not()
+                sharedPreferences.isNightMode = toggleTo
+                (requireActivity() as CrashlyticsBundledActivity).delegate
+                        .localNightMode = toggleTo.toNightModeInt
+                return true
+            }
+
             val actionType = when (item.itemId) {
                 R.id.menu_insert_all_next -> InsertActionType.NEXT
                 R.id.menu_insert_all_last -> InsertActionType.LAST

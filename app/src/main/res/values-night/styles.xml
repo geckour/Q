@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <style name="AppTheme" parent="Theme.MaterialComponents.NoActionBar.Bridge">
+        <!-- Customize your theme here. -->
+        <item name="colorControlNormal">@android:color/white</item>
+        <item name="android:textColorPrimary">@color/colorTextPrimaryInverse</item>
+        <item name="android:textColorSecondary">@color/colorTextSecondaryInverse</item>
+        <item name="colorPrimary">@color/colorPrimaryInverse</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDarkInverse</item>
+        <item name="colorAccent">@color/colorAccentInverse</item>
+        <item name="colorStrong">@color/colorStrongInverse</item>
+        <item name="android:colorBackground">@android:color/black</item>
+        <item name="android:statusBarColor">@color/colorPrimaryDarkInverse</item>
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="searchViewStyle">@style/SearchStyle.Dark</item>
+        <item name="colorInactive">@color/colorInactiveInverse</item>
+        <item name="colorOption">@color/colorOptionInverse</item>
+        <item name="colorNowPlaying">@color/colorNowPlayingInverse</item>
+        <item name="colorTextPrimary">@color/colorTextPrimaryInverse</item>
+        <item name="colorTextSecondary">@color/colorTextSecondaryInverse</item>
+        <item name="colorTextStrong">@color/colorTextStrongInverse</item>
+        <item name="colorTextSettingNormal">@color/colorTextStrong</item>
+        <item name="colorBackground">@color/colorBackgroundInverse</item>
+        <item name="colorBackgroundInactive">@color/colorBackgroundInactiveInverse</item>
+        <item name="colorBackgroundBottomSheet">@color/colorBackgroundBottomSheetInverse</item>
+        <item name="colorBackgroundSearch">@color/colorBackgroundSearchInverse</item>
+        <item name="colorTransparent">@android:color/transparent</item>
+        <item name="colorShadowBottomSheetStart">@color/colorShadowBottomSheetStartInverse</item>
+        <item name="colorShadowBottomSheetCenter">@color/colorShadowBottomSheetCenterInverse</item>
+        <item name="colorButtonNormal">@color/colorStrong</item>
+        <item name="colorDivider">@color/colorDividerInverse</item>
+    </style>
+
+    <style name="SearchStyle.Dark" parent="AppTheme">
+        <item name="android:colorBackground">@color/colorBackgroundSearchInverse</item>
+    </style>
+</resources>

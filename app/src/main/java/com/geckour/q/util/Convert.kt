@@ -1,5 +1,6 @@
 package com.geckour.q.util
 
+import androidx.appcompat.app.AppCompatDelegate
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Artist
 import kotlin.math.abs
@@ -39,3 +40,8 @@ fun DBArtist.toDomainModel(): Artist =
 
 fun DBAlbum.toDomainModel(artistName: String? = null, totalDuration: Long = 0): Album =
         Album(id, mediaId, title, artistName, artworkUriString, totalDuration)
+
+val Boolean.toNightModeInt: Int
+    get() =
+        if (this) AppCompatDelegate.MODE_NIGHT_YES
+        else AppCompatDelegate.MODE_NIGHT_NO

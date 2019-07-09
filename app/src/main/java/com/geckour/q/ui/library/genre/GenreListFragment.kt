@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
+import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.Menu
@@ -20,6 +21,7 @@ import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.ui.main.MainViewModel
+import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.ScopedFragment
 import com.geckour.q.util.UNKNOWN
@@ -28,8 +30,11 @@ import com.geckour.q.util.getSong
 import com.geckour.q.util.getThumb
 import com.geckour.q.util.getTrackMediaIds
 import com.geckour.q.util.getTrackMediaIdsByGenreId
+import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
+import com.geckour.q.util.setIconTint
 import com.geckour.q.util.takeOrFillNull
+import com.geckour.q.util.toNightModeInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -78,16 +83,19 @@ class GenreListFragment : ScopedFragment() {
 
     override fun onResume() {
         super.onResume()
+
         mainViewModel.currentFragmentId.value = R.id.nav_genre
     }
 
     override fun onStop() {
         super.onStop()
+
         mainViewModel.loading.value = false
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
+
         inflater.inflate(R.menu.genres_toolbar, menu)
         (menu.findItem(R.id.menu_search)?.actionView as? SearchView?)?.apply {
             setOnQueryTextListener(object : SearchView.OnQueryTextListener {
@@ -102,10 +110,21 @@ class GenreListFragment : ScopedFragment() {
                 }
             })
         }
+
+        menu.setIconTint()
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         context?.also { context ->
+            if (item.itemId == R.id.menu_toggle_daynight) {
+                val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+                val toggleTo = sharedPreferences.isNightMode.not()
+                sharedPreferences.isNightMode = toggleTo
+                (requireActivity() as CrashlyticsBundledActivity).delegate
+                        .localNightMode = toggleTo.toNightModeInt
+                return true
+            }
+
             val actionType = when (item.itemId) {
                 R.id.menu_insert_all_next -> InsertActionType.NEXT
                 R.id.menu_insert_all_last -> InsertActionType.LAST

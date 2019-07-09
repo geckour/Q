@@ -54,6 +54,8 @@
 
     <string name="menu_search">Search</string>
 
+    <string name="menu_daynight">Toggle theme</string>
+
     <string name="menu_ignore_to_false">Disable skip on multiple add</string>
     <string name="menu_ignore_to_true">Enable skip on multiple add</string>
 
