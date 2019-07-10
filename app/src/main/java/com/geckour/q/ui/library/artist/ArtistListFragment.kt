@@ -25,6 +25,7 @@ import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.getSong
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.isNightMode
+import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toNightModeInt

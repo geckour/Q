@@ -28,6 +28,7 @@ import com.geckour.q.util.ducking
 import com.geckour.q.util.formatPattern
 import com.geckour.q.util.getColor
 import com.geckour.q.util.isNightMode
+import com.geckour.q.util.observe
 import com.geckour.q.util.preferScreen
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.showArtworkOnLockScreen

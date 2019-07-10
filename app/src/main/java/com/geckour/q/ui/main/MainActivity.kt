@@ -660,7 +660,6 @@ class MainActivity : CrashlyticsBundledActivity() {
                         ).commit()
                         binding.drawerLayout.closeDrawer(binding.navigationView)
                     }
-                    else -> Unit
                 }
                 requestedTransaction = null
             }

@@ -14,5 +14,9 @@ data class RequestedTransaction(
 
     enum class Tag {
         ARTIST,
+        ALBUM,
+        GENRE,
+        PLAYLIST,
+        EASTER_EGG
     }
 }
