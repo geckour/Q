@@ -39,6 +39,7 @@ class MediaRetrieveService : IntentService(NAME) {
         private const val NOTIFICATION_ID_RETRIEVE = 300
 
         private const val ACTION_CANCEL = "com.geckour.q.service.retrieve.cancel"
+        private const val KEY_CLEAR = "key_clear"
 
         internal val projection = arrayOf(
                 MediaStore.Audio.Media._ID,
@@ -53,7 +54,10 @@ class MediaRetrieveService : IntentService(NAME) {
                 MediaStore.Audio.Media.DATA
         )
 
-        fun getIntent(context: Context): Intent = Intent(context, MediaRetrieveService::class.java)
+        fun getIntent(context: Context, clear: Boolean): Intent =
+                Intent(context, MediaRetrieveService::class.java).apply {
+                    putExtra(KEY_CLEAR, clear)
+                }
 
         fun cancel(context: Context) {
             context.sendBroadcast(Intent(ACTION_CANCEL))
@@ -90,7 +94,9 @@ class MediaRetrieveService : IntentService(NAME) {
             startForeground(NOTIFICATION_ID_RETRIEVE, getNotification(0 to 0, seed, bitmap))
             Timber.d("qgeck media retrieve service started")
             val db = DB.getInstance(applicationContext)
-            db.clearAllTables()
+            if (intent?.getBooleanExtra(KEY_CLEAR, false) == true) {
+                db.clearAllTables()
+            }
             applicationContext.contentResolver
                     .query(
                             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection,

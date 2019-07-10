@@ -328,11 +328,7 @@ class MainActivity : CrashlyticsBundledActivity() {
             Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE
     )
     internal fun retrieveMedia() {
-        invokeRetrieveMedia()
-    }
-
-    private fun invokeRetrieveMedia() {
-        startService(MediaRetrieveService.getIntent(this))
+        startService(MediaRetrieveService.getIntent(this, false))
     }
 
     @OnPermissionDenied(
