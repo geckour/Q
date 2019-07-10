@@ -105,18 +105,45 @@ class MediaRetrieveService : IntentService(NAME) {
                             "${MediaStore.Audio.Media.TITLE} ASC"
                     )?.use { cursor ->
                         val retriever = MediaMetadataRetriever()
+                        val newTrackMediaIds = mutableListOf<Long>()
                         while (expired.not() && cursor.moveToNext()) {
-                            val progress = retriever.pushMedia(applicationContext, db, cursor)
+                            val progress = cursor.position to cursor.count
+                            val trackPath = cursor.getString(
+                                    cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
+                            )
+                            val trackMediaId = cursor.getLong(
+                                    cursor.getColumnIndex(MediaStore.Audio.Media._ID)
+                            )
+                            val albumMediaId = cursor.getLong(
+                                    cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID)
+                            )
+                            val artistMediaId = cursor.getLong(
+                                    cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST_ID)
+                            )
+                            val result = retriever.pushMedia(
+                                    applicationContext,
+                                    db,
+                                    trackPath,
+                                    trackMediaId,
+                                    albumMediaId,
+                                    artistMediaId
+                            )
+                            if (result) newTrackMediaIds.add(trackMediaId)
                             sendBroadcast(MainActivity.createProgressIntent(progress))
                             startForeground(
                                     NOTIFICATION_ID_RETRIEVE,
                                     getNotification(progress, seed, bitmap)
                             )
                         }
+                        val diff = db.trackDao().getAll().map { it.mediaId } - newTrackMediaIds
+                        diff.forEach {
+                            db.deleteTrack(it)
+                        }
                     }
 
             Timber.d("qgeck track in db count: ${db.trackDao().count()}")
             Timber.d("qgeck media retrieve worker with state: ${expired.not()}")
+            Thread.sleep(200)
             sendBroadcast(MainActivity.createSyncCompleteIntent(true))
             stopForeground(true)
         }
@@ -198,5 +225,15 @@ class MediaRetrieveService : IntentService(NAME) {
         canvas.drawPath(triPath, paint)
 
         return this
+    }
+
+    private fun DB.deleteTrack(mediaId: Long) {
+        trackDao().getByMediaId(mediaId)?.apply {
+            trackDao().delete(this.id)
+            if (trackDao().findByAlbum(this.albumId).isEmpty())
+                albumDao().delete(this.albumId)
+            if (trackDao().findByArtist(this.artistId).isEmpty())
+                artistDao().delete(this.artistId)
+        }
     }
 }

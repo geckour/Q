@@ -423,40 +423,23 @@ fun Long.getTimeString(): String {
     )
 }
 
-fun MediaMetadataRetriever.pushMedia(context: Context, db: DB, cursor: Cursor): Pair<Int, Int> {
-    val trackMediaId = cursor.getLong(
-            cursor.getColumnIndex(MediaStore.Audio.Media._ID)
-    )
-
+fun MediaMetadataRetriever.pushMedia(context: Context, db: DB, trackPath: String, trackMediaId: Long, albumMediaId: Long, artistMediaId: Long): Boolean {
     val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackMediaId)
-
-    val trackPath = cursor.getString(
-            cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
-    )
 
     if (File(trackPath).exists().not()) {
         context.contentResolver.delete(uri, null, null)
-        return 0 to 0
+        return false
     }
 
-    return try {
+    try {
         setDataSource(context, uri)
 
-        val current = cursor.position
-        val total = cursor.count
-
-        val title = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.TITLE))
-        val duration = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DURATION))
-        val trackNum = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Media.TRACK))
-        val albumMediaId = cursor.getLong(
-                cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID)
-        )
-        val albumTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM))
-        val artistMediaId = cursor.getLong(
-                cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST_ID)
-        )
-        val artistTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST))
-        val composerTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.COMPOSER))
+        val title = extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
+        val duration = extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION).toLong()
+        val trackNum = extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER).toInt()
+        val albumTitle = extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
+        val artistTitle = extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
+        val composerTitle = extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER)
         val artworkUriString = albumMediaId.getArtworkUriIfExist(context)?.toString()
 
         val discNum = extractMetadata(
@@ -466,7 +449,7 @@ fun MediaMetadataRetriever.pushMedia(context: Context, db: DB, cursor: Cursor): 
                 MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST
         )
 
-        val artistId = Artist(0, artistMediaId, artistTitle, 0).upsert(db) ?: return 0 to 0
+        val artistId = Artist(0, artistMediaId, artistTitle, 0).upsert(db) ?: return false
         val albumArtistId = if (albumArtistTitle == null) null
         else Artist(0, null, albumArtistTitle, 0).upsert(db)
 
@@ -500,11 +483,11 @@ fun MediaMetadataRetriever.pushMedia(context: Context, db: DB, cursor: Cursor): 
                 0
         )
         track.upsert(db)
-        current to total
     } catch (t: Throwable) {
         Timber.e(t)
-        0 to 0
     }
+
+    return true
 }
 
 private fun Long.getArtworkUriIfExist(context: Context): Uri? =
