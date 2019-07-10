@@ -28,7 +28,6 @@ import com.geckour.q.util.ducking
 import com.geckour.q.util.formatPattern
 import com.geckour.q.util.getColor
 import com.geckour.q.util.isNightMode
-import com.geckour.q.util.observe
 import com.geckour.q.util.preferScreen
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.showArtworkOnLockScreen
@@ -93,116 +92,136 @@ class SettingActivity : CrashlyticsBundledActivity() {
     }
 
     private val chooseLaunchScreenViewModel: SettingItemViewModel by lazy {
-        SettingItemViewModel(
-                getString(R.string.setting_item_title_screen_on_launch),
+        SettingItemViewModel(getString(R.string.setting_item_title_screen_on_launch),
                 getString(R.string.setting_item_desc_screen_on_launch),
                 getString(sharedPreferences.preferScreen.value.stringResId),
-                false, onClick = {
-            val binding = DialogSpinnerBinding.inflate(
-                    LayoutInflater.from(this@SettingActivity), null, false).apply {
-                val arrayAdapter =
-                        object : ArrayAdapter<String>(
-                                this@SettingActivity,
-                                android.R.layout.simple_spinner_item,
-                                Pref.PrefEnum.screens.map { getString(it.value.stringResId) }) {
-                            override fun getDropDownView(position: Int,
-                                                         convertView: View?,
-                                                         parent: ViewGroup): View =
-                                    super.getDropDownView(position, convertView, parent).apply {
+                false,
+                onClick = {
+                    val binding = DialogSpinnerBinding.inflate(
+                            LayoutInflater.from(this@SettingActivity), null, false
+                    ).apply {
+                        val arrayAdapter =
+                                object : ArrayAdapter<String>(this@SettingActivity,
+                                        android.R.layout.simple_spinner_item,
+                                        Pref.PrefEnum.screens.map {
+                                            getString(it.value.stringResId)
+                                        }) {
+                                    override fun getDropDownView(
+                                            position: Int,
+                                            convertView: View?,
+                                            parent: ViewGroup
+                                    ): View = super.getDropDownView(
+                                            position, convertView, parent
+                                    ).apply {
                                         if (position == spinner.selectedItemPosition) {
                                             (this as TextView).setTextColor(
-                                                    theme.getColor(R.attr.colorButtonNormal))
+                                                    theme.getColor(R.attr.colorButtonNormal)
+                                            )
                                         }
                                     }
-                        }.apply {
-                            setDropDownViewResource(
-                                    android.R.layout.simple_spinner_dropdown_item)
+                                }.apply {
+                                    setDropDownViewResource(
+                                            android.R.layout.simple_spinner_dropdown_item
+                                    )
+                                }
+                        spinner.apply {
+                            adapter = arrayAdapter
+                            setSelection(
+                                    Pref.PrefEnum.screens.indexOf(
+                                            sharedPreferences.preferScreen
+                                    )
+                            )
                         }
-                spinner.apply {
-                    adapter = arrayAdapter
-                    setSelection(Pref.PrefEnum.screens.indexOf(sharedPreferences.preferScreen))
-                }
-            }
-
-            AlertDialog.Builder(this@SettingActivity).generate(
-                    binding.root,
-                    getString(R.string.dialog_title_choose_screen_on_launch),
-                    getString(R.string.dialog_desc_choose_screen_on_launch)) { dialog, which ->
-                when (which) {
-                    DialogInterface.BUTTON_POSITIVE -> {
-                        val screenIndex = binding.spinner.selectedItemPosition
-                        val screen = Pref.PrefEnum.screens[screenIndex]
-                        sharedPreferences.preferScreen = screen
-                        summary = getString(screen.value.stringResId)
-                        this@SettingActivity.binding.itemChooseScreen.viewModel = this
                     }
-                }
-                dialog.dismiss()
-            }.show()
-        })
+
+                    AlertDialog.Builder(this@SettingActivity).generate(
+                            binding.root,
+                            getString(R.string.dialog_title_choose_screen_on_launch),
+                            getString(R.string.dialog_desc_choose_screen_on_launch)
+                    ) { dialog, which ->
+                        when (which) {
+                            DialogInterface.BUTTON_POSITIVE -> {
+                                val screenIndex = binding.spinner.selectedItemPosition
+                                val screen = Pref.PrefEnum.screens[screenIndex]
+                                sharedPreferences.preferScreen = screen
+                                summary = getString(screen.value.stringResId)
+                                this@SettingActivity.binding.itemChooseScreen.viewModel =
+                                        this
+                            }
+                        }
+                        dialog.dismiss()
+                    }.show()
+                })
     }
 
     private val artworkOnLockScreenViewModel: SettingItemViewModel by lazy {
         val state = sharedPreferences.showArtworkOnLockScreen
         SettingItemViewModel(getString(R.string.setting_item_title_artwork_on_lock_screen),
                 getString(R.string.setting_item_desc_artwork_on_lock_screen),
-                state.switchSummary, true, onSwitchClick = {
-            sharedPreferences.showArtworkOnLockScreen = it
-            summary = it.switchSummary
-            binding.itemArtworkOnLockScreen.viewModel = this
-            if (binding.itemArtworkOnLockScreen.state.isChecked != it)
-                binding.itemArtworkOnLockScreen.state.isChecked = it
-        }).apply { switchState = state }
+                state.switchSummary,
+                true,
+                onSwitchClick = {
+                    sharedPreferences.showArtworkOnLockScreen = it
+                    summary = it.switchSummary
+                    binding.itemArtworkOnLockScreen.viewModel = this
+                    if (binding.itemArtworkOnLockScreen.state.isChecked != it) binding.itemArtworkOnLockScreen.state.isChecked =
+                            it
+                }).apply { switchState = state }
     }
 
     private val duckingViewModel: SettingItemViewModel by lazy {
         val state = sharedPreferences.ducking
         SettingItemViewModel(getString(R.string.setting_item_title_ducking),
                 getString(R.string.setting_item_desc_ducking),
-                state.switchSummary, true, onSwitchClick = {
-            sharedPreferences.ducking = it
-            summary = it.switchSummary
-            binding.itemDucking.viewModel = this
-            if (binding.itemDucking.state.isChecked != it)
-                binding.itemDucking.state.isChecked = it
-        }).apply { switchState = state }
+                state.switchSummary,
+                true,
+                onSwitchClick = {
+                    sharedPreferences.ducking = it
+                    summary = it.switchSummary
+                    binding.itemDucking.viewModel = this
+                    if (binding.itemDucking.state.isChecked != it) binding.itemDucking.state.isChecked =
+                            it
+                }).apply { switchState = state }
     }
 
     private val formatPatternViewModel: SettingItemViewModel by lazy {
         SettingItemViewModel(getString(R.string.setting_item_title_format_pattern),
                 getString(R.string.setting_item_desc_format_pattern),
-                this.formatPattern, false, onClick = {
-            onCLickSpecifyPatternFormat()
-        })
+                this.formatPattern,
+                false,
+                onClick = {
+                    onCLickSpecifyPatternFormat()
+                })
     }
 
     private val bundleArtworkViewModel: SettingItemViewModel by lazy {
         val state = sharedPreferences.bundleArtwork
         SettingItemViewModel(getString(R.string.setting_item_title_bundle_artwork),
                 getString(R.string.setting_item_desc_bundle_artwork),
-                state.switchSummary, true, onSwitchClick = {
-            sharedPreferences.bundleArtwork = it
-            summary = it.switchSummary
-            binding.itemBundleArtwork.viewModel = this
-            if (binding.itemBundleArtwork.state.isChecked != it)
-                binding.itemBundleArtwork.state.isChecked = it
-        }).apply { switchState = state }
+                state.switchSummary,
+                true,
+                onSwitchClick = {
+                    sharedPreferences.bundleArtwork = it
+                    summary = it.switchSummary
+                    binding.itemBundleArtwork.viewModel = this
+                    if (binding.itemBundleArtwork.state.isChecked != it) binding.itemBundleArtwork.state.isChecked =
+                            it
+                }).apply { switchState = state }
     }
 
     private val licenseViewModel: SettingItemViewModel by lazy {
         SettingItemViewModel(getString(R.string.setting_item_title_license),
                 getString(R.string.setting_item_desc_license),
                 null,
-                false, onClick = {
-            startActivity(LicenseActivity.createIntent(this@SettingActivity))
-        })
+                false,
+                onClick = {
+                    startActivity(LicenseActivity.createIntent(this@SettingActivity))
+                })
     }
 
     private fun onCLickSpecifyPatternFormat() {
         val patternFormatDialogBinding = DialogEditTextBinding.inflate(
-                LayoutInflater.from(this),
-                null,
-                false
+                LayoutInflater.from(this), null, false
         ).apply {
             hint = getString(R.string.dialog_hint_pattern_format)
             editText.setText(this@SettingActivity.formatPattern)
@@ -230,7 +249,8 @@ class SettingActivity : CrashlyticsBundledActivity() {
             view: View,
             title: String,
             message: String? = null,
-            callback: (dialog: DialogInterface, which: Int) -> Unit = { _, _ -> }): AlertDialog {
+            callback: (dialog: DialogInterface, which: Int) -> Unit = { _, _ -> }
+    ): AlertDialog {
         setTitle(title)
         if (message != null) setMessage(message)
         setView(view)

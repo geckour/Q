@@ -22,7 +22,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adapter<QueueListAdapter.ViewHolder>() {
+class QueueListAdapter(private val viewModel: MainViewModel) :
+        RecyclerView.Adapter<QueueListAdapter.ViewHolder>() {
 
     private val items: MutableList<Song> = mutableListOf()
 
@@ -32,17 +33,15 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
         notifyDataSetChanged()
     }
 
-    internal fun getItem(index: Int?): Song? =
-            when (index) {
-                in 0..items.lastIndex -> items[requireNotNull(index)]
-                -1 -> items.firstOrNull()
-                else -> null
-            }
+    internal fun getItem(index: Int?): Song? = when (index) {
+        in 0..items.lastIndex -> items[requireNotNull(index)]
+        -1 -> items.firstOrNull()
+        else -> null
+    }
 
     internal fun getItemIds(): List<Long> = items.map { it.id }
 
-    internal fun getItemsAfter(start: Int): List<Song> =
-            items.subList(start, items.size)
+    internal fun getItemsAfter(start: Int): List<Song> = items.subList(start, items.size)
 
     internal fun setNowPlayingPosition(index: Int?) {
 
@@ -92,38 +91,34 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
 
     inner class ViewHolder(private val binding: ItemListSongBinding) :
             RecyclerView.ViewHolder(binding.root) {
+
         private val popupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener {
                 when (it.itemId) {
                     R.id.menu_transition_to_artist -> {
                         GlobalScope.launch(Dispatchers.Main) {
-                            viewModel.selectedArtist.value =
-                                    withContext((Dispatchers.IO)) {
-                                        binding.data?.artist?.let {
-                                            DB.getInstance(binding.root.context).artistDao()
-                                                    .findArtist(it).firstOrNull()
-                                                    ?.toDomainModel()
-                                        }
-                                    }
+                            viewModel.selectedArtist.value = withContext((Dispatchers.IO)) {
+                                binding.data?.artist?.let {
+                                    DB.getInstance(binding.root.context).artistDao().findArtist(it)
+                                            .firstOrNull()?.toDomainModel()
+                                }
+                            }
                         }
                     }
                     R.id.menu_transition_to_album -> {
                         GlobalScope.launch(Dispatchers.Main) {
-                            viewModel.selectedAlbum.value =
-                                    withContext(Dispatchers.IO) {
-                                        binding.data?.albumId?.let {
-                                            DB.getInstance(binding.root.context).albumDao()
-                                                    .get(it)
-                                                    ?.toDomainModel()
-                                        }
-                                    }
+                            viewModel.selectedAlbum.value = withContext(Dispatchers.IO) {
+                                binding.data?.albumId?.let {
+                                    DB.getInstance(binding.root.context).albumDao().get(it)
+                                            ?.toDomainModel()
+                                }
+                            }
                         }
                     }
-                    R.id.menu_insert_all_next,
-                    R.id.menu_insert_all_last,
-                    R.id.menu_override_all -> {
+                    R.id.menu_insert_all_next, R.id.menu_insert_all_last, R.id.menu_override_all -> {
                         viewModel.selectedSong?.apply {
-                            viewModel.onNewQueue(listOf(this), when (it.itemId) {
+                            viewModel.onNewQueue(
+                                    listOf(this), when (it.itemId) {
                                 R.id.menu_insert_all_next -> {
                                     InsertActionType.NEXT
                                 }
@@ -134,7 +129,8 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
                                     InsertActionType.OVERRIDE
                                 }
                                 else -> return@setOnMenuItemClickListener false
-                            }, OrientedClassType.SONG)
+                            }, OrientedClassType.SONG
+                            )
                         } ?: return@setOnMenuItemClickListener false
                     }
                     R.id.menu_delete_song -> {
@@ -154,11 +150,10 @@ class QueueListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             binding.duration.text = song.durationString
             try {
                 GlobalScope.launch(Dispatchers.Main) {
-                    Glide.with(binding.thumb)
-                            .load(DB.getInstance(binding.root.context)
-                                    .getArtworkUriStringFromId(song.albumId)
-                                    ?: R.drawable.ic_empty)
-                            .into(binding.thumb)
+                    Glide.with(binding.thumb).load(
+                            DB.getInstance(binding.root.context).getArtworkUriStringFromId(song.albumId)
+                                    ?: R.drawable.ic_empty
+                    ).into(binding.thumb)
                 }
             } catch (t: Throwable) {
                 Timber.e(t)

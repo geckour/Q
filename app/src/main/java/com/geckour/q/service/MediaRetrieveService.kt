@@ -29,7 +29,8 @@ class MediaRetrieveService : IntentService(NAME) {
 
         private const val ACTION_CANCEL = "com.geckour.q.service.retrieve.cancel"
 
-        internal val projection = arrayOf(MediaStore.Audio.Media._ID,
+        internal val projection = arrayOf(
+                MediaStore.Audio.Media._ID,
                 MediaStore.Audio.Media.TITLE,
                 MediaStore.Audio.Media.ALBUM_ID,
                 MediaStore.Audio.Media.ALBUM,
@@ -38,7 +39,8 @@ class MediaRetrieveService : IntentService(NAME) {
                 MediaStore.Audio.Media.COMPOSER,
                 MediaStore.Audio.Media.DURATION,
                 MediaStore.Audio.Media.TRACK,
-                MediaStore.Audio.Media.DATA)
+                MediaStore.Audio.Media.DATA
+        )
 
         fun getIntent(context: Context): Intent = Intent(context, MediaRetrieveService::class.java)
 
@@ -70,16 +72,19 @@ class MediaRetrieveService : IntentService(NAME) {
 
     override fun onHandleIntent(intent: Intent?) {
         if (applicationContext.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_GRANTED) {
+                == PackageManager.PERMISSION_GRANTED
+        ) {
             startForeground(NOTIFICATION_ID_RETRIEVE, notification)
             Timber.d("qgeck media retrieve service started")
             val db = DB.getInstance(applicationContext)
             db.clearAllTables()
             applicationContext.contentResolver
-                    .query(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection,
+                    .query(
+                            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection,
                             "${MediaStore.Audio.Media.IS_MUSIC}!=0",
                             null,
-                            "${MediaStore.Audio.Media.TITLE} ASC")?.use { cursor ->
+                            "${MediaStore.Audio.Media.TITLE} ASC"
+                    )?.use { cursor ->
                         val retriever = MediaMetadataRetriever()
                         while (expired.not() && cursor.moveToNext()) {
                             retriever.pushMedia(applicationContext, db, cursor)
@@ -105,10 +110,21 @@ class MediaRetrieveService : IntentService(NAME) {
                 .setContentTitle(getString(R.string.notification_title_retriever))
                 .setContentText(getString(R.string.notification_text_retriever))
                 .setOngoing(true)
-                .setContentIntent(PendingIntent.getActivity(this,
-                        App.REQUEST_CODE_LAUNCH_APP,
-                        LauncherActivity.createIntent(this),
-                        PendingIntent.FLAG_UPDATE_CURRENT))
-                .setDeleteIntent(PendingIntent.getBroadcast(this, 0, Intent(ACTION_CANCEL), PendingIntent.FLAG_UPDATE_CURRENT))
+                .setContentIntent(
+                        PendingIntent.getActivity(
+                                this,
+                                App.REQUEST_CODE_LAUNCH_APP,
+                                LauncherActivity.createIntent(this),
+                                PendingIntent.FLAG_UPDATE_CURRENT
+                        )
+                )
+                .setDeleteIntent(
+                        PendingIntent.getBroadcast(
+                                this,
+                                0,
+                                Intent(ACTION_CANCEL),
+                                PendingIntent.FLAG_UPDATE_CURRENT
+                        )
+                )
                 .build()
 }

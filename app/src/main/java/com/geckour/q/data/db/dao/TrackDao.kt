@@ -11,6 +11,7 @@ import com.geckour.q.data.db.model.Track
 
 @Dao
 interface TrackDao {
+
     @Insert
     fun insert(track: Track): Long
 

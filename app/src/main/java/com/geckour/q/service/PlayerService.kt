@@ -227,39 +227,33 @@ class PlayerService : Service() {
     private var source = ConcatenatingMediaSource()
 
     private val eventListener = object : Player.EventListener {
-        override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters?) {
-
+        override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters?) = Unit
         }
 
-        override fun onSeekProcessed() {
-
+        override fun onSeekProcessed() = Unit
         }
 
-        override fun onTracksChanged(trackGroups: TrackGroupArray?,
-                                     trackSelections: TrackSelectionArray?) {
+        override fun onTracksChanged(
+                trackGroups: TrackGroupArray?, trackSelections: TrackSelectionArray?
+        ) {
             onCurrentPositionChanged?.invoke(currentPosition)
             notificationUpdateJob.cancel()
             notificationUpdateJob = showNotification()
         }
 
-        override fun onPlayerError(error: ExoPlaybackException?) {
-
+        override fun onPlayerError(error: ExoPlaybackException?) = Unit
         }
 
-        override fun onLoadingChanged(isLoading: Boolean) {
-
+        override fun onLoadingChanged(isLoading: Boolean) = Unit
         }
 
-        override fun onPositionDiscontinuity(reason: Int) {
-
+        override fun onPositionDiscontinuity(reason: Int) = Unit
         }
 
-        override fun onRepeatModeChanged(repeatMode: Int) {
-
+        override fun onRepeatModeChanged(repeatMode: Int) = Unit
         }
 
-        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
-
+        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = Unit
         }
 
         override fun onTimelineChanged(timeline: Timeline?, manifest: Any?, reason: Int) {

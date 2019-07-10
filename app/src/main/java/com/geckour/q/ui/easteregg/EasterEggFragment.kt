@@ -44,7 +44,9 @@ class EasterEggFragment : ScopedFragment() {
     }
     private lateinit var mainViewModel: MainViewModel
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View? {
         binding = FragmentEasterEggBinding.inflate(inflater, container, false)
 
         return binding.root
@@ -54,12 +56,9 @@ class EasterEggFragment : ScopedFragment() {
         super.onViewCreated(view, savedInstanceState)
 
         FirebaseAnalytics.getInstance(requireContext())
-                .logEvent(
-                        FirebaseAnalytics.Event.SELECT_CONTENT,
-                        Bundle().apply {
-                            putString(FirebaseAnalytics.Param.ITEM_NAME, "Show easter egg screen")
-                        }
-                )
+                .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
+                    putString(FirebaseAnalytics.Param.ITEM_NAME, "Show easter egg screen")
+                })
 
         launch(Dispatchers.IO) {
             val db = DB.getInstance(requireContext())
@@ -111,11 +110,12 @@ class EasterEggFragment : ScopedFragment() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_toggle_daynight -> {
-                val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(requireContext())
+                val sharedPreferences =
+                        PreferenceManager.getDefaultSharedPreferences(requireContext())
                 val toggleTo = sharedPreferences.isNightMode.not()
                 sharedPreferences.isNightMode = toggleTo
-                (requireActivity() as CrashlyticsBundledActivity).delegate
-                        .localNightMode = toggleTo.toNightModeInt
+                (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
+                        toggleTo.toNightModeInt
             }
             else -> return false
         }
@@ -124,24 +124,21 @@ class EasterEggFragment : ScopedFragment() {
 
     private fun setSong() {
         binding.viewModel = viewModel
-        Glide.with(binding.artwork)
-                .load(viewModel.song?.thumbUriString ?: R.drawable.ic_empty)
+        Glide.with(binding.artwork).load(viewModel.song?.thumbUriString ?: R.drawable.ic_empty)
                 .into(binding.artwork)
     }
 
     private fun observeEvents() {
         viewModel.tap.observe(this) {
             FirebaseAnalytics.getInstance(requireContext())
-                    .logEvent(
-                            FirebaseAnalytics.Event.SELECT_CONTENT,
-                            Bundle().apply {
-                                putString(FirebaseAnalytics.Param.ITEM_NAME, "Tapped today's song")
-                            }
-                    )
+                    .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
+                        putString(FirebaseAnalytics.Param.ITEM_NAME, "Tapped today's song")
+                    })
 
             viewModel.song?.apply {
-                mainViewModel.onNewQueue(listOf(this),
-                        InsertActionType.NEXT, OrientedClassType.SONG)
+                mainViewModel.onNewQueue(
+                        listOf(this), InsertActionType.NEXT, OrientedClassType.SONG
+                )
             }
         }
 
@@ -155,9 +152,8 @@ class EasterEggFragment : ScopedFragment() {
                                     mainViewModel.selectedArtist.value =
                                             withContext((Dispatchers.IO)) {
                                                 viewModel.song?.artist?.let {
-                                                    DB.getInstance(context).artistDao()
-                                                            .findArtist(it).firstOrNull()
-                                                            ?.toDomainModel()
+                                                    DB.getInstance(context).artistDao().findArtist(it)
+                                                            .firstOrNull()?.toDomainModel()
                                                 }
                                             }
                                 }
@@ -168,8 +164,7 @@ class EasterEggFragment : ScopedFragment() {
                                     mainViewModel.selectedAlbum.value =
                                             withContext(Dispatchers.IO) {
                                                 viewModel.song?.albumId?.let {
-                                                    DB.getInstance(context).albumDao()
-                                                            .get(it)
+                                                    DB.getInstance(context).albumDao().get(it)
                                                             ?.toDomainModel()
                                                 }
                                             }

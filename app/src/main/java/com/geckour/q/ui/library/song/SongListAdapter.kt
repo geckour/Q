@@ -27,9 +27,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-class SongListAdapter(private val viewModel: MainViewModel,
-                      private val classType: OrientedClassType)
-    : RecyclerView.Adapter<SongListAdapter.ViewHolder>() {
+class SongListAdapter(
+        private val viewModel: MainViewModel, private val classType: OrientedClassType
+) : RecyclerView.Adapter<SongListAdapter.ViewHolder>() {
 
     private val items: ArrayList<Song> = ArrayList()
 
@@ -80,9 +80,7 @@ class SongListAdapter(private val viewModel: MainViewModel,
     }
 
     private fun removeItem(songId: Long) {
-        items.asSequence()
-                .mapIndexed { i, s -> i to s }
-                .filter { it.second.id == songId }.toList()
+        items.asSequence().mapIndexed { i, s -> i to s }.filter { it.second.id == songId }.toList()
                 .forEach {
                     items.removeAt(it.first)
                     notifyItemRemoved(it.first)
@@ -113,9 +111,7 @@ class SongListAdapter(private val viewModel: MainViewModel,
                 items.let {
                     if (sharedPreferences.ignoringEnabled) it.filter { it.ignored != true }
                     else it
-                },
-                actionType,
-                OrientedClassType.SONG
+                }, actionType, OrientedClassType.SONG
         )
     }
 
@@ -123,9 +119,11 @@ class SongListAdapter(private val viewModel: MainViewModel,
         removeItem(id)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
-            ViewHolder(ItemListSongBinding.inflate(LayoutInflater.from(parent.context),
-                    parent, false))
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
+            ItemListSongBinding.inflate(
+                    LayoutInflater.from(parent.context), parent, false
+            )
+    )
 
     override fun getItemCount(): Int = items.size
 
@@ -133,22 +131,22 @@ class SongListAdapter(private val viewModel: MainViewModel,
         holder.bind()
     }
 
-    inner class ViewHolder(private val binding: ItemListSongBinding)
-        : RecyclerView.ViewHolder(binding.root) {
+    inner class ViewHolder(private val binding: ItemListSongBinding) :
+            RecyclerView.ViewHolder(binding.root) {
 
         private val shortPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener {
                 when (it.itemId) {
-                    R.id.menu_insert_all_next,
-                    R.id.menu_insert_all_last,
-                    R.id.menu_override_all -> {
+                    R.id.menu_insert_all_next, R.id.menu_insert_all_last, R.id.menu_override_all -> {
                         viewModel.selectedSong?.apply {
-                            viewModel.onNewQueue(listOf(this), when (it.itemId) {
+                            viewModel.onNewQueue(
+                                    listOf(this), when (it.itemId) {
                                 R.id.menu_insert_all_next -> InsertActionType.NEXT
                                 R.id.menu_insert_all_last -> InsertActionType.LAST
                                 R.id.menu_override_all -> InsertActionType.OVERRIDE
                                 else -> return@setOnMenuItemClickListener false
-                            }, OrientedClassType.SONG)
+                            }, OrientedClassType.SONG
+                            )
                         } ?: return@setOnMenuItemClickListener false
                     }
                     R.id.menu_ignore -> toggleIgnored()
@@ -165,35 +163,30 @@ class SongListAdapter(private val viewModel: MainViewModel,
                 when (it.itemId) {
                     R.id.menu_transition_to_artist -> {
                         GlobalScope.launch(Dispatchers.Main) {
-                            viewModel.selectedArtist.value =
-                                    withContext((Dispatchers.IO)) {
-                                        binding.data?.artist?.let {
-                                            DB.getInstance(binding.root.context).artistDao()
-                                                    .findArtist(it).firstOrNull()
-                                                    ?.toDomainModel()
-                                        }
-                                    }
+                            viewModel.selectedArtist.value = withContext((Dispatchers.IO)) {
+                                binding.data?.artist?.let {
+                                    DB.getInstance(binding.root.context).artistDao().findArtist(it)
+                                            .firstOrNull()?.toDomainModel()
+                                }
+                            }
                         }
                     }
                     R.id.menu_transition_to_album -> {
                         GlobalScope.launch(Dispatchers.Main) {
-                            viewModel.selectedAlbum.value =
-                                    withContext(Dispatchers.IO) {
-                                        binding.data?.albumId?.let {
-                                            DB.getInstance(binding.root.context).albumDao()
-                                                    .get(it)
-                                                    ?.toDomainModel()
-                                        }
-                                    }
+                            viewModel.selectedAlbum.value = withContext(Dispatchers.IO) {
+                                binding.data?.albumId?.let {
+                                    DB.getInstance(binding.root.context).albumDao().get(it)
+                                            ?.toDomainModel()
+                                }
+                            }
                         }
                     }
                     R.id.menu_ignore -> toggleIgnored()
                     R.id.menu_delete_song -> deleteSong(viewModel.selectedSong)
-                    R.id.menu_insert_all_next,
-                    R.id.menu_insert_all_last,
-                    R.id.menu_override_all -> {
+                    R.id.menu_insert_all_next, R.id.menu_insert_all_last, R.id.menu_override_all -> {
                         viewModel.selectedSong?.apply {
-                            viewModel.onNewQueue(listOf(this), when (it.itemId) {
+                            viewModel.onNewQueue(
+                                    listOf(this), when (it.itemId) {
                                 R.id.menu_insert_all_next -> {
                                     InsertActionType.NEXT
                                 }
@@ -204,7 +197,8 @@ class SongListAdapter(private val viewModel: MainViewModel,
                                     InsertActionType.OVERRIDE
                                 }
                                 else -> return@setOnMenuItemClickListener false
-                            }, OrientedClassType.SONG)
+                            }, OrientedClassType.SONG
+                            )
                         } ?: return@setOnMenuItemClickListener false
                     }
                 }
@@ -220,11 +214,10 @@ class SongListAdapter(private val viewModel: MainViewModel,
             binding.duration.text = song.durationString
             try {
                 GlobalScope.launch(Dispatchers.Main) {
-                    Glide.with(binding.thumb)
-                            .load(DB.getInstance(binding.root.context)
-                                    .getArtworkUriStringFromId(song.albumId)
-                                    ?: R.drawable.ic_empty)
-                            .into(binding.thumb)
+                    Glide.with(binding.thumb).load(
+                            DB.getInstance(binding.root.context).getArtworkUriStringFromId(song.albumId)
+                                    ?: R.drawable.ic_empty
+                    ).into(binding.thumb)
                 }
             } catch (t: Throwable) {
                 Timber.e(t)
@@ -251,27 +244,23 @@ class SongListAdapter(private val viewModel: MainViewModel,
         private fun onSongSelected(song: Song) {
             viewModel.onRequestNavigate(song)
             shortPopupMenu.show()
-            shortPopupMenu.menu.findItem(R.id.menu_ignore).title =
-                    binding.root.context.let {
-                        it.getString(
-                                if (binding.data?.ignored == true)
-                                    R.string.menu_ignore_to_false
-                                else R.string.menu_ignore_to_true
-                        )
-                    }
+            shortPopupMenu.menu.findItem(R.id.menu_ignore).title = binding.root.context.let {
+                it.getString(
+                        if (binding.data?.ignored == true) R.string.menu_ignore_to_false
+                        else R.string.menu_ignore_to_true
+                )
+            }
         }
 
         private fun onSongLongTapped(song: Song): Boolean {
             viewModel.onRequestNavigate(song)
             longPopupMenu.show()
-            longPopupMenu.menu.findItem(R.id.menu_ignore).title =
-                    binding.root.context.let {
-                        it.getString(
-                                if (binding.data?.ignored == true)
-                                    R.string.menu_ignore_to_false
-                                else R.string.menu_ignore_to_true
-                        )
-                    }
+            longPopupMenu.menu.findItem(R.id.menu_ignore).title = binding.root.context.let {
+                it.getString(
+                        if (binding.data?.ignored == true) R.string.menu_ignore_to_false
+                        else R.string.menu_ignore_to_true
+                )
+            }
 
             return true
         }
@@ -287,7 +276,8 @@ class SongListAdapter(private val viewModel: MainViewModel,
                         }.apply { Timber.d("qgeck saved ignored value: $this") }
                         setIgnored(trackId, ignored)
                         withContext(Dispatchers.Main) {
-                            binding.data = binding.data?.let { it.copy(ignored = it.ignored?.not()) }
+                            binding.data =
+                                    binding.data?.let { it.copy(ignored = it.ignored?.not()) }
                         }
                     }
                 }

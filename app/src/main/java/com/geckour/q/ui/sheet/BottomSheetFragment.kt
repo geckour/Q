@@ -54,8 +54,9 @@ class BottomSheetFragment : ScopedFragment() {
         PreferenceManager.getDefaultSharedPreferences(requireContext())
     }
 
-    override fun onCreateView(inflater: LayoutInflater,
-                              container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View? {
         binding = FragmentSheetBottomBinding.inflate(inflater, container, false)
         return binding.root
     }
@@ -65,11 +66,17 @@ class BottomSheetFragment : ScopedFragment() {
 
         adapter = QueueListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
-        ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0) {
+        ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+                ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
+        ) {
             var from: Int? = null
             var to: Int? = null
 
-            override fun onMove(recyclerView: RecyclerView, fromHolder: RecyclerView.ViewHolder, toHolder: RecyclerView.ViewHolder): Boolean {
+            override fun onMove(
+                    recyclerView: RecyclerView,
+                    fromHolder: RecyclerView.ViewHolder,
+                    toHolder: RecyclerView.ViewHolder
+            ): Boolean {
                 val from = fromHolder.adapterPosition
                 val to = toHolder.adapterPosition
 
@@ -83,7 +90,6 @@ class BottomSheetFragment : ScopedFragment() {
             }
 
             override fun onSwiped(holder: RecyclerView.ViewHolder, position: Int) {
-
             }
 
             override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
@@ -91,8 +97,9 @@ class BottomSheetFragment : ScopedFragment() {
                 val from = this.from
                 val to = this.to
 
-                if (viewHolder == null && from != null && to != null)
-                    mainViewModel.onQueueSwap(from, to)
+                if (viewHolder == null && from != null && to != null) mainViewModel.onQueueSwap(
+                        from, to
+                )
 
                 this.from = null
                 this.to = null
@@ -118,9 +125,11 @@ class BottomSheetFragment : ScopedFragment() {
             }
         })
 
-        listOf(binding.buttonControllerLeft,
+        listOf(
+                binding.buttonControllerLeft,
                 binding.buttonControllerCenter,
-                binding.buttonControllerRight).forEach {
+                binding.buttonControllerRight
+        ).forEach {
             it.setOnTouchListener { _, event ->
                 when (event.action) {
                     MotionEvent.ACTION_UP -> {
@@ -132,11 +141,12 @@ class BottomSheetFragment : ScopedFragment() {
             }
         }
 
-        viewModel.touchLock.value = sharedPreferences
-                .getBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, false)
+        viewModel.touchLock.value =
+                sharedPreferences.getBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, false)
 
         behavior = BottomSheetBehavior.from(
-                (requireActivity() as MainActivity).binding.root.findViewById(R.id.bottom_sheet))
+                (requireActivity() as MainActivity).binding.root.findViewById(R.id.bottom_sheet)
+        )
         behavior.setBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback() {
             override fun onSlide(v: View, dy: Float) {
                 binding.sheet.progress = dy
@@ -146,11 +156,12 @@ class BottomSheetFragment : ScopedFragment() {
             override fun onStateChanged(v: View, state: Int) {
                 viewModel.sheetState = state
                 reloadBindingVariable()
-                binding.buttonToggleVisibleQueue
-                        .setImageResource(when (state) {
+                binding.buttonToggleVisibleQueue.setImageResource(
+                        when (state) {
                             BottomSheetBehavior.STATE_EXPANDED -> R.drawable.ic_collapse
                             else -> R.drawable.ic_queue
-                        })
+                        }
+                )
                 if (state == BottomSheetBehavior.STATE_EXPANDED) {
                     viewModel.scrollToCurrent.call()
                 }
@@ -159,7 +170,8 @@ class BottomSheetFragment : ScopedFragment() {
 
         binding.touchBlockWall.setOnTouchListener { _, event ->
             behavior.onTouchEvent(
-                    requireActivity().findViewById(R.id.coordinator_main), binding.sheet, event)
+                    requireActivity().findViewById(R.id.coordinator_main), binding.sheet, event
+            )
             true
         }
 
@@ -186,9 +198,8 @@ class BottomSheetFragment : ScopedFragment() {
                                     mainViewModel.selectedArtist.value =
                                             withContext((Dispatchers.IO)) {
                                                 viewModel.currentSong?.artist?.let {
-                                                    DB.getInstance(context).artistDao()
-                                                            .findArtist(it).firstOrNull()
-                                                            ?.toDomainModel()
+                                                    DB.getInstance(context).artistDao().findArtist(it)
+                                                            .firstOrNull()?.toDomainModel()
                                                 }
                                             }
                                 }
@@ -199,8 +210,7 @@ class BottomSheetFragment : ScopedFragment() {
                                     mainViewModel.selectedAlbum.value =
                                             withContext(Dispatchers.IO) {
                                                 viewModel.currentSong?.albumId?.let {
-                                                    DB.getInstance(context).albumDao()
-                                                            .get(it)
+                                                    DB.getInstance(context).albumDao().get(it)
                                                             ?.toDomainModel()
                                                 }
                                             }
@@ -237,8 +247,7 @@ class BottomSheetFragment : ScopedFragment() {
 
             viewModel.currentPosition.value = if (state) viewModel.currentPosition.value else -1
 
-            if (changed && behavior.state == BottomSheetBehavior.STATE_COLLAPSED)
-                binding.buttonToggleVisibleQueue.shake()
+            if (changed && behavior.state == BottomSheetBehavior.STATE_COLLAPSED) binding.buttonToggleVisibleQueue.shake()
         }
 
         viewModel.currentPosition.observe(this) {
@@ -260,8 +269,9 @@ class BottomSheetFragment : ScopedFragment() {
                             db.artistDao().apply {
                                 var artist = findArtist(it.artist).firstOrNull()
                                 if (artist == null) {
-                                    db.albumDao().get(it.albumId)
-                                            ?.artistId?.apply { artist = get(this) }
+                                    db.albumDao().get(it.albumId)?.artistId?.apply {
+                                        artist = get(this)
+                                    }
                                 }
                                 artist?.apply {
                                     increasePlaybackCount(this.id)
@@ -273,11 +283,7 @@ class BottomSheetFragment : ScopedFragment() {
                     launch(Dispatchers.IO) {
                         val drawable = viewModel.currentSong?.let {
                             val source = it.thumbUriString ?: R.drawable.ic_empty
-                            Glide.with(requireContext())
-                                    .asDrawable()
-                                    .load(source)
-                                    .submit()
-                                    .get()
+                            Glide.with(requireContext()).asDrawable().load(source).submit().get()
                         }
                         withContext(Dispatchers.Main) {
                             binding.artwork.setImageDrawable(drawable)
@@ -313,12 +319,14 @@ class BottomSheetFragment : ScopedFragment() {
             val song = adapter.getItem(viewModel.currentPosition.value) ?: return@observe
             val elapsed = (song.duration * it).toLong()
             binding.textTimeLeft.text = elapsed.getTimeString()
-            binding.textTimeRight.text =
-                    if (sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false))
-                        "-${(song.duration - elapsed).getTimeString()}"
-                    else song.durationString
-            val remain = adapter.getItemsAfter((viewModel.currentPosition.value ?: 0) + 1)
-                    .map { it.duration }.sum() + (song.duration - elapsed)
+            binding.textTimeRight.text = if (sharedPreferences.getBoolean(
+                            PREF_KEY_SHOW_CURRENT_REMAIN, false
+                    )
+            ) "-${(song.duration - elapsed).getTimeString()}"
+            else song.durationString
+            val remain = adapter.getItemsAfter(
+                    (viewModel.currentPosition.value ?: 0) + 1
+            ).map { it.duration }.sum() + (song.duration - elapsed)
             binding.textTimeRemain.text =
                     getString(R.string.bottom_sheet_time_remain, remain.getTimeString())
         }
@@ -326,36 +334,31 @@ class BottomSheetFragment : ScopedFragment() {
         viewModel.repeatMode.observe(this) {
             if (it == null) return@observe
             binding.buttonRepeat.apply {
-                setImageResource(when (it) {
-                    Player.REPEAT_MODE_ALL -> R.drawable.ic_repeat
-                    Player.REPEAT_MODE_ONE -> R.drawable.ic_repeat_one
-                    else -> R.drawable.ic_repeat_off
-                })
+                setImageResource(
+                        when (it) {
+                            Player.REPEAT_MODE_ALL -> R.drawable.ic_repeat
+                            Player.REPEAT_MODE_ONE -> R.drawable.ic_repeat_one
+                            else -> R.drawable.ic_repeat_off
+                        }
+                )
                 visibility = View.VISIBLE
             }
         }
 
         viewModel.scrollToCurrent.observe(this) {
             if (adapter.itemCount > 0) {
-                binding.recyclerView
-                        .smoothScrollToPosition(viewModel.currentPosition.value ?: 0)
+                binding.recyclerView.smoothScrollToPosition(viewModel.currentPosition.value ?: 0)
             }
         }
 
         viewModel.toggleCurrentRemain.observe(this) {
-            val changeTo = sharedPreferences
-                    .getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false)
-                    .not()
-            sharedPreferences.edit()
-                    .putBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, changeTo)
-                    .apply()
+            val changeTo = sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false).not()
+            sharedPreferences.edit().putBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, changeTo).apply()
         }
 
         viewModel.touchLock.observe(this) {
             if (it == null) return@observe
-            sharedPreferences.edit()
-                    .putBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, it)
-                    .apply()
+            sharedPreferences.edit().putBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, it).apply()
             binding.queueUnTouchable = it
         }
 

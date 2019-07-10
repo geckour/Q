@@ -11,12 +11,8 @@ data class RequestedTransaction(
         val genre: Genre? = null,
         val playlist: Playlist? = null
 ) : Parcelable {
+
     enum class Tag {
         ARTIST,
-        ALBUM,
-        SONG,
-        PLAYLIST,
-        GENRE,
-        EASTER_EGG
     }
 }

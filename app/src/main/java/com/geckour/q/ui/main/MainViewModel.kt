@@ -122,8 +122,9 @@ class MainViewModel(
     private fun bindPlayer() {
         if (isBoundService.not()) {
             val app = getApplication<App>()
-            app.bindService(PlayerService.createIntent(app),
-                    serviceConnection, Context.BIND_AUTO_CREATE)
+            app.bindService(
+                    PlayerService.createIntent(app), serviceConnection, Context.BIND_AUTO_CREATE
+            )
             isBoundService = true
         }
     }
@@ -167,34 +168,45 @@ class MainViewModel(
                 )
             }
             if (tracks.isNotEmpty()) {
-                items.add(SearchItem(context.getString(R.string.search_category_song),
-                        SearchCategory(), SearchItem.SearchItemType.CATEGORY))
+                items.add(
+                        SearchItem(
+                                context.getString(R.string.search_category_song),
+                                SearchCategory(),
+                                SearchItem.SearchItemType.CATEGORY
+                        )
+                )
                 items.addAll(tracks)
             }
 
             val albums = db.searchAlbumByFuzzyTitle(query).take(3).map {
                 SearchItem(
-                        it.title ?: UNKNOWN,
-                        it.toDomainModel(),
-                        SearchItem.SearchItemType.ALBUM
+                        it.title ?: UNKNOWN, it.toDomainModel(), SearchItem.SearchItemType.ALBUM
                 )
             }
             if (albums.isNotEmpty()) {
-                items.add(SearchItem(context.getString(R.string.search_category_album),
-                        SearchCategory(), SearchItem.SearchItemType.CATEGORY))
+                items.add(
+                        SearchItem(
+                                context.getString(R.string.search_category_album),
+                                SearchCategory(),
+                                SearchItem.SearchItemType.CATEGORY
+                        )
+                )
                 items.addAll(albums)
             }
 
             val artists = db.searchArtistByFuzzyTitle(query).take(3).map {
                 SearchItem(
-                        it.title ?: UNKNOWN,
-                        it.toDomainModel(),
-                        SearchItem.SearchItemType.ARTIST
+                        it.title ?: UNKNOWN, it.toDomainModel(), SearchItem.SearchItemType.ARTIST
                 )
             }
             if (artists.isNotEmpty()) {
-                items.add(SearchItem(context.getString(R.string.search_category_artist),
-                        SearchCategory(), SearchItem.SearchItemType.CATEGORY))
+                items.add(
+                        SearchItem(
+                                context.getString(R.string.search_category_artist),
+                                SearchCategory(),
+                                SearchItem.SearchItemType.CATEGORY
+                        )
+                )
                 items.addAll(artists)
             }
 
@@ -202,8 +214,13 @@ class MainViewModel(
                 SearchItem(it.name, it, SearchItem.SearchItemType.PLAYLIST)
             }
             if (playlists.isNotEmpty()) {
-                items.add(SearchItem(context.getString(R.string.search_category_playlist),
-                        SearchCategory(), SearchItem.SearchItemType.CATEGORY))
+                items.add(
+                        SearchItem(
+                                context.getString(R.string.search_category_playlist),
+                                SearchCategory(),
+                                SearchItem.SearchItemType.CATEGORY
+                        )
+                )
                 items.addAll(playlists)
             }
 
@@ -211,8 +228,13 @@ class MainViewModel(
                 SearchItem(it.name, it, SearchItem.SearchItemType.GENRE)
             }
             if (genres.isNotEmpty()) {
-                items.add(SearchItem(context.getString(R.string.search_category_genre),
-                        SearchCategory(), SearchItem.SearchItemType.CATEGORY))
+                items.add(
+                        SearchItem(
+                                context.getString(R.string.search_category_genre),
+                                SearchCategory(),
+                                SearchItem.SearchItemType.CATEGORY
+                        )
+                )
                 items.addAll(genres)
             }
 
@@ -262,8 +284,9 @@ class MainViewModel(
 
     internal fun checkDBIsEmpty() {
         viewModelScope.launch(Dispatchers.IO) {
-            if (DB.getInstance(this@MainViewModel.getApplication()).trackDao().count() == 0)
-                withContext(Dispatchers.Main) { dbEmpty.call() }
+            if (DB.getInstance(this@MainViewModel.getApplication()).trackDao().count() == 0) withContext(
+                    Dispatchers.Main
+            ) { dbEmpty.call() }
         }
     }
 
@@ -299,12 +322,12 @@ class MainViewModel(
         }
     }
 
-    fun onNewQueue(songs: List<Song>,
-                   actionType: InsertActionType,
-                   classType: OrientedClassType) {
+    fun onNewQueue(
+            songs: List<Song>, actionType: InsertActionType, classType: OrientedClassType
+    ) {
         newQueueInfo.value = QueueInfo(
-                QueueMetadata(actionType, classType),
-                songs)
+                QueueMetadata(actionType, classType), songs
+        )
     }
 
     fun onQueueSwap(from: Int, to: Int) {

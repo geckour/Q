@@ -8,10 +8,9 @@ import com.geckour.q.data.db.model.Album as DBAlbum
 import com.geckour.q.data.db.model.Artist as DBArtist
 
 fun Float.getReadableString(digitToKeep: Int = 3): String {
-    fun Float.format(suffix: String): String =
-            String.format("${if (this@getReadableString < 0) "-" else ""}%.${digitToKeep}f", this)
-                    .replace(Regex("^(.+\\..*?)0+$"), "$1")
-                    .replace(Regex("^(.+)\\.$"), "$1") + suffix
+    fun Float.format(suffix: String): String = String.format(
+            "${if (this@getReadableString < 0) "-" else ""}%.${digitToKeep}f", this
+    ).replace(Regex("^(.+\\..*?)0+$"), "$1").replace(Regex("^(.+)\\.$"), "$1") + suffix
 
     var returnValue = abs(this)
     var count = 0
@@ -35,13 +34,11 @@ fun Float.getReadableString(digitToKeep: Int = 3): String {
     }
 }
 
-fun DBArtist.toDomainModel(): Artist =
-        Artist(id, title ?: UNKNOWN, null, 0)
+fun DBArtist.toDomainModel(): Artist = Artist(id, title ?: UNKNOWN, null, 0)
 
 fun DBAlbum.toDomainModel(artistName: String? = null, totalDuration: Long = 0): Album =
         Album(id, mediaId, title, artistName, artworkUriString, totalDuration)
 
 val Boolean.toNightModeInt: Int
-    get() =
-        if (this) AppCompatDelegate.MODE_NIGHT_YES
-        else AppCompatDelegate.MODE_NIGHT_NO
+    get() = if (this) AppCompatDelegate.MODE_NIGHT_YES
+    else AppCompatDelegate.MODE_NIGHT_NO

@@ -25,7 +25,6 @@ import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.getSong
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.isNightMode
-import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toNightModeInt
@@ -56,8 +55,9 @@ class ArtistListFragment : ScopedFragment() {
     private var latestDbAlbumList: List<Album> = emptyList()
     private var chatteringCancelFlag: Boolean = false
 
-    override fun onCreateView(inflater: LayoutInflater,
-                              container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View? {
         observeEvents()
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
         return binding.root
@@ -112,8 +112,8 @@ class ArtistListFragment : ScopedFragment() {
                 val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
                 val toggleTo = sharedPreferences.isNightMode.not()
                 sharedPreferences.isNightMode = toggleTo
-                (requireActivity() as CrashlyticsBundledActivity).delegate
-                        .localNightMode = toggleTo.toNightModeInt
+                (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
+                        toggleTo.toNightModeInt
                 return true
             }
 
@@ -132,17 +132,17 @@ class ArtistListFragment : ScopedFragment() {
 
             launch(Dispatchers.IO) {
                 val sortByTrackOrder = item.itemId.let {
-                    it != R.id.menu_insert_all_simple_shuffle_next
-                            || it != R.id.menu_insert_all_simple_shuffle_last
-                            || it != R.id.menu_override_all_simple_shuffle
+                    it != R.id.menu_insert_all_simple_shuffle_next || it != R.id.menu_insert_all_simple_shuffle_last || it != R.id.menu_override_all_simple_shuffle
                 }
                 val artistAlbumMap = latestDbAlbumList.groupBy { it.artistId }
                 mainViewModel.loading.postValue(true)
                 val songs = adapter.getItems().mapNotNull {
                     artistAlbumMap[it.id]?.map {
                         DB.getInstance(context).let { db ->
-                            db.trackDao().findByAlbum(it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled))
-                                    .mapNotNull { getSong(db, it) }
+                            db.trackDao().findByAlbum(
+                                    it.id,
+                                    BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                            ).mapNotNull { getSong(db, it) }
                                     .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                         }
                     }?.flatten()
@@ -212,17 +212,14 @@ class ArtistListFragment : ScopedFragment() {
 
     private suspend fun List<Album>.getArtistList(db: DB): List<Artist> =
             withContext(Dispatchers.IO) {
-                this@getArtistList.asSequence()
-                        .groupBy { it.artistId }
-                        .map {
-                            val artworkUriString = it.value.sortedByDescending { it.playbackCount }
-                                    .mapNotNull { it.artworkUriString }
-                                    .firstOrNull()
-                            val totalDuration = it.value
-                                    .map { db.trackDao().findByAlbum(it.id) }.flatten()
-                                    .map { it.duration }.sum()
-                            val artistName = db.artistDao().get(it.key)?.title ?: UNKNOWN
-                            Artist(it.key, artistName, artworkUriString, totalDuration)
-                        }
+                this@getArtistList.asSequence().groupBy { it.artistId }.map {
+                    val artworkUriString = it.value.sortedByDescending { it.playbackCount }
+                            .mapNotNull { it.artworkUriString }.firstOrNull()
+                    val totalDuration =
+                            it.value.map { db.trackDao().findByAlbum(it.id) }.flatten().map { it.duration }
+                                    .sum()
+                    val artistName = db.artistDao().get(it.key)?.title ?: UNKNOWN
+                    Artist(it.key, artistName, artworkUriString, totalDuration)
+                }
             }
 }

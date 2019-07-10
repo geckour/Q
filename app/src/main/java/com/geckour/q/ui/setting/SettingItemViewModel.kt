@@ -10,6 +10,7 @@ class SettingItemViewModel(
         private val onClick: SettingItemViewModel.() -> Unit = {},
         private val onSwitchClick: SettingItemViewModel.(Boolean) -> Unit = {}
 ) : ViewModel() {
+
     var switchState: Boolean = false
 
     fun onClick() {

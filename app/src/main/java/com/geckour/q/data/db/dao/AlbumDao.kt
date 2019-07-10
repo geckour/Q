@@ -10,6 +10,7 @@ import com.geckour.q.data.db.model.Album
 
 @Dao
 interface AlbumDao {
+
     @Insert
     fun insert(album: Album): Long
 
@@ -44,8 +45,7 @@ interface AlbumDao {
     fun increasePlaybackCount(albumId: Long)
 }
 
-fun Album.upsert(db: DB): Long =
-        db.albumDao().getByMediaId(this.mediaId)?.let {
-            if (this.title != null) db.albumDao().update(this.copy(id = it.id))
-            it.id
-        } ?: db.albumDao().insert(this)
+fun Album.upsert(db: DB): Long = db.albumDao().getByMediaId(this.mediaId)?.let {
+    if (this.title != null) db.albumDao().update(this.copy(id = it.id))
+    it.id
+} ?: db.albumDao().insert(this)

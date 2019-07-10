@@ -42,8 +42,9 @@ class PlaylistListFragment : ScopedFragment() {
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: PlaylistListAdapter by lazy { PlaylistListAdapter(mainViewModel) }
 
-    override fun onCreateView(inflater: LayoutInflater,
-                              container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View? {
         observeEvents()
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
         return binding.root
@@ -56,7 +57,8 @@ class PlaylistListFragment : ScopedFragment() {
 
         binding.recyclerView.adapter = adapter
         binding.recyclerView.addItemDecoration(
-                DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL))
+                DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL)
+        )
 
 
         if (adapter.itemCount == 0) {
@@ -108,8 +110,8 @@ class PlaylistListFragment : ScopedFragment() {
                 val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
                 val toggleTo = sharedPreferences.isNightMode.not()
                 sharedPreferences.isNightMode = toggleTo
-                (requireActivity() as CrashlyticsBundledActivity).delegate
-                        .localNightMode = toggleTo.toNightModeInt
+                (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
+                        toggleTo.toNightModeInt
                 return true
             }
 
@@ -129,12 +131,11 @@ class PlaylistListFragment : ScopedFragment() {
             launch {
                 mainViewModel.loading.postValue(true)
                 val songs = adapter.getItems().map { playlist ->
-                    playlist.getTrackMediaIds(context)
-                            .mapNotNull {
-                                getSong(DB.getInstance(context),
-                                        it.first,
-                                        playlistId = playlist.id)
-                            }
+                    playlist.getTrackMediaIds(context).mapNotNull {
+                        getSong(
+                                DB.getInstance(context), it.first, playlistId = playlist.id
+                        )
+                    }
                 }.apply {
                     mainViewModel.loading.postValue(false)
                 }.flatten()

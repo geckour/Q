@@ -79,14 +79,16 @@ class SongListFragment : ScopedFragment() {
     }
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: SongListAdapter by lazy {
-        SongListAdapter(mainViewModel,
-                arguments?.getSerializable(ARGS_KEY_CLASS_TYPE)
-                        as? OrientedClassType ?: OrientedClassType.SONG)
+        SongListAdapter(
+                mainViewModel, arguments?.getSerializable(ARGS_KEY_CLASS_TYPE)
+                as? OrientedClassType ?: OrientedClassType.SONG
+        )
     }
     private var chatteringCancelFlag: Boolean = false
 
-    override fun onCreateView(inflater: LayoutInflater,
-                              container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View? {
         GlobalScope
         observeEvents()
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
@@ -141,12 +143,13 @@ class SongListFragment : ScopedFragment() {
             val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(requireContext())
             val toggleTo = sharedPreferences.isNightMode.not()
             sharedPreferences.isNightMode = toggleTo
-            (requireActivity() as CrashlyticsBundledActivity).delegate
-                    .localNightMode = toggleTo.toNightModeInt
+            (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
+                    toggleTo.toNightModeInt
             return true
         }
 
-        adapter.onNewQueue(requireContext(), when (item.itemId) {
+        adapter.onNewQueue(
+                requireContext(), when (item.itemId) {
             R.id.menu_insert_all_next -> InsertActionType.NEXT
             R.id.menu_insert_all_last -> InsertActionType.LAST
             R.id.menu_override_all -> InsertActionType.OVERRIDE
@@ -154,7 +157,8 @@ class SongListFragment : ScopedFragment() {
             R.id.menu_insert_all_simple_shuffle_last -> InsertActionType.SHUFFLE_SIMPLE_LAST
             R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
             else -> return false
-        })
+        }
+        )
 
         return true
     }
@@ -163,10 +167,11 @@ class SongListFragment : ScopedFragment() {
         mainViewModel.playOrderOfPlaylistToRemove.observe(this) {
             if (it == null) return@observe
             val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST) ?: return@observe
-            val removed = context?.contentResolver
-                    ?.delete(MediaStore.Audio.Playlists.Members.getContentUri("external", playlist.id),
-                            "${MediaStore.Audio.Playlists.Members.PLAY_ORDER}=?",
-                            arrayOf(it.toString()))?.equals(1) ?: return@observe
+            val removed = context?.contentResolver?.delete(
+                    MediaStore.Audio.Playlists.Members.getContentUri("external", playlist.id),
+                    "${MediaStore.Audio.Playlists.Members.PLAY_ORDER}=?",
+                    arrayOf(it.toString())
+            )?.equals(1) ?: return@observe
             if (removed) adapter.removeByTrackNum(it)
         }
 
@@ -213,11 +218,12 @@ class SongListFragment : ScopedFragment() {
     private fun observeSongsWithAlbum(album: Album) {
         context?.also {
             DB.getInstance(it).also { db ->
-                db.trackDao().findByAlbumAsync(album.id).observe(this@SongListFragment) { dbTrackList ->
-                    if (dbTrackList == null) return@observe
+                db.trackDao().findByAlbumAsync(album.id)
+                        .observe(this@SongListFragment) { dbTrackList ->
+                            if (dbTrackList == null) return@observe
 
-                    upsertSongListIfPossible(db, dbTrackList)
-                }
+                            upsertSongListIfPossible(db, dbTrackList)
+                        }
             }
         }
     }
@@ -227,9 +233,10 @@ class SongListFragment : ScopedFragment() {
             launch {
                 mainViewModel.loading.value = true
                 adapter.upsertItems(
-                        getSongListFromTrackMediaId(DB.getInstance(it),
-                                genre.getTrackMediaIds(it),
-                                genreId = genre.id), false)
+                        getSongListFromTrackMediaId(
+                                DB.getInstance(it), genre.getTrackMediaIds(it), genreId = genre.id
+                        ), false
+                )
                 mainViewModel.loading.value = false
                 binding.recyclerView.smoothScrollToPosition(0)
             }
@@ -241,9 +248,9 @@ class SongListFragment : ScopedFragment() {
             launch {
                 mainViewModel.loading.value = true
                 adapter.addItems(
-                        getSongListFromTrackMediaIdWithTrackNum(DB.getInstance(it),
-                                playlist.getTrackMediaIds(it),
-                                playlistId = playlist.id)
+                        getSongListFromTrackMediaIdWithTrackNum(
+                                DB.getInstance(it), playlist.getTrackMediaIds(it), playlistId = playlist.id
+                        )
                 )
                 mainViewModel.loading.value = false
                 binding.recyclerView.smoothScrollToPosition(0)
@@ -251,7 +258,9 @@ class SongListFragment : ScopedFragment() {
         }
     }
 
-    private fun upsertSongListIfPossible(db: DB, dbTrackList: List<Track>, sortByTrackOrder: Boolean = true) {
+    private fun upsertSongListIfPossible(
+            db: DB, dbTrackList: List<Track>, sortByTrackOrder: Boolean = true
+    ) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
             launch {

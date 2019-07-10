@@ -23,8 +23,8 @@ import kotlinx.coroutines.launch
 import com.geckour.q.data.db.model.Album as DBAlbum
 import com.geckour.q.data.db.model.Artist as DBArtist
 
-class SearchListAdapter(private val viewModel: MainViewModel)
-    : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class SearchListAdapter(private val viewModel: MainViewModel) :
+        RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val items: ArrayList<SearchItem> = ArrayList()
 
@@ -47,12 +47,18 @@ class SearchListAdapter(private val viewModel: MainViewModel)
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder =
             when (viewType) {
                 SearchItem.SearchItemType.CATEGORY.ordinal -> {
-                    CategoryViewHolder(ItemListSearchCategoryBinding
-                            .inflate(LayoutInflater.from(parent.context), parent, false))
+                    CategoryViewHolder(
+                            ItemListSearchCategoryBinding.inflate(
+                                    LayoutInflater.from(parent.context), parent, false
+                            )
+                    )
                 }
                 else -> {
-                    ItemViewHolder(ItemListSearchItemBinding
-                            .inflate(LayoutInflater.from(parent.context), parent, false))
+                    ItemViewHolder(
+                            ItemListSearchItemBinding.inflate(
+                                    LayoutInflater.from(parent.context), parent, false
+                            )
+                    )
                 }
             }
 
@@ -68,16 +74,16 @@ class SearchListAdapter(private val viewModel: MainViewModel)
         }
     }
 
-    class CategoryViewHolder(private val binding: ItemListSearchCategoryBinding)
-        : RecyclerView.ViewHolder(binding.root) {
+    class CategoryViewHolder(private val binding: ItemListSearchCategoryBinding) :
+            RecyclerView.ViewHolder(binding.root) {
 
         fun onBind(item: SearchItem) {
             binding.title = item.title
         }
     }
 
-    inner class ItemViewHolder(private val binding: ItemListSearchItemBinding)
-        : RecyclerView.ViewHolder(binding.root) {
+    inner class ItemViewHolder(private val binding: ItemListSearchItemBinding) :
+            RecyclerView.ViewHolder(binding.root) {
 
         private val trackPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener {
@@ -85,7 +91,8 @@ class SearchListAdapter(private val viewModel: MainViewModel)
                     val song = (binding.data?.data as? Track)?.let {
                         getSong(DB.getInstance(binding.root.context), it)
                     } ?: return@launch
-                    viewModel.onNewQueue(listOf(song), when (it.itemId) {
+                    viewModel.onNewQueue(
+                            listOf(song), when (it.itemId) {
                         R.id.menu_insert_all_next -> {
                             InsertActionType.NEXT
                         }
@@ -96,7 +103,8 @@ class SearchListAdapter(private val viewModel: MainViewModel)
                             InsertActionType.OVERRIDE
                         }
                         else -> return@launch
-                    }, OrientedClassType.SONG)
+                    }, OrientedClassType.SONG
+                    )
                 }
 
                 return@setOnMenuItemClickListener true
@@ -111,8 +119,7 @@ class SearchListAdapter(private val viewModel: MainViewModel)
                 val db = DB.getInstance(binding.root.context)
                 val artwork = when (item.type) {
                     SearchItem.SearchItemType.ARTIST -> (item.data as? DBArtist)?.id?.let {
-                        db.albumDao().findByArtistId(it)
-                                .firstOrNull { it.artworkUriString != null }
+                        db.albumDao().findByArtistId(it).firstOrNull { it.artworkUriString != null }
                                 ?.artworkUriString
                     }
                     SearchItem.SearchItemType.ALBUM -> (item.data as? DBAlbum)?.artworkUriString
@@ -122,8 +129,7 @@ class SearchListAdapter(private val viewModel: MainViewModel)
                     else -> null
                 }
                 GlobalScope.launch(Dispatchers.Main) {
-                    Glide.with(binding.thumb)
-                            .load(artwork ?: R.drawable.ic_empty)
+                    Glide.with(binding.thumb).load(artwork ?: R.drawable.ic_empty)
                             .into(binding.thumb)
                 }
             }

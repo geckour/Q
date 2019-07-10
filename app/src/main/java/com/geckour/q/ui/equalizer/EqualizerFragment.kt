@@ -55,8 +55,9 @@ class EqualizerFragment : Fragment() {
     private var initialStoredState = false
     private var errorThrown = false
 
-    override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?,
-                              savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View? {
         binding = FragmentEqualizerBinding.inflate(inflater, container, false)
 
         return binding.root
@@ -66,8 +67,7 @@ class EqualizerFragment : Fragment() {
         super.onActivityCreated(savedInstanceState)
 
         initialStoredState = sharedPreferences.equalizerEnabled
-        if (initialStoredState)
-            sendCommand(SettingCommand.SET_EQUALIZER)
+        if (initialStoredState) sendCommand(SettingCommand.SET_EQUALIZER)
 
         observeEvents()
 
@@ -93,11 +93,12 @@ class EqualizerFragment : Fragment() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_toggle_daynight -> {
-                val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(requireContext())
+                val sharedPreferences =
+                        PreferenceManager.getDefaultSharedPreferences(requireContext())
                 val toggleTo = sharedPreferences.isNightMode.not()
                 sharedPreferences.isNightMode = toggleTo
-                (requireActivity() as CrashlyticsBundledActivity).delegate
-                        .localNightMode = toggleTo.toNightModeInt
+                (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
+                        toggleTo.toNightModeInt
             }
             else -> return false
         }
@@ -107,8 +108,7 @@ class EqualizerFragment : Fragment() {
     override fun onStop() {
         super.onStop()
 
-        if (errorThrown)
-            sharedPreferences.equalizerEnabled = initialStoredState
+        if (errorThrown) sharedPreferences.equalizerEnabled = initialStoredState
     }
 
     private fun observeEvents() {
@@ -119,7 +119,8 @@ class EqualizerFragment : Fragment() {
             sharedPreferences.equalizerEnabled = changeTo
             sendCommand(
                     if (changeTo) SettingCommand.SET_EQUALIZER
-                    else SettingCommand.UNSET_EQUALIZER)
+                    else SettingCommand.UNSET_EQUALIZER
+            )
         }
 
         viewModel.flatten.observe(this) { flatten() }
@@ -129,8 +130,9 @@ class EqualizerFragment : Fragment() {
 
             errorThrown = sharedPreferences.equalizerEnabled && it.not()
             if (errorThrown) {
-                Toast.makeText(requireContext(),
-                        R.string.equalizer_message_error_turn_on, Toast.LENGTH_LONG).show()
+                Toast.makeText(
+                        requireContext(), R.string.equalizer_message_error_turn_on, Toast.LENGTH_LONG
+                ).show()
             }
 
             if (viewModel.enabled.value != it) {
@@ -145,32 +147,35 @@ class EqualizerFragment : Fragment() {
 
         sharedPreferences.equalizerParams?.also { params ->
             val levels = sharedPreferences.equalizerSettings?.levels
-            binding.textScaleBottom.text =
-                    getString(R.string.equalizer_scale_label,
-                            (params.levelRange.first / 100f).getReadableString())
-            binding.textScaleLowerMiddle.text =
-                    getString(R.string.equalizer_scale_label,
-                            (params.levelRange.first / 200f).getReadableString())
-            binding.textScaleUpperMiddle.text =
-                    getString(R.string.equalizer_scale_label,
-                            (params.levelRange.second / 200f).getReadableString())
-            binding.textScaleTop.text =
-                    getString(R.string.equalizer_scale_label,
-                            (params.levelRange.second / 100f).getReadableString())
+            binding.textScaleBottom.text = getString(
+                    R.string.equalizer_scale_label, (params.levelRange.first / 100f).getReadableString()
+            )
+            binding.textScaleLowerMiddle.text = getString(
+                    R.string.equalizer_scale_label, (params.levelRange.first / 200f).getReadableString()
+            )
+            binding.textScaleUpperMiddle.text = getString(
+                    R.string.equalizer_scale_label,
+                    (params.levelRange.second / 200f).getReadableString()
+            )
+            binding.textScaleTop.text = getString(
+                    R.string.equalizer_scale_label,
+                    (params.levelRange.second / 100f).getReadableString()
+            )
             params.bands.forEachIndexed { i, band ->
-                ItemEqualizerSeekBarBinding.inflate(layoutInflater,
-                        binding.seekBarContainer, false).apply {
+                ItemEqualizerSeekBarBinding.inflate(
+                        layoutInflater, binding.seekBarContainer, false
+                ).apply {
                     seekBar.max = params.levelRange.let { it.second - it.first }
-                    seekBarLabel.text =
-                            getString(R.string.equalizer_seek_bar_label,
-                                    (band.centerFreq / 1000f).getReadableString())
-                    seekBar.progress =
-                            if (levels != null)
-                                seekBar.calcProgress(params, levels[i])
-                            else seekBar.max / 2
+                    seekBarLabel.text = getString(
+                            R.string.equalizer_seek_bar_label,
+                            (band.centerFreq / 1000f).getReadableString()
+                    )
+                    seekBar.progress = if (levels != null) seekBar.calcProgress(params, levels[i])
+                    else seekBar.max / 2
                     seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                        override fun onProgressChanged(seekBar: SeekBar,
-                                                       progress: Int, fromUser: Boolean) {
+                        override fun onProgressChanged(
+                                seekBar: SeekBar, progress: Int, fromUser: Boolean
+                        ) {
                             val level = params.normalizeLevel(progress.toFloat() / seekBar.max)
                             sharedPreferences.setEqualizerLevel(i, level)
                             sendCommand(SettingCommand.REFLECT_EQUALIZER_SETTING)
@@ -181,7 +186,8 @@ class EqualizerFragment : Fragment() {
 
                         override fun onStopTrackingTouch(seekBar: SeekBar?) {
                             if (seekBar == null) return
-                            val level = params.normalizeLevel(seekBar.progress.toFloat() / seekBar.max)
+                            val level =
+                                    params.normalizeLevel(seekBar.progress.toFloat() / seekBar.max)
                             seekBar.progress = seekBar.calcProgress(params, level)
                             sharedPreferences.setEqualizerLevel(i, level)
                             sendCommand(SettingCommand.REFLECT_EQUALIZER_SETTING)
@@ -195,8 +201,8 @@ class EqualizerFragment : Fragment() {
 
     private fun flatten() {
         (0 until binding.seekBarContainer.childCount).forEach {
-            binding.seekBarContainer.getChildAt(it)
-                    .findViewById<VerticalSeekBar>(R.id.seek_bar)?.apply {
+            binding.seekBarContainer.getChildAt(it).findViewById<VerticalSeekBar>(R.id.seek_bar)
+                    ?.apply {
                         progress = max / 2
                     }
         }
@@ -215,8 +221,7 @@ class EqualizerFragment : Fragment() {
             }
 
     private fun EqualizerParams.normalizeLevel(ratio: Float): Int =
-            this.levelRange.first +
-                    ((this.levelRange.second - this.levelRange.first) * ratio).toInt()
+            this.levelRange.first + ((this.levelRange.second - this.levelRange.first) * ratio).toInt()
 
     private fun SeekBar.calcProgress(params: EqualizerParams, level: Int): Int =
             ((level - params.levelRange.first).toFloat() * this.max / params.levelRange.let { it.second - it.first }).toInt()

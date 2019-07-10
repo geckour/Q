@@ -23,7 +23,8 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-class GenreListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adapter<GenreListAdapter.ViewHolder>() {
+class GenreListAdapter(private val viewModel: MainViewModel) :
+        RecyclerView.Adapter<GenreListAdapter.ViewHolder>() {
 
     private val items: ArrayList<Genre> = ArrayList()
 
@@ -50,16 +51,21 @@ class GenreListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
         notifyDataSetChanged()
     }
 
-    internal fun onNewQueue(songs: List<Song>, actionType: InsertActionType,
-                            classType: OrientedClassType = OrientedClassType.GENRE) {
+    internal fun onNewQueue(
+            songs: List<Song>,
+            actionType: InsertActionType,
+            classType: OrientedClassType = OrientedClassType.GENRE
+    ) {
         GlobalScope.launch(Dispatchers.Main) {
             viewModel.onNewQueue(songs, actionType, classType)
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
-            ViewHolder(ItemListGenreBinding.inflate(LayoutInflater.from(parent.context),
-                    parent, false))
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
+            ItemListGenreBinding.inflate(
+                    LayoutInflater.from(parent.context), parent, false
+            )
+    )
 
     override fun getItemCount(): Int = items.size
 
@@ -67,13 +73,14 @@ class GenreListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
         holder.bind()
     }
 
-    inner class ViewHolder(private val binding: ItemListGenreBinding)
-        : RecyclerView.ViewHolder(binding.root) {
+    inner class ViewHolder(private val binding: ItemListGenreBinding) :
+            RecyclerView.ViewHolder(binding.root) {
 
         private fun getPopupMenu(bindTo: View) = PopupMenu(bindTo.context, bindTo).apply {
             setOnMenuItemClickListener {
-                return@setOnMenuItemClickListener onOptionSelected(bindTo.context,
-                        it.itemId, binding.data)
+                return@setOnMenuItemClickListener onOptionSelected(
+                        bindTo.context, it.itemId, binding.data
+                )
             }
             inflate(R.menu.songs)
         }

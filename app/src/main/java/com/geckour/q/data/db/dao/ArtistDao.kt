@@ -9,6 +9,7 @@ import com.geckour.q.data.db.model.Artist
 
 @Dao
 interface ArtistDao {
+
     @Insert
     fun insert(artist: Artist): Long
 
@@ -37,18 +38,17 @@ interface ArtistDao {
     fun increasePlaybackCount(artistId: Long)
 }
 
-fun Artist.upsert(db: DB): Long? =
-        this.mediaId?.let {
-            val artist = db.artistDao().getByMediaId(it)
-            if (artist != null) {
-                if (this.title != null) db.artistDao().update(this.copy(id = artist.id))
-                artist.id
-            } else db.artistDao().insert(this)
-        } ?: run {
-            this.title?.let {
-                db.artistDao().findArtist(it).let {
-                    if (it.isEmpty()) db.artistDao().insert(this)
-                    else it.first().id
-                }
-            }
+fun Artist.upsert(db: DB): Long? = this.mediaId?.let {
+    val artist = db.artistDao().getByMediaId(it)
+    if (artist != null) {
+        if (this.title != null) db.artistDao().update(this.copy(id = artist.id))
+        artist.id
+    } else db.artistDao().insert(this)
+} ?: run {
+    this.title?.let {
+        db.artistDao().findArtist(it).let {
+            if (it.isEmpty()) db.artistDao().insert(this)
+            else it.first().id
         }
+    }
+}

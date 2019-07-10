@@ -24,7 +24,8 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adapter<PlaylistListAdapter.ViewHolder>() {
+class PlaylistListAdapter(private val viewModel: MainViewModel) :
+        RecyclerView.Adapter<PlaylistListAdapter.ViewHolder>() {
 
     private val items: ArrayList<Playlist> = ArrayList()
 
@@ -51,16 +52,21 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
         notifyDataSetChanged()
     }
 
-    internal fun onNewQueue(songs: List<Song>, actionType: InsertActionType,
-                            classType: OrientedClassType = OrientedClassType.PLAYLIST) {
+    internal fun onNewQueue(
+            songs: List<Song>,
+            actionType: InsertActionType,
+            classType: OrientedClassType = OrientedClassType.PLAYLIST
+    ) {
         GlobalScope.launch(Dispatchers.Main) {
             viewModel.onNewQueue(songs, actionType, classType)
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
-            ViewHolder(ItemListPlaylistBinding.inflate(LayoutInflater.from(parent.context),
-                    parent, false))
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
+            ItemListPlaylistBinding.inflate(
+                    LayoutInflater.from(parent.context), parent, false
+            )
+    )
 
     override fun getItemCount(): Int = items.size
 
@@ -68,13 +74,14 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
         holder.bind()
     }
 
-    inner class ViewHolder(private val binding: ItemListPlaylistBinding)
-        : RecyclerView.ViewHolder(binding.root) {
+    inner class ViewHolder(private val binding: ItemListPlaylistBinding) :
+            RecyclerView.ViewHolder(binding.root) {
 
         private fun getPopupMenu(bindTo: View) = PopupMenu(bindTo.context, bindTo).apply {
             setOnMenuItemClickListener {
-                return@setOnMenuItemClickListener onOptionSelected(bindTo.context,
-                        it.itemId, binding.data)
+                return@setOnMenuItemClickListener onOptionSelected(
+                        bindTo.context, it.itemId, binding.data
+                )
             }
             inflate(R.menu.playlist)
         }
@@ -97,10 +104,11 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
         }
 
         private fun Playlist.delete() {
-            val deleted = binding.root.context.contentResolver
-                    .delete(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
-                            "${MediaStore.Audio.Playlists._ID}=?",
-                            arrayOf(this.id.toString())) == 1
+            val deleted = binding.root.context.contentResolver.delete(
+                    MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
+                    "${MediaStore.Audio.Playlists._ID}=?",
+                    arrayOf(this.id.toString())
+            ) == 1
             if (deleted) {
                 items.removeAt(adapterPosition)
                 notifyItemRemoved(adapterPosition)
@@ -126,11 +134,9 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) : RecyclerView.A
 
             GlobalScope.launch {
                 viewModel.loading.postValue(true)
-                val songs = playlist.getTrackMediaIds(context)
-                        .sortedBy { it.second }
-                        .mapNotNull {
-                            getSong(DB.getInstance(context), it.first, playlistId = playlist.id)
-                        }.toList()
+                val songs = playlist.getTrackMediaIds(context).sortedBy { it.second }.mapNotNull {
+                    getSong(DB.getInstance(context), it.first, playlistId = playlist.id)
+                }.toList()
                 viewModel.loading.postValue(false)
 
                 onNewQueue(songs, actionType, OrientedClassType.SONG)

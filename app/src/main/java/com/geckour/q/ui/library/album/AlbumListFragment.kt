@@ -24,7 +24,6 @@ import com.geckour.q.util.ScopedFragment
 import com.geckour.q.util.getSong
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.isNightMode
-import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainModel
@@ -66,8 +65,9 @@ class AlbumListFragment : ScopedFragment() {
 
     private var artist: Artist? = null
 
-    override fun onCreateView(inflater: LayoutInflater,
-                              container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View? {
         observeEvents()
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
         return binding.root
@@ -122,8 +122,8 @@ class AlbumListFragment : ScopedFragment() {
                 val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
                 val toggleTo = sharedPreferences.isNightMode.not()
                 sharedPreferences.isNightMode = toggleTo
-                (requireActivity() as CrashlyticsBundledActivity).delegate
-                        .localNightMode = toggleTo.toNightModeInt
+                (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
+                        toggleTo.toNightModeInt
                 return true
             }
 
@@ -142,15 +142,14 @@ class AlbumListFragment : ScopedFragment() {
 
             launch(Dispatchers.IO) {
                 val sortByTrackOrder = item.itemId.let {
-                    it != R.id.menu_insert_all_simple_shuffle_next
-                            || it != R.id.menu_insert_all_simple_shuffle_last
-                            || it != R.id.menu_override_all_simple_shuffle
+                    it != R.id.menu_insert_all_simple_shuffle_next || it != R.id.menu_insert_all_simple_shuffle_last || it != R.id.menu_override_all_simple_shuffle
                 }
                 mainViewModel.loading.postValue(true)
                 val songs = adapter.getItems().map {
                     DB.getInstance(context).let { db ->
-                        db.trackDao().findByAlbum(it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled))
-                                .mapNotNull { getSong(db, it) }
+                        db.trackDao().findByAlbum(
+                                it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                        ).mapNotNull { getSong(db, it) }
                                 .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                     }
                 }.apply {
@@ -207,8 +206,7 @@ class AlbumListFragment : ScopedFragment() {
     private fun fetchAlbums(db: DB): List<Album> =
 
             (artist?.let { db.albumDao().findByArtistId(it.id) }
-                    ?: db.albumDao().getAll())
-                    .getAlbumList(db)
+                    ?: db.albumDao().getAll()).getAlbumList(db)
 
     private fun upsertAlbumListIfPossible(db: DB) {
         launch {
@@ -230,11 +228,9 @@ class AlbumListFragment : ScopedFragment() {
         }
     }
 
-    private fun List<DBAlbum>.getAlbumList(db: DB): List<Album> =
-            this@getAlbumList.mapNotNull {
-                val artistName = db.artistDao().get(it.artistId)?.title
-                        ?: return@mapNotNull null
-                val totalDuration = db.trackDao().findByAlbum(it.id).map { it.duration }.sum()
-                it.toDomainModel(artistName, totalDuration)
-            }
+    private fun List<DBAlbum>.getAlbumList(db: DB): List<Album> = this@getAlbumList.mapNotNull {
+        val artistName = db.artistDao().get(it.artistId)?.title ?: return@mapNotNull null
+        val totalDuration = db.trackDao().findByAlbum(it.id).map { it.duration }.sum()
+        it.toDomainModel(artistName, totalDuration)
+    }
 }

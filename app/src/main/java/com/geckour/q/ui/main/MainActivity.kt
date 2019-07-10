@@ -2,10 +2,15 @@ package com.geckour.q.ui.main
 
 import android.Manifest
 import android.content.BroadcastReceiver
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.database.ContentObserver
+import android.media.MediaMetadataRetriever
+import android.net.Uri
 import android.os.Bundle
+import android.os.Handler
 import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.view.KeyEvent
@@ -18,6 +23,7 @@ import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
+import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Bool
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.domain.model.PlaybackButton
@@ -49,6 +55,7 @@ import com.geckour.q.util.ducking
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
 import com.geckour.q.util.preferScreen
+import com.geckour.q.util.pushMedia
 import com.geckour.q.util.toNightModeInt
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -157,19 +164,19 @@ class MainActivity : CrashlyticsBundledActivity() {
             R.id.nav_genre -> GenreListFragment.newInstance()
             R.id.nav_playlist -> PlaylistListFragment.newInstance()
             R.id.nav_setting -> {
-                startActivityForResult(SettingActivity.createIntent(this),
-                        RequestCode.RESULT_SETTING.code)
+                startActivityForResult(
+                        SettingActivity.createIntent(this), RequestCode.RESULT_SETTING.code
+                )
                 null
             }
             R.id.nav_equalizer -> EqualizerFragment.newInstance()
             R.id.nav_sync -> {
                 FirebaseAnalytics.getInstance(this)
-                        .logEvent(
-                                FirebaseAnalytics.Event.SELECT_CONTENT,
-                                Bundle().apply {
-                                    putString(FirebaseAnalytics.Param.ITEM_NAME, "Invoked force sync")
-                                }
-                        )
+                        .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
+                            putString(
+                                    FirebaseAnalytics.Param.ITEM_NAME, "Invoked force sync"
+                            )
+                        })
 
                 retrieveMediaWithPermissionCheck()
                 null
@@ -178,20 +185,55 @@ class MainActivity : CrashlyticsBundledActivity() {
             else -> null
         }
         if (fragment != null) {
-            supportFragmentManager.beginTransaction()
-                    .apply {
-                        if ((binding.coordinatorMain.contentMain.root as FrameLayout).childCount == 0)
-                            add(R.id.content_main, fragment)
-                        else {
-                            replace(R.id.content_main, fragment)
-                            addToBackStack(null)
-                        }
-                    }
-                    .commit()
+            supportFragmentManager.beginTransaction().apply {
+                if ((binding.coordinatorMain.contentMain.root as FrameLayout).childCount == 0) add(
+                        R.id.content_main, fragment
+                )
+                else {
+                    replace(R.id.content_main, fragment)
+                    addToBackStack(null)
+                }
+            }.commit()
         }
         binding.drawerLayout.post { binding.drawerLayout.closeDrawers() }
         true
     }
+
+    private val contentObserver
+        get() = object : ContentObserver(Handler()) {
+            override fun deliverSelfNotifications(): Boolean = true
+
+            override fun onChange(selfChange: Boolean, uri: Uri?) {
+                super.onChange(selfChange, uri)
+
+                uri ?: return
+
+                val id = try {
+                    ContentUris.parseId(uri)
+                } catch (t: Throwable) {
+                    return
+                }
+                Timber.d("qgeck media id: $id")
+                try {
+                    this@MainActivity.contentResolver.query(
+                            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                            MediaRetrieveService.projection,
+                            "${MediaStore.Audio.Media._ID}=$id",
+                            null,
+                            null
+                    )?.use {
+                        if (it.moveToFirst()) {
+                            Timber.d("qgeck push start")
+                            MediaMetadataRetriever().pushMedia(
+                                    this@MainActivity, DB.getInstance(this@MainActivity), it
+                            )
+                        } else deleteFromDB(id)
+                    }
+                } catch (t: Throwable) {
+                    Timber.e(t)
+                }
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -213,9 +255,12 @@ class MainActivity : CrashlyticsBundledActivity() {
             onNavigationItemSelected(binding.navigationView.menu.findItem(navId))
         } else if (savedInstanceState.containsKey(STATE_KEY_REQUESTED_TRANSACTION)) {
             requestedTransaction =
-                    savedInstanceState.getParcelable(STATE_KEY_REQUESTED_TRANSACTION)
-                            as RequestedTransaction
+                    savedInstanceState.getParcelable(STATE_KEY_REQUESTED_TRANSACTION) as RequestedTransaction
         }
+
+        contentResolver.registerContentObserver(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, true, contentObserver
+        )
     }
 
     override fun onResume() {
@@ -246,19 +291,22 @@ class MainActivity : CrashlyticsBundledActivity() {
         super.onDestroy()
 
         unregisterReceiver(syncingProgressReceiver)
+        contentResolver.unregisterContentObserver(contentObserver)
     }
 
     override fun onBackPressed() {
         when {
-            binding.drawerLayout.isDrawerOpen(binding.navigationView) ->
-                binding.drawerLayout.closeDrawer(binding.navigationView)
-            bottomSheetViewModel.sheetState == BottomSheetBehavior.STATE_EXPANDED ->
-                bottomSheetViewModel.toggleSheetState.call()
+            binding.drawerLayout.isDrawerOpen(binding.navigationView) -> binding.drawerLayout.closeDrawer(
+                    binding.navigationView
+            )
+            bottomSheetViewModel.sheetState == BottomSheetBehavior.STATE_EXPANDED -> bottomSheetViewModel.toggleSheetState.call()
             else -> super.onBackPressed()
         }
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+            requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
         onRequestPermissionsResult(requestCode, grantResults)
@@ -276,8 +324,9 @@ class MainActivity : CrashlyticsBundledActivity() {
         }
     }
 
-    @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE)
+    @NeedsPermission(
+            Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE
+    )
     internal fun retrieveMedia() {
         invokeRetrieveMedia()
     }
@@ -286,15 +335,15 @@ class MainActivity : CrashlyticsBundledActivity() {
         startService(MediaRetrieveService.getIntent(this))
     }
 
-    @OnPermissionDenied(Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE)
+    @OnPermissionDenied(
+            Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE
+    )
     internal fun onReadExternalStorageDenied() {
         retrieveMediaWithPermissionCheck()
     }
 
     private fun observeEvents() {
         viewModel.player.observe(this) { player ->
-            Timber.d("qgeck player: $player")
             player ?: return@observe
 
             player.setOnQueueChangedListener { bottomSheetViewModel.currentQueue.value = it }
@@ -313,7 +362,9 @@ class MainActivity : CrashlyticsBundledActivity() {
                 bottomSheetViewModel.playbackRatio.value = it
             }
             player.setOnRepeatModeChangedListener { bottomSheetViewModel.repeatMode.value = it }
-            player.setOnEqualizerStateChangedListener { equalizerViewModel.equalizerState.value = it }
+            player.setOnEqualizerStateChangedListener {
+                equalizerViewModel.equalizerState.value = it
+            }
             player.setOnDestroyedListener { viewModel.onDestroyPlayer() }
 
             player.publishStatus()
@@ -335,17 +386,19 @@ class MainActivity : CrashlyticsBundledActivity() {
                     R.id.nav_playlist -> it is PlaylistListFragment
                     else -> false
                 }
-            }?.tag ?: getString(when (navId) {
-                R.id.nav_artist -> R.string.nav_artist
-                R.id.nav_album -> R.string.nav_album
-                R.id.nav_song -> R.string.nav_song
-                R.id.nav_genre -> R.string.nav_genre
-                R.id.nav_playlist -> R.string.nav_playlist
-                R.id.nav_equalizer -> R.string.nav_equalizer
-                R.id.nav_pay -> R.string.nav_pay
-                R.layout.fragment_easter_egg -> R.string.nav_fortune
-                else -> return@observe
-            })
+            }?.tag ?: getString(
+                    when (navId) {
+                        R.id.nav_artist -> R.string.nav_artist
+                        R.id.nav_album -> R.string.nav_album
+                        R.id.nav_song -> R.string.nav_song
+                        R.id.nav_genre -> R.string.nav_genre
+                        R.id.nav_playlist -> R.string.nav_playlist
+                        R.id.nav_equalizer -> R.string.nav_equalizer
+                        R.id.nav_pay -> R.string.nav_pay
+                        R.layout.fragment_easter_egg -> R.string.nav_fortune
+                        else -> return@observe
+                    }
+            )
             supportActionBar?.title = title
         }
 
@@ -364,7 +417,9 @@ class MainActivity : CrashlyticsBundledActivity() {
 
         viewModel.selectedArtist.observe(this) {
             if (it == null) return@observe
-            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.ARTIST, artist = it)
+            requestedTransaction = RequestedTransaction(
+                    RequestedTransaction.Tag.ARTIST, artist = it
+            )
             tryTransaction()
         }
 
@@ -382,7 +437,9 @@ class MainActivity : CrashlyticsBundledActivity() {
 
         viewModel.selectedPlaylist.observe(this) {
             if (it == null) return@observe
-            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.PLAYLIST, playlist = it)
+            requestedTransaction = RequestedTransaction(
+                    RequestedTransaction.Tag.PLAYLIST, playlist = it
+            )
             tryTransaction()
         }
 
@@ -423,19 +480,19 @@ class MainActivity : CrashlyticsBundledActivity() {
 
         bottomSheetViewModel.playbackButton.observe(this) {
             if (it == null) return@observe
-            PlayerService.mediaSession?.controller
-                    ?.dispatchMediaButtonEvent(KeyEvent(
+            PlayerService.mediaSession?.controller?.dispatchMediaButtonEvent(
+                    KeyEvent(
                             if (it == PlaybackButton.UNDEFINED) KeyEvent.ACTION_UP
-                            else KeyEvent.ACTION_DOWN,
-                            when (it) {
-                                PlaybackButton.PLAY_OR_PAUSE -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-                                PlaybackButton.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
-                                PlaybackButton.PREV -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
-                                PlaybackButton.FF -> KeyEvent.KEYCODE_MEDIA_FAST_FORWARD
-                                PlaybackButton.REWIND -> KeyEvent.KEYCODE_MEDIA_REWIND
-                                PlaybackButton.UNDEFINED -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-                            }
-                    ))
+                            else KeyEvent.ACTION_DOWN, when (it) {
+                        PlaybackButton.PLAY_OR_PAUSE -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+                        PlaybackButton.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
+                        PlaybackButton.PREV -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
+                        PlaybackButton.FF -> KeyEvent.KEYCODE_MEDIA_FAST_FORWARD
+                        PlaybackButton.REWIND -> KeyEvent.KEYCODE_MEDIA_REWIND
+                        PlaybackButton.UNDEFINED -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+                    }
+                    )
+            )
         }
 
         bottomSheetViewModel.clearQueue.observe(this) {
@@ -455,9 +512,13 @@ class MainActivity : CrashlyticsBundledActivity() {
 
         bottomSheetViewModel.changedQueue.observe(this) {
             if (it == null) return@observe
-            viewModel.player.value?.submitQueue(QueueInfo(
-                    QueueMetadata(InsertActionType.OVERRIDE,
-                            OrientedClassType.SONG), it))
+            viewModel.player.value?.submitQueue(
+                    QueueInfo(
+                            QueueMetadata(
+                                    InsertActionType.OVERRIDE, OrientedClassType.SONG
+                            ), it
+                    )
+            )
         }
 
         bottomSheetViewModel.changedPosition.observe(this) {
@@ -467,25 +528,41 @@ class MainActivity : CrashlyticsBundledActivity() {
 
         paymentViewModel.saveSuccess.observe(this) {
             if (it == null) return@observe
-            Snackbar.make(binding.root,
-                    if (it) R.string.payment_save_success
-                    else R.string.payment_save_failure,
-                    Snackbar.LENGTH_SHORT).show()
+            Snackbar.make(
+                    binding.root, if (it) R.string.payment_save_success
+            else R.string.payment_save_failure, Snackbar.LENGTH_SHORT
+            ).show()
+        }
+    }
+
+    private fun deleteFromDB(mediaId: Long) {
+        Timber.d("qgeck delete start")
+        DB.getInstance(applicationContext).apply {
+            trackDao().getByMediaId(mediaId)?.apply {
+                trackDao().delete(this.id)
+                if (trackDao().findByAlbum(this.albumId).isEmpty()) albumDao().delete(this.albumId)
+                if (trackDao().findByArtist(this.artistId).isEmpty()) artistDao().delete(this.artistId)
+            }
         }
     }
 
     private fun setupDrawer() {
-        drawerToggle = ActionBarDrawerToggle(this,
-                binding.drawerLayout, binding.coordinatorMain.toolbar,
-                R.string.drawer_open, R.string.drawer_close)
+        drawerToggle = ActionBarDrawerToggle(
+                this,
+                binding.drawerLayout,
+                binding.coordinatorMain.toolbar,
+                R.string.drawer_open,
+                R.string.drawer_close
+        )
         binding.drawerLayout.addDrawerListener(drawerToggle)
         drawerToggle.syncState()
         binding.navigationView.setNavigationItemSelectedListener(onNavigationItemSelected)
-        binding.navigationView.getHeaderView(0).findViewById<View>(R.id.drawer_head_icon)?.setOnLongClickListener {
-            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.EASTER_EGG)
-            tryTransaction()
-            true
-        }
+        binding.navigationView.getHeaderView(0).findViewById<View>(R.id.drawer_head_icon)
+                ?.setOnLongClickListener {
+                    requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.EASTER_EGG)
+                    tryTransaction()
+                    true
+                }
     }
 
     private fun setLockingIndicator() {
@@ -521,7 +598,8 @@ class MainActivity : CrashlyticsBundledActivity() {
                 if (locking) View.VISIBLE else View.GONE
         binding.drawerLayout.setDrawerLockMode(
                 if (locking) DrawerLayout.LOCK_MODE_LOCKED_CLOSED
-                else DrawerLayout.LOCK_MODE_UNLOCKED)
+                else DrawerLayout.LOCK_MODE_UNLOCKED
+        )
     }
 
     private fun tryTransaction() {
@@ -532,45 +610,54 @@ class MainActivity : CrashlyticsBundledActivity() {
                 when (this.tag) {
                     RequestedTransaction.Tag.ARTIST -> {
                         if (artist != null) {
-                            supportFragmentManager.beginTransaction()
-                                    .replace(R.id.content_main,
-                                            AlbumListFragment.newInstance(artist), artist.name)
-                                    .addToBackStack(null)
-                                    .commit()
+                            supportFragmentManager.beginTransaction().replace(
+                                    R.id.content_main, AlbumListFragment.newInstance(
+                                    artist
+                            ), artist.name
+                            ).addToBackStack(
+                                    null
+                            ).commit()
                         }
                     }
                     RequestedTransaction.Tag.ALBUM -> {
                         if (album != null) {
-                            supportFragmentManager.beginTransaction()
-                                    .replace(R.id.content_main,
-                                            SongListFragment.newInstance(album), album.name)
-                                    .addToBackStack(null)
-                                    .commit()
+                            supportFragmentManager.beginTransaction().replace(
+                                    R.id.content_main, SongListFragment.newInstance(
+                                    album
+                            ), album.name
+                            ).addToBackStack(
+                                    null
+                            ).commit()
                         }
                     }
                     RequestedTransaction.Tag.GENRE -> {
                         if (genre != null) {
-                            supportFragmentManager.beginTransaction()
-                                    .replace(R.id.content_main,
-                                            SongListFragment.newInstance(genre), genre.name)
-                                    .addToBackStack(null)
-                                    .commit()
+                            supportFragmentManager.beginTransaction().replace(
+                                    R.id.content_main, SongListFragment.newInstance(
+                                    genre
+                            ), genre.name
+                            ).addToBackStack(
+                                    null
+                            ).commit()
                         }
                     }
                     RequestedTransaction.Tag.PLAYLIST -> {
                         if (playlist != null) {
-                            supportFragmentManager.beginTransaction()
-                                    .replace(R.id.content_main,
-                                            SongListFragment.newInstance(playlist), playlist.name)
-                                    .addToBackStack(null)
-                                    .commit()
+                            supportFragmentManager.beginTransaction().replace(
+                                    R.id.content_main, SongListFragment.newInstance(
+                                    playlist
+                            ), playlist.name
+                            ).addToBackStack(
+                                    null
+                            ).commit()
                         }
                     }
                     RequestedTransaction.Tag.EASTER_EGG -> {
-                        supportFragmentManager.beginTransaction()
-                                .replace(R.id.content_main, EasterEggFragment.newInstance())
-                                .addToBackStack(null)
-                                .commit()
+                        supportFragmentManager.beginTransaction().replace(
+                                R.id.content_main, EasterEggFragment.newInstance()
+                        ).addToBackStack(
+                                null
+                        ).commit()
                         binding.drawerLayout.closeDrawer(binding.navigationView)
                     }
                     else -> Unit
@@ -582,8 +669,9 @@ class MainActivity : CrashlyticsBundledActivity() {
 
     private fun dismissSearch() {
         binding.coordinatorMain.contentSearch.root.visibility = View.GONE
-        getSystemService(InputMethodManager::class.java)
-                .hideSoftInputFromWindow(currentFocus?.windowToken, 0)
+        getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(
+                currentFocus?.windowToken, 0
+        )
     }
 
     @NeedsPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)

@@ -32,7 +32,8 @@ sealed class Pref<T>(protected val key: String) : ReadWriteProperty<SharedPrefer
         }
     }
 
-    class PrefEnum<T : PrefEnum.Content<*>>(key: String, private val defaultValue: T) : Pref<T>(key) {
+    class PrefEnum<T : PrefEnum.Content<*>>(key: String, private val defaultValue: T) :
+            Pref<T>(key) {
 
         sealed class Content<T>(val name: String, val value: T) {
 
@@ -43,15 +44,19 @@ sealed class Pref<T>(protected val key: String) : ReadWriteProperty<SharedPrefer
 
         override fun getValue(thisRef: SharedPreferences, property: KProperty<*>): T =
                 when (defaultValue) {
-                    is Content.Screen ->
-                        screens[thisRef.getInt(key, screens.indexOf<Content.Screen>(defaultValue as Content.Screen))] as T
+                    is Content.Screen -> screens[thisRef.getInt(
+                            key, screens.indexOf<Content.Screen>(
+                            defaultValue as Content.Screen
+                    )
+                    )] as T
                     else -> throw IllegalStateException()
                 }
 
         override fun setValue(thisRef: SharedPreferences, property: KProperty<*>, value: T) {
             when (defaultValue) {
-                is Content.Screen ->
-                    thisRef.edit().putInt(key, screens.indexOf<Content.Screen>(value as Content.Screen)).apply()
+                is Content.Screen -> thisRef.edit().putInt(
+                        key, screens.indexOf<Content.Screen>(value as Content.Screen)
+                ).apply()
                 else -> throw IllegalStateException()
             }
         }
@@ -62,7 +67,9 @@ sealed class Pref<T>(protected val key: String) : ReadWriteProperty<SharedPrefer
                     Content.Screen("ALBUM", Content.Screen.Data(R.string.nav_album, R.id.nav_album)),
                     Content.Screen("SONG", Content.Screen.Data(R.string.nav_song, R.id.nav_song)),
                     Content.Screen("GENRE", Content.Screen.Data(R.string.nav_genre, R.id.nav_genre)),
-                    Content.Screen("PLAYLIST", Content.Screen.Data(R.string.nav_playlist, R.id.nav_playlist))
+                    Content.Screen(
+                            "PLAYLIST", Content.Screen.Data(R.string.nav_playlist, R.id.nav_playlist)
+                    )
             )
         }
     }
@@ -95,12 +102,11 @@ sealed class NullablePref<T>(protected val key: String) : ReadWriteProperty<Shar
 }
 
 data class EqualizerParams(
-        val levelRange: Pair<Int, Int>,
-        val bands: List<Band>
+        val levelRange: Pair<Int, Int>, val bands: List<Band>
 ) {
+
     data class Band(
-            val freqRange: Pair<Int, Int>,
-            val centerFreq: Int
+            val freqRange: Pair<Int, Int>, val centerFreq: Int
     )
 }
 
@@ -111,23 +117,32 @@ data class EqualizerSettings(
 var SharedPreferences.isNightMode by Pref.PrefBoolean("key_night-mode", false)
 var SharedPreferences.preferScreen by Pref.PrefEnum("key_prefer_screen", Pref.PrefEnum.screens[0])
 var SharedPreferences.ducking by Pref.PrefBoolean("key_ducking", false)
-var SharedPreferences.patternFormatShareText by NullablePref.PrefString("key_pattern_format_share_text", "#NowPlaying TI - AR (AL)")
+var SharedPreferences.patternFormatShareText by NullablePref.PrefString(
+        "key_pattern_format_share_text", "#NowPlaying TI - AR (AL)"
+)
 var SharedPreferences.bundleArtwork by Pref.PrefBoolean("key_bundle_artwork", true)
-var SharedPreferences.showArtworkOnLockScreen by Pref.PrefBoolean("key_show_artwork_on_lock_screen", false)
+var SharedPreferences.showArtworkOnLockScreen by Pref.PrefBoolean(
+        "key_show_artwork_on_lock_screen", false
+)
 var SharedPreferences.equalizerEnabled by Pref.PrefBoolean("key_equalizer_enabled", false)
-var SharedPreferences.equalizerParams by NullablePref.PrefJson("key_equalizer_params", EqualizerParams::class.java)
-var SharedPreferences.equalizerSettings by NullablePref.PrefJson("key_equalizer_settings", EqualizerSettings::class.java)
+var SharedPreferences.equalizerParams by NullablePref.PrefJson(
+        "key_equalizer_params", EqualizerParams::class.java
+)
+var SharedPreferences.equalizerSettings by NullablePref.PrefJson(
+        "key_equalizer_settings", EqualizerSettings::class.java
+)
 var SharedPreferences.ignoringEnabled by Pref.PrefBoolean("key_enabled_ignoring", true)
 
 fun SharedPreferences.setEqualizerLevel(bandNum: Int, level: Int) {
     equalizerSettings?.apply {
-        equalizerSettings = EqualizerSettings(levels.toMutableList().apply { this[bandNum] = level })
+        equalizerSettings =
+                EqualizerSettings(levels.toMutableList().apply { this[bandNum] = level })
     }
 }
 
 var Context.formatPattern: String
-    get() = PreferenceManager.getDefaultSharedPreferences(this)
-            .patternFormatShareText ?: this.getString(R.string.setting_default_sharing_text_pattern)
+    get() = PreferenceManager.getDefaultSharedPreferences(this).patternFormatShareText
+            ?: this.getString(R.string.setting_default_sharing_text_pattern)
     set(value) {
         PreferenceManager.getDefaultSharedPreferences(this).patternFormatShareText = value
     }

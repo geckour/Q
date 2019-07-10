@@ -27,8 +27,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-class ArtistListAdapter(private val viewModel: MainViewModel)
-    : RecyclerView.Adapter<ArtistListAdapter.ViewHolder>() {
+class ArtistListAdapter(private val viewModel: MainViewModel) :
+        RecyclerView.Adapter<ArtistListAdapter.ViewHolder>() {
 
     private val items: ArrayList<Artist> = ArrayList()
 
@@ -81,16 +81,21 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
         removeItem(artistId)
     }
 
-    internal fun onNewQueue(songs: List<Song>, actionType: InsertActionType,
-                            classType: OrientedClassType = OrientedClassType.ARTIST) {
+    internal fun onNewQueue(
+            songs: List<Song>,
+            actionType: InsertActionType,
+            classType: OrientedClassType = OrientedClassType.ARTIST
+    ) {
         GlobalScope.launch(Dispatchers.Main) {
             viewModel.onNewQueue(songs, actionType, classType)
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
-            ViewHolder(ItemListArtistBinding.inflate(LayoutInflater.from(parent.context),
-                    parent, false))
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
+            ItemListArtistBinding.inflate(
+                    LayoutInflater.from(parent.context), parent, false
+            )
+    )
 
     override fun getItemCount(): Int = items.size
 
@@ -99,13 +104,14 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
     }
 
 
-    inner class ViewHolder(private val binding: ItemListArtistBinding)
-        : RecyclerView.ViewHolder(binding.root) {
+    inner class ViewHolder(private val binding: ItemListArtistBinding) :
+            RecyclerView.ViewHolder(binding.root) {
 
         private fun getPopupMenu(bindTo: View) = PopupMenu(bindTo.context, bindTo).apply {
             setOnMenuItemClickListener {
-                return@setOnMenuItemClickListener onOptionSelected(bindTo.context,
-                        it.itemId, binding.data)
+                return@setOnMenuItemClickListener onOptionSelected(
+                        bindTo.context, it.itemId, binding.data
+                )
             }
             inflate(R.menu.albums)
         }
@@ -122,11 +128,8 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
             binding.option.setOnClickListener { getPopupMenu(it).show() }
             GlobalScope.launch(Dispatchers.IO) {
                 try {
-                    val drawable = Glide.with(binding.thumb.context)
-                            .asDrawable()
-                            .load(artist.thumbUriString ?: R.drawable.ic_empty)
-                            .submit()
-                            .get()
+                    val drawable = Glide.with(binding.thumb.context).asDrawable()
+                            .load(artist.thumbUriString ?: R.drawable.ic_empty).submit().get()
                     withContext(Dispatchers.Main) {
                         binding.thumb.setImageDrawable(drawable)
                     }
@@ -154,16 +157,15 @@ class ArtistListAdapter(private val viewModel: MainViewModel)
 
             GlobalScope.launch {
                 val sortByTrackOrder = id.let {
-                    it != R.id.menu_insert_all_simple_shuffle_next
-                            || it != R.id.menu_insert_all_simple_shuffle_last
-                            || it != R.id.menu_override_all_simple_shuffle
+                    it != R.id.menu_insert_all_simple_shuffle_next || it != R.id.menu_insert_all_simple_shuffle_last || it != R.id.menu_override_all_simple_shuffle
                 }
                 val songs = DB.getInstance(context).let { db ->
                     val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
                     viewModel.loading.postValue(true)
                     db.albumDao().findByArtistId(artist.id).map {
-                        db.trackDao().findByAlbum(it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled))
-                                .mapNotNull { getSong(db, it) }
+                        db.trackDao().findByAlbum(
+                                it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                        ).mapNotNull { getSong(db, it) }
                                 .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                     }.apply {
                         viewModel.loading.postValue(false)

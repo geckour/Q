@@ -27,7 +27,8 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adapter<AlbumListAdapter.ViewHolder>() {
+class AlbumListAdapter(private val viewModel: MainViewModel) :
+        RecyclerView.Adapter<AlbumListAdapter.ViewHolder>() {
 
     private val items: ArrayList<Album> = ArrayList()
 
@@ -82,16 +83,21 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
         removeItem(albumId)
     }
 
-    internal fun onNewQueue(songs: List<Song>, actionType: InsertActionType,
-                            classType: OrientedClassType = OrientedClassType.ALBUM) {
+    internal fun onNewQueue(
+            songs: List<Song>,
+            actionType: InsertActionType,
+            classType: OrientedClassType = OrientedClassType.ALBUM
+    ) {
         GlobalScope.launch(Dispatchers.Main) {
             viewModel.onNewQueue(songs, actionType, classType)
         }
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
-            ViewHolder(ItemListAlbumBinding.inflate(LayoutInflater.from(parent.context),
-                    parent, false))
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
+            ItemListAlbumBinding.inflate(
+                    LayoutInflater.from(parent.context), parent, false
+            )
+    )
 
     override fun getItemCount(): Int = items.size
 
@@ -100,13 +106,14 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
     }
 
 
-    inner class ViewHolder(private val binding: ItemListAlbumBinding)
-        : RecyclerView.ViewHolder(binding.root) {
+    inner class ViewHolder(private val binding: ItemListAlbumBinding) :
+            RecyclerView.ViewHolder(binding.root) {
 
         private fun getPopupMenu(bindTo: View) = PopupMenu(bindTo.context, bindTo).apply {
             setOnMenuItemClickListener {
-                return@setOnMenuItemClickListener onOptionSelected(bindTo.context,
-                        it.itemId, binding.data)
+                return@setOnMenuItemClickListener onOptionSelected(
+                        bindTo.context, it.itemId, binding.data
+                )
             }
             inflate(R.menu.songs)
         }
@@ -122,8 +129,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
             }
             binding.option.setOnClickListener { getPopupMenu(it).show() }
             try {
-                Glide.with(binding.thumb)
-                        .load(album.thumbUriString ?: R.drawable.ic_empty)
+                Glide.with(binding.thumb).load(album.thumbUriString ?: R.drawable.ic_empty)
                         .into(binding.thumb)
             } catch (t: Throwable) {
                 Timber.e(t)
@@ -145,15 +151,14 @@ class AlbumListAdapter(private val viewModel: MainViewModel) : RecyclerView.Adap
 
             GlobalScope.launch {
                 val sortByTrackOrder = id.let {
-                    it != R.id.menu_insert_all_simple_shuffle_next
-                            || it != R.id.menu_insert_all_simple_shuffle_last
-                            || it != R.id.menu_override_all_simple_shuffle
+                    it != R.id.menu_insert_all_simple_shuffle_next || it != R.id.menu_insert_all_simple_shuffle_last || it != R.id.menu_override_all_simple_shuffle
                 }
                 val songs = DB.getInstance(context).let { db ->
                     val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
                     viewModel.loading.postValue(true)
-                    db.trackDao().findByAlbum(album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled))
-                            .mapNotNull { getSong(db, it) }
+                    db.trackDao().findByAlbum(
+                            album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                    ).mapNotNull { getSong(db, it) }
                             .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                             .apply { viewModel.loading.postValue(false) }
                 }

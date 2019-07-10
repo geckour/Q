@@ -54,8 +54,9 @@ class GenreListFragment : ScopedFragment() {
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: GenreListAdapter by lazy { GenreListAdapter(mainViewModel) }
 
-    override fun onCreateView(inflater: LayoutInflater,
-                              container: ViewGroup?, savedInstanceState: Bundle?): View? {
+    override fun onCreateView(
+            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View? {
         observeEvents()
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
         return binding.root
@@ -68,7 +69,8 @@ class GenreListFragment : ScopedFragment() {
 
         binding.recyclerView.adapter = adapter
         binding.recyclerView.addItemDecoration(
-                DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL))
+                DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL)
+        )
 
 
         if (adapter.itemCount == 0) {
@@ -120,8 +122,8 @@ class GenreListFragment : ScopedFragment() {
                 val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
                 val toggleTo = sharedPreferences.isNightMode.not()
                 sharedPreferences.isNightMode = toggleTo
-                (requireActivity() as CrashlyticsBundledActivity).delegate
-                        .localNightMode = toggleTo.toNightModeInt
+                (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
+                        toggleTo.toNightModeInt
                 return true
             }
 
@@ -170,37 +172,43 @@ class GenreListFragment : ScopedFragment() {
         }
     }
 
-    private suspend fun fetchGenres(): List<Genre> =
-            context?.let { context ->
-                withContext(Dispatchers.IO) {
-                    context.contentResolver?.query(MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
-                            arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME),
-                            null, null, null)?.use {
-                        val db = DB.getInstance(context)
-                        val list: ArrayList<Genre> = ArrayList()
-                        while (it.moveToNext()) {
-                            val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Genres._ID))
-                            val tracks = getTrackMediaIdsByGenreId(context, id)
-                                    .mapNotNull { db.trackDao().getByMediaId(it) }
-                            val totalDuration = tracks.map { it.duration }.sum()
-                            val genre = Genre(id, tracks.getGenreThumb(context),
-                                    it.getString(it.getColumnIndex(MediaStore.Audio.Genres.NAME)).let {
-                                        if (it.isBlank()) UNKNOWN else it
-                                    }, totalDuration)
-                            list.add(genre)
-                        }
-
-                        return@use list.toList().sortedBy { it.name }
+    private suspend fun fetchGenres(): List<Genre> = context?.let { context ->
+        withContext(Dispatchers.IO) {
+            context.contentResolver?.query(
+                    MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
+                    arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME),
+                    null,
+                    null,
+                    null
+            )?.use {
+                val db = DB.getInstance(context)
+                val list: ArrayList<Genre> = ArrayList()
+                while (it.moveToNext()) {
+                    val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Genres._ID))
+                    val tracks = getTrackMediaIdsByGenreId(context, id).mapNotNull {
+                        db.trackDao().getByMediaId(it)
                     }
+                    val totalDuration = tracks.map { it.duration }.sum()
+                    val genre = Genre(
+                            id,
+                            tracks.getGenreThumb(context),
+                            it.getString(it.getColumnIndex(MediaStore.Audio.Genres.NAME)).let {
+                                if (it.isBlank()) UNKNOWN else it
+                            },
+                            totalDuration
+                    )
+                    list.add(genre)
                 }
-            } ?: emptyList()
+
+                return@use list.toList().sortedBy { it.name }
+            }
+        }
+    } ?: emptyList()
 
     private suspend fun List<Track>.getGenreThumb(context: Context): Bitmap? {
         val db = DB.getInstance(context)
-        return this.distinctBy { it.albumId }.takeOrFillNull(5)
-                .map {
-                    it?.let { db.getArtworkUriStringFromId(it.albumId)?.let { Uri.parse(it) } }
-                }
-                .getThumb(context)
+        return this.distinctBy { it.albumId }.takeOrFillNull(5).map {
+            it?.let { db.getArtworkUriStringFromId(it.albumId)?.let { Uri.parse(it) } }
+        }.getThumb(context)
     }
 }
