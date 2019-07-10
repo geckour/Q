@@ -58,7 +58,7 @@ interface TrackDao {
 fun Track.upsert(db: DB) {
     db.trackDao().getByMediaId(this.mediaId).let {
         if (it != null) {
-            db.trackDao().update(this.copy(id = it.id))
+            db.trackDao().update(this.copy(id = it.id, playbackCount = it.playbackCount, ignored = it.ignored))
             it.id
         } else db.trackDao().insert(this)
     }
