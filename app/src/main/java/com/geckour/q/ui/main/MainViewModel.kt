@@ -74,7 +74,7 @@ class MainViewModel(
 
     private var currentOrientedClassType: OrientedClassType? = null
 
-    internal var syncing: Boolean = false
+    internal var syncing: Bool = Bool.UNDEFINED
     val loading: SingleLiveEvent<Boolean> = SingleLiveEvent()
 
     private var searchJob = Job()

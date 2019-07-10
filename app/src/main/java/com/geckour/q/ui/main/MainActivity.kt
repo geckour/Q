@@ -18,6 +18,7 @@ import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
+import com.geckour.q.data.db.model.Bool
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.RequestedTransaction
@@ -127,7 +128,7 @@ class MainActivity : CrashlyticsBundledActivity() {
             intent?.apply {
                 extras?.getBoolean(EXTRA_SYNCING_COMPLETE, false)?.apply {
                     if (this) {
-                        viewModel.syncing = false
+                        viewModel.syncing = Bool.FALSE
                         setLockingIndicator()
                         when (supportFragmentManager.fragments.lastOrNull { it.isVisible }) {
                             is ArtistListFragment -> artistListViewModel.forceLoad.call()
@@ -139,6 +140,8 @@ class MainActivity : CrashlyticsBundledActivity() {
                     }
                 }
                 (extras?.get(EXTRA_SYNCING_PROGRESS) as? Pair<Int, Int>)?.apply {
+                    if (viewModel.syncing == Bool.UNDEFINED) viewModel.syncing = Bool.TRUE
+                    setLockingIndicator()
                     binding.coordinatorMain.indicatorLocking.progressSync.text =
                             getString(R.string.progress_sync, this.first, this.second)
                 }
@@ -225,11 +228,6 @@ class MainActivity : CrashlyticsBundledActivity() {
         tryTransaction()
     }
 
-    override fun onStart() {
-        super.onStart()
-        startService(PlayerService.createIntent(this))
-    }
-
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
 
@@ -285,8 +283,6 @@ class MainActivity : CrashlyticsBundledActivity() {
     }
 
     private fun invokeRetrieveMedia() {
-        viewModel.syncing = true
-        setLockingIndicator()
         startService(MediaRetrieveService.getIntent(this))
     }
 
@@ -494,11 +490,11 @@ class MainActivity : CrashlyticsBundledActivity() {
 
     private fun setLockingIndicator() {
         when {
-            viewModel.syncing -> {
+            viewModel.syncing == Bool.TRUE -> {
                 indicateSync()
                 toggleIndicateLock(true)
             }
-            viewModel.syncing.not() && viewModel.loading.value == true -> {
+            viewModel.loading.value == true -> {
                 indicateLoad()
                 toggleIndicateLock(true)
             }

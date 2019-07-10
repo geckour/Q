@@ -10,7 +10,6 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.os.Build
 import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.support.v4.media.MediaMetadataCompat
@@ -29,7 +28,6 @@ import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.service.PlayerService
-import com.geckour.q.service.PlayerService.Companion.NOTIFICATION_CHANNEL_ID_PLAYER
 import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.ui.main.MainActivity
 import com.google.android.exoplayer2.source.MediaSource
@@ -350,9 +348,9 @@ suspend fun Song.getMediaMetadata(context: Context, albumTitle: String? = null):
                     .build()
         }
 
-suspend fun getNotification(context: Context, sessionToken: MediaSessionCompat.Token?,
-                            song: Song, albumTitle: String,
-                            playing: Boolean): Notification? =
+suspend fun getPlayerNotification(context: Context, sessionToken: MediaSessionCompat.Token?,
+                                  song: Song, albumTitle: String,
+                                  playing: Boolean): Notification? =
         withContext(Dispatchers.IO) {
             if (sessionToken == null) return@withContext null
 
@@ -368,11 +366,8 @@ suspend fun getNotification(context: Context, sessionToken: MediaSessionCompat.T
                 Timber.e(t)
                 null
             }
-            val builder =
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                        NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID_PLAYER)
-                    else NotificationCompat.Builder(context)
-            builder.setSmallIcon(R.drawable.ic_notification)
+            context.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER)
+                    .setSmallIcon(R.drawable.ic_notification)
                     .setLargeIcon(artwork)
                     .setContentTitle(song.name)
                     .setContentText(song.artist)

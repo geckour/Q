@@ -38,7 +38,7 @@ import com.geckour.q.util.equalizerParams
 import com.geckour.q.util.equalizerSettings
 import com.geckour.q.util.getMediaMetadata
 import com.geckour.q.util.getMediaSource
-import com.geckour.q.util.getNotification
+import com.geckour.q.util.getPlayerNotification
 import com.geckour.q.util.move
 import com.geckour.q.util.shuffleByClassType
 import com.google.android.exoplayer2.ExoPlaybackException
@@ -78,7 +78,6 @@ class PlayerService : Service() {
 
         private const val TAG: String = "com.geckour.q.service.PlayerService"
 
-        const val NOTIFICATION_CHANNEL_ID_PLAYER = "notification_channel_id_player"
         private const val NOTIFICATION_ID_PLAYER = 320
 
         const val ARGS_KEY_CONTROL_COMMAND = "args_key_control_command"
@@ -865,7 +864,7 @@ class PlayerService : Service() {
 
         mediaSession?.setMetadata(
                 song.getMediaMetadata(this@PlayerService, albumTitle))
-        getNotification(this@PlayerService,
+        getPlayerNotification(this@PlayerService,
                 mediaSession?.sessionToken, song, albumTitle, playing)
                 ?.show()
     }

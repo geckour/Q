@@ -16,7 +16,7 @@ import com.crashlytics.android.Crashlytics
 import com.facebook.stetho.Stetho
 import com.geckour.q.data.db.DB
 import com.geckour.q.service.MediaRetrieveService
-import com.geckour.q.service.PlayerService.Companion.NOTIFICATION_CHANNEL_ID_PLAYER
+import com.geckour.q.util.QNotificationChannel
 import com.geckour.q.util.pushMedia
 import io.fabric.sdk.android.Fabric
 import timber.log.Timber
@@ -77,18 +77,24 @@ class App : Application() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannel() {
-
-        val name = getString(R.string.notification_channel_player)
-        val description = getString(R.string.notification_channel_description_player)
-
-        val channel =
+        val channelPlayer =
                 NotificationChannel(
-                        NOTIFICATION_CHANNEL_ID_PLAYER,
-                        name,
+                        QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER.name,
+                        getString(R.string.notification_channel_player),
                         NotificationManager.IMPORTANCE_LOW
-                ).apply { this.description = description }
+                ).apply { this.description = getString(R.string.notification_channel_description_player) }
 
-        getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+        val channelRetriever =
+                NotificationChannel(
+                        QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER.name,
+                        getString(R.string.notification_channel_retriever),
+                        NotificationManager.IMPORTANCE_LOW
+                ).apply { this.description = getString(R.string.notification_channel_description_retriever) }
+
+        getSystemService(NotificationManager::class.java).apply {
+            createNotificationChannel(channelPlayer)
+            createNotificationChannel(channelRetriever)
+        }
     }
 
     private fun deleteFromDB(mediaId: Long) {
