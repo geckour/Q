@@ -129,6 +129,7 @@ class MediaRetrieveService : IntentService(NAME) {
                     .setContentTitle(getString(R.string.notification_title_retriever))
                     .setContentText(getString(R.string.notification_text_retriever, progress.first, progress.second))
                     .setOngoing(true)
+                    .setShowWhen(false)
                     .setContentIntent(
                             PendingIntent.getActivity(
                                     this,
