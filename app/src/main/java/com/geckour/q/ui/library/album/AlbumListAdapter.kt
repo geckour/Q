@@ -25,6 +25,7 @@ import com.geckour.q.util.sortedByTrackOrder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class AlbumListAdapter(private val viewModel: MainViewModel) :
@@ -128,11 +129,19 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
                 true
             }
             binding.option.setOnClickListener { getPopupMenu(it).show() }
-            try {
-                Glide.with(binding.thumb).load(album.thumbUriString ?: R.drawable.ic_empty)
-                        .into(binding.thumb)
-            } catch (t: Throwable) {
-                Timber.e(t)
+            GlobalScope.launch(Dispatchers.IO) {
+                try {
+                    val drawable = Glide.with(binding.thumb.context)
+                            .asDrawable()
+                            .load(album.thumbUriString ?: R.drawable.ic_empty)
+                            .submit()
+                            .get()
+                    withContext(Dispatchers.Main) {
+                        binding.thumb.setImageDrawable(drawable)
+                    }
+                } catch (t: Throwable) {
+                    Timber.e(t)
+                }
             }
         }
 

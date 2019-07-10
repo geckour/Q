@@ -212,15 +212,21 @@ class SongListAdapter(
             val song = items[adapterPosition]
             binding.data = song
             binding.duration.text = song.durationString
-            try {
-                GlobalScope.launch(Dispatchers.Main) {
-                    Glide.with(binding.thumb).load(
-                            DB.getInstance(binding.root.context).getArtworkUriStringFromId(song.albumId)
-                                    ?: R.drawable.ic_empty
-                    ).into(binding.thumb)
+            GlobalScope.launch(Dispatchers.IO) {
+                try {
+                    val drawable = Glide.with(binding.thumb.context)
+                            .asDrawable()
+                            .load(DB.getInstance(binding.root.context)
+                                    .getArtworkUriStringFromId(song.albumId)
+                                    ?: R.drawable.ic_empty)
+                            .submit()
+                            .get()
+                    withContext(Dispatchers.Main) {
+                        binding.thumb.setImageDrawable(drawable)
+                    }
+                } catch (t: Throwable) {
+                    Timber.e(t)
                 }
-            } catch (t: Throwable) {
-                Timber.e(t)
             }
             binding.root.setOnClickListener { onSongSelected(song) }
             binding.root.setOnLongClickListener { onSongLongTapped(song) }

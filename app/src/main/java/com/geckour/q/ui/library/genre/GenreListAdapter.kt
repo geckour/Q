@@ -21,6 +21,7 @@ import com.geckour.q.util.getTrackMediaIds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class GenreListAdapter(private val viewModel: MainViewModel) :
@@ -95,10 +96,19 @@ class GenreListAdapter(private val viewModel: MainViewModel) :
                 true
             }
             binding.option.setOnClickListener { getPopupMenu(it).show() }
-            try {
-                Glide.with(binding.thumb).load(genre.thumb).into(binding.thumb)
-            } catch (t: Throwable) {
-                Timber.e(t)
+            GlobalScope.launch(Dispatchers.IO) {
+                try {
+                    val drawable = Glide.with(binding.thumb.context)
+                            .asDrawable()
+                            .load(genre.thumb ?: R.drawable.ic_empty)
+                            .submit()
+                            .get()
+                    withContext(Dispatchers.Main) {
+                        binding.thumb.setImageDrawable(drawable)
+                    }
+                } catch (t: Throwable) {
+                    Timber.e(t)
+                }
             }
         }
 
