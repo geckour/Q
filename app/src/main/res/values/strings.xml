@@ -21,7 +21,7 @@
     <string name="notification_channel_retriever">Media Retriever</string>
     <string name="notification_channel_description_retriever">Notification for keep media retriever alive</string>
     <string name="notification_title_retriever">Retrieving media</string>
-    <string name="notification_text_retriever">Syncing library…</string>
+    <string name="notification_text_retriever">%1$d / %2$d | Syncing library…</string>
     <string name="notification_action_prev">PREV</string>
     <string name="notification_action_play">PLAY</string>
     <string name="notification_action_pause">PAUSE</string>

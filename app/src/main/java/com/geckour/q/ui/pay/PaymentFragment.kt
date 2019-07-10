@@ -97,29 +97,16 @@ class PaymentFragment : Fragment() {
                 ?: return@let false
         val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                 ContentValues().apply {
-                    put(
-                            MediaStore.Images.Media.TITLE,
-                            "Q_donation_QR.png"
-                    )
-                    put(
-                            MediaStore.Images.Media.DISPLAY_NAME,
-                            "Q donation QR code"
-                    )
-                    put(
-                            MediaStore.Images.Media.DESCRIPTION,
-                            "QR code for donation to author of Q"
-                    )
-                    put(
-                            MediaStore.Images.Media.MIME_TYPE,
-                            "image/png"
-                    )
-                    put(
-                            MediaStore.Images.Media.DATE_ADDED,
-                            System.currentTimeMillis() / 1000
-                    )
+                    put(MediaStore.Images.Media.TITLE, "Q_donation_QR.png")
+                    put(MediaStore.Images.Media.DISPLAY_NAME, "Q donation QR code")
+                    put(MediaStore.Images.Media.DESCRIPTION, "QR code for donation to author of Q")
+                    put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+                    put(MediaStore.Images.Media.DATE_ADDED, System.currentTimeMillis() / 1000)
                 }) ?: return@let false
         bitmap.compress(
-                Bitmap.CompressFormat.PNG, 100, context.contentResolver.openOutputStream(uri)
+                Bitmap.CompressFormat.PNG,
+                100,
+                context.contentResolver.openOutputStream(uri)
         )
     } ?: false
 }

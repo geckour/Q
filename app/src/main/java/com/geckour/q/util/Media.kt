@@ -29,7 +29,6 @@ import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.LauncherActivity
-import com.geckour.q.ui.main.MainActivity
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ads.AdsMediaSource
 import kotlinx.coroutines.Dispatchers
@@ -356,7 +355,7 @@ suspend fun getPlayerNotification(
                 null
             }
             context.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER)
-                    .setSmallIcon(R.drawable.ic_notification)
+                    .setSmallIcon(R.drawable.ic_notification_player)
                     .setLargeIcon(artwork)
                     .setContentTitle(song.name)
                     .setContentText(song.artist)
@@ -424,7 +423,7 @@ fun Long.getTimeString(): String {
     )
 }
 
-fun MediaMetadataRetriever.pushMedia(context: Context, db: DB, cursor: Cursor) {
+fun MediaMetadataRetriever.pushMedia(context: Context, db: DB, cursor: Cursor): Pair<Int, Int> {
     val trackMediaId = cursor.getLong(
             cursor.getColumnIndex(MediaStore.Audio.Media._ID)
     )
@@ -437,10 +436,10 @@ fun MediaMetadataRetriever.pushMedia(context: Context, db: DB, cursor: Cursor) {
 
     if (File(trackPath).exists().not()) {
         context.contentResolver.delete(uri, null, null)
-        return
+        return 0 to 0
     }
 
-    try {
+    return try {
         setDataSource(context, uri)
 
         val current = cursor.position
@@ -467,7 +466,7 @@ fun MediaMetadataRetriever.pushMedia(context: Context, db: DB, cursor: Cursor) {
                 MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST
         )
 
-        val artistId = Artist(0, artistMediaId, artistTitle, 0).upsert(db) ?: return
+        val artistId = Artist(0, artistMediaId, artistTitle, 0).upsert(db) ?: return 0 to 0
         val albumArtistId = if (albumArtistTitle == null) null
         else Artist(0, null, albumArtistTitle, 0).upsert(db)
 
@@ -501,9 +500,10 @@ fun MediaMetadataRetriever.pushMedia(context: Context, db: DB, cursor: Cursor) {
                 0
         )
         track.upsert(db)
-        context.sendBroadcast(MainActivity.createProgressIntent(current to total))
+        current to total
     } catch (t: Throwable) {
         Timber.e(t)
+        0 to 0
     }
 }
 

@@ -16,7 +16,7 @@
     <string name="notification_channel_retriever">メディア探索</string>
     <string name="notification_channel_description_retriever">メディア探索サービスを生存状態に保つための通知</string>
     <string name="notification_title_retriever">メディアを探索中</string>
-    <string name="notification_text_retriever">ライブラリを同期しています…</string>
+    <string name="notification_text_retriever">%1$d / %2$d | ライブラリを同期しています…</string>
     <string name="notification_action_prev">前へ</string>
     <string name="notification_action_play">再生</string>
     <string name="notification_action_pause">停止</string>
