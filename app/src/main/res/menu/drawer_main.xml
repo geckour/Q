@@ -44,17 +44,12 @@
                     android:id="@+id/nav_pay"
                     android:icon="@drawable/ic_motive"
                     android:title="@string/nav_pay" />
+                <item
+                    android:checkable="false"
+                    android:id="@+id/nav_sync"
+                    android:icon="@drawable/ic_sync"
+                    android:title="@string/nav_sync" />
             </group>
-        </menu>
-    </item>
-
-    <item android:title="@string/nav_category_on_trouble">
-        <menu>
-            <item
-                android:checkable="false"
-                android:id="@+id/nav_sync"
-                android:icon="@drawable/ic_sync"
-                android:title="@string/nav_sync" />
         </menu>
     </item>
 </menu>
