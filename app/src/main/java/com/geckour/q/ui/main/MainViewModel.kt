@@ -65,8 +65,6 @@ class MainViewModel(
     internal val songToDelete: SingleLiveEvent<Song> = SingleLiveEvent()
 
     internal val deletedSongId: SingleLiveEvent<Long> = SingleLiveEvent()
-    internal val deletedAlbumId: SingleLiveEvent<Long> = SingleLiveEvent()
-    internal val deletedArtistId: SingleLiveEvent<Long> = SingleLiveEvent()
 
     internal val searchItems: SingleLiveEvent<List<SearchItem>> = SingleLiveEvent()
 
@@ -74,7 +72,7 @@ class MainViewModel(
 
     private var currentOrientedClassType: OrientedClassType? = null
 
-    internal var syncing: Bool = Bool.UNDEFINED
+    internal var syncing = false
     val loading: SingleLiveEvent<Boolean> = SingleLiveEvent()
 
     private var searchJob = Job()
@@ -297,34 +295,22 @@ class MainViewModel(
 
             player.value?.removeQueue(track.id)
 
-            var deleted = db.trackDao().delete(track.id) > 0
+            val deleted = db.trackDao().delete(track.id) > 0
             if (deleted) {
                 withContext(Dispatchers.Main) {
                     deletedSongId.value = track.id
                 }
             }
             if (db.trackDao().findByAlbum(track.albumId, Bool.UNDEFINED).isEmpty()) {
-                deleted = db.albumDao().delete(track.albumId) > 0
-                if (deleted) {
-                    withContext(Dispatchers.Main) {
-                        deletedAlbumId.value = track.albumId
-                    }
-                }
+                db.albumDao().delete(track.albumId)
             }
             if (db.trackDao().findByArtist(track.artistId, Bool.UNDEFINED).isEmpty()) {
-                deleted = db.artistDao().delete(track.artistId) > 0
-                if (deleted) {
-                    withContext(Dispatchers.Main) {
-                        deletedArtistId.value = track.artistId
-                    }
-                }
+                db.artistDao().delete(track.artistId)
             }
         }
     }
 
-    fun onNewQueue(
-            songs: List<Song>, actionType: InsertActionType, classType: OrientedClassType
-    ) {
+    fun onNewQueue(songs: List<Song>, actionType: InsertActionType, classType: OrientedClassType) {
         newQueueInfo.value = QueueInfo(
                 QueueMetadata(actionType, classType), songs
         )

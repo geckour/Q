@@ -2,15 +2,10 @@ package com.geckour.q.ui.main
 
 import android.Manifest
 import android.content.BroadcastReceiver
-import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.database.ContentObserver
-import android.media.MediaMetadataRetriever
-import android.net.Uri
 import android.os.Bundle
-import android.os.Handler
 import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.view.KeyEvent
@@ -23,8 +18,6 @@ import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
-import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.Bool
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.RequestedTransaction
@@ -55,7 +48,6 @@ import com.geckour.q.util.ducking
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
 import com.geckour.q.util.preferScreen
-import com.geckour.q.util.pushMedia
 import com.geckour.q.util.toNightModeInt
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -135,7 +127,7 @@ class MainActivity : CrashlyticsBundledActivity() {
             intent?.apply {
                 extras?.getBoolean(EXTRA_SYNCING_COMPLETE, false)?.apply {
                     if (this) {
-                        viewModel.syncing = Bool.FALSE
+                        viewModel.syncing = false
                         setLockingIndicator()
                         when (supportFragmentManager.fragments.lastOrNull { it.isVisible }) {
                             is ArtistListFragment -> artistListViewModel.forceLoad.call()
@@ -147,7 +139,7 @@ class MainActivity : CrashlyticsBundledActivity() {
                     }
                 }
                 (extras?.get(EXTRA_SYNCING_PROGRESS) as? Pair<Int, Int>)?.apply {
-                    if (viewModel.syncing == Bool.UNDEFINED) viewModel.syncing = Bool.TRUE
+                    viewModel.syncing = true
                     setLockingIndicator()
                     binding.coordinatorMain.indicatorLocking.progressSync.text =
                             getString(R.string.progress_sync, this.first, this.second)
@@ -199,42 +191,6 @@ class MainActivity : CrashlyticsBundledActivity() {
         true
     }
 
-    private val contentObserver
-        get() = object : ContentObserver(Handler()) {
-            override fun deliverSelfNotifications(): Boolean = true
-
-            override fun onChange(selfChange: Boolean, uri: Uri?) {
-                super.onChange(selfChange, uri)
-
-                uri ?: return
-
-                val id = try {
-                    ContentUris.parseId(uri)
-                } catch (t: Throwable) {
-                    return
-                }
-                Timber.d("qgeck media id: $id")
-                try {
-                    this@MainActivity.contentResolver.query(
-                            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                            MediaRetrieveService.projection,
-                            "${MediaStore.Audio.Media._ID}=$id",
-                            null,
-                            null
-                    )?.use {
-                        if (it.moveToFirst()) {
-                            Timber.d("qgeck push start")
-                            MediaMetadataRetriever().pushMedia(
-                                    this@MainActivity, DB.getInstance(this@MainActivity), it
-                            )
-                        } else deleteFromDB(id)
-                    }
-                } catch (t: Throwable) {
-                    Timber.e(t)
-                }
-            }
-        }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -257,10 +213,6 @@ class MainActivity : CrashlyticsBundledActivity() {
             requestedTransaction =
                     savedInstanceState.getParcelable(STATE_KEY_REQUESTED_TRANSACTION) as RequestedTransaction
         }
-
-        contentResolver.registerContentObserver(
-                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, true, contentObserver
-        )
     }
 
     override fun onResume() {
@@ -291,7 +243,6 @@ class MainActivity : CrashlyticsBundledActivity() {
         super.onDestroy()
 
         unregisterReceiver(syncingProgressReceiver)
-        contentResolver.unregisterContentObserver(contentObserver)
     }
 
     override fun onBackPressed() {
@@ -531,17 +482,6 @@ class MainActivity : CrashlyticsBundledActivity() {
         }
     }
 
-    private fun deleteFromDB(mediaId: Long) {
-        Timber.d("qgeck delete start")
-        DB.getInstance(applicationContext).apply {
-            trackDao().getByMediaId(mediaId)?.apply {
-                trackDao().delete(this.id)
-                if (trackDao().findByAlbum(this.albumId).isEmpty()) albumDao().delete(this.albumId)
-                if (trackDao().findByArtist(this.artistId).isEmpty()) artistDao().delete(this.artistId)
-            }
-        }
-    }
-
     private fun setupDrawer() {
         drawerToggle = ActionBarDrawerToggle(
                 this,
@@ -563,7 +503,7 @@ class MainActivity : CrashlyticsBundledActivity() {
 
     private fun setLockingIndicator() {
         when {
-            viewModel.syncing == Bool.TRUE -> {
+            viewModel.syncing -> {
                 indicateSync()
                 toggleIndicateLock(true)
             }
