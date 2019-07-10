@@ -228,10 +228,8 @@ class PlayerService : Service() {
 
     private val eventListener = object : Player.EventListener {
         override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters?) = Unit
-        }
 
         override fun onSeekProcessed() = Unit
-        }
 
         override fun onTracksChanged(
                 trackGroups: TrackGroupArray?, trackSelections: TrackSelectionArray?
@@ -242,19 +240,14 @@ class PlayerService : Service() {
         }
 
         override fun onPlayerError(error: ExoPlaybackException?) = Unit
-        }
 
         override fun onLoadingChanged(isLoading: Boolean) = Unit
-        }
 
         override fun onPositionDiscontinuity(reason: Int) = Unit
-        }
 
         override fun onRepeatModeChanged(repeatMode: Int) = Unit
-        }
 
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = Unit
-        }
 
         override fun onTimelineChanged(timeline: Timeline?, manifest: Any?, reason: Int) {
             onQueueChanged?.invoke(this@PlayerService.queue)
