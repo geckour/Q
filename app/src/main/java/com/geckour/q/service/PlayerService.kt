@@ -291,7 +291,7 @@ class PlayerService : Service() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
                 SOURCE_ACTION_WIRED_STATE -> {
-                    val state = intent.getIntExtra("state", -1)
+                    val state = intent.getIntExtra("state", 1)
                     Timber.d("qgeck wired state: $state")
                     if (state <= 0)
                         onUnplugged()
@@ -368,6 +368,8 @@ class PlayerService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+
+        Timber.d("qgeck onDestroy called")
 
         mediaSession?.isActive = false
         mediaSession = null
@@ -516,7 +518,8 @@ class PlayerService : Service() {
     }
 
     fun swapQueuePosition(from: Int, to: Int) {
-        if (from !in 0 until source.size || to !in 0 until source.size) return
+        val sourceRange = 0 until source.size
+        if (from !in sourceRange || to !in sourceRange) return
         source.moveMediaSource(from, to)
         this.queue.move(from, to)
     }
@@ -527,9 +530,11 @@ class PlayerService : Service() {
     }
 
     fun removeQueue(trackId: Long) {
-        this.queue.mapIndexed { i, song -> i to song }
-                .filter { it.second.id == trackId }
-                .forEach { removeQueue(it.first) }
+        this.queue.filter { it.id == trackId }
+                .forEach {
+                    val index = this.queue.indexOf(it)
+                    removeQueue(index)
+                }
     }
 
     fun forcePosition(position: Int) {
@@ -628,11 +633,11 @@ class PlayerService : Service() {
         }
         val after = source.size - 1 - before
 
-        (0 until before).forEach { _ ->
+        repeat(before) {
             source.removeMediaSource(0)
             this.queue.removeAt(0)
         }
-        (0 until after).forEach { _ ->
+        repeat(after) {
             source.removeMediaSource(1)
             this.queue.removeAt(1)
         }
@@ -757,13 +762,11 @@ class PlayerService : Service() {
                 try {
                     equalizer = Equalizer(0, audioSessionId).apply {
                         val params = EqualizerParams(
-                                bandLevelRange.let { Pair(it.first().toInt(), it.last().toInt()) },
+                                bandLevelRange.let { it.first().toInt() to it.last().toInt() },
                                 (0 until numberOfBands).map {
                                     val short = it.toShort()
                                     EqualizerParams.Band(
-                                            getBandFreqRange(short).let {
-                                                Pair(it.first(), it.last())
-                                            },
+                                            getBandFreqRange(short).let { it.first() to it.last() },
                                             getCenterFreq(short)
                                     )
                                 }
@@ -808,7 +811,7 @@ class PlayerService : Service() {
         }
     }
 
-    fun storeState() {
+    private fun storeState() {
         val state = PlayerState(
                 queue,
                 currentPosition,
@@ -858,8 +861,10 @@ class PlayerService : Service() {
 
     private fun Notification.show() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && playing) {
+            Timber.d("qgeck starting player service as foreground")
             startForeground(NOTIFICATION_ID_PLAYER, this)
         } else {
+            Timber.d("qgeck starting player service as NOT foreground")
             stopForeground(false)
             getSystemService(NotificationManager::class.java)
                     .notify(NOTIFICATION_ID_PLAYER, this)

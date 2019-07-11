@@ -118,6 +118,7 @@ class MainViewModel(
     }
 
     private fun bindPlayer() {
+        getApplication<App>().startService(PlayerService.createIntent(getApplication()))
         if (isBoundService.not()) {
             val app = getApplication<App>()
             app.bindService(
