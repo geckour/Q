@@ -273,8 +273,7 @@ class PlayerService : Service() {
             if (currentPosition == source.size - 1
                     && playbackState == Player.STATE_ENDED
                     && player.repeatMode == Player.REPEAT_MODE_OFF) {
-                pause()
-                seekToHead()
+                stop()
             }
 
             if (playbackState == Player.STATE_READY) {
@@ -514,6 +513,7 @@ class PlayerService : Service() {
             }
         }
 
+        storeState()
         if (needPrepare) player.prepare(source)
     }
 
@@ -829,8 +829,6 @@ class PlayerService : Service() {
                 Gson().fromJson(it, PlayerState::class.java)
             }?.set()
         }
-
-        sharedPreferences.edit().remove(PREF_KEY_PLAYER_STATE).apply()
     }
 
     fun publishStatus() {

@@ -141,10 +141,8 @@ class MainViewModel(
 
     internal fun rebootPlayer() {
         player.value?.pause()
-        unbindPlayer()
         player.value?.onRequestedStopService()
-        val app = getApplication<App>()
-        app.startService(PlayerService.createIntent(app))
+        unbindPlayer()
         bindPlayer()
     }
 
