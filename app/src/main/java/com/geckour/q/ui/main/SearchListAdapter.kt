@@ -3,45 +3,44 @@ package com.geckour.q.ui.main
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.PopupMenu
+import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.ItemListSearchCategoryBinding
 import com.geckour.q.databinding.ItemListSearchItemBinding
+import com.geckour.q.domain.model.Album
+import com.geckour.q.domain.model.Artist
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.SearchItem
+import com.geckour.q.domain.model.Song
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.getSong
-import com.geckour.q.util.toDomainModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import com.geckour.q.data.db.model.Album as DBAlbum
-import com.geckour.q.data.db.model.Artist as DBArtist
+import kotlinx.coroutines.withContext
 
 class SearchListAdapter(private val viewModel: MainViewModel) :
         RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
-    private val items: ArrayList<SearchItem> = ArrayList()
+    private val items = mutableListOf<SearchItem>()
 
-    internal fun addItem(item: SearchItem) {
-        items.add(item)
-        notifyItemInserted(itemCount)
-    }
-
-    internal fun addItems(items: List<SearchItem>) {
+    private fun addItems(items: List<SearchItem>) {
         val size = itemCount
         this.items.addAll(items)
         notifyItemRangeInserted(size, items.size)
     }
 
-    internal fun clearItems() {
+    private fun clearItems() {
         items.clear()
         notifyDataSetChanged()
+    }
+
+    internal fun replaceItems(items: List<SearchItem>) {
+        clearItems()
+        addItems(items)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder =
@@ -87,25 +86,24 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
 
         private val trackPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener {
-                GlobalScope.launch(Dispatchers.Main) {
-                    val song = (binding.data?.data as? Track)?.let {
-                        getSong(DB.getInstance(binding.root.context), it)
-                    } ?: return@launch
-                    viewModel.onNewQueue(
-                            listOf(song), when (it.itemId) {
-                        R.id.menu_insert_all_next -> {
-                            InsertActionType.NEXT
-                        }
-                        R.id.menu_insert_all_last -> {
-                            InsertActionType.LAST
-                        }
-                        R.id.menu_override_all -> {
-                            InsertActionType.OVERRIDE
-                        }
-                        else -> return@launch
-                    }, OrientedClassType.SONG
-                    )
-                }
+                val song = (binding.data?.data as? Song)
+                        ?: return@setOnMenuItemClickListener true
+                viewModel.onNewQueue(
+                        listOf(song),
+                        when (it.itemId) {
+                            R.id.menu_insert_all_next -> {
+                                InsertActionType.NEXT
+                            }
+                            R.id.menu_insert_all_last -> {
+                                InsertActionType.LAST
+                            }
+                            R.id.menu_override_all -> {
+                                InsertActionType.OVERRIDE
+                            }
+                            else -> return@setOnMenuItemClickListener true
+                        },
+                        OrientedClassType.SONG
+                )
 
                 return@setOnMenuItemClickListener true
             }
@@ -115,21 +113,28 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
         fun onBind(item: SearchItem) {
             binding.data = item
             binding.root.setOnClickListener { item.onClick() }
-            GlobalScope.launch {
+            viewModel.viewModelScope.launch(Dispatchers.IO) {
                 val db = DB.getInstance(binding.root.context)
-                val artwork = when (item.type) {
-                    SearchItem.SearchItemType.ARTIST -> (item.data as? DBArtist)?.id?.let {
-                        db.albumDao().findByArtistId(it).firstOrNull { it.artworkUriString != null }
-                                ?.artworkUriString
+                val artworkUriString = when (item.type) {
+                    SearchItem.SearchItemType.ARTIST -> {
+                        (item.data as? Artist)?.id?.let {
+                            db.albumDao().findByArtistId(it)
+                                    .firstOrNull { it.artworkUriString != null }
+                                    ?.artworkUriString
+                        }
                     }
-                    SearchItem.SearchItemType.ALBUM -> (item.data as? DBAlbum)?.artworkUriString
-                    SearchItem.SearchItemType.TRACK -> (item.data as? Track)?.albumId?.let {
-                        db.albumDao().get(it)?.artworkUriString
+                    SearchItem.SearchItemType.ALBUM -> {
+                        (item.data as? Album)?.thumbUriString
+                    }
+                    SearchItem.SearchItemType.TRACK -> {
+                        (item.data as? Song)?.albumId?.let {
+                            db.albumDao().get(it)?.artworkUriString
+                        }
                     }
                     else -> null
                 }
-                GlobalScope.launch(Dispatchers.Main) {
-                    Glide.with(binding.thumb).load(artwork ?: R.drawable.ic_empty)
+                withContext(Dispatchers.Main) {
+                    Glide.with(binding.thumb).load(artworkUriString ?: R.drawable.ic_empty)
                             .into(binding.thumb)
                 }
             }
@@ -138,21 +143,17 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
         fun SearchItem.onClick() {
             when (type) {
                 SearchItem.SearchItemType.ARTIST -> {
-                    viewModel.selectedArtist.value = (data as? DBArtist)?.let {
-                        it.toDomainModel()
-                    }
+                    viewModel.selectedArtist.value = data as? Artist
                 }
                 SearchItem.SearchItemType.ALBUM -> {
-                    viewModel.selectedAlbum.value = (data as? DBAlbum)?.let {
-                        it.toDomainModel()
-                    }
+                    viewModel.selectedAlbum.value = data as Album
                 }
                 SearchItem.SearchItemType.TRACK -> trackPopupMenu.show()
                 SearchItem.SearchItemType.PLAYLIST -> {
-                    viewModel.selectedPlaylist.value = (data as? Playlist)
+                    viewModel.selectedPlaylist.value = data as? Playlist
                 }
                 SearchItem.SearchItemType.GENRE -> {
-                    viewModel.selectedGenre.value = (data as? Genre)
+                    viewModel.selectedGenre.value = data as? Genre
                 }
                 else -> Unit
             }

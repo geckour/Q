@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
+import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
@@ -20,7 +21,6 @@ import com.geckour.q.util.getSong
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.getTrackMediaIds
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -36,29 +36,14 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
         notifyDataSetChanged()
     }
 
-    internal fun setItem(item: Playlist, position: Int = itemCount) {
-        if (items.lastIndex < position) {
-            items.add(item)
-            notifyItemInserted(items.lastIndex)
-        } else {
-            this.items[position] = item
-            notifyItemChanged(position)
-        }
-    }
-
     internal fun getItems(): List<Playlist> = items
-
-    internal fun clearItems() {
-        this.items.clear()
-        notifyDataSetChanged()
-    }
 
     internal fun onNewQueue(
             songs: List<Song>,
             actionType: InsertActionType,
             classType: OrientedClassType = OrientedClassType.PLAYLIST
     ) {
-        GlobalScope.launch(Dispatchers.Main) {
+        viewModel.viewModelScope.launch {
             viewModel.onNewQueue(songs, actionType, classType)
         }
     }
@@ -97,7 +82,7 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
                 return@setOnLongClickListener true
             }
             binding.option.setOnClickListener { getPopupMenu(it).show() }
-            GlobalScope.launch(Dispatchers.IO) {
+            viewModel.viewModelScope.launch(Dispatchers.IO) {
                 try {
                     val drawable = Glide.with(binding.thumb.context)
                             .asDrawable()
@@ -142,12 +127,16 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
                 else -> return false
             }
 
-            GlobalScope.launch {
-                viewModel.loading.postValue(true)
-                val songs = playlist.getTrackMediaIds(context).sortedBy { it.second }.mapNotNull {
-                    getSong(DB.getInstance(context), it.first, playlistId = playlist.id)
-                }.toList()
-                viewModel.loading.postValue(false)
+            viewModel.viewModelScope.launch {
+                viewModel.loading.value = true
+                val songs = withContext(Dispatchers.IO) {
+                    playlist.getTrackMediaIds(context)
+                            .sortedBy { it.second }
+                            .mapNotNull {
+                                getSong(DB.getInstance(context), it.first, playlistId = playlist.id)
+                            }
+                }
+                viewModel.loading.value = false
 
                 onNewQueue(songs, actionType, OrientedClassType.SONG)
             }

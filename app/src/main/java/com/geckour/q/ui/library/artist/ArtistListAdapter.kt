@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
+import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
@@ -22,7 +23,6 @@ import com.geckour.q.util.getTimeString
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.sortedByTrackOrder
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -40,10 +40,6 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
 
     internal fun getItems(): List<Artist> = items
 
-    private fun removeItem(item: Artist) {
-        removeItem(item.id)
-    }
-
     private fun removeItem(artistId: Long) {
         val index = items.indexOfFirst { it.id == artistId }
         if (index < 0) return
@@ -51,7 +47,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
         notifyItemRemoved(index)
     }
 
-    internal fun upsertItem(item: Artist) {
+    private fun upsertItem(item: Artist) {
         var index = items.indexOfFirst { it.id == item.id }
         if (index < 0) {
             val tempList = ArrayList(items).apply { add(item) }
@@ -72,11 +68,6 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
         decreased.forEach { removeItem(it) }
     }
 
-    internal fun clearItems() {
-        this.items.clear()
-        notifyDataSetChanged()
-    }
-
     internal fun onArtistDeleted(artistId: Long) {
         removeItem(artistId)
     }
@@ -86,7 +77,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
             actionType: InsertActionType,
             classType: OrientedClassType = OrientedClassType.ARTIST
     ) {
-        GlobalScope.launch(Dispatchers.Main) {
+        viewModel.viewModelScope.launch {
             viewModel.onNewQueue(songs, actionType, classType)
         }
     }
@@ -126,7 +117,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
                 true
             }
             binding.option.setOnClickListener { getPopupMenu(it).show() }
-            GlobalScope.launch(Dispatchers.IO) {
+            viewModel.viewModelScope.launch(Dispatchers.IO) {
                 try {
                     val drawable = Glide.with(binding.thumb.context).asDrawable()
                             .load(artist.thumbUriString ?: R.drawable.ic_empty).submit().get()
@@ -155,21 +146,27 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
                 else -> return false
             }
 
-            GlobalScope.launch {
+            viewModel.viewModelScope.launch {
                 val sortByTrackOrder = id.let {
                     it != R.id.menu_insert_all_simple_shuffle_next || it != R.id.menu_insert_all_simple_shuffle_last || it != R.id.menu_override_all_simple_shuffle
                 }
-                val songs = DB.getInstance(context).let { db ->
-                    val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-                    viewModel.loading.postValue(true)
-                    db.albumDao().findByArtistId(artist.id).map {
-                        db.trackDao().findByAlbum(
-                                it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                        ).mapNotNull { getSong(db, it) }
-                                .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
-                    }.apply {
-                        viewModel.loading.postValue(false)
-                    }.flatten()
+                val songs = withContext(Dispatchers.IO) {
+                    DB.getInstance(context).let { db ->
+                        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+                        viewModel.loading.postValue(true)
+                        db.albumDao().findByArtistId(artist.id).map {
+                            db.trackDao().findByAlbum(
+                                    it.id,
+                                    BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                            ).mapNotNull { getSong(db, it) }.let {
+                                if (sortByTrackOrder)
+                                    it.sortedByTrackOrder()
+                                else it
+                            }
+                        }.apply {
+                            viewModel.loading.postValue(false)
+                        }.flatten()
+                    }
                 }
 
                 onNewQueue(songs, actionType, OrientedClassType.ALBUM)

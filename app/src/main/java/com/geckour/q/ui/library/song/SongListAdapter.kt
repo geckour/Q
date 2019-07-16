@@ -6,6 +6,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
+import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
@@ -22,7 +23,6 @@ import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -39,17 +39,7 @@ class SongListAdapter(
         notifyDataSetChanged()
     }
 
-    internal fun setItem(item: Song, position: Int = itemCount) {
-        if (items.lastIndex < position) {
-            items.add(item)
-            notifyItemInserted(items.lastIndex)
-        } else {
-            this.items[position] = item
-            notifyItemChanged(position)
-        }
-    }
-
-    internal fun upsertItem(item: Song, sortByTrackOrder: Boolean = true) {
+    private fun upsertItem(item: Song, sortByTrackOrder: Boolean = true) {
         var index = items.indexOfFirst { it.id == item.id }
         if (index < 0) {
             val tempList = (items + item).let {
@@ -73,10 +63,6 @@ class SongListAdapter(
         val decreased = this.items.map { it.id } - items.map { it.id }
         increased.forEach { id -> upsertItem(items.first { it.id == id }, sortByTrackOrder) }
         decreased.forEach { removeItem(it) }
-    }
-
-    private fun removeItem(item: Song) {
-        removeItem(item.id)
     }
 
     private fun removeItem(songId: Long) {
@@ -162,7 +148,7 @@ class SongListAdapter(
             setOnMenuItemClickListener {
                 when (it.itemId) {
                     R.id.menu_transition_to_artist -> {
-                        GlobalScope.launch(Dispatchers.Main) {
+                        viewModel.viewModelScope.launch {
                             viewModel.selectedArtist.value = withContext((Dispatchers.IO)) {
                                 binding.data?.artist?.let {
                                     DB.getInstance(binding.root.context).artistDao().findArtist(it)
@@ -172,7 +158,7 @@ class SongListAdapter(
                         }
                     }
                     R.id.menu_transition_to_album -> {
-                        GlobalScope.launch(Dispatchers.Main) {
+                        viewModel.viewModelScope.launch {
                             viewModel.selectedAlbum.value = withContext(Dispatchers.IO) {
                                 binding.data?.albumId?.let {
                                     DB.getInstance(binding.root.context).albumDao().get(it)
@@ -212,7 +198,7 @@ class SongListAdapter(
             val song = items[adapterPosition]
             binding.data = song
             binding.duration.text = song.durationString
-            GlobalScope.launch(Dispatchers.IO) {
+            viewModel.viewModelScope.launch(Dispatchers.IO) {
                 try {
                     val drawable = Glide.with(binding.thumb.context)
                             .asDrawable()
@@ -250,30 +236,30 @@ class SongListAdapter(
         private fun onSongSelected(song: Song) {
             viewModel.onRequestNavigate(song)
             shortPopupMenu.show()
-            shortPopupMenu.menu.findItem(R.id.menu_ignore).title = binding.root.context.let {
-                it.getString(
-                        if (binding.data?.ignored == true) R.string.menu_ignore_to_false
-                        else R.string.menu_ignore_to_true
-                )
-            }
+            shortPopupMenu.menu.findItem(R.id.menu_ignore).title =
+                    binding.root.context.getString(
+                            if (binding.data?.ignored == true)
+                                R.string.menu_ignore_to_false
+                            else R.string.menu_ignore_to_true
+                    )
         }
 
         private fun onSongLongTapped(song: Song): Boolean {
             viewModel.onRequestNavigate(song)
             longPopupMenu.show()
-            longPopupMenu.menu.findItem(R.id.menu_ignore).title = binding.root.context.let {
-                it.getString(
-                        if (binding.data?.ignored == true) R.string.menu_ignore_to_false
-                        else R.string.menu_ignore_to_true
-                )
-            }
+            longPopupMenu.menu.findItem(R.id.menu_ignore).title =
+                    binding.root.context.getString(
+                            if (binding.data?.ignored == true)
+                                R.string.menu_ignore_to_false
+                            else R.string.menu_ignore_to_true
+                    )
 
             return true
         }
 
         private fun toggleIgnored() {
             binding.data?.id?.also { trackId ->
-                GlobalScope.launch(Dispatchers.IO) {
+                viewModel.viewModelScope.launch(Dispatchers.IO) {
                     DB.getInstance(binding.root.context).trackDao().apply {
                         val ignored = when (this.get(trackId)?.ignored ?: Bool.FALSE) {
                             Bool.TRUE -> Bool.FALSE

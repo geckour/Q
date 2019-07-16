@@ -40,8 +40,10 @@ interface ArtistDao {
 
 fun Artist.upsert(db: DB): Long? = this.mediaId?.let {
     val artist = db.artistDao().getByMediaId(it)
-    if (artist != null) {
-        if (this.title != null) db.artistDao().update(this.copy(id = artist.id))
+    return@let if (artist != null) {
+        if (this.title != null) {
+            db.artistDao().update(this.copy(id = artist.id, playbackCount = artist.playbackCount))
+        }
         artist.id
     } else db.artistDao().insert(this)
 } ?: run {

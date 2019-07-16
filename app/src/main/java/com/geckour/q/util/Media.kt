@@ -4,7 +4,6 @@ import android.app.Notification
 import android.app.PendingIntent
 import android.content.ContentUris
 import android.content.Context
-import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
@@ -423,7 +422,14 @@ fun Long.getTimeString(): String {
     )
 }
 
-fun MediaMetadataRetriever.pushMedia(context: Context, db: DB, trackPath: String, trackMediaId: Long, albumMediaId: Long, artistMediaId: Long): Boolean {
+fun MediaMetadataRetriever.pushMedia(
+        context: Context,
+        db: DB,
+        trackPath: String,
+        trackMediaId: Long,
+        albumMediaId: Long,
+        artistMediaId: Long
+): Boolean {
     val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackMediaId)
 
     if (File(trackPath).exists().not()) {
@@ -435,23 +441,22 @@ fun MediaMetadataRetriever.pushMedia(context: Context, db: DB, trackPath: String
         setDataSource(context, uri)
 
         val title = extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-        val duration = extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION).toLong()
-        val trackNum = extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER).toInt()
+        val duration = extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong() ?: 0
+        val trackNum = extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER)
+                ?.split("/")?.first()?.toInt()
+        val discNum = extractMetadata(MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER)
+                ?.split("/")?.first()?.toInt()
         val albumTitle = extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
         val artistTitle = extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
         val composerTitle = extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER)
         val artworkUriString = albumMediaId.getArtworkUriIfExist(context)?.toString()
-
-        val discNum = extractMetadata(
-                MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER
-        )?.split("/")?.first()?.toInt()
-        val albumArtistTitle = extractMetadata(
-                MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST
-        )
+        val albumArtistTitle =
+                extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
 
         val artistId = Artist(0, artistMediaId, artistTitle, 0).upsert(db) ?: return false
-        val albumArtistId = if (albumArtistTitle == null) null
-        else Artist(0, null, albumArtistTitle, 0).upsert(db)
+        val albumArtistId =
+                if (albumArtistTitle == null) null
+                else Artist(0, null, albumArtistTitle, 0).upsert(db)
 
         val albumId = db.albumDao().getByMediaId(albumMediaId).let {
             if (it == null || it.hasAlbumArtist.not()) {

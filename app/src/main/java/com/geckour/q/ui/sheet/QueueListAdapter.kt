@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
+import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
@@ -17,7 +18,6 @@ import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.swap
 import com.geckour.q.util.toDomainModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -27,16 +27,12 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
 
     private val items: MutableList<Song> = mutableListOf()
 
+    internal fun getItems(): List<Song> = items
+
     internal fun setItems(items: List<Song>) {
         this.items.clear()
         this.items.addAll(items)
         notifyDataSetChanged()
-    }
-
-    internal fun getItem(index: Int?): Song? = when (index) {
-        in 0..items.lastIndex -> items[requireNotNull(index)]
-        -1 -> items.firstOrNull()
-        else -> null
     }
 
     internal fun getItemIds(): List<Long> = items.map { it.id }
@@ -96,7 +92,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
             setOnMenuItemClickListener {
                 when (it.itemId) {
                     R.id.menu_transition_to_artist -> {
-                        GlobalScope.launch(Dispatchers.Main) {
+                        viewModel.viewModelScope.launch {
                             viewModel.selectedArtist.value = withContext((Dispatchers.IO)) {
                                 binding.data?.artist?.let {
                                     DB.getInstance(binding.root.context).artistDao().findArtist(it)
@@ -106,7 +102,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
                         }
                     }
                     R.id.menu_transition_to_album -> {
-                        GlobalScope.launch(Dispatchers.Main) {
+                        viewModel.viewModelScope.launch {
                             viewModel.selectedAlbum.value = withContext(Dispatchers.IO) {
                                 binding.data?.albumId?.let {
                                     DB.getInstance(binding.root.context).albumDao().get(it)
@@ -148,7 +144,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
             val song = items[adapterPosition]
             binding.data = song
             binding.duration.text = song.durationString
-            GlobalScope.launch(Dispatchers.IO) {
+            viewModel.viewModelScope.launch(Dispatchers.IO) {
                 try {
                     val drawable = Glide.with(binding.thumb.context)
                             .asDrawable()
