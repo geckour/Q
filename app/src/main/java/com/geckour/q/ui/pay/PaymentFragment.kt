@@ -10,6 +10,7 @@ import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
@@ -48,6 +49,10 @@ class PaymentFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.viewModel = viewModel
+        binding.kyashQr.setOnTouchListener { v, event ->
+            v.elevation = (if (event.action == MotionEvent.ACTION_UP) 8 else 4) * resources.displayMetrics.density
+            return@setOnTouchListener false
+        }
     }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {

@@ -43,4 +43,6 @@
     <color name="colorShadowBottomSheetCenter">#10000000</color>
     <color name="colorShadowBottomSheetStartInverse">#20ffffff</color>
     <color name="colorShadowBottomSheetCenterInverse">#08ffffff</color>
+
+    <color name="colorCoin">#d5cfc1</color>
 </resources>
