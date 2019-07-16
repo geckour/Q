@@ -112,6 +112,14 @@ class EqualizerFragment : Fragment() {
     }
 
     private fun observeEvents() {
+        mainViewModel.player.observe(this) { player ->
+            player ?: return@observe
+
+            player.setOnEqualizerStateChangedListener {
+                onEqualizerStateChanged(it)
+            }
+        }
+
         viewModel.enabled.observe(this) {
             it ?: return@observe
 
@@ -124,21 +132,21 @@ class EqualizerFragment : Fragment() {
         }
 
         viewModel.flatten.observe(this) { flatten() }
+    }
 
-        viewModel.equalizerState.observe(this) {
-            it ?: return@observe
+    private fun onEqualizerStateChanged(state: Boolean) {
+        errorThrown = sharedPreferences.equalizerEnabled && state.not()
+        if (errorThrown) {
+            Toast.makeText(
+                    requireContext(),
+                    R.string.equalizer_message_error_turn_on,
+                    Toast.LENGTH_LONG
+            ).show()
+        }
 
-            errorThrown = sharedPreferences.equalizerEnabled && it.not()
-            if (errorThrown) {
-                Toast.makeText(
-                        requireContext(), R.string.equalizer_message_error_turn_on, Toast.LENGTH_LONG
-                ).show()
-            }
-
-            if (viewModel.enabled.value != it) {
-                viewModel.enabled.value = it
-                binding.viewModel = viewModel
-            }
+        if (viewModel.enabled.value != state) {
+            viewModel.enabled.value = state
+            binding.viewModel = viewModel
         }
     }
 

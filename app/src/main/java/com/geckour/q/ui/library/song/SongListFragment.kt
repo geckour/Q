@@ -10,7 +10,9 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SearchView
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.viewModelScope
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Track
@@ -22,7 +24,6 @@ import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.ScopedFragment
 import com.geckour.q.util.getSongListFromTrackList
 import com.geckour.q.util.getSongListFromTrackMediaId
 import com.geckour.q.util.getSongListFromTrackMediaIdWithTrackNum
@@ -31,11 +32,10 @@ import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toNightModeInt
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-class SongListFragment : ScopedFragment() {
+class SongListFragment : Fragment() {
 
     companion object {
         private const val ARGS_KEY_CLASS_TYPE = "args_key_class_type"
@@ -89,7 +89,6 @@ class SongListFragment : ScopedFragment() {
     override fun onCreateView(
             inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
-        GlobalScope
         observeEvents()
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
         return binding.root
@@ -164,8 +163,9 @@ class SongListFragment : ScopedFragment() {
     }
 
     private fun observeEvents() {
-        mainViewModel.playOrderOfPlaylistToRemove.observe(this) {
-            if (it == null) return@observe
+        mainViewModel.toRemovePlayOrderOfPlaylist.observe(this) {
+            it ?: return@observe
+
             val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST) ?: return@observe
             val removed = context?.contentResolver?.delete(
                     MediaStore.Audio.Playlists.Members.getContentUri("external", playlist.id),
@@ -230,7 +230,7 @@ class SongListFragment : ScopedFragment() {
 
     private fun fetchSongsWithGenre(genre: Genre) {
         context?.also {
-            launch {
+            viewModel.viewModelScope.launch {
                 mainViewModel.loading.value = true
                 adapter.upsertItems(
                         getSongListFromTrackMediaId(
@@ -245,7 +245,7 @@ class SongListFragment : ScopedFragment() {
 
     private fun fetchSongsWithPlaylist(playlist: Playlist) {
         context?.also {
-            launch {
+            viewModel.viewModelScope.launch {
                 mainViewModel.loading.value = true
                 adapter.addItems(
                         getSongListFromTrackMediaIdWithTrackNum(
@@ -263,7 +263,7 @@ class SongListFragment : ScopedFragment() {
     ) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
-            launch {
+            viewModel.viewModelScope.launch {
                 delay(500)
                 mainViewModel.loading.value = true
                 val items = getSongListFromTrackList(db, dbTrackList)

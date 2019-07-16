@@ -7,7 +7,6 @@ class EqualizerViewModel : ViewModel() {
 
     internal val flatten: SingleLiveEvent<Unit> = SingleLiveEvent()
     val enabled: SingleLiveEvent<Boolean> = SingleLiveEvent()
-    internal val equalizerState: SingleLiveEvent<Boolean> = SingleLiveEvent()
 
     fun onFlatten() {
         flatten.call()

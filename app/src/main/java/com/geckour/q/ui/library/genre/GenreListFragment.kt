@@ -13,7 +13,9 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SearchView
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -23,7 +25,6 @@ import com.geckour.q.domain.model.Genre
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.ScopedFragment
 import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.getSong
@@ -39,7 +40,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class GenreListFragment : ScopedFragment() {
+class GenreListFragment : Fragment() {
 
     companion object {
         fun newInstance(): GenreListFragment = GenreListFragment()
@@ -74,7 +75,7 @@ class GenreListFragment : ScopedFragment() {
 
 
         if (adapter.itemCount == 0) {
-            launch {
+            viewModel.viewModelScope.launch {
                 mainViewModel.loading.value = true
                 adapter.setItems(fetchGenres())
                 mainViewModel.loading.value = false
@@ -140,7 +141,7 @@ class GenreListFragment : ScopedFragment() {
                 else -> return false
             }
 
-            launch(Dispatchers.IO) {
+            viewModel.viewModelScope.launch(Dispatchers.IO) {
                 mainViewModel.loading.postValue(true)
                 val songs = adapter.getItems().map { genre ->
                     genre.getTrackMediaIds(context).mapNotNull {
@@ -163,7 +164,7 @@ class GenreListFragment : ScopedFragment() {
         }
 
         viewModel.forceLoad.observe(this) {
-            launch {
+            viewModel.viewModelScope.launch {
                 mainViewModel.loading.value = true
                 adapter.setItems(fetchGenres())
                 mainViewModel.loading.value = false

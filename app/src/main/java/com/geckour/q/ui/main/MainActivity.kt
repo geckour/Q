@@ -105,9 +105,6 @@ class MainActivity : CrashlyticsBundledActivity() {
     private val playlistListViewModel: SongListViewModel by lazy {
         ViewModelProviders.of(this)[SongListViewModel::class.java]
     }
-    private val equalizerViewModel: EqualizerViewModel by lazy {
-        ViewModelProviders.of(this)[EqualizerViewModel::class.java]
-    }
     private val paymentViewModel: PaymentViewModel by lazy {
         ViewModelProviders.of(this)[PaymentViewModel::class.java]
     }
@@ -422,22 +419,24 @@ class MainActivity : CrashlyticsBundledActivity() {
                 return@observe
             } else binding.coordinatorMain.contentSearch.root.visibility = View.VISIBLE
 
-            searchListAdapter.clearItems()
+            searchListAdapter.replaceItems(it)
         }
 
         bottomSheetViewModel.playbackButton.observe(this) {
             if (it == null) return@observe
             PlayerService.mediaSession?.controller?.dispatchMediaButtonEvent(
                     KeyEvent(
-                            if (it == PlaybackButton.UNDEFINED) KeyEvent.ACTION_UP
-                            else KeyEvent.ACTION_DOWN, when (it) {
-                        PlaybackButton.PLAY_OR_PAUSE -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-                        PlaybackButton.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
-                        PlaybackButton.PREV -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
-                        PlaybackButton.FF -> KeyEvent.KEYCODE_MEDIA_FAST_FORWARD
-                        PlaybackButton.REWIND -> KeyEvent.KEYCODE_MEDIA_REWIND
-                        PlaybackButton.UNDEFINED -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-                    }
+                            if (it == PlaybackButton.UNDEFINED)
+                                KeyEvent.ACTION_UP
+                            else KeyEvent.ACTION_DOWN,
+                            when (it) {
+                                PlaybackButton.PLAY_OR_PAUSE -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+                                PlaybackButton.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
+                                PlaybackButton.PREV -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
+                                PlaybackButton.FF -> KeyEvent.KEYCODE_MEDIA_FAST_FORWARD
+                                PlaybackButton.REWIND -> KeyEvent.KEYCODE_MEDIA_REWIND
+                                PlaybackButton.UNDEFINED -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+                            }
                     )
             )
         }

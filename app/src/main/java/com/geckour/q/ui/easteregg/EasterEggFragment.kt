@@ -10,7 +10,9 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupMenu
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.viewModelScope
 import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -19,7 +21,6 @@ import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.ScopedFragment
 import com.geckour.q.util.getSong
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
@@ -32,7 +33,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.*
 
-class EasterEggFragment : ScopedFragment() {
+class EasterEggFragment : Fragment() {
 
     companion object {
         fun newInstance(): EasterEggFragment = EasterEggFragment()
@@ -60,7 +61,7 @@ class EasterEggFragment : ScopedFragment() {
                     putString(FirebaseAnalytics.Param.ITEM_NAME, "Show easter egg screen")
                 })
 
-        launch(Dispatchers.IO) {
+        viewModel.viewModelScope.launch(Dispatchers.IO) {
             val db = DB.getInstance(requireContext())
             val trackList = db.trackDao().getAll()
             if (trackList.isEmpty()) return@launch
@@ -71,7 +72,7 @@ class EasterEggFragment : ScopedFragment() {
             val random = Random(seed.toLong())
             while (true) {
                 val index = random.nextInt(max)
-                val song = trackList[index].let { getSong(db, it) }
+                val song = getSong(db, trackList[index])
                 if (song != null) {
                     viewModel.song = song
 
@@ -148,26 +149,24 @@ class EasterEggFragment : ScopedFragment() {
                     setOnMenuItemClickListener {
                         return@setOnMenuItemClickListener when (it.itemId) {
                             R.id.menu_transition_to_artist -> {
-                                launch {
-                                    mainViewModel.selectedArtist.value =
-                                            withContext((Dispatchers.IO)) {
-                                                viewModel.song?.artist?.let {
-                                                    DB.getInstance(context).artistDao().findArtist(it)
-                                                            .firstOrNull()?.toDomainModel()
-                                                }
-                                            }
+                                viewModel.viewModelScope.launch {
+                                    mainViewModel.selectedArtist.value = withContext((Dispatchers.IO)) {
+                                        viewModel.song?.artist?.let {
+                                            DB.getInstance(context).artistDao().findArtist(it)
+                                                    .firstOrNull()?.toDomainModel()
+                                        }
+                                    }
                                 }
                                 true
                             }
                             R.id.menu_transition_to_album -> {
-                                launch {
-                                    mainViewModel.selectedAlbum.value =
-                                            withContext(Dispatchers.IO) {
-                                                viewModel.song?.albumId?.let {
-                                                    DB.getInstance(context).albumDao().get(it)
-                                                            ?.toDomainModel()
-                                                }
-                                            }
+                                viewModel.viewModelScope.launch {
+                                    mainViewModel.selectedAlbum.value = withContext(Dispatchers.IO) {
+                                        viewModel.song?.albumId?.let {
+                                            DB.getInstance(context).albumDao().get(it)
+                                                    ?.toDomainModel()
+                                        }
+                                    }
                                 }
                                 true
                             }

@@ -9,7 +9,9 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SearchView
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -17,7 +19,6 @@ import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.ScopedFragment
 import com.geckour.q.util.fetchPlaylists
 import com.geckour.q.util.getSong
 import com.geckour.q.util.getTrackMediaIds
@@ -27,7 +28,7 @@ import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toNightModeInt
 import kotlinx.coroutines.launch
 
-class PlaylistListFragment : ScopedFragment() {
+class PlaylistListFragment : Fragment() {
 
     companion object {
         fun newInstance(): PlaylistListFragment = PlaylistListFragment()
@@ -62,7 +63,7 @@ class PlaylistListFragment : ScopedFragment() {
 
 
         if (adapter.itemCount == 0) {
-            launch {
+            viewModel.viewModelScope.launch {
                 mainViewModel.loading.value = true
                 context?.apply { adapter.setItems(fetchPlaylists(this)) }
                 mainViewModel.loading.value = false
@@ -128,7 +129,7 @@ class PlaylistListFragment : ScopedFragment() {
                 else -> return false
             }
 
-            launch {
+            viewModel.viewModelScope.launch {
                 mainViewModel.loading.postValue(true)
                 val songs = adapter.getItems().map { playlist ->
                     playlist.getTrackMediaIds(context).mapNotNull {
@@ -152,7 +153,7 @@ class PlaylistListFragment : ScopedFragment() {
         }
 
         viewModel.forceLoad.observe(this) {
-            launch {
+            viewModel.viewModelScope.launch {
                 context?.apply {
                     mainViewModel.loading.value = true
                     adapter.setItems(fetchPlaylists(this))

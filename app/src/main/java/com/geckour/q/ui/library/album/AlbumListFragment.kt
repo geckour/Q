@@ -10,7 +10,9 @@ import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SearchView
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.viewModelScope
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
@@ -20,7 +22,6 @@ import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.BoolConverter
 import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.ScopedFragment
 import com.geckour.q.util.getSong
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.isNightMode
@@ -35,7 +36,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.geckour.q.data.db.model.Album as DBAlbum
 
-class AlbumListFragment : ScopedFragment() {
+class AlbumListFragment : Fragment() {
 
     companion object {
         private const val ARGS_KEY_ARTIST = "args_key_artist"
@@ -141,7 +142,7 @@ class AlbumListFragment : ScopedFragment() {
                 else -> return false
             }
 
-            launch(Dispatchers.IO) {
+            viewModel.viewModelScope.launch(Dispatchers.IO) {
                 val sortByTrackOrder = item.itemId.let {
                     it != R.id.menu_insert_all_simple_shuffle_next || it != R.id.menu_insert_all_simple_shuffle_last || it != R.id.menu_override_all_simple_shuffle
                 }
@@ -171,7 +172,7 @@ class AlbumListFragment : ScopedFragment() {
 
         viewModel.forceLoad.observe(this) {
             context?.also { context ->
-                launch {
+                viewModel.viewModelScope.launch {
                     mainViewModel.loading.value = true
                     val items = withContext(Dispatchers.IO) { fetchAlbums(DB.getInstance(context)) }
                     mainViewModel.loading.value = false
@@ -210,7 +211,7 @@ class AlbumListFragment : ScopedFragment() {
                     ?: db.albumDao().getAll()).getAlbumList(db)
 
     private fun upsertAlbumListIfPossible(db: DB) {
-        launch {
+        viewModel.viewModelScope.launch {
             mainViewModel.loading.value = true
             val items = withContext(Dispatchers.IO) { latestDbAlbumList.getAlbumList(db) }
             mainViewModel.loading.value = false
@@ -221,7 +222,7 @@ class AlbumListFragment : ScopedFragment() {
     private fun upsertAlbumListIfPossible(items: List<Album>) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
-            launch {
+            viewModel.viewModelScope.launch {
                 delay(500)
                 adapter.upsertItems(items)
                 chatteringCancelFlag = false
