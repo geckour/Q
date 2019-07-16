@@ -290,26 +290,9 @@ class MainActivity : CrashlyticsBundledActivity() {
         viewModel.player.observe(this) { player ->
             player ?: return@observe
 
-            player.setOnQueueChangedListener { bottomSheetViewModel.currentQueue.value = it }
-            player.setOnCurrentPositionChangedListener {
-                bottomSheetViewModel.currentPosition.value = it
+            player.setOnDestroyedListener {
+                viewModel.onDestroyPlayer()
             }
-            player.setOnPlaybackStateChangeListener { playbackState, playWhenReady ->
-                bottomSheetViewModel.playing.value = when (playbackState) {
-                    Player.STATE_READY -> {
-                        playWhenReady
-                    }
-                    else -> false
-                }
-            }
-            player.setOnPlaybackRatioChangedListener {
-                bottomSheetViewModel.playbackRatio.value = it
-            }
-            player.setOnRepeatModeChangedListener { bottomSheetViewModel.repeatMode.value = it }
-            player.setOnEqualizerStateChangedListener {
-                equalizerViewModel.equalizerState.value = it
-            }
-            player.setOnDestroyedListener { viewModel.onDestroyPlayer() }
 
             player.publishStatus()
         }
@@ -451,26 +434,6 @@ class MainActivity : CrashlyticsBundledActivity() {
         }
 
         bottomSheetViewModel.shuffle.observe(this) { viewModel.player.value?.shuffle() }
-
-        bottomSheetViewModel.changeRepeatMode.observe(this) {
-            viewModel.player.value?.rotateRepeatMode()
-        }
-
-        bottomSheetViewModel.changedQueue.observe(this) {
-            if (it == null) return@observe
-            viewModel.player.value?.submitQueue(
-                    QueueInfo(
-                            QueueMetadata(
-                                    InsertActionType.OVERRIDE, OrientedClassType.SONG
-                            ), it
-                    )
-            )
-        }
-
-        bottomSheetViewModel.changedPosition.observe(this) {
-            if (it == null) return@observe
-            viewModel.player.value?.forcePosition(it)
-        }
 
         paymentViewModel.saveSuccess.observe(this) {
             if (it == null) return@observe

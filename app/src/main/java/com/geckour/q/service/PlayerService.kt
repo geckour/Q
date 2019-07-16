@@ -234,7 +234,9 @@ class PlayerService : Service() {
         override fun onTracksChanged(
                 trackGroups: TrackGroupArray?, trackSelections: TrackSelectionArray?
         ) {
-            onCurrentPositionChanged?.invoke(currentPosition)
+            serviceScope.launch(Dispatchers.Main) {
+                onCurrentPositionChanged?.invoke(currentPosition)
+            }
             notificationUpdateJob.cancel()
             notificationUpdateJob = showNotification()
         }
@@ -250,8 +252,9 @@ class PlayerService : Service() {
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = Unit
 
         override fun onTimelineChanged(timeline: Timeline?, manifest: Any?, reason: Int) {
-            onQueueChanged?.invoke(this@PlayerService.queue)
-            onCurrentPositionChanged?.invoke(currentPosition)
+            serviceScope.launch(Dispatchers.Main) {
+                onQueueChanged?.invoke(this@PlayerService.queue)
+            }
             if (source.size < 1) destroyNotification()
         }
 
@@ -281,8 +284,10 @@ class PlayerService : Service() {
                 notificationUpdateJob = showNotification()
             }
 
-            onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
-            onCurrentPositionChanged?.invoke(currentPosition)
+            serviceScope.launch(Dispatchers.Main) {
+                onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
+                onCurrentPositionChanged?.invoke(currentPosition)
+            }
         }
     }
 
@@ -382,7 +387,9 @@ class PlayerService : Service() {
         equalizer = null
         player.stop(true)
         player.release()
-        onDestroyed?.invoke()
+        serviceScope.launch(Dispatchers.Main) {
+            onDestroyed?.invoke()
+        }
     }
 
     private fun onNotificationAction(intent: Intent) {
@@ -420,32 +427,32 @@ class PlayerService : Service() {
         }
     }
 
-    fun setOnQueueChangedListener(listener: (List<Song>) -> Unit) {
+    fun setOnQueueChangedListener(listener: ((List<Song>) -> Unit)?) {
         this.onQueueChanged = listener
     }
 
-    fun setOnCurrentPositionChangedListener(listener: (Int) -> Unit) {
+    fun setOnCurrentPositionChangedListener(listener: ((Int) -> Unit)?) {
         this.onCurrentPositionChanged = listener
     }
 
     fun setOnPlaybackStateChangeListener(
-            listener: (playbackState: Int, playWhenReady: Boolean) -> Unit) {
+            listener: ((playbackState: Int, playWhenReady: Boolean) -> Unit)?) {
         this.onPlaybackStateChanged = listener
     }
 
-    fun setOnPlaybackRatioChangedListener(listener: (Float) -> Unit) {
+    fun setOnPlaybackRatioChangedListener(listener: ((Float) -> Unit)?) {
         this.onPlaybackRatioChanged = listener
     }
 
-    fun setOnRepeatModeChangedListener(listener: (Int) -> Unit) {
+    fun setOnRepeatModeChangedListener(listener: ((Int) -> Unit)?) {
         this.onRepeatModeChanged = listener
     }
 
-    fun setOnEqualizerStateChangedListener(listener: (Boolean) -> Unit) {
+    fun setOnEqualizerStateChangedListener(listener: ((Boolean) -> Unit)?) {
         this.onEqualizerStateChanged = listener
     }
 
-    fun setOnDestroyedListener(listener: () -> Unit) {
+    fun setOnDestroyedListener(listener: (() -> Unit)?) {
         this.onDestroyed = listener
     }
 
@@ -732,7 +739,9 @@ class PlayerService : Service() {
     fun seek(playbackPosition: Long) {
         player.seekTo(playbackPosition)
         val current = currentSong ?: return
-        onPlaybackRatioChanged?.invoke(playbackPosition.toFloat() / current.duration)
+        serviceScope.launch(Dispatchers.Main) {
+            onPlaybackRatioChanged?.invoke(playbackPosition.toFloat() / current.duration)
+        }
     }
 
     fun shuffle() {
@@ -754,7 +763,9 @@ class PlayerService : Service() {
             Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_OFF
             else -> throw IllegalStateException()
         }
-        onRepeatModeChanged?.invoke(player.repeatMode)
+        serviceScope.launch(Dispatchers.Main) {
+            onRepeatModeChanged?.invoke(player.repeatMode)
+        }
     }
 
     private fun setEqualizer(audioSessionId: Int?) {
@@ -791,7 +802,9 @@ class PlayerService : Service() {
             equalizer = null
         }
 
-        onEqualizerStateChanged?.invoke(equalizer?.enabled ?: false)
+        serviceScope.launch(Dispatchers.Main) {
+            onEqualizerStateChanged?.invoke(equalizer?.enabled ?: false)
+        }
     }
 
     private fun reflectEqualizerSettings() {
@@ -834,13 +847,15 @@ class PlayerService : Service() {
     }
 
     fun publishStatus() {
-        onQueueChanged?.invoke(queue)
-        onCurrentPositionChanged?.invoke(currentPosition)
-        currentSong?.apply {
-            onPlaybackRatioChanged?.invoke(player.currentPosition.toFloat() / this.duration)
+        serviceScope.launch(Dispatchers.Main) {
+            onQueueChanged?.invoke(queue)
+            onCurrentPositionChanged?.invoke(currentPosition)
+            currentSong?.apply {
+                onPlaybackRatioChanged?.invoke(player.currentPosition.toFloat() / this.duration)
+            }
+            onPlaybackStateChanged?.invoke(player.playbackState, player.playWhenReady)
+            onRepeatModeChanged?.invoke(player.repeatMode)
         }
-        onPlaybackStateChanged?.invoke(player.playbackState, player.playWhenReady)
-        onRepeatModeChanged?.invoke(player.repeatMode)
     }
 
     private fun onUnplugged() {

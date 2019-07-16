@@ -1,52 +1,52 @@
 package com.geckour.q.ui.sheet
 
 import android.app.AlertDialog
+import android.app.Application
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.provider.MediaStore
 import android.view.LayoutInflater
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.geckour.q.App
 import com.geckour.q.R
+import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.DialogAddQueuePlaylistBinding
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
+import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.SingleLiveEvent
 import com.geckour.q.util.fetchPlaylists
+import com.geckour.q.util.toDomainModel
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-class BottomSheetViewModel : ViewModel() {
+class BottomSheetViewModel(application: Application) : AndroidViewModel(application) {
 
     internal var sheetState: Int = BottomSheetBehavior.STATE_COLLAPSED
     internal val artworkLongClick: SingleLiveEvent<Unit> = SingleLiveEvent()
     internal val toggleSheetState: SingleLiveEvent<Unit> = SingleLiveEvent()
     internal val playbackButton: SingleLiveEvent<PlaybackButton> = SingleLiveEvent()
-    internal val currentQueue: SingleLiveEvent<List<Song>> = SingleLiveEvent()
-    internal val currentPosition: SingleLiveEvent<Int> = SingleLiveEvent()
+    internal var currentQueue: List<Song> = emptyList()
+    internal var currentPosition = -1
     internal val clearQueue: SingleLiveEvent<Unit> = SingleLiveEvent()
     internal val newSeekBarProgress: SingleLiveEvent<Float> = SingleLiveEvent()
     internal val shuffle: SingleLiveEvent<Unit> = SingleLiveEvent()
-    internal val changedQueue: SingleLiveEvent<List<Song>> = SingleLiveEvent()
-    internal val changedPosition: SingleLiveEvent<Int> = SingleLiveEvent()
     internal val scrollToCurrent: SingleLiveEvent<Unit> = SingleLiveEvent()
 
-    internal val playing: SingleLiveEvent<Boolean> = SingleLiveEvent()
-    internal val playbackRatio: SingleLiveEvent<Float> = SingleLiveEvent()
-
-    internal val repeatMode: SingleLiveEvent<Int> = SingleLiveEvent()
     internal val changeRepeatMode: SingleLiveEvent<Unit> = SingleLiveEvent()
     internal val toggleCurrentRemain: SingleLiveEvent<Unit> = SingleLiveEvent()
     internal val touchLock: SingleLiveEvent<Boolean> = SingleLiveEvent()
     internal val share: SingleLiveEvent<Song> = SingleLiveEvent()
 
-    var currentSong: Song? = null
+    val currentSong: Song? get() = currentQueue.getOrNull(currentPosition)
 
     fun onLongClickArtwork(): Boolean {
-        if (currentQueue.value?.isNotEmpty() == true) {
+        if (currentQueue.isNotEmpty()) {
             artworkLongClick.call()
             return true
         }
@@ -58,8 +58,7 @@ class BottomSheetViewModel : ViewModel() {
     }
 
     fun onClickAddQueueToPlaylistButton(context: Context) {
-        viewModelScope.launch(Dispatchers.IO) {
-            val queue = currentQueue.value ?: return@launch
+        viewModelScope.launch {
             val playlists = fetchPlaylists(context)
             val binding = DialogAddQueuePlaylistBinding.inflate(LayoutInflater.from(context))
             val dialog =
@@ -67,9 +66,11 @@ class BottomSheetViewModel : ViewModel() {
                             .setMessage(R.string.dialog_desc_add_queue_to_playlist).setView(binding.root)
                             .setNegativeButton(R.string.dialog_ng) { dialog, _ ->
                                 dialog.dismiss()
-                            }.setPositiveButton(R.string.dialog_ok) { _, _ -> }.setCancelable(true).create()
+                            }.setPositiveButton(R.string.dialog_ok) { _, _ -> }
+                            .setCancelable(true)
+                            .create()
             binding.recyclerView.adapter = QueueAddPlaylistListAdapter(playlists) {
-                queue.forEachIndexed { i, song ->
+                currentQueue.forEachIndexed { i, song ->
                     context.contentResolver.insert(MediaStore.Audio.Playlists.Members.getContentUri(
                             "external", it.id
                     ), ContentValues().apply {
@@ -90,31 +91,7 @@ class BottomSheetViewModel : ViewModel() {
                 if (title.isNullOrBlank()) {
                     // TODO: エラーメッセージ表示
                 } else {
-                    val playlistId = context.contentResolver.insert(
-                            MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
-                            ContentValues().apply {
-                                val now = System.currentTimeMillis()
-                                put(
-                                        MediaStore.Audio.PlaylistsColumns.NAME, title
-                                )
-                                put(
-                                        MediaStore.Audio.PlaylistsColumns.DATE_ADDED, now
-                                )
-                                put(
-                                        MediaStore.Audio.PlaylistsColumns.DATE_MODIFIED, now
-                                )
-                            })?.let { ContentUris.parseId(it) } ?: kotlin.run {
-                        dialog.dismiss()
-                        return@setOnClickListener
-                    }
-                    queue.forEachIndexed { i, song ->
-                        context.contentResolver.insert(MediaStore.Audio.Playlists.Members.getContentUri(
-                                "external", playlistId
-                        ), ContentValues().apply {
-                            put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, i + 1)
-                            put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
-                        })
-                    }
+                    createPlaylist(title)
                     dialog.dismiss()
                 }
             }
@@ -146,7 +123,7 @@ class BottomSheetViewModel : ViewModel() {
     }
 
     fun onClickShareButton() {
-        share.value = currentQueue.value?.getOrNull(currentPosition.value ?: return)
+        share.value = currentSong
     }
 
     fun onPlayOrPause() {
@@ -171,12 +148,49 @@ class BottomSheetViewModel : ViewModel() {
         return true
     }
 
-    internal fun reAttatch() {
-        currentQueue.value = currentQueue.value
-        currentPosition.value = currentPosition.value
-        playing.value = playing.value
-        playbackRatio.value = playbackRatio.value
-        repeatMode.value = repeatMode.value
+    internal fun reAttach() {
         touchLock.value = touchLock.value
+    }
+
+    internal fun onTransitionToArtist(mainViewModel: MainViewModel) = viewModelScope.launch {
+        mainViewModel.selectedArtist.value = withContext((Dispatchers.IO)) {
+            currentSong?.artist?.let {
+                DB.getInstance(getApplication()).artistDao().findArtist(it)
+                        .firstOrNull()?.toDomainModel()
+            }
+        }
+    }
+
+    internal fun onTransitionToAlbum(mainViewModel: MainViewModel) = viewModelScope.launch {
+        mainViewModel.selectedAlbum.value = withContext(Dispatchers.IO) {
+            currentSong?.albumId?.let {
+                DB.getInstance(getApplication()).albumDao().get(it)
+                        ?.toDomainModel()
+            }
+        }
+    }
+
+    private fun createPlaylist(title: String) {
+        val playlistId = getApplication<App>().contentResolver.insert(
+                MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
+                ContentValues().apply {
+                    val now = System.currentTimeMillis()
+                    put(MediaStore.Audio.PlaylistsColumns.NAME, title)
+                    put(MediaStore.Audio.PlaylistsColumns.DATE_ADDED, now)
+                    put(MediaStore.Audio.PlaylistsColumns.DATE_MODIFIED, now)
+                }
+        )?.let { ContentUris.parseId(it) } ?: run {
+            return
+        }
+        currentQueue.forEachIndexed { i, song ->
+            getApplication<App>().contentResolver
+                    .insert(MediaStore.Audio.Playlists.Members.getContentUri(
+                            "external",
+                            playlistId
+                    ), ContentValues().apply {
+                        put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, i + 1)
+                        put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
+                    })
+        }
     }
 }

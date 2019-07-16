@@ -11,7 +11,9 @@ import android.view.ViewGroup
 import android.widget.PopupMenu
 import android.widget.SeekBar
 import androidx.constraintlayout.motion.widget.MotionLayout
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -19,21 +21,21 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentSheetBottomBinding
 import com.geckour.q.domain.model.PlaybackButton
+import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.ui.share.SharingActivity
-import com.geckour.q.util.ScopedFragment
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.observe
 import com.geckour.q.util.shake
-import com.geckour.q.util.toDomainModel
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 
-class BottomSheetFragment : ScopedFragment() {
+class BottomSheetFragment : Fragment() {
 
     companion object {
         private const val PREF_KEY_SHOW_CURRENT_REMAIN = "pref_key_show_current_remain"
@@ -67,7 +69,8 @@ class BottomSheetFragment : ScopedFragment() {
         adapter = QueueListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
         ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
-                ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
+                ItemTouchHelper.UP or ItemTouchHelper.DOWN,
+                0
         ) {
             var from: Int? = null
             var to: Int? = null
@@ -89,17 +92,16 @@ class BottomSheetFragment : ScopedFragment() {
                 return true
             }
 
-            override fun onSwiped(holder: RecyclerView.ViewHolder, position: Int) {
-            }
+            override fun onSwiped(holder: RecyclerView.ViewHolder, position: Int) = Unit
 
             override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
                 super.onSelectedChanged(viewHolder, actionState)
+
                 val from = this.from
                 val to = this.to
 
-                if (viewHolder == null && from != null && to != null) mainViewModel.onQueueSwap(
-                        from, to
-                )
+                if (viewHolder == null && from != null && to != null)
+                    mainViewModel.onQueueSwap(from, to)
 
                 this.from = null
                 this.to = null
@@ -175,46 +177,68 @@ class BottomSheetFragment : ScopedFragment() {
             true
         }
 
-        viewModel.currentQueue.value = emptyList()
-
         observeEvents()
     }
 
     override fun onResume() {
         super.onResume()
 
-        viewModel.reAttatch()
+        viewModel.reAttach()
         binding.viewModel = viewModel
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        mainViewModel.player.value?.apply {
+            setOnQueueChangedListener(null)
+            setOnCurrentPositionChangedListener(null)
+            setOnPlaybackStateChangeListener(null)
+            setOnPlaybackRatioChangedListener(null)
+            setOnRepeatModeChangedListener(null)
+        }
+    }
+
     private fun observeEvents() {
+        mainViewModel.player.observe(this) { player ->
+            player ?: return@observe
+
+            player.apply {
+                setOnQueueChangedListener {
+                    onQueueChanged(it)
+                }
+                setOnCurrentPositionChangedListener {
+                    onCurrentQueuePositionChanged(it)
+                }
+                setOnPlaybackStateChangeListener { playbackState, playWhenReady ->
+                    onPlayingChanged(
+                            when (playbackState) {
+                                Player.STATE_READY -> {
+                                    playWhenReady
+                                }
+                                else -> false
+                            }
+                    )
+                }
+                setOnPlaybackRatioChangedListener {
+                    onPlaybackRatioChanged(it)
+                }
+                setOnRepeatModeChangedListener {
+                    onRepeatModeChanged(it)
+                }
+            }
+        }
+
         viewModel.artworkLongClick.observe(this) { _ ->
             context?.also { context ->
                 PopupMenu(context, binding.artwork).apply {
                     setOnMenuItemClickListener {
                         return@setOnMenuItemClickListener when (it.itemId) {
                             R.id.menu_transition_to_artist -> {
-                                launch {
-                                    mainViewModel.selectedArtist.value =
-                                            withContext((Dispatchers.IO)) {
-                                                viewModel.currentSong?.artist?.let {
-                                                    DB.getInstance(context).artistDao().findArtist(it)
-                                                            .firstOrNull()?.toDomainModel()
-                                                }
-                                            }
-                                }
+                                viewModel.onTransitionToArtist(mainViewModel)
                                 true
                             }
                             R.id.menu_transition_to_album -> {
-                                launch {
-                                    mainViewModel.selectedAlbum.value =
-                                            withContext(Dispatchers.IO) {
-                                                viewModel.currentSong?.albumId?.let {
-                                                    DB.getInstance(context).albumDao().get(it)
-                                                            ?.toDomainModel()
-                                                }
-                                            }
-                                }
+                                viewModel.onTransitionToAlbum(mainViewModel)
                                 true
                             }
                             else -> false
@@ -232,122 +256,9 @@ class BottomSheetFragment : ScopedFragment() {
             }
         }
 
-        viewModel.currentQueue.observe(this) {
-            val changed = (adapter.getItemIds() == it?.map { it.id }).not()
-            val state = it?.isNotEmpty() ?: false
-
-            adapter.setItems(it ?: emptyList())
-
-            binding.isQueueNotEmpty = state
-
-            val totalTime = it?.asSequence()?.map { it.duration }?.sum()
-            binding.textTimeTotal.text = totalTime?.let {
-                context?.getString(R.string.bottom_sheet_time_total, it.getTimeString())
-            }
-
-            viewModel.currentPosition.value = if (state) viewModel.currentPosition.value else -1
-
-            if (changed && behavior.state == BottomSheetBehavior.STATE_COLLAPSED) binding.buttonToggleVisibleQueue.shake()
-        }
-
-        viewModel.currentPosition.observe(this) {
-            val song = adapter.getItem(it)
-
-            binding.seekBar.setOnTouchListener { _, _ -> song == null }
-
-            adapter.setNowPlayingPosition(it)
-
-            if (song?.id != viewModel.currentSong?.id) {
-                viewModel.currentSong = song
-                context?.also { context ->
-                    val db = DB.getInstance(context)
-
-                    song?.also {
-                        launch(Dispatchers.IO) {
-                            db.trackDao().increasePlaybackCount(it.id)
-                            db.albumDao().increasePlaybackCount(it.albumId)
-                            db.artistDao().apply {
-                                var artist = findArtist(it.artist).firstOrNull()
-                                if (artist == null) {
-                                    db.albumDao().get(it.albumId)?.artistId?.apply {
-                                        artist = get(this)
-                                    }
-                                }
-                                artist?.apply {
-                                    increasePlaybackCount(this.id)
-                                }
-                            }
-                        }
-                    }
-
-                    launch(Dispatchers.IO) {
-                        val drawable = viewModel.currentSong?.let {
-                            val source = it.thumbUriString ?: R.drawable.ic_empty
-                            Glide.with(requireContext()).asDrawable().load(source).submit().get()
-                        }
-                        withContext(Dispatchers.Main) {
-                            binding.artwork.setImageDrawable(drawable)
-                        }
-                    }
-                }
-                if (song == null) {
-                    binding.textTimeLeft.text = null
-                    binding.textTimeRight.text = null
-                    binding.seekBar.progress = 0
-                    binding.textTimeTotal.text = null
-                    binding.textTimeRemain.text = null
-                } else {
-                    binding.textTimeRight.text =
-                            if (sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false)) {
-                                viewModel.playbackRatio.value?.let {
-                                    val remain = (song.duration * (1 - it)).toLong()
-                                    "-${remain.getTimeString()}"
-                                }
-                            } else song.duration.getTimeString()
-                }
-                binding.viewModel = viewModel
-            }
-        }
-
-        viewModel.playing.observe(this) {
-            binding.playing = it
-        }
-
-        viewModel.playbackRatio.observe(this) {
-            if (it == null) return@observe
-            binding.seekBar.progress = (binding.seekBar.max * it).toInt()
-            val song = adapter.getItem(viewModel.currentPosition.value) ?: return@observe
-            val elapsed = (song.duration * it).toLong()
-            binding.textTimeLeft.text = elapsed.getTimeString()
-            binding.textTimeRight.text = if (sharedPreferences.getBoolean(
-                            PREF_KEY_SHOW_CURRENT_REMAIN, false
-                    )
-            ) "-${(song.duration - elapsed).getTimeString()}"
-            else song.durationString
-            val remain = adapter.getItemsAfter(
-                    (viewModel.currentPosition.value ?: 0) + 1
-            ).map { it.duration }.sum() + (song.duration - elapsed)
-            binding.textTimeRemain.text =
-                    getString(R.string.bottom_sheet_time_remain, remain.getTimeString())
-        }
-
-        viewModel.repeatMode.observe(this) {
-            if (it == null) return@observe
-            binding.buttonRepeat.apply {
-                setImageResource(
-                        when (it) {
-                            Player.REPEAT_MODE_ALL -> R.drawable.ic_repeat
-                            Player.REPEAT_MODE_ONE -> R.drawable.ic_repeat_one
-                            else -> R.drawable.ic_repeat_off
-                        }
-                )
-                visibility = View.VISIBLE
-            }
-        }
-
         viewModel.scrollToCurrent.observe(this) {
             if (adapter.itemCount > 0) {
-                binding.recyclerView.smoothScrollToPosition(viewModel.currentPosition.value ?: 0)
+                binding.recyclerView.smoothScrollToPosition(viewModel.currentPosition)
             }
         }
 
@@ -357,14 +268,120 @@ class BottomSheetFragment : ScopedFragment() {
         }
 
         viewModel.touchLock.observe(this) {
-            if (it == null) return@observe
+            it ?: return@observe
             sharedPreferences.edit().putBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, it).apply()
             binding.queueUnTouchable = it
         }
 
         viewModel.share.observe(this) {
-            if (it == null) return@observe
+            it ?: return@observe
             startActivity(SharingActivity.getIntent(requireContext(), it))
+        }
+
+        viewModel.changeRepeatMode.observe(this) {
+            mainViewModel.player.value?.rotateRepeatMode()
+        }
+    }
+
+    private fun onQueueChanged(queue: List<Song>) {
+        val changed = (adapter.getItemIds() == queue.map { it.id }).not()
+        val state = queue.isNotEmpty()
+
+        adapter.setItems(queue)
+        viewModel.currentQueue = adapter.getItems()
+
+        binding.isQueueNotEmpty = state
+
+        val totalTime = queue.map { it.duration }.sum()
+        binding.textTimeTotal.text = requireContext()
+                .getString(R.string.bottom_sheet_time_total, totalTime.getTimeString())
+
+        onCurrentQueuePositionChanged(if (state) viewModel.currentPosition else -1)
+
+        if (changed && behavior.state == BottomSheetBehavior.STATE_COLLAPSED) {
+            binding.buttonToggleVisibleQueue.shake()
+        }
+    }
+
+    private fun onCurrentQueuePositionChanged(position: Int) {
+        adapter.setNowPlayingPosition(position)
+        viewModel.currentPosition = position
+        binding.viewModel = viewModel
+
+        viewModel.currentSong?.also { currentSong ->
+            context?.also { context ->
+                viewModel.viewModelScope.launch(Dispatchers.IO) {
+                    val db = DB.getInstance(context)
+                    db.trackDao().increasePlaybackCount(currentSong.id)
+                    db.albumDao().increasePlaybackCount(currentSong.albumId)
+                    db.artistDao().apply {
+                        val artist = findArtist(currentSong.artist).firstOrNull()
+                                ?: db.albumDao().get(currentSong.albumId)?.artistId?.let {
+                                    get(it)
+                                }
+                        artist?.apply { increasePlaybackCount(this.id) }
+                    }
+
+                    val source = currentSong.thumbUriString ?: R.drawable.ic_empty
+                    val drawable =
+                            Glide.with(requireContext()).asDrawable().load(source).submit().get()
+                    withContext(Dispatchers.Main) {
+                        binding.artwork.setImageDrawable(drawable)
+                    }
+                }
+            }
+            binding.textTimeRight.text =
+                    if (sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false)) {
+                        binding.seekBar.let {
+                            val ratio = it.progress.toFloat() / it.max
+                            val remain = (currentSong.duration * (1 - ratio)).toLong()
+                            "-${remain.getTimeString()}"
+                        }
+                    } else currentSong.duration.getTimeString()
+        }.apply {
+            binding.seekBar.setOnTouchListener { _, _ -> this == null }
+        } ?: run {
+            binding.artwork.setImageDrawable(null)
+            binding.textTimeLeft.text = null
+            binding.textTimeRight.text = null
+            binding.seekBar.progress = 0
+            binding.textTimeTotal.text = null
+            binding.textTimeRemain.text = null
+        }
+    }
+
+    private fun onPlayingChanged(playing: Boolean) {
+        binding.playing = playing
+    }
+
+    private fun onPlaybackRatioChanged(ratio: Float) {
+        binding.seekBar.progress = (binding.seekBar.max * ratio).toInt()
+
+        val song = viewModel.currentSong ?: return
+
+        val elapsed = (song.duration * ratio).toLong()
+        binding.textTimeLeft.text = elapsed.getTimeString()
+        binding.textTimeRight.text =
+                if (sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false))
+                    "-${(song.duration - elapsed).getTimeString()}"
+                else song.durationString
+        val remain = adapter.getItemsAfter((viewModel.currentPosition) + 1)
+                .map { it.duration }
+                .sum() + (song.duration - elapsed)
+        binding.textTimeRemain.text =
+                getString(R.string.bottom_sheet_time_remain, remain.getTimeString())
+    }
+
+    private fun onRepeatModeChanged(mode: Int) {
+        binding.buttonRepeat.apply {
+            setImageResource(
+                    when (mode) {
+                        Player.REPEAT_MODE_ALL -> R.drawable.ic_repeat
+                        Player.REPEAT_MODE_ONE -> R.drawable.ic_repeat_one
+                        else -> R.drawable.ic_repeat_off
+                    }
+            )
+            visibility = View.VISIBLE
         }
     }
 
