@@ -14,7 +14,8 @@ import android.view.ViewGroup
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProviders
+import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentEqualizerBinding
 import com.geckour.q.databinding.ItemEqualizerSeekBarBinding
@@ -42,12 +43,8 @@ class EqualizerFragment : Fragment() {
     }
 
     private lateinit var binding: FragmentEqualizerBinding
-    private val viewModel: EqualizerViewModel by lazy {
-        ViewModelProviders.of(requireActivity())[EqualizerViewModel::class.java]
-    }
-    private val mainViewModel: MainViewModel by lazy {
-        ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
-    }
+    private val viewModel: EqualizerViewModel by viewModels()
+    private val mainViewModel: MainViewModel by activityViewModels()
     private val sharedPreferences: SharedPreferences by lazy {
         PreferenceManager.getDefaultSharedPreferences(requireContext())
     }

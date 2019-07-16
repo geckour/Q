@@ -13,10 +13,10 @@ import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.FrameLayout
+import androidx.activity.viewModels
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
-import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.domain.model.PlaybackButton
@@ -26,7 +26,6 @@ import com.geckour.q.service.MediaRetrieveService
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.easteregg.EasterEggFragment
 import com.geckour.q.ui.equalizer.EqualizerFragment
-import com.geckour.q.ui.equalizer.EqualizerViewModel
 import com.geckour.q.ui.library.album.AlbumListFragment
 import com.geckour.q.ui.library.album.AlbumListViewModel
 import com.geckour.q.ui.library.artist.ArtistListFragment
@@ -40,16 +39,11 @@ import com.geckour.q.ui.pay.PaymentViewModel
 import com.geckour.q.ui.setting.SettingActivity
 import com.geckour.q.ui.sheet.BottomSheetViewModel
 import com.geckour.q.util.CrashlyticsBundledActivity
-import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.QueueInfo
-import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.ducking
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
 import com.geckour.q.util.preferScreen
 import com.geckour.q.util.toNightModeInt
-import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.analytics.FirebaseAnalytics
@@ -83,31 +77,15 @@ class MainActivity : CrashlyticsBundledActivity() {
         }
     }
 
-    private val viewModel: MainViewModel by lazy {
-        ViewModelProviders.of(this)[MainViewModel::class.java]
-    }
+    private val viewModel: MainViewModel by viewModels()
 
-    private val bottomSheetViewModel: BottomSheetViewModel by lazy {
-        ViewModelProviders.of(this)[BottomSheetViewModel::class.java]
-    }
-    private val artistListViewModel: ArtistListViewModel by lazy {
-        ViewModelProviders.of(this)[ArtistListViewModel::class.java]
-    }
-    private val albumListViewModel: AlbumListViewModel by lazy {
-        ViewModelProviders.of(this)[AlbumListViewModel::class.java]
-    }
-    private val songListViewModel: SongListViewModel by lazy {
-        ViewModelProviders.of(this)[SongListViewModel::class.java]
-    }
-    private val genreListViewModel: SongListViewModel by lazy {
-        ViewModelProviders.of(this)[SongListViewModel::class.java]
-    }
-    private val playlistListViewModel: SongListViewModel by lazy {
-        ViewModelProviders.of(this)[SongListViewModel::class.java]
-    }
-    private val paymentViewModel: PaymentViewModel by lazy {
-        ViewModelProviders.of(this)[PaymentViewModel::class.java]
-    }
+    private val bottomSheetViewModel: BottomSheetViewModel by viewModels()
+    private val artistListViewModel: ArtistListViewModel by viewModels()
+    private val albumListViewModel: AlbumListViewModel by viewModels()
+    private val songListViewModel: SongListViewModel by viewModels()
+    private val genreListViewModel: SongListViewModel by viewModels()
+    private val playlistListViewModel: SongListViewModel by viewModels()
+    private val paymentViewModel: PaymentViewModel by viewModels()
 
     internal lateinit var binding: ActivityMainBinding
     private val sharedPreferences by lazy { PreferenceManager.getDefaultSharedPreferences(this) }

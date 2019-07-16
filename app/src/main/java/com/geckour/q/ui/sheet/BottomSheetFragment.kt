@@ -12,7 +12,7 @@ import android.widget.PopupMenu
 import android.widget.SeekBar
 import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProviders
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
@@ -42,12 +42,8 @@ class BottomSheetFragment : Fragment() {
         private const val PREF_KEY_SHOW_LOCK_TOUCH_QUEUE = "pref_key_lock_touch_queue"
     }
 
-    private val viewModel: BottomSheetViewModel by lazy {
-        ViewModelProviders.of(requireActivity())[BottomSheetViewModel::class.java]
-    }
-    private val mainViewModel: MainViewModel by lazy {
-        ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
-    }
+    private val viewModel: BottomSheetViewModel by activityViewModels()
+    private val mainViewModel: MainViewModel by activityViewModels()
     private lateinit var binding: FragmentSheetBottomBinding
     private lateinit var adapter: QueueListAdapter
     private lateinit var behavior: BottomSheetBehavior<MotionLayout>

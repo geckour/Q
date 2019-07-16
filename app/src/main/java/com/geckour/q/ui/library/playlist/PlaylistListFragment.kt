@@ -10,7 +10,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.SearchView
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProviders
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import com.geckour.q.R
@@ -34,12 +34,8 @@ class PlaylistListFragment : Fragment() {
         fun newInstance(): PlaylistListFragment = PlaylistListFragment()
     }
 
-    private val viewModel: PlaylistListViewModel by lazy {
-        ViewModelProviders.of(requireActivity())[PlaylistListViewModel::class.java]
-    }
-    private val mainViewModel: MainViewModel by lazy {
-        ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
-    }
+    private val viewModel: PlaylistListViewModel by activityViewModels()
+    private val mainViewModel: MainViewModel by activityViewModels()
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: PlaylistListAdapter by lazy { PlaylistListAdapter(mainViewModel) }
 

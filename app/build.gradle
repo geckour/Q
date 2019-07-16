@@ -57,23 +57,22 @@ repositories {
 }
 
 dependencies {
-    def firebase_ver = '17.0.0'
+    def firebase_ver = '17.0.1'
     def aac_lifecycle_ver = '2.2.0-alpha02'
     def aac_room_ver = '2.1.0'
-    def aac_work_ver = '1.0.1'
-    def coroutines_ver = '1.0.1'
+    def coroutines_ver = '1.2.2'
     def permission_dispatcher_ver = '4.5.0'
-    def stetho_ver = '1.5.0'
-    def glide_ver = '4.8.0'
+    def stetho_ver = '1.5.1'
+    def glide_ver = '4.9.0'
     def exo_ver = '2.9.0'
     def exo_ext_ver = '2.7.0-1'
 
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    implementation 'androidx.constraintlayout:constraintlayout:2.0.0-alpha3'
-    implementation "androidx.appcompat:appcompat:1.1.0-rc01"
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.0-beta2'
+    implementation "androidx.appcompat:appcompat:1.0.2"
     implementation "androidx.media:media:1.0.1"
-    implementation 'com.google.android.material:material:1.0.0'
+    implementation 'com.google.android.material:material:1.1.0-alpha08'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test:runner:1.2.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
@@ -94,19 +93,20 @@ dependencies {
     implementation 'com.google.code.gson:gson:2.8.5'
 
     // AAC ViewModel
-    implementation "androidx.lifecycle:lifecycle-extensions:$aac_lifecycle_ver"
-    kapt "androidx.lifecycle:lifecycle-compiler:$aac_lifecycle_ver"
-    implementation "androidx.lifecycle:lifecycle-common-java8:$aac_lifecycle_ver"
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$aac_lifecycle_ver"
-
-    // AAC WorkManager
-    implementation "android.arch.work:work-runtime:$aac_work_ver"
-    implementation "android.arch.work:work-runtime-ktx:$aac_work_ver"
+    implementation "androidx.lifecycle:lifecycle-livedata:$aac_lifecycle_ver"
+    implementation "androidx.lifecycle:lifecycle-common-java8:$aac_lifecycle_ver"
+    testImplementation 'androidx.arch.core:core-testing:2.0.1'
 
     // AAC Room
     implementation "androidx.room:room-runtime:$aac_room_ver"
+    implementation "androidx.room:room-ktx:$aac_room_ver"
     kapt "androidx.room:room-compiler:$aac_room_ver"
-    androidTestImplementation "androidx.room:room-testing:$aac_room_ver"
+    testImplementation "androidx.room:room-testing:$aac_room_ver"
+
+    // KTX
+    implementation 'androidx.fragment:fragment-ktx:1.2.0-alpha01'
+    implementation 'androidx.activity:activity-ktx:1.1.0-alpha01'
 
     // Permission
     implementation "org.permissionsdispatcher:permissionsdispatcher:$permission_dispatcher_ver"

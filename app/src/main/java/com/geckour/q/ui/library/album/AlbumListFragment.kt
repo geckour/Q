@@ -11,7 +11,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.SearchView
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProviders
+import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.viewModelScope
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -49,12 +50,8 @@ class AlbumListFragment : Fragment() {
         }
     }
 
-    private val viewModel: AlbumListViewModel by lazy {
-        ViewModelProviders.of(requireActivity())[AlbumListViewModel::class.java]
-    }
-    private val mainViewModel: MainViewModel by lazy {
-        ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
-    }
+    private val viewModel: AlbumListViewModel by activityViewModels()
+    private val mainViewModel: MainViewModel by activityViewModels()
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: AlbumListAdapter by lazy { AlbumListAdapter(mainViewModel) }
 

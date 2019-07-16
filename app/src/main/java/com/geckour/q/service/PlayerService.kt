@@ -317,9 +317,9 @@ class PlayerService : Service() {
     private val serviceScope = object : CoroutineScope {
         override val coroutineContext: CoroutineContext get() = job
     }
-    private var notificationUpdateJob = Job()
-    private var notifyPlaybackRatioJob: Job? = null
-    private var seekJob: Job? = null
+    private var notificationUpdateJob: Job = Job()
+    private var notifyPlaybackRatioJob: Job = Job()
+    private var seekJob: Job = Job()
 
     private var ducking: Boolean = false
     fun getDuking(): Boolean = ducking
@@ -575,7 +575,7 @@ class PlayerService : Service() {
     private fun resume() {
         Timber.d("qgeck resume invoked")
 
-        notifyPlaybackRatioJob?.cancel()
+        notifyPlaybackRatioJob.cancel()
         notifyPlaybackRatioJob = serviceScope.launch {
             while (true) {
                 val song = currentSong ?: break
@@ -598,7 +598,7 @@ class PlayerService : Service() {
         if (player.playWhenReady) storeState()
 
         player.playWhenReady = false
-        notifyPlaybackRatioJob?.cancel()
+        notifyPlaybackRatioJob.cancel()
         getSystemService(AudioManager::class.java).apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val audioFocusRequest = AudioFocusRequest.Builder(
@@ -684,7 +684,7 @@ class PlayerService : Service() {
     fun fastForward() {
         val song = currentSong
         if (song != null) {
-            seekJob?.cancel()
+            seekJob.cancel()
             seekJob = serviceScope.launch {
                 while (true) {
                     val seekTo = (player.currentPosition + 1000).let {
@@ -699,7 +699,7 @@ class PlayerService : Service() {
 
     fun rewind() {
         if (currentSong != null) {
-            seekJob?.cancel()
+            seekJob.cancel()
             seekJob = serviceScope.launch {
                 while (true) {
                     val seekTo = (player.currentPosition - 1000).let {
@@ -713,7 +713,7 @@ class PlayerService : Service() {
     }
 
     fun stopFastSeek() {
-        seekJob?.cancel()
+        seekJob.cancel()
     }
 
     private fun seekToHead() {
@@ -862,7 +862,7 @@ class PlayerService : Service() {
         pause()
     }
 
-    private fun showNotification(): Job = serviceScope.launch {
+    private fun showNotification() = serviceScope.launch {
         val song = currentSong ?: return@launch
         val albumTitle = DB.getInstance(applicationContext).albumDao()
                 .get(song.albumId)?.title ?: UNKNOWN

@@ -14,8 +14,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.TextView
+import androidx.activity.viewModels
 import androidx.databinding.DataBindingUtil
-import androidx.lifecycle.ViewModelProviders
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivitySettingBinding
 import com.geckour.q.databinding.DialogEditTextBinding
@@ -40,9 +40,7 @@ class SettingActivity : CrashlyticsBundledActivity() {
         fun createIntent(context: Context): Intent = Intent(context, SettingActivity::class.java)
     }
 
-    private val viewModel: SettingViewModel by lazy {
-        ViewModelProviders.of(this)[SettingViewModel::class.java]
-    }
+    private val viewModel: SettingViewModel by viewModels()
     private lateinit var binding: ActivitySettingBinding
     private val sharedPreferences: SharedPreferences by lazy {
         PreferenceManager.getDefaultSharedPreferences(this)

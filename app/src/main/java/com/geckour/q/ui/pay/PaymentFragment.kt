@@ -14,7 +14,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProviders
+import androidx.fragment.app.activityViewModels
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentPaymentBinding
 import com.geckour.q.ui.main.MainViewModel
@@ -31,12 +31,8 @@ class PaymentFragment : Fragment() {
     }
 
     private lateinit var binding: FragmentPaymentBinding
-    private val viewModel: PaymentViewModel by lazy {
-        ViewModelProviders.of(requireActivity())[PaymentViewModel::class.java]
-    }
-    private val mainViewModel: MainViewModel by lazy {
-        ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
-    }
+    private val viewModel: PaymentViewModel by activityViewModels()
+    private val mainViewModel: MainViewModel by activityViewModels()
 
     override fun onCreateView(
             inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?

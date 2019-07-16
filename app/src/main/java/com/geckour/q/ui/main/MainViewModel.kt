@@ -77,7 +77,7 @@ class MainViewModel(
     internal var syncing = false
     val loading: SingleLiveEvent<Boolean> = SingleLiveEvent()
 
-    private var searchJob = Job()
+    private var searchJob: Job = Job()
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {

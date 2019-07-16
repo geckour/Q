@@ -14,7 +14,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.SearchView
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProviders
+import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import com.geckour.q.R
@@ -46,12 +46,8 @@ class GenreListFragment : Fragment() {
         fun newInstance(): GenreListFragment = GenreListFragment()
     }
 
-    private val viewModel: GenreListViewModel by lazy {
-        ViewModelProviders.of(requireActivity())[GenreListViewModel::class.java]
-    }
-    private val mainViewModel: MainViewModel by lazy {
-        ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
-    }
+    private val viewModel: GenreListViewModel by activityViewModels()
+    private val mainViewModel: MainViewModel by activityViewModels()
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: GenreListAdapter by lazy { GenreListAdapter(mainViewModel) }
 

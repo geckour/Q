@@ -11,7 +11,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupMenu
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.ViewModelProviders
+import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.viewModelScope
 import com.bumptech.glide.Glide
 import com.geckour.q.R
@@ -40,10 +41,8 @@ class EasterEggFragment : Fragment() {
     }
 
     private lateinit var binding: FragmentEasterEggBinding
-    private val viewModel: EasterEggViewModel by lazy {
-        ViewModelProviders.of(this)[EasterEggViewModel::class.java]
-    }
-    private lateinit var mainViewModel: MainViewModel
+    private val viewModel: EasterEggViewModel by viewModels()
+    private val mainViewModel: MainViewModel by activityViewModels()
 
     override fun onCreateView(
             inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -96,7 +95,6 @@ class EasterEggFragment : Fragment() {
 
         setHasOptionsMenu(true)
 
-        mainViewModel = ViewModelProviders.of(requireActivity())[MainViewModel::class.java]
         observeEvents()
     }
 
