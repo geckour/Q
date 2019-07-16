@@ -370,6 +370,10 @@ class PlayerService : Service() {
 
         Timber.d("qgeck onDestroy called")
 
+        if (player.playWhenReady) {
+            storeState()
+        }
+
         mediaSession?.isActive = false
         mediaSession = null
         destroyNotification()
@@ -642,10 +646,7 @@ class PlayerService : Service() {
             this.queue.removeAt(1)
         }
 
-        pause()
-        if (player.playWhenReady) {
-            resume()
-        }
+        storeState()
     }
 
     fun override(queue: List<Song>, force: Boolean = false) {
@@ -813,6 +814,7 @@ class PlayerService : Service() {
 
     private fun storeState() {
         val state = PlayerState(
+                player.playWhenReady,
                 queue,
                 currentPosition,
                 player.currentPosition,
