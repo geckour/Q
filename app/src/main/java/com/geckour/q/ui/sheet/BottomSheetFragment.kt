@@ -33,7 +33,6 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import timber.log.Timber
 
 class BottomSheetFragment : Fragment() {
 
@@ -50,6 +49,11 @@ class BottomSheetFragment : Fragment() {
 
     private val sharedPreferences: SharedPreferences by lazy {
         PreferenceManager.getDefaultSharedPreferences(requireContext())
+    }
+
+    private val touchLockListener: (View, MotionEvent) -> Boolean = { _, event ->
+        behavior.onTouchEvent(requireActivity().findViewById(R.id.coordinator_main), binding.sheet, event)
+        true
     }
 
     override fun onCreateView(
@@ -166,13 +170,6 @@ class BottomSheetFragment : Fragment() {
             }
         })
 
-        binding.touchBlockWall.setOnTouchListener { _, event ->
-            behavior.onTouchEvent(
-                    requireActivity().findViewById(R.id.coordinator_main), binding.sheet, event
-            )
-            true
-        }
-
         observeEvents()
     }
 
@@ -267,6 +264,7 @@ class BottomSheetFragment : Fragment() {
             it ?: return@observe
             sharedPreferences.edit().putBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, it).apply()
             binding.queueUnTouchable = it
+            binding.recyclerView.setOnTouchListener(if (it) touchLockListener else null)
         }
 
         viewModel.share.observe(this) {
