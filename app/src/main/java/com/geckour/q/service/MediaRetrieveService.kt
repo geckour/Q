@@ -100,7 +100,7 @@ class MediaRetrieveService : IntentService(NAME) {
             applicationContext.contentResolver
                     .query(
                             MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection,
-                            "${MediaStore.Audio.Media.IS_MUSIC}!=0",
+                            "${MediaStore.Audio.Media.IS_MUSIC} != 0",
                             null,
                             "${MediaStore.Audio.Media.TITLE} ASC"
                     )?.use { cursor ->
@@ -135,6 +135,7 @@ class MediaRetrieveService : IntentService(NAME) {
                                     getNotification(progress, seed, bitmap)
                             )
                         }
+                        retriever.release()
                         val diff = db.trackDao().getAll().map { it.mediaId } - newTrackMediaIds
                         diff.forEach {
                             db.deleteTrack(it)
@@ -220,7 +221,7 @@ class MediaRetrieveService : IntentService(NAME) {
         paint.apply {
             color = Color.argb(10, 0, 0, 0)
             style = Paint.Style.STROKE
-            strokeWidth = canvas.width * 0.01f
+            strokeWidth = canvas.width * 0.015f
         }
         canvas.drawPath(triPath, paint)
 
