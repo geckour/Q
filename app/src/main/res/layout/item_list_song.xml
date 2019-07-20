@@ -58,7 +58,7 @@
             android:text="@{data.name}"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="16sp"
-            app:layout_constraintBottom_toTopOf="@id/text_artist"
+            app:layout_constraintBottom_toTopOf="@id/text_artist_and_album"
             app:layout_constraintEnd_toStartOf="@id/barrier_right"
             app:layout_constraintStart_toEndOf="@id/thumb"
             app:layout_constraintTop_toTopOf="@id/thumb"
@@ -66,7 +66,7 @@
             tools:text="曲タイトル" />
 
         <TextView
-            android:id="@+id/text_artist"
+            android:id="@+id/text_artist_and_album"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginEnd="12dp"
@@ -74,7 +74,7 @@
             android:layout_marginTop="2dp"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="@{data.artist}"
+            android:text="@{String.format(@string/song_item_artist_and_album, data.artist, data.album)}"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="12sp"
             app:layout_constraintBottom_toBottomOf="@id/thumb"

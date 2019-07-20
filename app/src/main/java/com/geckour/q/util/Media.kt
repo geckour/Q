@@ -94,6 +94,7 @@ suspend fun getSong(
         db: DB, track: Track, genreId: Long? = null, playlistId: Long? = null, trackNum: Int? = null
 ): Song? = withContext(Dispatchers.IO) {
     val artistName = db.artistDao().get(track.artistId)?.title ?: UNKNOWN
+    val albumName = db.albumDao().get(track.albumId)?.title ?: UNKNOWN
     val artwork = db.albumDao().get(track.albumId)?.artworkUriString
     Song(
             track.id,
@@ -101,6 +102,7 @@ suspend fun getSong(
             track.albumId,
             track.title,
             artistName,
+            albumName,
             track.composer,
             artwork,
             track.duration,
@@ -309,46 +311,51 @@ fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> = wh
     }
 }
 
-suspend fun Song.getMediaMetadata(
-        context: Context, albumTitle: String? = null
-): MediaMetadataCompat = withContext(Dispatchers.IO) {
-    val db = DB.getInstance(context)
-    val album = albumTitle ?: db.albumDao().get(this@getMediaMetadata.albumId)?.title ?: UNKNOWN
-    val uriString = db.getArtworkUriStringFromId(this@getMediaMetadata.albumId)
+suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat =
+        withContext(Dispatchers.IO) {
+            val db = DB.getInstance(context)
+            val uriString = db.getArtworkUriStringFromId(albumId)
 
-    MediaMetadataCompat.Builder().putString(
-            MediaMetadataCompat.METADATA_KEY_MEDIA_ID, this@getMediaMetadata.mediaId.toString()
-    ).putString(MediaMetadataCompat.METADATA_KEY_TITLE, this@getMediaMetadata.name)
-            .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, this@getMediaMetadata.artist)
-            .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album)
-            .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, uriString)
-            .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, this@getMediaMetadata.composer)
-            .apply {
-                if (uriString != null && PreferenceManager.getDefaultSharedPreferences(context).showArtworkOnLockScreen) {
-                    val bitmap = try {
-                        Glide.with(context).asBitmap().load(uriString).submit().get()
-                    } catch (t: Throwable) {
-                        Timber.e(t)
-                        null
+            MediaMetadataCompat.Builder()
+                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaId.toString())
+                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, name)
+                    .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist)
+                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album)
+                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, uriString)
+                    .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer)
+                    .apply {
+                        if (uriString != null
+                                && PreferenceManager.getDefaultSharedPreferences(context)
+                                        .showArtworkOnLockScreen) {
+                            val bitmap = try {
+                                Glide.with(context).asBitmap().load(uriString).submit().get()
+                            } catch (t: Throwable) {
+                                Timber.e(t)
+                                null
+                            }
+                            putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
+                        }
                     }
-                    putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
-                }
-            }.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, this@getMediaMetadata.duration).build()
-}
+                    .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
+                    .build()
+        }
 
 suspend fun getPlayerNotification(
-        context: Context, sessionToken: MediaSessionCompat.Token?,
-        song: Song, albumTitle: String,
+        context: Context,
+        sessionToken: MediaSessionCompat.Token?,
+        song: Song,
         playing: Boolean
 ): Notification? =
         withContext(Dispatchers.IO) {
             if (sessionToken == null) return@withContext null
 
             val artwork = try {
-                Glide.with(context).asBitmap().load(
-                        DB.getInstance(context).getArtworkUriStringFromId(song.albumId)
-                                ?: R.drawable.ic_empty
-                ).submit().get()
+                Glide.with(context)
+                        .asBitmap()
+                        .load(DB.getInstance(context).getArtworkUriStringFromId(song.albumId)
+                                ?: R.drawable.ic_empty)
+                        .submit()
+                        .get()
             } catch (t: Throwable) {
                 Timber.e(t)
                 null
@@ -358,7 +365,7 @@ suspend fun getPlayerNotification(
                     .setLargeIcon(artwork)
                     .setContentTitle(song.name)
                     .setContentText(song.artist)
-                    .setSubText(albumTitle)
+                    .setSubText(song.album)
                     .setOngoing(playing)
                     .setStyle(
                             androidx.media.app.NotificationCompat.MediaStyle()

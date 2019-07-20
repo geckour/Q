@@ -67,11 +67,11 @@
             tools:text="曲タイトル" />
 
         <TextView
-            android:id="@+id/text_artist"
+            android:id="@+id/text_artist_and_album"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:ellipsize="end"
-            android:text="@{viewModel.currentSong.artist}"
+            android:text="@{viewModel.currentSong == null ? null : String.format(@string/song_item_artist_and_album, viewModel.currentSong.artist, viewModel.currentSong.album)}"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="10sp"
             tools:text="アーティスト名" />

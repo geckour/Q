@@ -135,6 +135,8 @@
     <string name="search_category_playlist">Playlist</string>
     <string name="search_category_genre">Genre</string>
 
+    <string name="song_item_artist_and_album" translatable="false">%1$s - %2$s</string>
+
 
     <string name="setting_switch_on" translatable="false">ON</string>
     <string name="setting_switch_off" translatable="false">OFF</string>

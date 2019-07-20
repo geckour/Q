@@ -31,7 +31,6 @@ import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.QueueInfo
 import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.SettingCommand
-import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.ducking
 import com.geckour.q.util.equalizerEnabled
 import com.geckour.q.util.equalizerParams
@@ -374,25 +373,20 @@ class PlayerService : Service() {
     }
 
     override fun onDestroy() {
-        super.onDestroy()
-
         Timber.d("qgeck onDestroy called")
 
-        if (player.playWhenReady) {
-            storeState()
-        }
-
-        mediaSession?.isActive = false
+        stop()
+        player.stop(true)
         mediaSession = null
+        equalizer = null
         destroyNotification()
         unregisterReceiver(headsetStateReceiver)
         job.cancel()
-        equalizer = null
-        player.stop(true)
         player.release()
-        serviceScope.launch(Dispatchers.Main) {
-            onDestroyed?.invoke()
-        }
+
+        onDestroyed?.invoke()
+
+        super.onDestroy()
     }
 
     private fun onNotificationAction(intent: Intent) {
@@ -882,13 +876,9 @@ class PlayerService : Service() {
 
     private fun showNotification() = serviceScope.launch {
         val song = currentSong ?: return@launch
-        val albumTitle = DB.getInstance(applicationContext).albumDao()
-                .get(song.albumId)?.title ?: UNKNOWN
 
-        mediaSession?.setMetadata(
-                song.getMediaMetadata(this@PlayerService, albumTitle))
-        getPlayerNotification(this@PlayerService,
-                mediaSession?.sessionToken, song, albumTitle, playing)
+        mediaSession?.setMetadata(song.getMediaMetadata(this@PlayerService))
+        getPlayerNotification(this@PlayerService, mediaSession?.sessionToken, song, playing)
                 ?.show()
     }
 

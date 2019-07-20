@@ -36,9 +36,9 @@
             android:id="@+id/text_song"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            app:layout_constraintBottom_toTopOf="@id/text_artist"
-            app:layout_constraintLeft_toLeftOf="@id/text_artist"
-            app:layout_constraintRight_toRightOf="@id/text_artist">
+            app:layout_constraintBottom_toTopOf="@id/text_artist_and_album"
+            app:layout_constraintLeft_toLeftOf="@id/text_artist_and_album"
+            app:layout_constraintRight_toRightOf="@id/text_artist_and_album">
 
             <CustomAttribute
                 app:attributeName="MaxLines"
@@ -46,7 +46,7 @@
         </Constraint>
 
         <Constraint
-            android:id="@+id/text_artist"
+            android:id="@+id/text_artist_and_album"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginLeft="12dp"
@@ -263,7 +263,7 @@
         </Constraint>
 
         <Constraint
-            android:id="@id/text_artist"
+            android:id="@id/text_artist_and_album"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             app:layout_constraintLeft_toLeftOf="@id/text_song"
@@ -290,7 +290,7 @@
             android:layout_marginTop="4dp"
             app:layout_constraintLeft_toRightOf="@id/guide_artwork_end"
             app:layout_constraintRight_toLeftOf="@id/button_share"
-            app:layout_constraintTop_toBottomOf="@id/text_artist" />
+            app:layout_constraintTop_toBottomOf="@id/text_artist_and_album" />
 
         <Constraint
             android:id="@id/button_controller_right"

@@ -83,9 +83,7 @@ class SharingActivity : CrashlyticsBundledActivity() {
             val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
 
             coroutineScope.launch(Dispatchers.IO) {
-                val albumName: String? =
-                        DB.getInstance(this@SharingActivity).albumDao().get(song.albumId)?.title
-                val sharingText: String = song.getSharingText(this@SharingActivity, albumName)
+                val sharingText: String = song.getSharingText(this@SharingActivity, song.album)
                 withContext(Dispatchers.Main) {
                     ShareCompat.IntentBuilder.from(this@SharingActivity)
                             .setChooserTitle(R.string.share_chooser_title).setText(sharingText).also {

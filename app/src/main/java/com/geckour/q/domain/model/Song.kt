@@ -11,6 +11,7 @@ data class Song(
         val albumId: Long,
         val name: String?,
         val artist: String,
+        val album: String,
         val composer: String?,
         val thumbUriString: String?,
         val duration: Long,

@@ -37,7 +37,9 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
 
     internal fun getItemIds(): List<Long> = items.map { it.id }
 
-    internal fun getItemsAfter(start: Int): List<Song> = items.subList(start, items.size)
+    internal fun getItemsAfter(start: Int): List<Song> =
+            if (start < items.lastIndex) items.subList(start, items.size)
+            else emptyList()
 
     internal fun setNowPlayingPosition(index: Int?) {
 
