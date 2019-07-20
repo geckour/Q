@@ -13,12 +13,9 @@ import android.widget.SeekBar
 import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
 import com.geckour.q.R
-import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentSheetBottomBinding
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.Song
@@ -30,9 +27,6 @@ import com.geckour.q.util.observe
 import com.geckour.q.util.shake
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class BottomSheetFragment : Fragment() {
 
@@ -278,19 +272,17 @@ class BottomSheetFragment : Fragment() {
     }
 
     private fun onQueueChanged(queue: List<Song>) {
-        val changed = (adapter.getItemIds() == queue.map { it.id }).not()
-        val state = queue.isNotEmpty()
-
         adapter.setItems(queue)
         viewModel.currentQueue = adapter.getItems()
 
-        binding.isQueueNotEmpty = state
+        val changed = (adapter.getItemIds() == queue.map { it.id }).not()
+        val notEmpty = queue.isNotEmpty()
+
+        binding.isQueueNotEmpty = notEmpty
 
         val totalTime = queue.map { it.duration }.sum()
         binding.textTimeTotal.text = requireContext()
                 .getString(R.string.bottom_sheet_time_total, totalTime.getTimeString())
-
-        onCurrentQueuePositionChanged(if (state) viewModel.currentPosition else -1)
 
         if (changed && behavior.state == BottomSheetBehavior.STATE_COLLAPSED) {
             binding.buttonToggleVisibleQueue.shake()
@@ -302,46 +294,18 @@ class BottomSheetFragment : Fragment() {
         viewModel.currentPosition = position
         binding.viewModel = viewModel
 
-        viewModel.currentSong?.also { currentSong ->
-            context?.also { context ->
-                viewModel.viewModelScope.launch(Dispatchers.IO) {
-                    val db = DB.getInstance(context)
-                    db.trackDao().increasePlaybackCount(currentSong.id)
-                    db.albumDao().increasePlaybackCount(currentSong.albumId)
-                    db.artistDao().apply {
-                        val artist = findArtist(currentSong.artist).firstOrNull()
-                                ?: db.albumDao().get(currentSong.albumId)?.artistId?.let {
-                                    get(it)
-                                }
-                        artist?.apply { increasePlaybackCount(this.id) }
-                    }
-
-                    val source = currentSong.thumbUriString ?: R.drawable.ic_empty
-                    val drawable =
-                            Glide.with(requireContext()).asDrawable().load(source).submit().get()
-                    withContext(Dispatchers.Main) {
-                        binding.artwork.setImageDrawable(drawable)
-                    }
-                }
-            }
-            binding.textTimeRight.text =
-                    if (sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false)) {
-                        binding.seekBar.let {
-                            val ratio = it.progress.toFloat() / it.max
-                            val remain = (currentSong.duration * (1 - ratio)).toLong()
-                            "-${remain.getTimeString()}"
-                        }
-                    } else currentSong.duration.getTimeString()
-        }.apply {
-            binding.seekBar.setOnTouchListener { _, _ -> this == null }
-        } ?: run {
-            binding.artwork.setImageDrawable(null)
+        val noCurrentSong = viewModel.currentSong == null
+        binding.seekBar.setOnTouchListener { _, _ -> noCurrentSong }
+        if (noCurrentSong) {
             binding.textTimeLeft.text = null
             binding.textTimeRight.text = null
             binding.seekBar.progress = 0
             binding.textTimeTotal.text = null
             binding.textTimeRemain.text = null
+        } else {
+            onPlaybackRatioChanged(binding.seekBar.let { it.progress.toFloat() / it.max })
         }
+        viewModel.setArtwork(binding.artwork)
     }
 
     private fun onPlayingChanged(playing: Boolean) {

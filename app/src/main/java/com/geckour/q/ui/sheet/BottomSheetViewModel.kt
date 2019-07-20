@@ -7,8 +7,10 @@ import android.content.ContentValues
 import android.content.Context
 import android.provider.MediaStore
 import android.view.LayoutInflater
+import android.widget.ImageView
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.bumptech.glide.Glide
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -22,6 +24,7 @@ import com.geckour.q.util.fetchPlaylists
 import com.geckour.q.util.toDomainModel
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -44,6 +47,8 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     internal val share: SingleLiveEvent<Song> = SingleLiveEvent()
 
     val currentSong: Song? get() = currentQueue.getOrNull(currentPosition)
+
+    var updateArtworkJob: Job = Job()
 
     fun onLongClickArtwork(): Boolean {
         if (currentQueue.isNotEmpty()) {
@@ -191,6 +196,25 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
                         put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, i + 1)
                         put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
                     })
+        }
+    }
+
+    internal fun setArtwork(imageView: ImageView) {
+        updateArtworkJob.cancel()
+        updateArtworkJob = viewModelScope.launch(Dispatchers.IO) {
+            val drawable = currentSong.let {
+                when (it) {
+                    null -> null
+                    else -> {
+                        Glide.with(imageView)
+                                .asDrawable()
+                                .load(it.thumbUriString ?: R.drawable.ic_empty)
+                                .submit()
+                                .get()
+                    }
+                }
+            }
+            withContext(Dispatchers.Main) { imageView.setImageDrawable(drawable) }
         }
     }
 }

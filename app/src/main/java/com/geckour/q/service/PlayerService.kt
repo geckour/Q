@@ -239,6 +239,7 @@ class PlayerService : Service() {
             }
             notificationUpdateJob.cancel()
             notificationUpdateJob = showNotification()
+            playbackCountIncreaseJob = increasePlaybackCount()
         }
 
         override fun onPlayerError(error: ExoPlaybackException?) = Unit
@@ -253,7 +254,8 @@ class PlayerService : Service() {
 
         override fun onTimelineChanged(timeline: Timeline?, manifest: Any?, reason: Int) {
             serviceScope.launch(Dispatchers.Main) {
-                onQueueChanged?.invoke(this@PlayerService.queue)
+                onQueueChanged?.invoke(queue)
+                onCurrentPositionChanged?.invoke(currentPosition)
             }
             if (source.size < 1) destroyNotification()
         }
@@ -319,6 +321,7 @@ class PlayerService : Service() {
     }
     private var notificationUpdateJob: Job = Job()
     private var notifyPlaybackRatioJob: Job = Job()
+    private var playbackCountIncreaseJob: Job = Job()
     private var seekJob: Job = Job()
 
     private var ducking: Boolean = false
@@ -548,8 +551,23 @@ class PlayerService : Service() {
                 }
     }
 
-    fun forcePosition(position: Int) {
+    private fun forcePosition(position: Int) {
         player.seekToDefaultPosition(position)
+    }
+
+    private fun increasePlaybackCount() = serviceScope.launch {
+        currentSong?.also { song ->
+            val db = DB.getInstance(this@PlayerService)
+            db.trackDao().increasePlaybackCount(song.id)
+            db.albumDao().increasePlaybackCount(song.albumId)
+            db.artistDao().apply {
+                val artist = findArtist(song.artist).firstOrNull()
+                        ?: db.albumDao().get(song.albumId)?.artistId?.let {
+                            get(it)
+                        }
+                artist?.apply { increasePlaybackCount(id) }
+            }
+        }
     }
 
     private fun play() {
