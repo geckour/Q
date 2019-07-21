@@ -64,8 +64,8 @@ dependencies {
     def permission_dispatcher_ver = '4.5.0'
     def stetho_ver = '1.5.1'
     def glide_ver = '4.9.0'
-    def exo_ver = '2.9.0'
-    def exo_ext_ver = '2.7.0-1'
+    def exo_ver = '2.10.3'
+    def exo_ext_ver = '2.10.2'
 
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
@@ -118,8 +118,12 @@ dependencies {
 
     // Player
     implementation "com.google.android.exoplayer:exoplayer-core:$exo_ver"
-    implementation "com.github.PaulWoitaschek.ExoPlayer-Extensions:flac:$exo_ext_ver"
-    implementation "com.github.PaulWoitaschek.ExoPlayer-Extensions:opus:$exo_ext_ver"
+    implementation("com.github.PaulWoitaschek.ExoPlayer-Extensions:extension-flac:$exo_ext_ver") {
+        transitive = false
+    }
+    implementation("com.github.PaulWoitaschek.ExoPlayer-Extensions:extension-opus:$exo_ext_ver") {
+        transitive = false
+    }
 
     // Vertical SeekBar
     implementation 'com.h6ah4i.android.widget.verticalseekbar:verticalseekbar:1.0.0'

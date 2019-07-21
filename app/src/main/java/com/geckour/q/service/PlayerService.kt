@@ -48,9 +48,8 @@ import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.exoplayer2.Timeline
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.audio.AudioListener
-import com.google.android.exoplayer2.extractor.DefaultExtractorsFactory
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource
-import com.google.android.exoplayer2.source.ExtractorMediaSource
+import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.source.TrackGroupArray
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray
@@ -222,7 +221,7 @@ class PlayerService : Service() {
     private var onEqualizerStateChanged: ((Boolean) -> Unit)? = null
     private var onDestroyed: (() -> Unit)? = null
 
-    private lateinit var mediaSourceFactory: ExtractorMediaSource.Factory
+    private lateinit var mediaSourceFactory: ProgressiveMediaSource.Factory
     private var source = ConcatenatingMediaSource()
 
     private val eventListener = object : Player.EventListener {
@@ -360,9 +359,12 @@ class PlayerService : Service() {
             isActive = false
         }
 
-        mediaSourceFactory = ExtractorMediaSource.Factory(DefaultDataSourceFactory(applicationContext,
-                Util.getUserAgent(applicationContext, packageName)))
-                .setExtractorsFactory(DefaultExtractorsFactory())
+        mediaSourceFactory = ProgressiveMediaSource.Factory(
+                DefaultDataSourceFactory(
+                        applicationContext,
+                        Util.getUserAgent(applicationContext, packageName)
+                )
+        )
 
         registerReceiver(headsetStateReceiver, IntentFilter().apply {
             addAction(SOURCE_ACTION_WIRED_STATE)
