@@ -6,7 +6,10 @@ import android.content.ContentUris
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.drawable.Drawable
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.preference.PreferenceManager
@@ -15,6 +18,8 @@ import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import androidx.core.app.NotificationCompat
 import com.bumptech.glide.Glide
+import com.bumptech.glide.RequestBuilder
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -34,6 +39,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
+import kotlin.math.min
 
 
 const val UNKNOWN: String = "UNKNOWN"
@@ -222,14 +228,19 @@ fun List<Uri?>.getThumb(context: Context): Bitmap? {
     val canvas = Canvas(bitmap)
     this@getThumb.reversed().forEachIndexed { i, uri ->
         val b =
-                Glide.with(context).asBitmap().load(
-                        uri
-                                ?: return@forEachIndexed
-                ).submit().get()?.let {
-                    Bitmap.createScaledBitmap(
-                            it, unit, (it.height * unit.toFloat() / it.width).toInt(), false
-                    )
-                } ?: return@forEachIndexed
+                Glide.with(context)
+                        .asBitmap()
+                        .load(uri ?: return@forEachIndexed)
+                        .applyDefaultSettings()
+                        .submit()
+                        .get()?.let {
+                            Bitmap.createScaledBitmap(
+                                    it,
+                                    unit,
+                                    (it.height * unit.toFloat() / it.width).toInt(),
+                                    false
+                            )
+                        } ?: return@forEachIndexed
         canvas.drawBitmap(b, bitmap.width - (i + 1) * unit * 0.9f, (unit - b.height) / 2f, Paint())
     }
     return bitmap
@@ -328,7 +339,13 @@ suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat =
                                 && PreferenceManager.getDefaultSharedPreferences(context)
                                         .showArtworkOnLockScreen) {
                             val bitmap = try {
-                                Glide.with(context).asBitmap().load(uriString).submit().get()
+                                Glide.with(context)
+                                        .asDrawable()
+                                        .load(uriString)
+                                        .applyDefaultSettings()
+                                        .submit()
+                                        .get()
+                                        .bitmap()
                             } catch (t: Throwable) {
                                 Timber.e(t)
                                 null
@@ -351,11 +368,14 @@ suspend fun getPlayerNotification(
 
             val artwork = try {
                 Glide.with(context)
-                        .asBitmap()
-                        .load(DB.getInstance(context).getArtworkUriStringFromId(song.albumId)
-                                ?: R.drawable.ic_empty)
+                        .asDrawable()
+                        .load(DB.getInstance(context)
+                                .getArtworkUriStringFromId(song.albumId)
+                                .orDefaultForModel)
+                        .applyDefaultSettings()
                         .submit()
                         .get()
+                        .bitmap()
             } catch (t: Throwable) {
                 Timber.e(t)
                 null
@@ -511,3 +531,24 @@ private fun Long.getArtworkUriIfExist(context: Context): Uri? =
                 else null
             }
         }
+
+val String?.orDefaultForModel get() = this ?: R.drawable.ic_empty
+val Bitmap?.orDefaultForModel get() = this ?: R.drawable.ic_empty
+
+inline fun <reified T> RequestBuilder<T>.applyDefaultSettings() =
+        this.diskCacheStrategy(DiskCacheStrategy.NONE)
+
+private fun Drawable.bitmap(minimumSideLength: Int = 1000, supportAlpha: Boolean = false): Bitmap {
+    val min = min(intrinsicWidth, intrinsicHeight)
+    val scale = if (min < minimumSideLength) minimumSideLength.toFloat() / min else 1f
+    return Bitmap.createBitmap(
+            (intrinsicWidth * scale).toInt(),
+            (intrinsicHeight * scale).toInt(),
+            Bitmap.Config.ARGB_8888
+    ).apply {
+        bounds = Rect(0, 0, width, height)
+        draw(Canvas(this).apply {
+            if (supportAlpha.not()) drawColor(Color.WHITE)
+        })
+    }
+}

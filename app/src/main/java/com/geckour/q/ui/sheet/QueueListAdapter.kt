@@ -14,7 +14,9 @@ import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.getArtworkUriStringFromId
+import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.swap
 import com.geckour.q.util.toDomainModel
 import kotlinx.coroutines.Dispatchers
@@ -152,7 +154,8 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
                             .asDrawable()
                             .load(DB.getInstance(binding.root.context)
                                     .getArtworkUriStringFromId(song.albumId)
-                                    ?: R.drawable.ic_empty)
+                                    .orDefaultForModel)
+                            .applyDefaultSettings()
                             .submit()
                             .get()
                     withContext(Dispatchers.Main) {

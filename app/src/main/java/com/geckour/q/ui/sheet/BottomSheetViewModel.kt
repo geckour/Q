@@ -20,7 +20,9 @@ import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.SingleLiveEvent
+import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.fetchPlaylists
+import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.toDomainModel
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.Dispatchers
@@ -208,7 +210,8 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
                     else -> {
                         Glide.with(imageView)
                                 .asDrawable()
-                                .load(it.thumbUriString ?: R.drawable.ic_empty)
+                                .load(it.thumbUriString.orDefaultForModel)
+                                .applyDefaultSettings()
                                 .submit()
                                 .get()
                     }

@@ -17,9 +17,11 @@ import com.geckour.q.domain.model.Song
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.getSong
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.getTrackMediaIds
+import com.geckour.q.util.orDefaultForModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -86,7 +88,8 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
                 try {
                     val drawable = Glide.with(binding.thumb.context)
                             .asDrawable()
-                            .load(playlist.thumb ?: R.drawable.ic_empty)
+                            .load(playlist.thumb.orDefaultForModel)
+                            .applyDefaultSettings()
                             .submit()
                             .get()
                     withContext(Dispatchers.Main) {

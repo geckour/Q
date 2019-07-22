@@ -22,9 +22,11 @@ import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.getSong
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
+import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toDomainModel
 import com.geckour.q.util.toNightModeInt
@@ -123,7 +125,9 @@ class EasterEggFragment : Fragment() {
 
     private fun setSong() {
         binding.viewModel = viewModel
-        Glide.with(binding.artwork).load(viewModel.song?.thumbUriString ?: R.drawable.ic_empty)
+        Glide.with(binding.artwork)
+                .load(viewModel.song?.thumbUriString.orDefaultForModel)
+                .applyDefaultSettings()
                 .into(binding.artwork)
     }
 

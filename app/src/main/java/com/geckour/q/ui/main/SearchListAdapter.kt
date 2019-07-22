@@ -18,6 +18,8 @@ import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.Song
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.applyDefaultSettings
+import com.geckour.q.util.orDefaultForModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -134,7 +136,9 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
                     else -> null
                 }
                 withContext(Dispatchers.Main) {
-                    Glide.with(binding.thumb).load(artworkUriString ?: R.drawable.ic_empty)
+                    Glide.with(binding.thumb)
+                            .load(artworkUriString.orDefaultForModel)
+                            .applyDefaultSettings()
                             .into(binding.thumb)
                 }
             }

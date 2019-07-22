@@ -18,8 +18,10 @@ import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.UNKNOWN
+import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.ignoringEnabled
+import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainModel
 import kotlinx.coroutines.Dispatchers
@@ -204,7 +206,8 @@ class SongListAdapter(
                             .asDrawable()
                             .load(DB.getInstance(binding.root.context)
                                     .getArtworkUriStringFromId(song.albumId)
-                                    ?: R.drawable.ic_empty)
+                                    .orDefaultForModel)
+                            .applyDefaultSettings()
                             .submit()
                             .get()
                     withContext(Dispatchers.Main) {

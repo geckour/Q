@@ -19,9 +19,11 @@ import com.geckour.q.util.BoolConverter
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.UNKNOWN
+import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.getSong
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.ignoringEnabled
+import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.sortedByTrackOrder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -124,7 +126,8 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
                 try {
                     val drawable = Glide.with(binding.thumb.context)
                             .asDrawable()
-                            .load(album.thumbUriString ?: R.drawable.ic_empty)
+                            .load(album.thumbUriString.orDefaultForModel)
+                            .applyDefaultSettings()
                             .submit()
                             .get()
                     withContext(Dispatchers.Main) {

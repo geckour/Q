@@ -18,9 +18,11 @@ import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.BoolConverter
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.getSong
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.ignoringEnabled
+import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.sortedByTrackOrder
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -120,7 +122,10 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
             viewModel.viewModelScope.launch(Dispatchers.IO) {
                 try {
                     val drawable = Glide.with(binding.thumb.context).asDrawable()
-                            .load(artist.thumbUriString ?: R.drawable.ic_empty).submit().get()
+                            .load(artist.thumbUriString.orDefaultForModel)
+                            .applyDefaultSettings()
+                            .submit()
+                            .get()
                     withContext(Dispatchers.Main) {
                         binding.thumb.setImageDrawable(drawable)
                     }
