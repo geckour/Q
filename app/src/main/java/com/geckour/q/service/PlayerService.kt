@@ -204,10 +204,7 @@ class PlayerService : Service() {
             else -> player.currentWindowIndex
         }
     private val currentSong: Song?
-        get() = when (currentPosition) {
-            in queue.indices -> queue[currentPosition]
-            else -> null
-        }
+        get() = queue.getOrNull(currentPosition)
     private val playing get() = player.playbackState == Player.STATE_READY && player.playWhenReady
 
     private var equalizer: Equalizer? = null
