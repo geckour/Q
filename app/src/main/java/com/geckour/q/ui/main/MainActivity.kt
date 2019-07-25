@@ -175,6 +175,7 @@ class MainActivity : CrashlyticsBundledActivity() {
 
         observeEvents()
         registerReceiver(syncingProgressReceiver, IntentFilter(ACTION_SYNCING))
+        viewModel.bindPlayer()
 
         setSupportActionBar(binding.coordinatorMain.toolbar)
         setupDrawer()
@@ -217,6 +218,7 @@ class MainActivity : CrashlyticsBundledActivity() {
     override fun onDestroy() {
         super.onDestroy()
 
+        viewModel.unbindPlayer()
         unregisterReceiver(syncingProgressReceiver)
     }
 

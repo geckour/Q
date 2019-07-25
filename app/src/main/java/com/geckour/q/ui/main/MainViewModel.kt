@@ -108,46 +108,34 @@ class MainViewModel(
         }
     }
 
-    init {
-        bindPlayer()
+    internal fun bindPlayer() {
+        if (isBoundService.not()) {
+            val app = getApplication<App>()
+            app.bindService(
+                    PlayerService.createIntent(app), serviceConnection, Context.BIND_AUTO_CREATE
+            )
+        }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-
+    internal fun unbindPlayer() {
         try {
             getApplication<App>().startService(PlayerService.createIntent(getApplication()))
         } catch (t: Throwable) {
             Timber.e(t)
         }
         player.value?.onRequestedStopService()
-        unbindPlayer()
-    }
-
-    private fun bindPlayer() {
-        if (isBoundService.not()) {
-            val app = getApplication<App>()
-            app.bindService(
-                    PlayerService.createIntent(app), serviceConnection, Context.BIND_AUTO_CREATE
-            )
-            isBoundService = true
-        }
-    }
-
-    private fun unbindPlayer() {
         if (isBoundService) {
             getApplication<App>().unbindService(serviceConnection)
-            isBoundService = false
         }
     }
 
     internal fun onDestroyPlayer() {
+        isBoundService = false
         player.value = null
     }
 
     internal fun rebootPlayer() {
         player.value?.pause()
-        player.value?.onRequestedStopService()
         unbindPlayer()
         bindPlayer()
     }
