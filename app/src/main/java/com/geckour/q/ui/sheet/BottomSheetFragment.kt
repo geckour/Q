@@ -193,8 +193,8 @@ class BottomSheetFragment : Fragment() {
                 setOnQueueChangedListener {
                     onQueueChanged(it)
                 }
-                setOnCurrentPositionChangedListener {
-                    onCurrentQueuePositionChanged(it)
+                setOnCurrentPositionChangedListener { position, songChanged ->
+                    onCurrentQueuePositionChanged(position, songChanged)
                 }
                 setOnPlaybackStateChangeListener { playbackState, playWhenReady ->
                     onPlayingChanged(
@@ -289,21 +289,20 @@ class BottomSheetFragment : Fragment() {
         }
     }
 
-    private fun onCurrentQueuePositionChanged(position: Int) {
+    private fun onCurrentQueuePositionChanged(position: Int, songChanged: Boolean) {
         adapter.setNowPlayingPosition(position)
         viewModel.currentPosition = position
         binding.viewModel = viewModel
+
+        if (songChanged) onPlaybackRatioChanged(0f)
 
         val noCurrentSong = viewModel.currentSong == null
         binding.seekBar.setOnTouchListener { _, _ -> noCurrentSong }
         if (noCurrentSong) {
             binding.textTimeLeft.text = null
             binding.textTimeRight.text = null
-            binding.seekBar.progress = 0
             binding.textTimeTotal.text = null
             binding.textTimeRemain.text = null
-        } else {
-            onPlaybackRatioChanged(binding.seekBar.let { it.progress.toFloat() / it.max })
         }
         viewModel.setArtwork(binding.artwork)
     }

@@ -203,15 +203,21 @@ class PlayerService : Service() {
             -1 -> if (source.size > 0) 0 else -1
             else -> player.currentWindowIndex
         }
+    private var lastSong: Song? = null
     private val currentSong: Song?
-        get() = queue.getOrNull(currentPosition)
+        get() {
+            val song = queue.getOrNull(currentPosition)
+            lastSong = song
+            return song
+        }
+    private val songChanged get() = lastSong?.id?.let { it != currentSong?.id } ?: true
     private val playing get() = player.playbackState == Player.STATE_READY && player.playWhenReady
 
     private var equalizer: Equalizer? = null
 
     private val queue: ArrayList<Song> = ArrayList()
     private var onQueueChanged: ((List<Song>) -> Unit)? = null
-    private var onCurrentPositionChanged: ((Int) -> Unit)? = null
+    private var onCurrentPositionChanged: ((Int, Boolean) -> Unit)? = null
     private var onPlaybackStateChanged: ((Int, Boolean) -> Unit)? = null
     private var onPlaybackRatioChanged: ((Float) -> Unit)? = null
     private var onRepeatModeChanged: ((Int) -> Unit)? = null
@@ -230,7 +236,7 @@ class PlayerService : Service() {
                 trackGroups: TrackGroupArray?, trackSelections: TrackSelectionArray?
         ) {
             serviceScope.launch(Dispatchers.Main) {
-                onCurrentPositionChanged?.invoke(currentPosition)
+                onCurrentPositionChanged?.invoke(currentPosition, songChanged)
             }
             notificationUpdateJob.cancel()
             notificationUpdateJob = showNotification()
@@ -250,9 +256,11 @@ class PlayerService : Service() {
         override fun onTimelineChanged(timeline: Timeline?, manifest: Any?, reason: Int) {
             serviceScope.launch(Dispatchers.Main) {
                 onQueueChanged?.invoke(queue)
-                onCurrentPositionChanged?.invoke(currentPosition)
+                onCurrentPositionChanged?.invoke(currentPosition, songChanged)
             }
-            if (source.size < 1) destroyNotification()
+            if (source.size < 1) {
+                destroyNotification()
+            }
         }
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
@@ -283,7 +291,6 @@ class PlayerService : Service() {
 
             serviceScope.launch(Dispatchers.Main) {
                 onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
-                onCurrentPositionChanged?.invoke(currentPosition)
             }
         }
     }
@@ -427,7 +434,7 @@ class PlayerService : Service() {
         this.onQueueChanged = listener
     }
 
-    fun setOnCurrentPositionChangedListener(listener: ((Int) -> Unit)?) {
+    fun setOnCurrentPositionChangedListener(listener: ((Int, Boolean) -> Unit)?) {
         this.onCurrentPositionChanged = listener
     }
 
@@ -860,7 +867,7 @@ class PlayerService : Service() {
     fun publishStatus() {
         serviceScope.launch(Dispatchers.Main) {
             onQueueChanged?.invoke(queue)
-            onCurrentPositionChanged?.invoke(currentPosition)
+            onCurrentPositionChanged?.invoke(currentPosition, false)
             currentSong?.apply {
                 onPlaybackRatioChanged?.invoke(player.currentPosition.toFloat() / this.duration)
             }
