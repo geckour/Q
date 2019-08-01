@@ -185,6 +185,9 @@ class MediaRetrieveService : IntentService(NAME) {
     private fun Bitmap.drawProgressIcon(progress: Pair<Int, Int>, seed: Long): Bitmap {
         if (progress.second < 0) return this
 
+        val maxTileNumber = 24
+        val progressRatio = progress.first.toFloat() / progress.second
+        val tileNumber = (maxTileNumber * progressRatio).toInt()
         val canvas = Canvas(this)
         val paint = Paint().apply {
             isAntiAlias = true
@@ -194,7 +197,7 @@ class MediaRetrieveService : IntentService(NAME) {
         val outerR = canvas.width * 0.45f
         val random = Random(seed)
         canvas.drawColor(0, PorterDuff.Mode.CLEAR)
-        (0 until (24 * progress.first.toFloat() / progress.second).toInt()).forEach {
+        repeat(tileNumber + 1) {
             val start = 3
             val angleLeft = ((start + it) * PI / 12).toFloat()
             val angleRight = ((start + it + 1) * PI / 12).toFloat()
@@ -206,24 +209,17 @@ class MediaRetrieveService : IntentService(NAME) {
                 lineTo(offset.x + innerR * cos(angleLeft), offset.y + innerR * sin(angleLeft))
                 close()
             }
-            paint.color = Color.argb(150, random.nextInt(255), random.nextInt(255), random.nextInt(255))
+            val alphaC =
+                    if (it == tileNumber) maxTileNumber * progressRatio % 1f
+                    else 1f
+            paint.color = Color.argb(
+                    (150 * alphaC).toInt(),
+                    random.nextInt(255),
+                    random.nextInt(255),
+                    random.nextInt(255)
+            )
             canvas.drawPath(path, paint)
         }
-        val triPath = Path().apply {
-            val start = PointF(canvas.width * 0.6f, canvas.height * 0.6f)
-            moveTo(start.x, start.y)
-            lineTo(canvas.width * 0.95f, canvas.height - (canvas.height - start.y) * 0.5f)
-            lineTo(start.x, canvas.height.toFloat())
-            close()
-        }
-        paint.color = Color.WHITE
-        canvas.drawPath(triPath, paint)
-        paint.apply {
-            color = Color.argb(10, 0, 0, 0)
-            style = Paint.Style.STROKE
-            strokeWidth = canvas.width * 0.015f
-        }
-        canvas.drawPath(triPath, paint)
 
         return this
     }
