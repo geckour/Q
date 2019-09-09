@@ -25,7 +25,7 @@ import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.util.QNotificationChannel
 import com.geckour.q.util.getNotificationBuilder
-import com.geckour.q.util.pushMedia
+import com.geckour.q.util.storeMediaInfo
 import timber.log.Timber
 import kotlin.math.PI
 import kotlin.math.cos
@@ -120,7 +120,7 @@ class MediaRetrieveService : IntentService(NAME) {
                             val artistMediaId = cursor.getLong(
                                     cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST_ID)
                             )
-                            val result = retriever.pushMedia(
+                            val result = retriever.storeMediaInfo(
                                     applicationContext,
                                     db,
                                     trackPath,

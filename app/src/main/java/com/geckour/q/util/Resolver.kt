@@ -13,9 +13,8 @@ suspend fun DB.getArtworkUriStringFromId(albumId: Long): String? = withContext(D
     this@getArtworkUriStringFromId.albumDao().get(albumId)?.artworkUriString
 }
 
-fun Long.getArtworkUriFromMediaId(): Uri = ContentUris.withAppendedId(
-        Uri.parse("content://media/external/audio/albumart"), this
-)
+fun Long.getArtworkUriFromMediaId(): Uri =
+    ContentUris.withAppendedId(Uri.parse("content://media/external/audio/albumart"), this)
 
 fun Resources.Theme.getColor(@AttrRes attrResId: Int): Int =
-        TypedValue().apply { this@getColor.resolveAttribute(attrResId, this, true) }.data
+    TypedValue().apply { this@getColor.resolveAttribute(attrResId, this, true) }.data
