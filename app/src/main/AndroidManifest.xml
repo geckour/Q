@@ -30,6 +30,17 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+
+                <data android:mimeType="audio/flac" />
+                <data android:mimeType="audio/x-flac" />
+                <data
+                    android:pathPattern=".*\\.flac"
+                    android:scheme="content" />
+            </intent-filter>
         </activity>
 
         <activity android:name=".ui.main.MainActivity" />
