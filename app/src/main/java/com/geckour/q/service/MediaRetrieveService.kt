@@ -96,7 +96,6 @@ class MediaRetrieveService : IntentService(NAME) {
                     null,
                     "${MediaStore.Audio.Media.TITLE} ASC"
                 )?.use { cursor ->
-                    val retriever = MediaMetadataRetriever()
                     val newTrackMediaIds = mutableListOf<Long>()
                     while (expired.not() && cursor.moveToNext()) {
                         val progress = cursor.position to cursor.count
@@ -118,10 +117,12 @@ class MediaRetrieveService : IntentService(NAME) {
                             getNotification(progress, seed, bitmap)
                         )
                     }
-                    retriever.release()
-                    val diff = db.trackDao().getAll().map { it.mediaId } - newTrackMediaIds
-                    diff.forEach {
-                        db.deleteTrack(it)
+
+                    if (expired.not()) {
+                        val diff = db.trackDao().getAll().map { it.mediaId } - newTrackMediaIds
+                        diff.forEach {
+                            db.deleteTrack(it)
+                        }
                     }
                 }
 
