@@ -10,7 +10,6 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.drawable.Drawable
-import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.preference.PreferenceManager
 import android.provider.MediaStore
@@ -37,8 +36,13 @@ import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ads.AdsMediaSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.apache.commons.codec.binary.Hex
+import org.apache.commons.codec.digest.DigestUtils
+import org.jaudiotagger.audio.AudioFileIO
+import org.jaudiotagger.tag.FieldKey
 import timber.log.Timber
 import java.io.File
+import java.io.FileOutputStream
 import kotlin.math.min
 
 
@@ -452,91 +456,87 @@ fun Long.getTimeString(): String {
     )
 }
 
-fun MediaMetadataRetriever.storeMediaInfo(
+fun DB.storeMediaInfo(
     context: Context,
-    db: DB,
     trackPath: String,
-    trackMediaId: Long,
-    albumMediaId: Long,
-    artistMediaId: Long
-): Boolean {
+    trackMediaId: Long
+): Long {
     val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackMediaId)
 
-    if (File(trackPath).exists().not()) {
+    val file = File(trackPath)
+    if (file.exists().not()) {
         context.contentResolver.delete(uri, null, null)
-        return false
+        return -1
     }
 
-    try {
-        setDataSource(context, uri)
+    val audioFile = AudioFileIO.read(file)
+    val tag = audioFile.tag
+    val header = audioFile.audioHeader
 
-        val title = extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
-        val duration = extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLong() ?: 0
-        val trackNum = extractMetadata(MediaMetadataRetriever.METADATA_KEY_CD_TRACK_NUMBER)
-            ?.split("/")?.first()?.toInt()
-        val discNum = extractMetadata(MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER)
-            ?.split("/")?.first()?.toInt()
-        val albumTitle = extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUM)
-        val artistTitle = extractMetadata(MediaMetadataRetriever.METADATA_KEY_ARTIST)
-        val composerTitle = extractMetadata(MediaMetadataRetriever.METADATA_KEY_COMPOSER)
-        val artworkUriString = albumMediaId.getArtworkUriIfExist(context)?.toString()
-        val albumArtistTitle =
-            extractMetadata(MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
-
-        val artistId = Artist(0, artistMediaId, artistTitle, 0).upsert(db) ?: return false
-        val albumArtistId =
-            if (albumArtistTitle == null) null
-            else Artist(0, null, albumArtistTitle, 0).upsert(db)
-
-        val albumId = db.albumDao().getByMediaId(albumMediaId).let {
-            if (it == null || it.hasAlbumArtist.not()) {
-                val album = Album(
-                    0,
-                    albumMediaId,
-                    albumTitle,
-                    albumArtistId ?: artistId,
-                    artworkUriString,
-                    albumArtistId != null,
-                    0
-                )
-                album.upsert(db)
-            } else it.id
-        }
-
-        val track = Track(
-            0,
-            trackMediaId,
-            title,
-            albumId,
-            artistId,
-            albumArtistId,
-            composerTitle,
-            duration,
-            trackNum,
-            discNum,
-            trackPath,
-            0
-        )
-        track.upsert(db)
-    } catch (t: Throwable) {
-        Timber.e(t)
-    }
-
-    return true
-}
-
-private fun Long.getArtworkUriIfExist(context: Context): Uri? =
-    this.getArtworkUriFromMediaId().let { uri ->
+    val title = tag.getAll(FieldKey.TITLE).firstOrNull { it.isNotBlank() } ?: UNKNOWN
+    val albumTitle = tag.getAll(FieldKey.ALBUM).firstOrNull { it.isNotBlank() } ?: UNKNOWN
+    val artistTitle = tag.getAll(FieldKey.ARTIST).firstOrNull { it.isNotBlank() } ?: UNKNOWN
+    val duration = header.trackLength.toLong() * 1000
+    val trackNum =
         try {
-            context.contentResolver.openInputStream(uri)?.close()
-            uri
-        } catch(t: Throwable) {
-            Timber.e(t, "Could not open the uri: $uri")
+            tag.getFirst(FieldKey.TRACK).toInt()
+        } catch (t: Throwable) {
             null
         }
-    }
+    val discNum =
+        try {
+            tag.getFirst(FieldKey.DISC_NO).toInt()
+        } catch (t: Throwable) {
+            null
+        }
+    val composerTitle = tag.getAll(FieldKey.COMPOSER).firstOrNull { it.isNotBlank() } ?: UNKNOWN
+    val artworkUriString = albumDao().findByTitle(title).firstOrNull()?.artworkUriString
+        ?: tag.firstArtwork?.let { artwork ->
+            val hex = String(Hex.encodeHex(DigestUtils.md5(artwork.binaryData)))
+            val dirName = "images"
+            val dir = File(context.filesDir, dirName)
+            if (dir.exists().not()) dir.mkdir()
+            val imgFile = File(dir, hex)
+            FileOutputStream(imgFile).use {
+                it.write(artwork.binaryData)
+                it.flush()
+            }
 
-val String?.orDefaultForModel get() = this ?: R.drawable.ic_empty
+            imgFile.path.apply { Timber.d("geq path: $this") }
+        }
+    val albumArtistTitle =
+        tag.getAll(FieldKey.ALBUM_ARTIST).firstOrNull { it.isNotBlank() }
+
+    val artistId = Artist(0, artistTitle, 0).upsert(this)
+    val albumArtistId = albumArtistTitle?.let { Artist(0, albumArtistTitle, 0).upsert(this) }
+
+    val albumId = Album(
+        0,
+        albumArtistId ?: artistId,
+        albumTitle,
+        artworkUriString,
+        albumArtistId != null,
+        0
+    ).upsert(this)
+
+    val track = Track(
+        0,
+        albumId,
+        artistId,
+        albumArtistId,
+        trackMediaId,
+        trackPath,
+        title,
+        composerTitle,
+        duration,
+        trackNum,
+        discNum,
+        0
+    )
+    return track.upsert(this)
+}
+
+val String?.orDefaultForModel get() = this?.let { File(this) } ?: R.drawable.ic_empty
 val Bitmap?.orDefaultForModel get() = this ?: R.drawable.ic_empty
 
 inline fun <reified T> RequestBuilder<T>.applyDefaultSettings() =

@@ -5,11 +5,10 @@ import androidx.room.PrimaryKey
 
 @Entity
 data class Album(
-        @PrimaryKey(autoGenerate = true) var id: Long,
-        var mediaId: Long,
-        var title: String?,
-        var artistId: Long,
-        var artworkUriString: String?,
-        var hasAlbumArtist: Boolean,
-        var playbackCount: Long
+    @PrimaryKey(autoGenerate = true) var id: Long,
+    var artistId: Long,
+    var title: String?,
+    var artworkUriString: String?,
+    var hasAlbumArtist: Boolean,
+    var playbackCount: Long
 )

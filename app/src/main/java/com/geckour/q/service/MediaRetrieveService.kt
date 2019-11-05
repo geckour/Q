@@ -42,22 +42,14 @@ class MediaRetrieveService : IntentService(NAME) {
         private const val KEY_CLEAR = "key_clear"
 
         internal val projection = arrayOf(
-                MediaStore.Audio.Media._ID,
-                MediaStore.Audio.Media.TITLE,
-                MediaStore.Audio.Media.ALBUM_ID,
-                MediaStore.Audio.Media.ALBUM,
-                MediaStore.Audio.Media.ARTIST_ID,
-                MediaStore.Audio.Media.ARTIST,
-                MediaStore.Audio.Media.COMPOSER,
-                MediaStore.Audio.Media.DURATION,
-                MediaStore.Audio.Media.TRACK,
-                MediaStore.Audio.Media.DATA
+            MediaStore.Audio.Media._ID,
+            MediaStore.Audio.Media.DATA
         )
 
         fun getIntent(context: Context, clear: Boolean): Intent =
-                Intent(context, MediaRetrieveService::class.java).apply {
-                    putExtra(KEY_CLEAR, clear)
-                }
+            Intent(context, MediaRetrieveService::class.java).apply {
+                putExtra(KEY_CLEAR, clear)
+            }
 
         fun cancel(context: Context) {
             context.sendBroadcast(Intent(ACTION_CANCEL))
@@ -87,7 +79,7 @@ class MediaRetrieveService : IntentService(NAME) {
 
     override fun onHandleIntent(intent: Intent?) {
         if (applicationContext.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_GRANTED
+            == PackageManager.PERMISSION_GRANTED
         ) {
             val bitmap = Bitmap.createBitmap(1000, 1000, Bitmap.Config.ARGB_8888)
             val seed = System.currentTimeMillis()
@@ -98,49 +90,40 @@ class MediaRetrieveService : IntentService(NAME) {
                 db.clearAllTables()
             }
             applicationContext.contentResolver
-                    .query(
-                            MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection,
-                            "${MediaStore.Audio.Media.IS_MUSIC} != 0",
-                            null,
-                            "${MediaStore.Audio.Media.TITLE} ASC"
-                    )?.use { cursor ->
-                        val retriever = MediaMetadataRetriever()
-                        val newTrackMediaIds = mutableListOf<Long>()
-                        while (expired.not() && cursor.moveToNext()) {
-                            val progress = cursor.position to cursor.count
-                            val trackPath = cursor.getString(
-                                    cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
-                            )
-                            val trackMediaId = cursor.getLong(
-                                    cursor.getColumnIndex(MediaStore.Audio.Media._ID)
-                            )
-                            val albumMediaId = cursor.getLong(
-                                    cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID)
-                            )
-                            val artistMediaId = cursor.getLong(
-                                    cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST_ID)
-                            )
-                            val result = retriever.storeMediaInfo(
-                                    applicationContext,
-                                    db,
-                                    trackPath,
-                                    trackMediaId,
-                                    albumMediaId,
-                                    artistMediaId
-                            )
-                            if (result) newTrackMediaIds.add(trackMediaId)
-                            sendBroadcast(MainActivity.createProgressIntent(progress))
-                            startForeground(
-                                    NOTIFICATION_ID_RETRIEVE,
-                                    getNotification(progress, seed, bitmap)
-                            )
-                        }
-                        retriever.release()
-                        val diff = db.trackDao().getAll().map { it.mediaId } - newTrackMediaIds
-                        diff.forEach {
-                            db.deleteTrack(it)
-                        }
+                .query(
+                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection,
+                    "${MediaStore.Audio.Media.IS_MUSIC} != 0",
+                    null,
+                    "${MediaStore.Audio.Media.TITLE} ASC"
+                )?.use { cursor ->
+                    val retriever = MediaMetadataRetriever()
+                    val newTrackMediaIds = mutableListOf<Long>()
+                    while (expired.not() && cursor.moveToNext()) {
+                        val progress = cursor.position to cursor.count
+                        val trackPath = cursor.getString(
+                            cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
+                        )
+                        val trackMediaId = cursor.getLong(
+                            cursor.getColumnIndex(MediaStore.Audio.Media._ID)
+                        )
+                        val result = db.storeMediaInfo(
+                            applicationContext,
+                            trackPath,
+                            trackMediaId
+                        )
+                        if (result > -1) newTrackMediaIds.add(trackMediaId)
+                        sendBroadcast(MainActivity.createProgressIntent(progress))
+                        startForeground(
+                            NOTIFICATION_ID_RETRIEVE,
+                            getNotification(progress, seed, bitmap)
+                        )
                     }
+                    retriever.release()
+                    val diff = db.trackDao().getAll().map { it.mediaId } - newTrackMediaIds
+                    diff.forEach {
+                        db.deleteTrack(it)
+                    }
+                }
 
             Timber.d("qgeck track in db count: ${db.trackDao().count()}")
             Timber.d("qgeck media retrieve worker with state: ${expired.not()}")
@@ -156,31 +139,41 @@ class MediaRetrieveService : IntentService(NAME) {
         unregisterReceiver(receiver)
     }
 
-    private fun getNotification(progress: Pair<Int, Int>, seed: Long, bitmap: Bitmap): Notification =
-            this.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER)
-                    .setSmallIcon(R.drawable.ic_notification_sync)
-                    .setLargeIcon(bitmap.drawProgressIcon(progress, seed))
-                    .setContentTitle(getString(R.string.notification_title_retriever))
-                    .setContentText(getString(R.string.notification_text_retriever, progress.first, progress.second))
-                    .setOngoing(true)
-                    .setShowWhen(false)
-                    .setContentIntent(
-                            PendingIntent.getActivity(
-                                    this,
-                                    App.REQUEST_CODE_LAUNCH_APP,
-                                    LauncherActivity.createIntent(this),
-                                    PendingIntent.FLAG_UPDATE_CURRENT
-                            )
-                    )
-                    .setDeleteIntent(
-                            PendingIntent.getBroadcast(
-                                    this,
-                                    0,
-                                    Intent(ACTION_CANCEL),
-                                    PendingIntent.FLAG_UPDATE_CURRENT
-                            )
-                    )
-                    .build()
+    private fun getNotification(
+        progress: Pair<Int, Int>,
+        seed: Long,
+        bitmap: Bitmap
+    ): Notification =
+        this.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER)
+            .setSmallIcon(R.drawable.ic_notification_sync)
+            .setLargeIcon(bitmap.drawProgressIcon(progress, seed))
+            .setContentTitle(getString(R.string.notification_title_retriever))
+            .setContentText(
+                getString(
+                    R.string.notification_text_retriever,
+                    progress.first,
+                    progress.second
+                )
+            )
+            .setOngoing(true)
+            .setShowWhen(false)
+            .setContentIntent(
+                PendingIntent.getActivity(
+                    this,
+                    App.REQUEST_CODE_LAUNCH_APP,
+                    LauncherActivity.createIntent(this),
+                    PendingIntent.FLAG_UPDATE_CURRENT
+                )
+            )
+            .setDeleteIntent(
+                PendingIntent.getBroadcast(
+                    this,
+                    0,
+                    Intent(ACTION_CANCEL),
+                    PendingIntent.FLAG_UPDATE_CURRENT
+                )
+            )
+            .build()
 
     private fun Bitmap.drawProgressIcon(progress: Pair<Int, Int>, seed: Long): Bitmap {
         if (progress.second < 0) return this
@@ -210,13 +203,13 @@ class MediaRetrieveService : IntentService(NAME) {
                 close()
             }
             val alphaC =
-                    if (it == tileNumber) maxTileNumber * progressRatio % 1f
-                    else 1f
+                if (it == tileNumber) maxTileNumber * progressRatio % 1f
+                else 1f
             paint.color = Color.argb(
-                    (150 * alphaC).toInt(),
-                    random.nextInt(255),
-                    random.nextInt(255),
-                    random.nextInt(255)
+                (150 * alphaC).toInt(),
+                random.nextInt(255),
+                random.nextInt(255),
+                random.nextInt(255)
             )
             canvas.drawPath(path, paint)
         }

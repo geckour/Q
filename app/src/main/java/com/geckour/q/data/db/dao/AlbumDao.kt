@@ -29,9 +29,6 @@ interface AlbumDao {
     @Query("select * from album where id = :id")
     fun get(id: Long): Album?
 
-    @Query("select * from album where mediaId = :albumId")
-    fun getByMediaId(albumId: Long): Album?
-
     @Query("select * from album where artistId = :id")
     fun findByArtistId(id: Long): List<Album>
 
@@ -45,7 +42,9 @@ interface AlbumDao {
     fun increasePlaybackCount(albumId: Long)
 }
 
-fun Album.upsert(db: DB): Long = db.albumDao().getByMediaId(this.mediaId)?.let {
-    if (this.title != null) db.albumDao().update(this.copy(id = it.id))
-    it.id
-} ?: db.albumDao().insert(this)
+fun Album.upsert(db: DB): Long = title?.let {
+    db.albumDao().findByTitle(it).firstOrNull()?.let { album ->
+        db.albumDao().update(this.copy(id = album.id))
+        album.id
+    } ?: db.albumDao().insert(this)
+} ?: -1

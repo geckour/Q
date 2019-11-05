@@ -37,7 +37,7 @@ fun Float.getReadableString(digitToKeep: Int = 3): String {
 fun DBArtist.toDomainModel(): Artist = Artist(id, title ?: UNKNOWN, null, 0)
 
 fun DBAlbum.toDomainModel(artistName: String? = null, totalDuration: Long = 0): Album =
-        Album(id, mediaId, title, artistName, artworkUriString, totalDuration)
+        Album(id, title, artistName, artworkUriString, totalDuration)
 
 val Boolean.toNightModeInt: Int
     get() = if (this) AppCompatDelegate.MODE_NIGHT_YES

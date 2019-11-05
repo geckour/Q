@@ -31,26 +31,13 @@ interface ArtistDao {
     @Query("select * from artist where id = :id")
     fun get(id: Long): Artist?
 
-    @Query("select * from artist where mediaId = :artistId")
-    fun getByMediaId(artistId: Long): Artist?
-
     @Query("update artist set playbackCount = (select playbackCount from artist where id = :artistId) + 1 where id = :artistId")
     fun increasePlaybackCount(artistId: Long)
 }
 
-fun Artist.upsert(db: DB): Long? = this.mediaId?.let {
-    val artist = db.artistDao().getByMediaId(it)
-    return@let if (artist != null) {
-        if (this.title != null) {
-            db.artistDao().update(this.copy(id = artist.id, playbackCount = artist.playbackCount))
-        }
+fun Artist.upsert(db: DB): Long = title?.let {
+    db.artistDao().findArtist(it).firstOrNull()?.let { artist ->
+        db.artistDao().update(this.copy(id = artist.id, playbackCount = playbackCount))
         artist.id
-    } else db.artistDao().insert(this)
-} ?: run {
-    this.title?.let {
-        db.artistDao().findArtist(it).let {
-            if (it.isEmpty()) db.artistDao().insert(this)
-            else it.first().id
-        }
-    }
-}
+    } ?: db.artistDao().insert(this)
+} ?: -1
