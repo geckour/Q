@@ -25,7 +25,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class QueueListAdapter(private val viewModel: MainViewModel) :
-        RecyclerView.Adapter<QueueListAdapter.ViewHolder>() {
+    RecyclerView.Adapter<QueueListAdapter.ViewHolder>() {
 
     private val items: MutableList<Song> = mutableListOf()
 
@@ -40,8 +40,8 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
     internal fun getItemIds(): List<Long> = items.map { it.id }
 
     internal fun getItemsAfter(start: Int): List<Song> =
-            if (start < items.lastIndex) items.subList(start, items.size)
-            else emptyList()
+        if (start < items.lastIndex) items.subList(start, items.size)
+        else emptyList()
 
     internal fun setNowPlayingPosition(index: Int?) {
 
@@ -81,7 +81,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
-            ViewHolder(ItemListSongBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+        ViewHolder(ItemListSongBinding.inflate(LayoutInflater.from(parent.context), parent, false))
 
     override fun getItemCount(): Int = items.size
 
@@ -90,7 +90,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
     }
 
     inner class ViewHolder(private val binding: ItemListSongBinding) :
-            RecyclerView.ViewHolder(binding.root) {
+        RecyclerView.ViewHolder(binding.root) {
 
         private val popupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener {
@@ -100,7 +100,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
                             viewModel.selectedArtist.value = withContext((Dispatchers.IO)) {
                                 binding.data?.artist?.let {
                                     DB.getInstance(binding.root.context).artistDao().findArtist(it)
-                                            .firstOrNull()?.toDomainModel()
+                                        .firstOrNull()?.toDomainModel()
                                 }
                             }
                         }
@@ -110,7 +110,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
                             viewModel.selectedAlbum.value = withContext(Dispatchers.IO) {
                                 binding.data?.albumId?.let {
                                     DB.getInstance(binding.root.context).albumDao().get(it)
-                                            ?.toDomainModel()
+                                        ?.toDomainModel()
                                 }
                             }
                         }
@@ -118,18 +118,18 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
                     R.id.menu_insert_all_next, R.id.menu_insert_all_last, R.id.menu_override_all -> {
                         viewModel.selectedSong?.apply {
                             viewModel.onNewQueue(
-                                    listOf(this), when (it.itemId) {
-                                R.id.menu_insert_all_next -> {
-                                    InsertActionType.NEXT
-                                }
-                                R.id.menu_insert_all_last -> {
-                                    InsertActionType.LAST
-                                }
-                                R.id.menu_override_all -> {
-                                    InsertActionType.OVERRIDE
-                                }
-                                else -> return@setOnMenuItemClickListener false
-                            }, OrientedClassType.SONG
+                                listOf(this), when (it.itemId) {
+                                    R.id.menu_insert_all_next -> {
+                                        InsertActionType.NEXT
+                                    }
+                                    R.id.menu_insert_all_last -> {
+                                        InsertActionType.LAST
+                                    }
+                                    R.id.menu_override_all -> {
+                                        InsertActionType.OVERRIDE
+                                    }
+                                    else -> return@setOnMenuItemClickListener false
+                                }, OrientedClassType.SONG
                             )
                         } ?: return@setOnMenuItemClickListener false
                     }
@@ -150,16 +150,14 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
             binding.duration.text = song.durationString
             viewModel.viewModelScope.launch(Dispatchers.IO) {
                 try {
-                    val drawable = Glide.with(binding.thumb.context)
-                            .asDrawable()
-                            .load(DB.getInstance(binding.root.context)
-                                    .getArtworkUriStringFromId(song.albumId)
-                                    .orDefaultForModel)
-                            .applyDefaultSettings()
-                            .submit()
-                            .get()
+                    val uriString = DB.getInstance(binding.root.context)
+                        .getArtworkUriStringFromId(song.albumId)
+                        .orDefaultForModel
                     withContext(Dispatchers.Main) {
-                        binding.thumb.setImageDrawable(drawable)
+                        Glide.with(binding.thumb)
+                            .load(uriString)
+                            .applyDefaultSettings()
+                            .into(binding.thumb)
                     }
                 } catch (t: Throwable) {
                     Timber.e(t)

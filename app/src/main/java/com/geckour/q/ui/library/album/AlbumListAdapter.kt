@@ -31,7 +31,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class AlbumListAdapter(private val viewModel: MainViewModel) :
-        RecyclerView.Adapter<AlbumListAdapter.ViewHolder>() {
+    RecyclerView.Adapter<AlbumListAdapter.ViewHolder>() {
 
     private val items: ArrayList<Album> = ArrayList()
 
@@ -47,9 +47,9 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
         var index = items.indexOfFirst { it.id == item.id }
         if (index < 0) {
             val tempList = ArrayList(items).apply { add(item) }
-                    .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {
-                        it.name ?: UNKNOWN
-                    })
+                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {
+                    it.name ?: UNKNOWN
+                })
             index = tempList.indexOf(item)
             items.add(index, item)
             notifyItemInserted(index)
@@ -78,9 +78,9 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
     }
 
     internal fun onNewQueue(
-            songs: List<Song>,
-            actionType: InsertActionType,
-            classType: OrientedClassType = OrientedClassType.ALBUM
+        songs: List<Song>,
+        actionType: InsertActionType,
+        classType: OrientedClassType = OrientedClassType.ALBUM
     ) {
         viewModel.viewModelScope.launch {
             viewModel.onNewQueue(songs, actionType, classType)
@@ -88,9 +88,9 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
-            ItemListAlbumBinding.inflate(
-                    LayoutInflater.from(parent.context), parent, false
-            )
+        ItemListAlbumBinding.inflate(
+            LayoutInflater.from(parent.context), parent, false
+        )
     )
 
     override fun getItemCount(): Int = items.size
@@ -101,12 +101,12 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
 
 
     inner class ViewHolder(private val binding: ItemListAlbumBinding) :
-            RecyclerView.ViewHolder(binding.root) {
+        RecyclerView.ViewHolder(binding.root) {
 
         private fun getPopupMenu(bindTo: View) = PopupMenu(bindTo.context, bindTo).apply {
             setOnMenuItemClickListener {
                 return@setOnMenuItemClickListener onOptionSelected(
-                        bindTo.context, it.itemId, binding.data
+                    bindTo.context, it.itemId, binding.data
                 )
             }
             inflate(R.menu.songs)
@@ -124,14 +124,11 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
             binding.option.setOnClickListener { getPopupMenu(it).show() }
             viewModel.viewModelScope.launch(Dispatchers.IO) {
                 try {
-                    val drawable = Glide.with(binding.thumb.context)
-                            .asDrawable()
+                    withContext(Dispatchers.Main) {
+                        Glide.with(binding.thumb)
                             .load(album.thumbUriString.orDefaultForModel)
                             .applyDefaultSettings()
-                            .submit()
-                            .get()
-                    withContext(Dispatchers.Main) {
-                        binding.thumb.setImageDrawable(drawable)
+                            .into(binding.thumb)
                     }
                 } catch (t: Throwable) {
                     Timber.e(t)
@@ -154,18 +151,19 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
 
             viewModel.viewModelScope.launch {
                 val sortByTrackOrder =
-                        id != R.id.menu_insert_all_simple_shuffle_next
-                                || id != R.id.menu_insert_all_simple_shuffle_last
-                                || id != R.id.menu_override_all_simple_shuffle
+                    id != R.id.menu_insert_all_simple_shuffle_next
+                            || id != R.id.menu_insert_all_simple_shuffle_last
+                            || id != R.id.menu_override_all_simple_shuffle
                 val songs = withContext(Dispatchers.IO) {
                     DB.getInstance(context).let { db ->
-                        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+                        val sharedPreferences =
+                            PreferenceManager.getDefaultSharedPreferences(context)
                         viewModel.loading.postValue(true)
                         db.trackDao().findByAlbum(
-                                album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                            album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                         ).mapNotNull { getSong(db, it) }
-                                .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
-                                .apply { viewModel.loading.postValue(false) }
+                            .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
+                            .apply { viewModel.loading.postValue(false) }
                     }
                 }
 

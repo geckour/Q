@@ -28,7 +28,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class PlaylistListAdapter(private val viewModel: MainViewModel) :
-        RecyclerView.Adapter<PlaylistListAdapter.ViewHolder>() {
+    RecyclerView.Adapter<PlaylistListAdapter.ViewHolder>() {
 
     private val items: ArrayList<Playlist> = ArrayList()
 
@@ -41,9 +41,9 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
     internal fun getItems(): List<Playlist> = items
 
     internal fun onNewQueue(
-            songs: List<Song>,
-            actionType: InsertActionType,
-            classType: OrientedClassType = OrientedClassType.PLAYLIST
+        songs: List<Song>,
+        actionType: InsertActionType,
+        classType: OrientedClassType = OrientedClassType.PLAYLIST
     ) {
         viewModel.viewModelScope.launch {
             viewModel.onNewQueue(songs, actionType, classType)
@@ -51,9 +51,9 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
-            ItemListPlaylistBinding.inflate(
-                    LayoutInflater.from(parent.context), parent, false
-            )
+        ItemListPlaylistBinding.inflate(
+            LayoutInflater.from(parent.context), parent, false
+        )
     )
 
     override fun getItemCount(): Int = items.size
@@ -63,12 +63,12 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
     }
 
     inner class ViewHolder(private val binding: ItemListPlaylistBinding) :
-            RecyclerView.ViewHolder(binding.root) {
+        RecyclerView.ViewHolder(binding.root) {
 
         private fun getPopupMenu(bindTo: View) = PopupMenu(bindTo.context, bindTo).apply {
             setOnMenuItemClickListener {
                 return@setOnMenuItemClickListener onOptionSelected(
-                        bindTo.context, it.itemId, binding.data
+                    bindTo.context, it.itemId, binding.data
                 )
             }
             inflate(R.menu.playlist)
@@ -86,14 +86,11 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
             binding.option.setOnClickListener { getPopupMenu(it).show() }
             viewModel.viewModelScope.launch(Dispatchers.IO) {
                 try {
-                    val drawable = Glide.with(binding.thumb.context)
-                            .asDrawable()
+                    withContext(Dispatchers.Main) {
+                        Glide.with(binding.thumb)
                             .load(playlist.thumb.orDefaultForModel)
                             .applyDefaultSettings()
-                            .submit()
-                            .get()
-                    withContext(Dispatchers.Main) {
-                        binding.thumb.setImageDrawable(drawable)
+                            .into(binding.thumb)
                     }
                 } catch (t: Throwable) {
                     Timber.e(t)
@@ -103,9 +100,9 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
 
         private fun Playlist.delete() {
             val deleted = binding.root.context.contentResolver.delete(
-                    MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
-                    "${MediaStore.Audio.Playlists._ID}=?",
-                    arrayOf(this.id.toString())
+                MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
+                "${MediaStore.Audio.Playlists._ID}=?",
+                arrayOf(this.id.toString())
             ) == 1
             if (deleted) {
                 items.removeAt(adapterPosition)
@@ -134,10 +131,10 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
                 viewModel.loading.value = true
                 val songs = withContext(Dispatchers.IO) {
                     playlist.getTrackMediaIds(context)
-                            .sortedBy { it.second }
-                            .mapNotNull {
-                                getSong(DB.getInstance(context), it.first, playlistId = playlist.id)
-                            }
+                        .sortedBy { it.second }
+                        .mapNotNull {
+                            getSong(DB.getInstance(context), it.first, playlistId = playlist.id)
+                        }
                 }
                 viewModel.loading.value = false
 

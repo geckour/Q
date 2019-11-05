@@ -27,7 +27,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class GenreListAdapter(private val viewModel: MainViewModel) :
-        RecyclerView.Adapter<GenreListAdapter.ViewHolder>() {
+    RecyclerView.Adapter<GenreListAdapter.ViewHolder>() {
 
     private val items: ArrayList<Genre> = ArrayList()
 
@@ -40,9 +40,9 @@ class GenreListAdapter(private val viewModel: MainViewModel) :
     internal fun getItems(): List<Genre> = items
 
     internal fun onNewQueue(
-            songs: List<Song>,
-            actionType: InsertActionType,
-            classType: OrientedClassType = OrientedClassType.GENRE
+        songs: List<Song>,
+        actionType: InsertActionType,
+        classType: OrientedClassType = OrientedClassType.GENRE
     ) {
         viewModel.viewModelScope.launch {
             viewModel.onNewQueue(songs, actionType, classType)
@@ -50,9 +50,9 @@ class GenreListAdapter(private val viewModel: MainViewModel) :
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
-            ItemListGenreBinding.inflate(
-                    LayoutInflater.from(parent.context), parent, false
-            )
+        ItemListGenreBinding.inflate(
+            LayoutInflater.from(parent.context), parent, false
+        )
     )
 
     override fun getItemCount(): Int = items.size
@@ -62,12 +62,12 @@ class GenreListAdapter(private val viewModel: MainViewModel) :
     }
 
     inner class ViewHolder(private val binding: ItemListGenreBinding) :
-            RecyclerView.ViewHolder(binding.root) {
+        RecyclerView.ViewHolder(binding.root) {
 
         private fun getPopupMenu(bindTo: View) = PopupMenu(bindTo.context, bindTo).apply {
             setOnMenuItemClickListener {
                 return@setOnMenuItemClickListener onOptionSelected(
-                        bindTo.context, it.itemId, binding.data
+                    bindTo.context, it.itemId, binding.data
                 )
             }
             inflate(R.menu.songs)
@@ -85,14 +85,11 @@ class GenreListAdapter(private val viewModel: MainViewModel) :
             binding.option.setOnClickListener { getPopupMenu(it).show() }
             viewModel.viewModelScope.launch(Dispatchers.IO) {
                 try {
-                    val drawable = Glide.with(binding.thumb.context)
-                            .asDrawable()
+                    withContext(Dispatchers.Main) {
+                        Glide.with(binding.thumb)
                             .load(genre.thumb.orDefaultForModel)
                             .applyDefaultSettings()
-                            .submit()
-                            .get()
-                    withContext(Dispatchers.Main) {
-                        binding.thumb.setImageDrawable(drawable)
+                            .into(binding.thumb)
                     }
                 } catch (t: Throwable) {
                     Timber.e(t)
@@ -117,9 +114,9 @@ class GenreListAdapter(private val viewModel: MainViewModel) :
                 viewModel.loading.value = true
                 val songs = withContext(Dispatchers.IO) {
                     genre.getTrackMediaIds(context)
-                            .mapNotNull {
-                                getSong(DB.getInstance(context), it, genreId = genre.id)
-                            }
+                        .mapNotNull {
+                            getSong(DB.getInstance(context), it, genreId = genre.id)
+                        }
                 }
                 viewModel.loading.value = false
 

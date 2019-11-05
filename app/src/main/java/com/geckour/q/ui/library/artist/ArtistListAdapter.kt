@@ -121,13 +121,11 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
             binding.option.setOnClickListener { getPopupMenu(it).show() }
             viewModel.viewModelScope.launch(Dispatchers.IO) {
                 try {
-                    val drawable = Glide.with(binding.thumb.context).asDrawable()
+                    withContext(Dispatchers.Main) {
+                        Glide.with(binding.thumb)
                             .load(artist.thumbUriString.orDefaultForModel)
                             .applyDefaultSettings()
-                            .submit()
-                            .get()
-                    withContext(Dispatchers.Main) {
-                        binding.thumb.setImageDrawable(drawable)
+                            .into(binding.thumb)
                     }
                 } catch (t: Throwable) {
                     Timber.e(t)

@@ -46,12 +46,16 @@ class BottomSheetFragment : Fragment() {
     }
 
     private val touchLockListener: (View, MotionEvent) -> Boolean = { _, event ->
-        behavior.onTouchEvent(requireActivity().findViewById(R.id.coordinator_main), binding.sheet, event)
+        behavior.onTouchEvent(
+            requireActivity().findViewById(R.id.coordinator_main),
+            binding.sheet,
+            event
+        )
         true
     }
 
     override fun onCreateView(
-            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
         binding = FragmentSheetBottomBinding.inflate(inflater, container, false)
         return binding.root
@@ -63,16 +67,16 @@ class BottomSheetFragment : Fragment() {
         adapter = QueueListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
         ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
-                ItemTouchHelper.UP or ItemTouchHelper.DOWN,
-                0
+            ItemTouchHelper.UP or ItemTouchHelper.DOWN,
+            0
         ) {
             var from: Int? = null
             var to: Int? = null
 
             override fun onMove(
-                    recyclerView: RecyclerView,
-                    fromHolder: RecyclerView.ViewHolder,
-                    toHolder: RecyclerView.ViewHolder
+                recyclerView: RecyclerView,
+                fromHolder: RecyclerView.ViewHolder,
+                toHolder: RecyclerView.ViewHolder
             ): Boolean {
                 val from = fromHolder.adapterPosition
                 val to = toHolder.adapterPosition
@@ -122,9 +126,9 @@ class BottomSheetFragment : Fragment() {
         })
 
         listOf(
-                binding.buttonControllerLeft,
-                binding.buttonControllerCenter,
-                binding.buttonControllerRight
+            binding.buttonControllerLeft,
+            binding.buttonControllerCenter,
+            binding.buttonControllerRight
         ).forEach {
             it.setOnTouchListener { _, event ->
                 when (event.action) {
@@ -138,10 +142,10 @@ class BottomSheetFragment : Fragment() {
         }
 
         viewModel.touchLock.value =
-                sharedPreferences.getBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, false)
+            sharedPreferences.getBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, false)
 
         behavior = BottomSheetBehavior.from(
-                (requireActivity() as MainActivity).binding.root.findViewById(R.id.bottom_sheet)
+            (requireActivity() as MainActivity).binding.root.findViewById(R.id.bottom_sheet)
         )
         behavior.setBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback() {
             override fun onSlide(v: View, dy: Float) {
@@ -153,10 +157,10 @@ class BottomSheetFragment : Fragment() {
                 viewModel.sheetState = state
                 reloadBindingVariable()
                 binding.buttonToggleVisibleQueue.setImageResource(
-                        when (state) {
-                            BottomSheetBehavior.STATE_EXPANDED -> R.drawable.ic_collapse
-                            else -> R.drawable.ic_queue
-                        }
+                    when (state) {
+                        BottomSheetBehavior.STATE_EXPANDED -> R.drawable.ic_collapse
+                        else -> R.drawable.ic_queue
+                    }
                 )
                 if (state == BottomSheetBehavior.STATE_EXPANDED) {
                     viewModel.scrollToCurrent.call()
@@ -198,12 +202,12 @@ class BottomSheetFragment : Fragment() {
                 }
                 setOnPlaybackStateChangeListener { playbackState, playWhenReady ->
                     onPlayingChanged(
-                            when (playbackState) {
-                                Player.STATE_READY -> {
-                                    playWhenReady
-                                }
-                                else -> false
+                        when (playbackState) {
+                            Player.STATE_READY -> {
+                                playWhenReady
                             }
+                            else -> false
+                        }
                     )
                 }
                 setOnPlaybackRatioChangedListener {
@@ -282,7 +286,7 @@ class BottomSheetFragment : Fragment() {
 
         val totalTime = queue.map { it.duration }.sum()
         binding.textTimeTotal.text = requireContext()
-                .getString(R.string.bottom_sheet_time_total, totalTime.getTimeString())
+            .getString(R.string.bottom_sheet_time_total, totalTime.getTimeString())
 
         if (changed && behavior.state == BottomSheetBehavior.STATE_COLLAPSED) {
             binding.buttonToggleVisibleQueue.shake()
@@ -299,10 +303,12 @@ class BottomSheetFragment : Fragment() {
         val noCurrentSong = viewModel.currentSong == null
         binding.seekBar.setOnTouchListener { _, _ -> noCurrentSong }
         if (noCurrentSong) {
-            binding.textTimeLeft.text = null
-            binding.textTimeRight.text = null
-            binding.textTimeTotal.text = null
-            binding.textTimeRemain.text = null
+            with(binding) {
+                textTimeLeft.text = null
+                textTimeRight.text = null
+                textTimeTotal.text = null
+                textTimeRemain.text = null
+            }
         }
         viewModel.setArtwork(binding.artwork)
     }
@@ -319,24 +325,24 @@ class BottomSheetFragment : Fragment() {
         val elapsed = (song.duration * ratio).toLong()
         binding.textTimeLeft.text = elapsed.getTimeString()
         binding.textTimeRight.text =
-                if (sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false))
-                    "-${(song.duration - elapsed).getTimeString()}"
-                else song.durationString
+            if (sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false))
+                "-${(song.duration - elapsed).getTimeString()}"
+            else song.durationString
         val remain = adapter.getItemsAfter((viewModel.currentPosition) + 1)
-                .map { it.duration }
-                .sum() + (song.duration - elapsed)
+            .map { it.duration }
+            .sum() + (song.duration - elapsed)
         binding.textTimeRemain.text =
-                getString(R.string.bottom_sheet_time_remain, remain.getTimeString())
+            getString(R.string.bottom_sheet_time_remain, remain.getTimeString())
     }
 
     private fun onRepeatModeChanged(mode: Int) {
         binding.buttonRepeat.apply {
             setImageResource(
-                    when (mode) {
-                        Player.REPEAT_MODE_ALL -> R.drawable.ic_repeat
-                        Player.REPEAT_MODE_ONE -> R.drawable.ic_repeat_one
-                        else -> R.drawable.ic_repeat_off
-                    }
+                when (mode) {
+                    Player.REPEAT_MODE_ALL -> R.drawable.ic_repeat
+                    Player.REPEAT_MODE_ONE -> R.drawable.ic_repeat_one
+                    else -> R.drawable.ic_repeat_off
+                }
             )
             visibility = View.VISIBLE
         }
