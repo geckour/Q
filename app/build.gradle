@@ -54,12 +54,13 @@ android {
 
 repositories {
     maven { url "https://jitpack.io" }
+    maven { url "https://dl.bintray.com/ijabz/maven" }
 }
 
 dependencies {
-    def firebase_ver = '17.0.1'
-    def aac_lifecycle_ver = '2.2.0-alpha02'
-    def aac_room_ver = '2.1.0'
+    def firebase_ver = '17.2.1'
+    def aac_lifecycle_ver = '2.2.0-rc01'
+    def aac_room_ver = '2.2.1'
     def coroutines_ver = '1.2.2'
     def permission_dispatcher_ver = '4.5.0'
     def stetho_ver = '1.5.1'
@@ -69,10 +70,10 @@ dependencies {
 
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    implementation 'androidx.constraintlayout:constraintlayout:2.0.0-beta2'
-    implementation "androidx.appcompat:appcompat:1.0.2"
-    implementation "androidx.media:media:1.0.1"
-    implementation 'com.google.android.material:material:1.1.0-alpha08'
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.0-beta3'
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation "androidx.media:media:1.1.0"
+    implementation 'com.google.android.material:material:1.2.0-alpha01'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test:runner:1.2.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
@@ -90,13 +91,13 @@ dependencies {
     implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutines_ver"
 
     // JSON
-    implementation 'com.google.code.gson:gson:2.8.5'
+    implementation 'com.google.code.gson:gson:2.8.6'
 
     // AAC ViewModel
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$aac_lifecycle_ver"
     implementation "androidx.lifecycle:lifecycle-livedata:$aac_lifecycle_ver"
     implementation "androidx.lifecycle:lifecycle-common-java8:$aac_lifecycle_ver"
-    testImplementation 'androidx.arch.core:core-testing:2.0.1'
+    testImplementation 'androidx.arch.core:core-testing:2.1.0'
 
     // AAC Room
     implementation "androidx.room:room-runtime:$aac_room_ver"
@@ -105,8 +106,8 @@ dependencies {
     testImplementation "androidx.room:room-testing:$aac_room_ver"
 
     // KTX
-    implementation 'androidx.fragment:fragment-ktx:1.2.0-alpha01'
-    implementation 'androidx.activity:activity-ktx:1.1.0-alpha01'
+    implementation 'androidx.fragment:fragment-ktx:1.2.0-rc01'
+    implementation 'androidx.activity:activity-ktx:1.1.0-rc01'
 
     // Permission
     implementation "org.permissionsdispatcher:permissionsdispatcher:$permission_dispatcher_ver"
@@ -127,6 +128,12 @@ dependencies {
 
     // Vertical SeekBar
     implementation 'com.h6ah4i.android.widget.verticalseekbar:verticalseekbar:1.0.0'
+
+    // Audio Tag
+    implementation 'net.jthink:jaudiotagger:2.2.5'
+
+    // Hash
+    implementation 'commons-codec:commons-codec:1.11'
 }
 
 apply plugin: 'com.google.gms.google-services'
