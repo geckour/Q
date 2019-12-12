@@ -40,7 +40,9 @@ import org.apache.commons.codec.binary.Hex
 import org.apache.commons.codec.digest.DigestUtils
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
+import org.jaudiotagger.tag.images.ArtworkFactory
 import timber.log.Timber
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.min
@@ -231,20 +233,13 @@ fun List<Uri?>.getThumb(context: Context): Bitmap? {
     )
     val canvas = Canvas(bitmap)
     this@getThumb.reversed().forEachIndexed { i, uri ->
-        val b =
-            Glide.with(context)
-                .asBitmap()
-                .load(uri ?: return@forEachIndexed)
-                .applyDefaultSettings()
-                .submit()
-                .get()?.let {
-                    Bitmap.createScaledBitmap(
-                        it,
-                        unit,
-                        (it.height * unit.toFloat() / it.width).toInt(),
-                        false
-                    )
-                } ?: return@forEachIndexed
+        val b = Glide.with(context).asBitmap().load(
+            uri ?: return@forEachIndexed
+        ).applyDefaultSettings().submit().get()?.let {
+            Bitmap.createScaledBitmap(
+                it, unit, (it.height * unit.toFloat() / it.width).toInt(), false
+            )
+        } ?: return@forEachIndexed
         canvas.drawBitmap(b, bitmap.width - (i + 1) * unit * 0.9f, (unit - b.height) / 2f, Paint())
     }
     return bitmap
@@ -337,109 +332,75 @@ suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat =
             .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist)
             .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album)
             .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, uriString)
-            .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer)
-            .apply {
-                if (uriString != null
-                    && PreferenceManager.getDefaultSharedPreferences(context)
-                        .showArtworkOnLockScreen
-                ) {
+            .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer).apply {
+                if (uriString != null && PreferenceManager.getDefaultSharedPreferences(context).showArtworkOnLockScreen) {
                     val bitmap = try {
-                        Glide.with(context)
-                            .asDrawable()
-                            .load(uriString)
-                            .applyDefaultSettings()
-                            .submit()
-                            .get()
-                            .bitmap()
+                        Glide.with(context).asDrawable().load(uriString).applyDefaultSettings()
+                            .submit().get().bitmap()
                     } catch (t: Throwable) {
                         Timber.e(t)
                         null
                     }
                     putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
                 }
-            }
-            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
-            .build()
+            }.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration).build()
     }
 
 suspend fun getPlayerNotification(
-    context: Context,
-    sessionToken: MediaSessionCompat.Token?,
-    song: Song,
-    playing: Boolean
-): Notification? =
-    withContext(Dispatchers.IO) {
-        if (sessionToken == null) return@withContext null
+    context: Context, sessionToken: MediaSessionCompat.Token?, song: Song, playing: Boolean
+): Notification? = withContext(Dispatchers.IO) {
+    if (sessionToken == null) return@withContext null
 
-        val artwork = try {
-            Glide.with(context)
-                .asDrawable()
-                .load(
-                    DB.getInstance(context)
-                        .getArtworkUriStringFromId(song.albumId)
-                        .orDefaultForModel
-                )
-                .applyDefaultSettings()
-                .submit()
-                .get()
-                .bitmap()
-        } catch (t: Throwable) {
-            Timber.e(t)
-            null
-        }
-        context.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER)
-            .setSmallIcon(R.drawable.ic_notification_player)
-            .setLargeIcon(artwork)
-            .setContentTitle(song.name)
-            .setContentText(song.artist)
-            .setSubText(song.album)
-            .setOngoing(playing)
-            .setStyle(
-                androidx.media.app.NotificationCompat.MediaStyle()
-                    .setShowActionsInCompactView(0, 1, 2)
-                    .setMediaSession(sessionToken)
-            )
-            .setShowWhen(false)
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    context,
-                    App.REQUEST_CODE_LAUNCH_APP,
-                    LauncherActivity.createIntent(context),
-                    PendingIntent.FLAG_UPDATE_CURRENT
-                )
-            )
-            .addAction(
-                NotificationCompat.Action.Builder(
-                    R.drawable.ic_backward,
-                    context.getString(R.string.notification_action_prev),
-                    getCommandPendingIntent(context, NotificationCommand.PREV)
-                ).build()
-            )
-            .addAction(
-                if (playing) {
-                    NotificationCompat.Action.Builder(
-                        R.drawable.ic_pause,
-                        context.getString(R.string.notification_action_pause),
-                        getCommandPendingIntent(context, NotificationCommand.PLAY_PAUSE)
-                    ).build()
-                } else {
-                    NotificationCompat.Action.Builder(
-                        R.drawable.ic_play,
-                        context.getString(R.string.notification_action_play),
-                        getCommandPendingIntent(context, NotificationCommand.PLAY_PAUSE)
-                    ).build()
-                }
-            )
-            .addAction(
-                NotificationCompat.Action.Builder(
-                    R.drawable.ic_forward,
-                    context.getString(R.string.notification_action_next),
-                    getCommandPendingIntent(context, NotificationCommand.NEXT)
-                ).build()
-            )
-            .setDeleteIntent(getCommandPendingIntent(context, NotificationCommand.DESTROY))
-            .build()
+    val artwork = try {
+        Glide.with(context).asDrawable().load(
+            DB.getInstance(context).getArtworkUriStringFromId(song.albumId).orDefaultForModel
+        ).applyDefaultSettings().submit().get().bitmap()
+    } catch (t: Throwable) {
+        Timber.e(t)
+        null
     }
+    context.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER)
+        .setSmallIcon(R.drawable.ic_notification_player).setLargeIcon(artwork)
+        .setContentTitle(song.name).setContentText(song.artist).setSubText(song.album)
+        .setOngoing(playing).setStyle(
+            androidx.media.app.NotificationCompat.MediaStyle().setShowActionsInCompactView(
+                0, 1, 2
+            ).setMediaSession(sessionToken)
+        ).setShowWhen(false).setContentIntent(
+            PendingIntent.getActivity(
+                context,
+                App.REQUEST_CODE_LAUNCH_APP,
+                LauncherActivity.createIntent(context),
+                PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        ).addAction(
+            NotificationCompat.Action.Builder(
+                R.drawable.ic_backward,
+                context.getString(R.string.notification_action_prev),
+                getCommandPendingIntent(context, NotificationCommand.PREV)
+            ).build()
+        ).addAction(
+            if (playing) {
+                NotificationCompat.Action.Builder(
+                    R.drawable.ic_pause,
+                    context.getString(R.string.notification_action_pause),
+                    getCommandPendingIntent(context, NotificationCommand.PLAY_PAUSE)
+                ).build()
+            } else {
+                NotificationCompat.Action.Builder(
+                    R.drawable.ic_play,
+                    context.getString(R.string.notification_action_play),
+                    getCommandPendingIntent(context, NotificationCommand.PLAY_PAUSE)
+                ).build()
+            }
+        ).addAction(
+            NotificationCompat.Action.Builder(
+                R.drawable.ic_forward,
+                context.getString(R.string.notification_action_next),
+                getCommandPendingIntent(context, NotificationCommand.NEXT)
+            ).build()
+        ).setDeleteIntent(getCommandPendingIntent(context, NotificationCommand.DESTROY)).build()
+}
 
 private fun getCommandPendingIntent(context: Context, command: NotificationCommand): PendingIntent =
     PendingIntent.getService(context, 343, PlayerService.createIntent(context).apply {
@@ -457,9 +418,7 @@ fun Long.getTimeString(): String {
 }
 
 fun DB.storeMediaInfo(
-    context: Context,
-    trackPath: String,
-    trackMediaId: Long
+    context: Context, trackPath: String, trackMediaId: Long
 ): Long {
     val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackMediaId)
 
@@ -477,46 +436,26 @@ fun DB.storeMediaInfo(
     val albumTitle = tag.getAll(FieldKey.ALBUM).firstOrNull { it.isNotBlank() } ?: UNKNOWN
     val artistTitle = tag.getAll(FieldKey.ARTIST).firstOrNull { it.isNotBlank() } ?: UNKNOWN
     val duration = header.trackLength.toLong() * 1000
-    val trackNum =
-        try {
-            tag.getFirst(FieldKey.TRACK).toInt()
-        } catch (t: Throwable) {
-            null
-        }
-    val discNum =
-        try {
-            tag.getFirst(FieldKey.DISC_NO).toInt()
-        } catch (t: Throwable) {
-            null
-        }
+    val trackNum = try {
+        tag.getFirst(FieldKey.TRACK).toInt()
+    } catch (t: Throwable) {
+        null
+    }
+    val discNum = try {
+        tag.getFirst(FieldKey.DISC_NO).toInt()
+    } catch (t: Throwable) {
+        null
+    }
     val composerTitle = tag.getAll(FieldKey.COMPOSER).firstOrNull { it.isNotBlank() } ?: UNKNOWN
     val artworkUriString = albumDao().findByTitle(title).firstOrNull()?.artworkUriString
-        ?: tag.firstArtwork?.let { artwork ->
-            val hex = String(Hex.encodeHex(DigestUtils.md5(artwork.binaryData)))
-            val dirName = "images"
-            val dir = File(context.filesDir, dirName)
-            if (dir.exists().not()) dir.mkdir()
-            val imgFile = File(dir, hex)
-            FileOutputStream(imgFile).use {
-                it.write(artwork.binaryData)
-                it.flush()
-            }
-
-            imgFile.path.apply { Timber.d("geq path: $this") }
-        }
-    val albumArtistTitle =
-        tag.getAll(FieldKey.ALBUM_ARTIST).firstOrNull { it.isNotBlank() }
+        ?: tag.firstArtwork?.binaryData?.storeArtwork(context)
+    val albumArtistTitle = tag.getAll(FieldKey.ALBUM_ARTIST).firstOrNull { it.isNotBlank() }
 
     val artistId = Artist(0, artistTitle, 0).upsert(this)
     val albumArtistId = albumArtistTitle?.let { Artist(0, albumArtistTitle, 0).upsert(this) }
 
     val albumId = Album(
-        0,
-        albumArtistId ?: artistId,
-        albumTitle,
-        artworkUriString,
-        albumArtistId != null,
-        0
+        0, albumArtistId ?: artistId, albumTitle, artworkUriString, albumArtistId != null, 0
     ).upsert(this)
 
     val track = Track(
@@ -536,6 +475,20 @@ fun DB.storeMediaInfo(
     return track.upsert(this)
 }
 
+private fun ByteArray.storeArtwork(context: Context): String {
+    val hex = String(Hex.encodeHex(DigestUtils.md5(this)))
+    val dirName = "images"
+    val dir = File(context.filesDir, dirName)
+    if (dir.exists().not()) dir.mkdir()
+    val imgFile = File(dir, hex)
+    FileOutputStream(imgFile).use {
+        it.write(this)
+        it.flush()
+    }
+
+    return imgFile.path.apply { Timber.d("geq path: $this") }
+}
+
 val String?.orDefaultForModel get() = this?.let { File(this) } ?: R.drawable.ic_empty
 val Bitmap?.orDefaultForModel get() = this ?: R.drawable.ic_empty
 
@@ -546,9 +499,7 @@ private fun Drawable.bitmap(minimumSideLength: Int = 1000, supportAlpha: Boolean
     val min = min(intrinsicWidth, intrinsicHeight)
     val scale = if (min < minimumSideLength) minimumSideLength.toFloat() / min else 1f
     return Bitmap.createBitmap(
-        (intrinsicWidth * scale).toInt(),
-        (intrinsicHeight * scale).toInt(),
-        Bitmap.Config.ARGB_8888
+        (intrinsicWidth * scale).toInt(), (intrinsicHeight * scale).toInt(), Bitmap.Config.ARGB_8888
     ).apply {
         bounds = Rect(0, 0, width, height)
         draw(Canvas(this).apply {
@@ -556,3 +507,79 @@ private fun Drawable.bitmap(minimumSideLength: Int = 1000, supportAlpha: Boolean
         })
     }
 }
+
+private suspend fun updateMetadata(
+    context: Context,
+    db: DB,
+    trackMediaId: Long,
+    newTrackName: String? = null,
+    newAlbumName: String? = null,
+    newArtistName: String? = null,
+    newComposerName: String? = null,
+    newArtwork: Bitmap? = null
+) = withContext(Dispatchers.IO) {
+    val track = db.trackDao().getByMediaId(trackMediaId) ?: return@withContext
+    val audioFile = AudioFileIO.read(File(track.sourcePath))?.apply {
+        when {
+            newArtistName != null -> {
+                db.artistDao().get(track.artistId)?.let { artist ->
+                    db.albumDao().findByArtistId(track.artistId)
+                        .flatMap { db.trackDao().findByAlbum(it.id) }
+                        .mapNotNull { AudioFileIO.read(File(it.sourcePath)) }.forEach { audioFile ->
+                            audioFile.tag.apply {
+                                setField(FieldKey.ARTIST, newArtistName)
+                                newAlbumName?.let { setField(FieldKey.ALBUM, it) }
+                                newTrackName?.let { setField(FieldKey.TITLE, it) }
+                            }
+
+                            AudioFileIO.write(audioFile)
+                        }
+                    db.artistDao().update(artist.copy(title = newArtistName))
+                }
+            }
+            newAlbumName != null || newArtwork != null -> {
+                db.albumDao().get(track.albumId)?.let { album ->
+                    val artworkUriString = newArtwork?.let {
+                        it.toByteArray()?.storeArtwork(context)
+                    }
+                    val artwork = artworkUriString?.let {
+                        ArtworkFactory.createArtworkFromFile(File(it))
+                    }
+                    db.trackDao().findByAlbum(track.albumId)
+                        .mapNotNull { AudioFileIO.read(File(it.sourcePath)) }.forEach { audioFile ->
+                            audioFile.tag.apply {
+                                newAlbumName?.let { setField(FieldKey.ALBUM, it) }
+                                artwork?.let { setField(it) }
+                                newTrackName?.let { setField(FieldKey.TITLE, it) }
+                            }
+
+                            AudioFileIO.write(audioFile)
+                        }
+                    db.albumDao().update(
+                        album.copy(
+                            title = newAlbumName ?: album.title,
+                            artworkUriString = artworkUriString ?: album.artworkUriString
+                        )
+                    )
+                }
+            }
+            else -> {
+                tag.apply {
+                    newTrackName?.let { setField(FieldKey.TITLE, it) }
+                    newComposerName?.let { setField(FieldKey.COMPOSER, it) }
+                }
+                db.trackDao().update(
+                    track.copy(
+                        title = newTrackName ?: track.title,
+                        composer = newComposerName ?: track.composer
+                    )
+                )
+            }
+        }
+    }
+    AudioFileIO.write(audioFile)
+}
+
+private fun Bitmap.toByteArray(): ByteArray? = ByteArrayOutputStream().apply {
+    compress(Bitmap.CompressFormat.PNG, 100, this)
+}.toByteArray()
