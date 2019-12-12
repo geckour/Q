@@ -126,6 +126,11 @@ class AlbumListFragment : Fragment() {
                 return true
             }
 
+            if (item.itemId == R.id.menu_edit_metadata) {
+                // TODO: Show dialog for editing metadata
+                return true
+            }
+
             val actionType = when (item.itemId) {
                 R.id.menu_insert_all_next -> InsertActionType.NEXT
                 R.id.menu_insert_all_last -> InsertActionType.LAST

@@ -76,14 +76,15 @@ class SongListFragment : Fragment() {
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: SongListAdapter by lazy {
         SongListAdapter(
-                mainViewModel, arguments?.getSerializable(ARGS_KEY_CLASS_TYPE)
-                as? OrientedClassType ?: OrientedClassType.SONG
+            mainViewModel,
+            arguments?.getSerializable(ARGS_KEY_CLASS_TYPE) as? OrientedClassType
+                ?: OrientedClassType.SONG
         )
     }
     private var chatteringCancelFlag: Boolean = false
 
     override fun onCreateView(
-            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
         observeEvents()
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
@@ -139,20 +140,25 @@ class SongListFragment : Fragment() {
             val toggleTo = sharedPreferences.isNightMode.not()
             sharedPreferences.isNightMode = toggleTo
             (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
-                    toggleTo.toNightModeInt
+                toggleTo.toNightModeInt
+            return true
+        }
+
+        if (item.itemId == R.id.menu_edit_metadata && arguments?.getParcelable<Album>(ARGS_KEY_ALBUM) != null) {
+            // TODO: Show dialog for editing metadata
             return true
         }
 
         adapter.onNewQueue(
-                requireContext(), when (item.itemId) {
-            R.id.menu_insert_all_next -> InsertActionType.NEXT
-            R.id.menu_insert_all_last -> InsertActionType.LAST
-            R.id.menu_override_all -> InsertActionType.OVERRIDE
-            R.id.menu_insert_all_simple_shuffle_next -> InsertActionType.SHUFFLE_SIMPLE_NEXT
-            R.id.menu_insert_all_simple_shuffle_last -> InsertActionType.SHUFFLE_SIMPLE_LAST
-            R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
-            else -> return false
-        }
+            requireContext(), when (item.itemId) {
+                R.id.menu_insert_all_next -> InsertActionType.NEXT
+                R.id.menu_insert_all_last -> InsertActionType.LAST
+                R.id.menu_override_all -> InsertActionType.OVERRIDE
+                R.id.menu_insert_all_simple_shuffle_next -> InsertActionType.SHUFFLE_SIMPLE_NEXT
+                R.id.menu_insert_all_simple_shuffle_last -> InsertActionType.SHUFFLE_SIMPLE_LAST
+                R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
+                else -> return false
+            }
         )
 
         return true
@@ -164,9 +170,9 @@ class SongListFragment : Fragment() {
 
             val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST) ?: return@observe
             val removed = context?.contentResolver?.delete(
-                    MediaStore.Audio.Playlists.Members.getContentUri("external", playlist.id),
-                    "${MediaStore.Audio.Playlists.Members.PLAY_ORDER}=?",
-                    arrayOf(it.toString())
+                MediaStore.Audio.Playlists.Members.getContentUri("external", playlist.id),
+                "${MediaStore.Audio.Playlists.Members.PLAY_ORDER}=?",
+                arrayOf(it.toString())
             )?.equals(1) ?: return@observe
             if (removed) adapter.removeByTrackNum(it)
         }
@@ -215,11 +221,11 @@ class SongListFragment : Fragment() {
         context?.also {
             DB.getInstance(it).also { db ->
                 db.trackDao().findByAlbumAsync(album.id)
-                        .observe(this@SongListFragment) { dbTrackList ->
-                            if (dbTrackList == null) return@observe
+                    .observe(this@SongListFragment) { dbTrackList ->
+                        if (dbTrackList == null) return@observe
 
-                            upsertSongListIfPossible(db, dbTrackList)
-                        }
+                        upsertSongListIfPossible(db, dbTrackList)
+                    }
             }
         }
     }
@@ -229,9 +235,9 @@ class SongListFragment : Fragment() {
             viewModel.viewModelScope.launch {
                 mainViewModel.loading.value = true
                 adapter.upsertItems(
-                        getSongListFromTrackMediaId(
-                                DB.getInstance(it), genre.getTrackMediaIds(it), genreId = genre.id
-                        ), false
+                    getSongListFromTrackMediaId(
+                        DB.getInstance(it), genre.getTrackMediaIds(it), genreId = genre.id
+                    ), false
                 )
                 mainViewModel.loading.value = false
                 binding.recyclerView.smoothScrollToPosition(0)
@@ -244,9 +250,9 @@ class SongListFragment : Fragment() {
             viewModel.viewModelScope.launch {
                 mainViewModel.loading.value = true
                 adapter.addItems(
-                        getSongListFromTrackMediaIdWithTrackNum(
-                                DB.getInstance(it), playlist.getTrackMediaIds(it), playlistId = playlist.id
-                        )
+                    getSongListFromTrackMediaIdWithTrackNum(
+                        DB.getInstance(it), playlist.getTrackMediaIds(it), playlistId = playlist.id
+                    )
                 )
                 mainViewModel.loading.value = false
                 binding.recyclerView.smoothScrollToPosition(0)
@@ -255,7 +261,7 @@ class SongListFragment : Fragment() {
     }
 
     private fun upsertSongListIfPossible(
-            db: DB, dbTrackList: List<Track>, sortByTrackOrder: Boolean = true
+        db: DB, dbTrackList: List<Track>, sortByTrackOrder: Boolean = true
     ) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true

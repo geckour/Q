@@ -169,6 +169,7 @@ class SongListAdapter(
                             }
                         }
                     }
+                    R.id.menu_edit_metadata -> Unit // TODO: Show dialog for editing metadata
                     R.id.menu_ignore -> toggleIgnored()
                     R.id.menu_delete_song -> deleteSong(viewModel.selectedSong)
                     R.id.menu_insert_all_next, R.id.menu_insert_all_last, R.id.menu_override_all -> {

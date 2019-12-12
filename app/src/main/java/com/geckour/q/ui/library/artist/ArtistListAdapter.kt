@@ -136,6 +136,11 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
         private fun onOptionSelected(context: Context, id: Int, artist: Artist?): Boolean {
             if (artist == null) return false
 
+            if (id == R.id.menu_edit_metadata) {
+                // TODO: Show dialog for editing metadata
+                return true
+            }
+
             val actionType = when (id) {
                 R.id.menu_insert_all_next -> InsertActionType.NEXT
                 R.id.menu_insert_all_last -> InsertActionType.LAST
