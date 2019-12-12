@@ -28,9 +28,11 @@ import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
+import com.geckour.q.util.showMetadataEditorForArtist
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainModel
 import com.geckour.q.util.toNightModeInt
+import com.geckour.q.util.updateMetadata
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -127,7 +129,14 @@ class AlbumListFragment : Fragment() {
             }
 
             if (item.itemId == R.id.menu_edit_metadata) {
-                // TODO: Show dialog for editing metadata
+                context.showMetadataEditorForArtist { newArtistName ->
+                    viewModel.viewModelScope.launch {
+                        val db = DB.getInstance(context)
+                        db.trackDao().findByArtist(artist?.id ?: return@launch).firstOrNull()?.let {
+                            updateMetadata(context, db, it.mediaId, newArtistName = newArtistName)
+                        }
+                    }
+                }
                 return true
             }
 

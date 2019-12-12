@@ -119,6 +119,9 @@
     <string name="dialog_desc_pattern_format">Track name: TI\nArtist name: AR\nAlbum name: AL\nescape sequence: Wrap by \' \'\nline break: \\n</string>
     <string name="dialog_hint_pattern_format">ex: #NowPlaying TI - AR (AL)</string>
 
+    <string name="dialog_title_metadata_editor_artist">Edit metadata for the artist</string>
+    <string name="dialog_desc_metadata_editor_artist">Input new artist name</string>
+
 
     <string name="payment_desc">Available donation with Kyash</string>
     <string name="payment_save_success">Succeeded</string>

@@ -111,6 +111,9 @@
     <string name="dialog_desc_pattern_format">曲名: TI\nアーティスト名: AR\nアルバム名: AL\nエスケープ: \' \' で囲む\n改行: \\n</string>
     <string name="dialog_hint_pattern_format">例: #NowPlaying TI - AR (AL)</string>
 
+    <string name="dialog_title_metadata_editor_artist">アーティストのメタデータを編集</string>
+    <string name="dialog_desc_metadata_editor_artist">新しいアーティスト名を入力</string>
+
 
     <string name="payment_desc">Kyashを利用した投げ銭を受け付けています</string>
     <string name="payment_save_success">保存しました</string>

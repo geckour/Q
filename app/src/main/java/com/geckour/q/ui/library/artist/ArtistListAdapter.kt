@@ -23,14 +23,16 @@ import com.geckour.q.util.getSong
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.orDefaultForModel
+import com.geckour.q.util.showMetadataEditorForArtist
 import com.geckour.q.util.sortedByTrackOrder
+import com.geckour.q.util.updateMetadata
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class ArtistListAdapter(private val viewModel: MainViewModel) :
-        RecyclerView.Adapter<ArtistListAdapter.ViewHolder>() {
+    RecyclerView.Adapter<ArtistListAdapter.ViewHolder>() {
 
     private val items: ArrayList<Artist> = ArrayList()
 
@@ -53,7 +55,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
         var index = items.indexOfFirst { it.id == item.id }
         if (index < 0) {
             val tempList = ArrayList(items).apply { add(item) }
-                    .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
+                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
             index = tempList.indexOf(item)
             items.add(index, item)
             notifyItemInserted(index)
@@ -75,9 +77,9 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
     }
 
     internal fun onNewQueue(
-            songs: List<Song>,
-            actionType: InsertActionType,
-            classType: OrientedClassType = OrientedClassType.ARTIST
+        songs: List<Song>,
+        actionType: InsertActionType,
+        classType: OrientedClassType = OrientedClassType.ARTIST
     ) {
         viewModel.viewModelScope.launch {
             viewModel.onNewQueue(songs, actionType, classType)
@@ -85,9 +87,9 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
-            ItemListArtistBinding.inflate(
-                    LayoutInflater.from(parent.context), parent, false
-            )
+        ItemListArtistBinding.inflate(
+            LayoutInflater.from(parent.context), parent, false
+        )
     )
 
     override fun getItemCount(): Int = items.size
@@ -98,12 +100,12 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
 
 
     inner class ViewHolder(private val binding: ItemListArtistBinding) :
-            RecyclerView.ViewHolder(binding.root) {
+        RecyclerView.ViewHolder(binding.root) {
 
         private fun getPopupMenu(bindTo: View) = PopupMenu(bindTo.context, bindTo).apply {
             setOnMenuItemClickListener {
                 return@setOnMenuItemClickListener onOptionSelected(
-                        bindTo.context, it.itemId, binding.data
+                    bindTo.context, it.itemId, binding.data
                 )
             }
             inflate(R.menu.albums)
@@ -122,10 +124,8 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
             viewModel.viewModelScope.launch(Dispatchers.IO) {
                 try {
                     withContext(Dispatchers.Main) {
-                        Glide.with(binding.thumb)
-                            .load(artist.thumbUriString.orDefaultForModel)
-                            .applyDefaultSettings()
-                            .into(binding.thumb)
+                        Glide.with(binding.thumb).load(artist.thumbUriString.orDefaultForModel)
+                            .applyDefaultSettings().into(binding.thumb)
                     }
                 } catch (t: Throwable) {
                     Timber.e(t)
@@ -137,7 +137,14 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
             if (artist == null) return false
 
             if (id == R.id.menu_edit_metadata) {
-                // TODO: Show dialog for editing metadata
+                context.showMetadataEditorForArtist { newArtistName ->
+                    viewModel.viewModelScope.launch {
+                        val db = DB.getInstance(context)
+                        db.trackDao().findByArtist(artist.id).firstOrNull()?.let {
+                            updateMetadata(context, db, it.mediaId, newArtistName = newArtistName)
+                        }
+                    }
+                }
                 return true
             }
 
@@ -160,15 +167,15 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
                 }
                 val songs = withContext(Dispatchers.IO) {
                     DB.getInstance(context).let { db ->
-                        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+                        val sharedPreferences =
+                            PreferenceManager.getDefaultSharedPreferences(context)
                         viewModel.loading.postValue(true)
                         db.albumDao().findByArtistId(artist.id).map {
                             db.trackDao().findByAlbum(
-                                    it.id,
-                                    BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                                it.id,
+                                BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                             ).mapNotNull { getSong(db, it) }.let {
-                                if (sortByTrackOrder)
-                                    it.sortedByTrackOrder()
+                                if (sortByTrackOrder) it.sortedByTrackOrder()
                                 else it
                             }
                         }.apply {

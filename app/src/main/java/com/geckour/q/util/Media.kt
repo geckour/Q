@@ -15,6 +15,8 @@ import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
+import android.view.LayoutInflater
+import androidx.appcompat.app.AlertDialog
 import androidx.core.app.NotificationCompat
 import com.bumptech.glide.Glide
 import com.bumptech.glide.RequestBuilder
@@ -27,6 +29,7 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.Track
+import com.geckour.q.databinding.DialogEditTextBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
@@ -508,7 +511,7 @@ private fun Drawable.bitmap(minimumSideLength: Int = 1000, supportAlpha: Boolean
     }
 }
 
-private suspend fun updateMetadata(
+suspend fun updateMetadata(
     context: Context,
     db: DB,
     trackMediaId: Long,
@@ -583,3 +586,22 @@ private suspend fun updateMetadata(
 private fun Bitmap.toByteArray(): ByteArray? = ByteArrayOutputStream().apply {
     compress(Bitmap.CompressFormat.PNG, 100, this)
 }.toByteArray()
+
+fun Context.showMetadataEditorForSong() {
+    // TODO
+}
+
+fun Context.showMetadataEditorForAlbum() {
+    // TODO
+}
+
+fun Context.showMetadataEditorForArtist(onComplete: (String) -> Unit) {
+    val binding = DialogEditTextBinding.inflate(LayoutInflater.from(this))
+    AlertDialog.Builder(this).setView(binding.root)
+        .setTitle(R.string.dialog_title_metadata_editor_artist)
+        .setMessage(R.string.dialog_desc_metadata_editor_artist)
+        .setPositiveButton(R.string.dialog_ok) { dialog, _ ->
+            binding.editText.text?.toString()?.let(onComplete)
+            dialog.dismiss()
+        }.setCancelable(true)
+}
