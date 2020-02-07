@@ -435,24 +435,24 @@ fun DB.storeMediaInfo(
     val tag = audioFile.tag
     val header = audioFile.audioHeader
 
-    val title = tag.getAll(FieldKey.TITLE).firstOrNull { it.isNotBlank() } ?: UNKNOWN
-    val albumTitle = tag.getAll(FieldKey.ALBUM).firstOrNull { it.isNotBlank() } ?: UNKNOWN
-    val artistTitle = tag.getAll(FieldKey.ARTIST).firstOrNull { it.isNotBlank() } ?: UNKNOWN
+    val title = tag?.getAll(FieldKey.TITLE)?.firstOrNull { it.isNotBlank() } ?: UNKNOWN
+    val albumTitle = tag?.getAll(FieldKey.ALBUM)?.firstOrNull { it.isNotBlank() } ?: UNKNOWN
+    val artistTitle = tag?.getAll(FieldKey.ARTIST)?.firstOrNull { it.isNotBlank() } ?: UNKNOWN
     val duration = header.trackLength.toLong() * 1000
     val trackNum = try {
-        tag.getFirst(FieldKey.TRACK).toInt()
+        tag?.getFirst(FieldKey.TRACK)?.toInt()
     } catch (t: Throwable) {
         null
     }
     val discNum = try {
-        tag.getFirst(FieldKey.DISC_NO).toInt()
+        tag?.getFirst(FieldKey.DISC_NO)?.toInt()
     } catch (t: Throwable) {
         null
     }
-    val composerTitle = tag.getAll(FieldKey.COMPOSER).firstOrNull { it.isNotBlank() } ?: UNKNOWN
+    val composerTitle = tag?.getAll(FieldKey.COMPOSER)?.firstOrNull { it.isNotBlank() } ?: UNKNOWN
     val artworkUriString = albumDao().findByTitle(title).firstOrNull()?.artworkUriString
-        ?: tag.firstArtwork?.binaryData?.storeArtwork(context)
-    val albumArtistTitle = tag.getAll(FieldKey.ALBUM_ARTIST).firstOrNull { it.isNotBlank() }
+        ?: tag?.firstArtwork?.binaryData?.storeArtwork(context)
+    val albumArtistTitle = tag?.getAll(FieldKey.ALBUM_ARTIST)?.firstOrNull { it.isNotBlank() }
 
     val artistId = Artist(0, artistTitle, 0).upsert(this)
     val albumArtistId = albumArtistTitle?.let { Artist(0, albumArtistTitle, 0).upsert(this) }
@@ -529,7 +529,7 @@ suspend fun updateMetadata(
                     db.albumDao().findByArtistId(track.artistId)
                         .flatMap { db.trackDao().findByAlbum(it.id) }
                         .mapNotNull { AudioFileIO.read(File(it.sourcePath)) }.forEach { audioFile ->
-                            audioFile.tag.apply {
+                            audioFile.tagOrCreateAndSetDefault.apply {
                                 setField(FieldKey.ARTIST, newArtistName)
                                 newAlbumName?.let { setField(FieldKey.ALBUM, it) }
                                 newTrackName?.let { setField(FieldKey.TITLE, it) }
@@ -550,7 +550,7 @@ suspend fun updateMetadata(
                     }
                     db.trackDao().findByAlbum(track.albumId)
                         .mapNotNull { AudioFileIO.read(File(it.sourcePath)) }.forEach { audioFile ->
-                            audioFile.tag.apply {
+                            audioFile.tagOrCreateAndSetDefault.apply {
                                 newAlbumName?.let { setField(FieldKey.ALBUM, it) }
                                 artwork?.let { setField(it) }
                                 newTrackName?.let { setField(FieldKey.TITLE, it) }
@@ -567,7 +567,7 @@ suspend fun updateMetadata(
                 }
             }
             else -> {
-                tag.apply {
+                tagOrCreateAndSetDefault.apply {
                     newTrackName?.let { setField(FieldKey.TITLE, it) }
                     newComposerName?.let { setField(FieldKey.COMPOSER, it) }
                 }
