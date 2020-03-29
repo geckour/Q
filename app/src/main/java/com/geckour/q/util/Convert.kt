@@ -9,7 +9,7 @@ import com.geckour.q.data.db.model.Artist as DBArtist
 
 fun Float.getReadableString(digitToKeep: Int = 3): String {
     fun Float.format(suffix: String): String = String.format(
-            "${if (this@getReadableString < 0) "-" else ""}%.${digitToKeep}f", this
+        "${if (this@getReadableString < 0) "-" else ""}%.${digitToKeep}f", this
     ).replace(Regex("^(.+\\..*?)0+$"), "$1").replace(Regex("^(.+)\\.$"), "$1") + suffix
 
     var returnValue = abs(this)
@@ -34,10 +34,14 @@ fun Float.getReadableString(digitToKeep: Int = 3): String {
     }
 }
 
-fun DBArtist.toDomainModel(): Artist = Artist(id, title ?: UNKNOWN, null, 0)
+fun DBArtist.toDomainModel(): Artist = Artist(id, title ?: UNKNOWN, titleSort, null, 0)
 
-fun DBAlbum.toDomainModel(artistName: String? = null, totalDuration: Long = 0): Album =
-        Album(id, title, artistName, artworkUriString, totalDuration)
+fun DBAlbum.toDomainModel(
+    artistName: String? = null,
+    artistNameSort: String? = null,
+    totalDuration: Long = 0
+): Album =
+    Album(id, title, titleSort, artistName, artistNameSort, artworkUriString, totalDuration)
 
 val Boolean.toNightModeInt: Int
     get() = if (this) AppCompatDelegate.MODE_NIGHT_YES

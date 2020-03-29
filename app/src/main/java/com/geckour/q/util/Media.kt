@@ -30,8 +30,8 @@ import com.geckour.q.data.db.model.Track
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
+import com.geckour.q.presentation.LauncherActivity
 import com.geckour.q.service.PlayerService
-import com.geckour.q.ui.LauncherActivity
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ads.AdsMediaSource
 import kotlinx.coroutines.Dispatchers
@@ -103,17 +103,21 @@ suspend fun getSong(
 suspend fun getSong(
     db: DB, track: Track, genreId: Long? = null, playlistId: Long? = null, trackNum: Int? = null
 ): Song? = withContext(Dispatchers.IO) {
-    val artistName = db.artistDao().get(track.artistId)?.title ?: UNKNOWN
-    val albumName = db.albumDao().get(track.albumId)?.title ?: UNKNOWN
+    val artist = db.artistDao().get(track.artistId)
+    val album = db.albumDao().get(track.albumId)
     val artwork = db.albumDao().get(track.albumId)?.artworkUriString
     Song(
         track.id,
         track.mediaId,
         track.albumId,
         track.title,
-        artistName,
-        albumName,
+        track.titleSort,
+        artist?.title ?: UNKNOWN,
+        artist?.titleSort,
+        album?.title ?: UNKNOWN,
+        album?.titleSort,
         track.composer,
+        track.composerSort,
         artwork,
         track.duration,
         trackNum ?: track.trackNum,
@@ -169,15 +173,15 @@ private suspend fun List<Track>.getPlaylistThumb(context: Context): Bitmap? =
     }
 
 suspend fun DB.searchArtistByFuzzyTitle(title: String): List<Artist> = withContext(Dispatchers.IO) {
-    this@searchArtistByFuzzyTitle.artistDao().findLikeTitle("%$title%")
+    this@searchArtistByFuzzyTitle.artistDao().findLikeTitle("%${title.escapeSql}%")
 }
 
 suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<Album> = withContext(Dispatchers.IO) {
-    this@searchAlbumByFuzzyTitle.albumDao().findByTitle("%$title%")
+    this@searchAlbumByFuzzyTitle.albumDao().findByTitle("%${title.escapeSql}%")
 }
 
 suspend fun DB.searchTrackByFuzzyTitle(title: String): List<Track> = withContext(Dispatchers.IO) {
-    this@searchTrackByFuzzyTitle.trackDao().findByTitle("%$title%", Bool.UNDEFINED)
+    this@searchTrackByFuzzyTitle.trackDao().findByTitle("%${title.escapeSql}%", Bool.UNDEFINED)
 }
 
 fun Context.searchPlaylistByFuzzyTitle(title: String): List<Playlist> = contentResolver.query(
@@ -185,7 +189,7 @@ fun Context.searchPlaylistByFuzzyTitle(title: String): List<Playlist> = contentR
     arrayOf(
         MediaStore.Audio.Playlists._ID, MediaStore.Audio.Playlists.NAME
     ),
-    "${MediaStore.Audio.Playlists.NAME} like '%$title%'",
+    "${MediaStore.Audio.Playlists.NAME} like '%${title.escapeSql}%'",
     null,
     MediaStore.Audio.Playlists.DEFAULT_SORT_ORDER
 ).use {
@@ -205,7 +209,7 @@ fun Context.searchGenreByFuzzyTitle(title: String): List<Genre> = contentResolve
     arrayOf(
         MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME
     ),
-    "${MediaStore.Audio.Genres.NAME} like '%$title%'",
+    "${MediaStore.Audio.Genres.NAME} like '%${title.escapeSql}%'",
     null,
     MediaStore.Audio.Genres.DEFAULT_SORT_ORDER
 ).use {
@@ -294,7 +298,12 @@ fun Song.getMediaSource(mediaSourceFactory: AdsMediaSource.MediaSourceFactory): 
     mediaSourceFactory.createMediaSource(Uri.fromFile(File(sourcePath)))
 
 fun List<Song>.sortedByTrackOrder(): List<Song> =
-    this.asSequence().groupBy { it.discNum }.map { it.key to it.value.sortedBy { it.trackNum } }.sortedBy { it.first }.toList().flatMap { it.second }
+    this.asSequence()
+        .groupBy { it.discNum }
+        .map { it.key to it.value.sortedBy { it.trackNum } }
+        .sortedBy { it.first }
+        .toList()
+        .flatMap { it.second }
 
 fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> = when (classType) {
     OrientedClassType.ARTIST -> {
@@ -494,7 +503,7 @@ fun DB.storeMediaInfo(
         ?: tag.firstArtwork?.let { artwork ->
             val hex = String(Hex.encodeHex(DigestUtils.md5(artwork.binaryData)))
             val dirName = "images"
-            val dir = File(context.filesDir, dirName)
+            val dir = File(context.externalMediaDirs[0], dirName)
             if (dir.exists().not()) dir.mkdir()
             val imgFile = File(dir, hex)
             FileOutputStream(imgFile).use {
@@ -502,18 +511,31 @@ fun DB.storeMediaInfo(
                 it.flush()
             }
 
-            imgFile.path.apply { Timber.d("geq path: $this") }
+            imgFile.path
         }
     val albumArtistTitle =
         tag.getAll(FieldKey.ALBUM_ARTIST).firstOrNull { it.isNotBlank() }
 
-    val artistId = Artist(0, artistTitle, 0).upsert(this)
-    val albumArtistId = albumArtistTitle?.let { Artist(0, albumArtistTitle, 0).upsert(this) }
+    val artistId = Artist(
+        0,
+        artistTitle,
+        tag.getAll(FieldKey.ARTIST_SORT).firstOrNull { it.isNotBlank() },
+        0
+    ).upsert(this)
+    val albumArtistId = albumArtistTitle?.let {
+        Artist(
+            0,
+            albumArtistTitle,
+            tag.getAll(FieldKey.ALBUM_ARTIST_SORT).firstOrNull { it.isNotBlank() },
+            0
+        ).upsert(this)
+    }
 
     val albumId = Album(
         0,
         albumArtistId ?: artistId,
         albumTitle,
+        tag.getAll(FieldKey.ALBUM_SORT).firstOrNull { it.isNotBlank() },
         artworkUriString,
         albumArtistId != null,
         0
@@ -527,7 +549,9 @@ fun DB.storeMediaInfo(
         trackMediaId,
         trackPath,
         title,
+        tag.getAll(FieldKey.TITLE_SORT).firstOrNull { it.isNotBlank() },
         composerTitle,
+        tag.getAll(FieldKey.COMPOSER_SORT).firstOrNull { it.isNotBlank() },
         duration,
         trackNum,
         discNum,
@@ -556,3 +580,5 @@ private fun Drawable.bitmap(minimumSideLength: Int = 1000, supportAlpha: Boolean
         })
     }
 }
+
+private val String.escapeSql: String get() = replace("'", "''")
