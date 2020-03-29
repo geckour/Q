@@ -6,7 +6,7 @@
 
         <variable
             name="viewModel"
-            type="com.geckour.q.ui.pay.PaymentViewModel" />
+            type="com.geckour.q.presentation.pay.PaymentViewModel" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout

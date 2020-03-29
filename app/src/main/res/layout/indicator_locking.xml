@@ -7,7 +7,7 @@
 
         <variable
             name="viewModel"
-            type="com.geckour.q.ui.main.MainViewModel" />
+            type="com.geckour.q.presentation.main.MainViewModel" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout

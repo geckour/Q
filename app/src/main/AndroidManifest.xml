@@ -20,7 +20,7 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
-            android:name=".ui.LauncherActivity"
+            android:name=".presentation.LauncherActivity"
             android:launchMode="singleTask"
             android:noHistory="true"
             android:theme="@android:style/Theme.NoDisplay">
@@ -32,14 +32,14 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".ui.main.MainActivity" />
+        <activity android:name=".presentation.main.MainActivity" />
 
-        <activity android:name=".ui.setting.SettingActivity" />
+        <activity android:name=".presentation.setting.SettingActivity" />
 
-        <activity android:name=".ui.license.LicenseActivity" />
+        <activity android:name=".presentation.license.LicenseActivity" />
 
         <activity
-            android:name=".ui.share.SharingActivity"
+            android:name=".presentation.share.SharingActivity"
             android:launchMode="singleTask"
             android:noHistory="true"
             android:theme="@android:style/Theme.NoDisplay" />

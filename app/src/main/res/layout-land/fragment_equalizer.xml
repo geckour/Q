@@ -11,7 +11,7 @@
 
         <variable
             name="viewModel"
-            type="com.geckour.q.ui.equalizer.EqualizerViewModel" />
+            type="com.geckour.q.presentation.equalizer.EqualizerViewModel" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout

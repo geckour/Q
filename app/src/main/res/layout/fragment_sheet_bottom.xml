@@ -11,7 +11,7 @@
 
         <variable
             name="viewModel"
-            type="com.geckour.q.ui.sheet.BottomSheetViewModel" />
+            type="com.geckour.q.presentation.sheet.BottomSheetViewModel" />
 
         <variable
             name="isQueueNotEmpty"

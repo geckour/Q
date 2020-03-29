@@ -7,7 +7,7 @@
 
         <variable
             name="viewModel"
-            type="com.geckour.q.ui.easteregg.EasterEggViewModel" />
+            type="com.geckour.q.presentation.easteregg.EasterEggViewModel" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout

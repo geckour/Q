@@ -7,7 +7,7 @@
 
         <variable
             name="viewModel"
-            type="com.geckour.q.ui.main.MainViewModel" />
+            type="com.geckour.q.presentation.main.MainViewModel" />
     </data>
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -52,7 +52,7 @@
 
         <fragment
             android:id="@+id/bottom_sheet"
-            android:name="com.geckour.q.ui.sheet.BottomSheetFragment"
+            android:name="com.geckour.q.presentation.sheet.BottomSheetFragment"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:layout_gravity="bottom"

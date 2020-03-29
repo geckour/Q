@@ -16,13 +16,12 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.PorterDuff
-import android.media.MediaMetadataRetriever
 import android.provider.MediaStore
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.ui.LauncherActivity
-import com.geckour.q.ui.main.MainActivity
+import com.geckour.q.presentation.LauncherActivity
+import com.geckour.q.presentation.main.MainActivity
 import com.geckour.q.util.QNotificationChannel
 import com.geckour.q.util.getNotificationBuilder
 import com.geckour.q.util.storeMediaInfo
