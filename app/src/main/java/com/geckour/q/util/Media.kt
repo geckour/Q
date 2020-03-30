@@ -475,6 +475,11 @@ fun DB.storeMediaInfo(
         return -1
     }
 
+    val lastModified = file.lastModified()
+    if (trackDao().getByMediaId(trackMediaId)?.lastModified ?: -1 >= lastModified) {
+        return -1
+    }
+
     val audioFile = AudioFileIO.read(file)
     val tag = audioFile.tag
     val header = audioFile.audioHeader
@@ -540,6 +545,7 @@ fun DB.storeMediaInfo(
 
     val track = Track(
         0,
+        lastModified,
         albumId,
         artistId,
         albumArtistId,

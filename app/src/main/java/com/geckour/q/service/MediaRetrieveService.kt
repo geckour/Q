@@ -119,9 +119,7 @@ class MediaRetrieveService : IntentService(NAME) {
 
                     if (expired.not()) {
                         val diff = db.trackDao().getAll().map { it.mediaId } - newTrackMediaIds
-                        diff.forEach {
-                            db.deleteTrack(it)
-                        }
+                        diff.forEach { db.deleteTrack(it) }
                     }
                 }
 
