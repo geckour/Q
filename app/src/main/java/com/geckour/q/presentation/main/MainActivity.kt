@@ -22,8 +22,6 @@ import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.domain.model.Song
-import com.geckour.q.service.MediaRetrieveService
-import com.geckour.q.service.PlayerService
 import com.geckour.q.presentation.easteregg.EasterEggFragment
 import com.geckour.q.presentation.equalizer.EqualizerFragment
 import com.geckour.q.presentation.library.album.AlbumListFragment
@@ -38,6 +36,8 @@ import com.geckour.q.presentation.pay.PaymentFragment
 import com.geckour.q.presentation.pay.PaymentViewModel
 import com.geckour.q.presentation.setting.SettingActivity
 import com.geckour.q.presentation.sheet.BottomSheetViewModel
+import com.geckour.q.service.MediaRetrieveService
+import com.geckour.q.service.PlayerService
 import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.ducking
 import com.geckour.q.util.isNightMode
@@ -61,6 +61,7 @@ class MainActivity : CrashlyticsBundledActivity() {
     }
 
     companion object {
+
         private const val ACTION_SYNCING = "action_syncing"
         private const val EXTRA_SYNCING_PROGRESS = "extra_syncing_progress"
         private const val EXTRA_SYNCING_COMPLETE = "extra_syncing_complete"
@@ -117,7 +118,7 @@ class MainActivity : CrashlyticsBundledActivity() {
                     viewModel.syncing = true
                     setLockingIndicator()
                     binding.coordinatorMain.indicatorLocking.progressSync.text =
-                            getString(R.string.progress_sync, this.first, this.second)
+                        getString(R.string.progress_sync, this.first, this.second)
                 }
             }
         }
@@ -132,18 +133,18 @@ class MainActivity : CrashlyticsBundledActivity() {
             R.id.nav_playlist -> PlaylistListFragment.newInstance()
             R.id.nav_setting -> {
                 startActivityForResult(
-                        SettingActivity.createIntent(this), RequestCode.RESULT_SETTING.code
+                    SettingActivity.createIntent(this), RequestCode.RESULT_SETTING.code
                 )
                 null
             }
             R.id.nav_equalizer -> EqualizerFragment.newInstance()
             R.id.nav_sync -> {
                 FirebaseAnalytics.getInstance(this)
-                        .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
-                            putString(
-                                    FirebaseAnalytics.Param.ITEM_NAME, "Invoked force sync"
-                            )
-                        })
+                    .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
+                        putString(
+                            FirebaseAnalytics.Param.ITEM_NAME, "Invoked force sync"
+                        )
+                    })
 
                 retrieveMediaWithPermissionCheck()
                 null
@@ -154,7 +155,7 @@ class MainActivity : CrashlyticsBundledActivity() {
         if (fragment != null) {
             supportFragmentManager.beginTransaction().apply {
                 if ((binding.coordinatorMain.contentMain.root as FrameLayout).childCount == 0) add(
-                        R.id.content_main, fragment
+                    R.id.content_main, fragment
                 )
                 else {
                     replace(R.id.content_main, fragment)
@@ -187,7 +188,7 @@ class MainActivity : CrashlyticsBundledActivity() {
             onNavigationItemSelected(binding.navigationView.menu.findItem(navId))
         } else if (savedInstanceState.containsKey(STATE_KEY_REQUESTED_TRANSACTION)) {
             requestedTransaction =
-                    savedInstanceState.getParcelable(STATE_KEY_REQUESTED_TRANSACTION) as RequestedTransaction
+                savedInstanceState.getParcelable(STATE_KEY_REQUESTED_TRANSACTION) as RequestedTransaction
         }
     }
 
@@ -225,7 +226,7 @@ class MainActivity : CrashlyticsBundledActivity() {
     override fun onBackPressed() {
         when {
             binding.drawerLayout.isDrawerOpen(binding.navigationView) -> binding.drawerLayout.closeDrawer(
-                    binding.navigationView
+                binding.navigationView
             )
             bottomSheetViewModel.sheetState == BottomSheetBehavior.STATE_EXPANDED -> bottomSheetViewModel.toggleSheetState.call()
             else -> super.onBackPressed()
@@ -233,7 +234,7 @@ class MainActivity : CrashlyticsBundledActivity() {
     }
 
     override fun onRequestPermissionsResult(
-            requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
 
@@ -253,14 +254,14 @@ class MainActivity : CrashlyticsBundledActivity() {
     }
 
     @NeedsPermission(
-            Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE
+        Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE
     )
     internal fun retrieveMedia() {
         startService(MediaRetrieveService.getIntent(this, false))
     }
 
     @OnPermissionDenied(
-            Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE
+        Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE
     )
     internal fun onReadExternalStorageDenied() {
         retrieveMediaWithPermissionCheck()
@@ -294,17 +295,17 @@ class MainActivity : CrashlyticsBundledActivity() {
                     else -> false
                 }
             }?.tag ?: getString(
-                    when (navId) {
-                        R.id.nav_artist -> R.string.nav_artist
-                        R.id.nav_album -> R.string.nav_album
-                        R.id.nav_song -> R.string.nav_song
-                        R.id.nav_genre -> R.string.nav_genre
-                        R.id.nav_playlist -> R.string.nav_playlist
-                        R.id.nav_equalizer -> R.string.nav_equalizer
-                        R.id.nav_pay -> R.string.nav_pay
-                        R.layout.fragment_easter_egg -> R.string.nav_fortune
-                        else -> return@observe
-                    }
+                when (navId) {
+                    R.id.nav_artist -> R.string.nav_artist
+                    R.id.nav_album -> R.string.nav_album
+                    R.id.nav_song -> R.string.nav_song
+                    R.id.nav_genre -> R.string.nav_genre
+                    R.id.nav_playlist -> R.string.nav_playlist
+                    R.id.nav_equalizer -> R.string.nav_equalizer
+                    R.id.nav_pay -> R.string.nav_pay
+                    R.layout.fragment_easter_egg -> R.string.nav_fortune
+                    else -> return@observe
+                }
             )
             supportActionBar?.title = title
         }
@@ -325,7 +326,7 @@ class MainActivity : CrashlyticsBundledActivity() {
         viewModel.selectedArtist.observe(this) {
             if (it == null) return@observe
             requestedTransaction = RequestedTransaction(
-                    RequestedTransaction.Tag.ARTIST, artist = it
+                RequestedTransaction.Tag.ARTIST, artist = it
             )
             tryTransaction()
         }
@@ -345,7 +346,7 @@ class MainActivity : CrashlyticsBundledActivity() {
         viewModel.selectedPlaylist.observe(this) {
             if (it == null) return@observe
             requestedTransaction = RequestedTransaction(
-                    RequestedTransaction.Tag.PLAYLIST, playlist = it
+                RequestedTransaction.Tag.PLAYLIST, playlist = it
             )
             tryTransaction()
         }
@@ -388,19 +389,19 @@ class MainActivity : CrashlyticsBundledActivity() {
         bottomSheetViewModel.playbackButton.observe(this) {
             if (it == null) return@observe
             PlayerService.mediaSession?.controller?.dispatchMediaButtonEvent(
-                    KeyEvent(
-                            if (it == PlaybackButton.UNDEFINED)
-                                KeyEvent.ACTION_UP
-                            else KeyEvent.ACTION_DOWN,
-                            when (it) {
-                                PlaybackButton.PLAY_OR_PAUSE -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-                                PlaybackButton.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
-                                PlaybackButton.PREV -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
-                                PlaybackButton.FF -> KeyEvent.KEYCODE_MEDIA_FAST_FORWARD
-                                PlaybackButton.REWIND -> KeyEvent.KEYCODE_MEDIA_REWIND
-                                PlaybackButton.UNDEFINED -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-                            }
-                    )
+                KeyEvent(
+                    if (it == PlaybackButton.UNDEFINED)
+                        KeyEvent.ACTION_UP
+                    else KeyEvent.ACTION_DOWN,
+                    when (it) {
+                        PlaybackButton.PLAY_OR_PAUSE -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+                        PlaybackButton.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
+                        PlaybackButton.PREV -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
+                        PlaybackButton.FF -> KeyEvent.KEYCODE_MEDIA_FAST_FORWARD
+                        PlaybackButton.REWIND -> KeyEvent.KEYCODE_MEDIA_REWIND
+                        PlaybackButton.UNDEFINED -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+                    }
+                )
             )
         }
 
@@ -418,29 +419,29 @@ class MainActivity : CrashlyticsBundledActivity() {
         paymentViewModel.saveSuccess.observe(this) {
             if (it == null) return@observe
             Snackbar.make(
-                    binding.root, if (it) R.string.payment_save_success
-            else R.string.payment_save_failure, Snackbar.LENGTH_SHORT
+                binding.root, if (it) R.string.payment_save_success
+                else R.string.payment_save_failure, Snackbar.LENGTH_SHORT
             ).show()
         }
     }
 
     private fun setupDrawer() {
         drawerToggle = ActionBarDrawerToggle(
-                this,
-                binding.drawerLayout,
-                binding.coordinatorMain.toolbar,
-                R.string.drawer_open,
-                R.string.drawer_close
+            this,
+            binding.drawerLayout,
+            binding.coordinatorMain.toolbar,
+            R.string.drawer_open,
+            R.string.drawer_close
         )
         binding.drawerLayout.addDrawerListener(drawerToggle)
         drawerToggle.syncState()
         binding.navigationView.setNavigationItemSelectedListener(onNavigationItemSelected)
         binding.navigationView.getHeaderView(0).findViewById<View>(R.id.drawer_head_icon)
-                ?.setOnLongClickListener {
-                    requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.EASTER_EGG)
-                    tryTransaction()
-                    true
-                }
+            ?.setOnLongClickListener {
+                requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.EASTER_EGG)
+                tryTransaction()
+                true
+            }
     }
 
     private fun setLockingIndicator() {
@@ -473,10 +474,10 @@ class MainActivity : CrashlyticsBundledActivity() {
 
     private fun toggleIndicateLock(locking: Boolean) {
         binding.coordinatorMain.indicatorLocking.root.visibility =
-                if (locking) View.VISIBLE else View.GONE
+            if (locking) View.VISIBLE else View.GONE
         binding.drawerLayout.setDrawerLockMode(
-                if (locking) DrawerLayout.LOCK_MODE_LOCKED_CLOSED
-                else DrawerLayout.LOCK_MODE_UNLOCKED
+            if (locking) DrawerLayout.LOCK_MODE_LOCKED_CLOSED
+            else DrawerLayout.LOCK_MODE_UNLOCKED
         )
     }
 
@@ -489,52 +490,52 @@ class MainActivity : CrashlyticsBundledActivity() {
                     RequestedTransaction.Tag.ARTIST -> {
                         if (artist != null) {
                             supportFragmentManager.beginTransaction().replace(
-                                    R.id.content_main, AlbumListFragment.newInstance(
+                                R.id.content_main, AlbumListFragment.newInstance(
                                     artist
-                            ), artist.name
+                                ), artist.name
                             ).addToBackStack(
-                                    null
+                                null
                             ).commit()
                         }
                     }
                     RequestedTransaction.Tag.ALBUM -> {
                         if (album != null) {
                             supportFragmentManager.beginTransaction().replace(
-                                    R.id.content_main, SongListFragment.newInstance(
+                                R.id.content_main, SongListFragment.newInstance(
                                     album
-                            ), album.name
+                                ), album.name
                             ).addToBackStack(
-                                    null
+                                null
                             ).commit()
                         }
                     }
                     RequestedTransaction.Tag.GENRE -> {
                         if (genre != null) {
                             supportFragmentManager.beginTransaction().replace(
-                                    R.id.content_main, SongListFragment.newInstance(
+                                R.id.content_main, SongListFragment.newInstance(
                                     genre
-                            ), genre.name
+                                ), genre.name
                             ).addToBackStack(
-                                    null
+                                null
                             ).commit()
                         }
                     }
                     RequestedTransaction.Tag.PLAYLIST -> {
                         if (playlist != null) {
                             supportFragmentManager.beginTransaction().replace(
-                                    R.id.content_main, SongListFragment.newInstance(
+                                R.id.content_main, SongListFragment.newInstance(
                                     playlist
-                            ), playlist.name
+                                ), playlist.name
                             ).addToBackStack(
-                                    null
+                                null
                             ).commit()
                         }
                     }
                     RequestedTransaction.Tag.EASTER_EGG -> {
                         supportFragmentManager.beginTransaction().replace(
-                                R.id.content_main, EasterEggFragment.newInstance()
+                            R.id.content_main, EasterEggFragment.newInstance()
                         ).addToBackStack(
-                                null
+                            null
                         ).commit()
                         binding.drawerLayout.closeDrawer(binding.navigationView)
                     }
@@ -547,7 +548,7 @@ class MainActivity : CrashlyticsBundledActivity() {
     private fun dismissSearch() {
         binding.coordinatorMain.contentSearch.root.visibility = View.GONE
         getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(
-                currentFocus?.windowToken, 0
+            currentFocus?.windowToken, 0
         )
     }
 
@@ -560,9 +561,9 @@ class MainActivity : CrashlyticsBundledActivity() {
             }
         }
         contentResolver.delete(
-                MediaStore.Files.getContentUri("external"),
-                "${MediaStore.Files.FileColumns.DATA}=?",
-                arrayOf(song.sourcePath)
+            MediaStore.Files.getContentUri("external"),
+            "${MediaStore.Files.FileColumns.DATA}=?",
+            arrayOf(song.sourcePath)
         )
 
         viewModel.deleteSongFromDB(song)

@@ -7,6 +7,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
 import androidx.lifecycle.viewModelScope
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
@@ -25,52 +27,37 @@ import com.geckour.q.util.getTimeString
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.sortedByTrackOrder
+import com.geckour.q.util.toHiragana
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class AlbumListAdapter(private val viewModel: MainViewModel) :
-    RecyclerView.Adapter<AlbumListAdapter.ViewHolder>() {
+    ListAdapter<Album, AlbumListAdapter.ViewHolder>(diffCallback) {
 
-    private val items: ArrayList<Album> = ArrayList()
+    companion object {
 
-    internal fun setItems(items: List<Album>) {
-        this.items.clear()
-        upsertItems(items)
-        notifyDataSetChanged()
-    }
+        val diffCallback = object : DiffUtil.ItemCallback<Album>() {
 
-    internal fun getItems(): List<Album> = items
+            override fun areItemsTheSame(oldItem: Album, newItem: Album): Boolean =
+                oldItem.id == newItem.id
 
-    private fun upsertItem(item: Album) {
-        var index = items.indexOfFirst { it.id == item.id }
-        if (index < 0) {
-            val tempList = ArrayList(items).apply { add(item) }
-                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {
-                    it.nameSort ?: it.name ?: UNKNOWN
-                })
-            index = tempList.indexOf(item)
-            items.add(index, item)
-            notifyItemInserted(index)
-        } else {
-            items[index] = item
-            notifyItemChanged(index)
+            override fun areContentsTheSame(oldItem: Album, newItem: Album): Boolean =
+                oldItem == newItem
         }
     }
 
-    internal fun upsertItems(items: List<Album>) {
-        val increased = items.map { it.id } - this.items.map { it.id }
-        val decreased = this.items.map { it.id } - items.map { it.id }
-        increased.forEach { id -> upsertItem(items.first { it.id == id }) }
-        decreased.forEach { removeItem(it) }
+    override fun submitList(list: List<Album>?) {
+        super.submitList(
+            list?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {
+                (it.nameSort ?: it.name)?.toHiragana ?: UNKNOWN
+            })
+        )
     }
 
     private fun removeItem(albumId: Long) {
-        val index = items.indexOfFirst { it.id == albumId }
-        if (index < 0) return
-        items.removeAt(index)
-        notifyItemRemoved(index)
+        submitList(currentList.dropWhile { it.id == albumId })
     }
 
     internal fun onAlbumDeleted(albumId: Long) {
@@ -93,8 +80,6 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
         )
     )
 
-    override fun getItemCount(): Int = items.size
-
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         holder.bind()
     }
@@ -113,7 +98,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
         }
 
         fun bind() {
-            val album = items[adapterPosition]
+            val album = getItem(adapterPosition)
             binding.data = album
             binding.duration.text = album.totalDuration.getTimeString()
             binding.root.setOnClickListener { viewModel.onRequestNavigate(album) }

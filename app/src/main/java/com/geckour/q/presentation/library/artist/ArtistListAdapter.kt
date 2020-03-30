@@ -7,6 +7,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
 import androidx.lifecycle.viewModelScope
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
@@ -24,54 +26,41 @@ import com.geckour.q.util.getTimeString
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.sortedByTrackOrder
+import com.geckour.q.util.toHiragana
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class ArtistListAdapter(private val viewModel: MainViewModel) :
-    RecyclerView.Adapter<ArtistListAdapter.ViewHolder>() {
+    ListAdapter<Artist, ArtistListAdapter.ViewHolder>(diffCallback) {
 
-    private val items: ArrayList<Artist> = ArrayList()
+    companion object {
 
-    internal fun setItems(items: List<Artist>) {
-        this.items.clear()
-        upsertItems(items)
-        notifyDataSetChanged()
-    }
+        val diffCallback = object : DiffUtil.ItemCallback<Artist>() {
 
-    internal fun getItems(): List<Artist> = items
+            override fun areItemsTheSame(oldItem: Artist, newItem: Artist): Boolean =
+                oldItem.id == newItem.id
 
-    private fun removeItem(artistId: Long) {
-        val index = items.indexOfFirst { it.id == artistId }
-        if (index < 0) return
-        items.removeAt(index)
-        notifyItemRemoved(index)
-    }
-
-    private fun upsertItem(item: Artist) {
-        var index = items.indexOfFirst { it.id == item.id }
-        if (index < 0) {
-            val tempList = ArrayList(items).apply { add(item) }
-                .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.nameSort ?: it.name })
-            index = tempList.indexOf(item)
-            items.add(index, item)
-            notifyItemInserted(index)
-        } else {
-            items[index] = item
-            notifyItemChanged(index)
+            override fun areContentsTheSame(oldItem: Artist, newItem: Artist): Boolean =
+                oldItem == newItem
         }
     }
 
-    internal fun upsertItems(items: List<Artist>) {
-        val increased = items.map { it.id } - this.items.map { it.id }
-        val decreased = this.items.map { it.id } - items.map { it.id }
-        increased.forEach { id -> upsertItem(items.first { it.id == id }) }
-        decreased.forEach { removeItem(it) }
+    override fun submitList(list: List<Artist>?) {
+        super.submitList(
+            list?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {
+                (it.nameSort ?: it.name).toHiragana
+            })
+        )
     }
 
     internal fun onArtistDeleted(artistId: Long) {
         removeItem(artistId)
+    }
+
+    private fun removeItem(artistId: Long) {
+        submitList(currentList.dropWhile { it.id == artistId })
     }
 
     internal fun onNewQueue(
@@ -89,8 +78,6 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
             LayoutInflater.from(parent.context), parent, false
         )
     )
-
-    override fun getItemCount(): Int = items.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         holder.bind()
@@ -110,7 +97,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
         }
 
         fun bind() {
-            val artist = items[adapterPosition]
+            val artist = getItem(adapterPosition)
             binding.data = artist
             binding.duration.text = artist.totalDuration.getTimeString()
             binding.root.setOnClickListener { viewModel.onRequestNavigate(artist) }

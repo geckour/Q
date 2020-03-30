@@ -7,6 +7,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
 import androidx.lifecycle.viewModelScope
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
@@ -24,6 +26,7 @@ import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainModel
+import com.geckour.q.util.toHiragana
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -31,72 +34,45 @@ import timber.log.Timber
 
 class SongListAdapter(
     private val viewModel: MainViewModel, private val classType: OrientedClassType
-) : RecyclerView.Adapter<SongListAdapter.ViewHolder>() {
+) : ListAdapter<Song, SongListAdapter.ViewHolder>(diffCallback) {
 
-    private val items: ArrayList<Song> = ArrayList()
+    companion object {
 
-    internal fun setItems(items: List<Song>) {
-        this.items.clear()
-        upsertItems(items)
-        notifyDataSetChanged()
-    }
+        val diffCallback = object : DiffUtil.ItemCallback<Song>() {
 
-    private fun upsertItem(item: Song, sortByTrackOrder: Boolean = true) {
-        var index = items.indexOfFirst { it.id == item.id }
-        if (index < 0) {
-            val tempList = (items + item).let {
-                if (sortByTrackOrder) it.sortedByTrackOrder()
-                else it.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {
-                    it.nameSort ?: it.name ?: UNKNOWN
-                })
-            }
+            override fun areItemsTheSame(oldItem: Song, newItem: Song): Boolean =
+                oldItem.id == newItem.id
 
-            index = tempList.indexOf(item)
-            items.add(index, item)
-            notifyItemInserted(index)
-        } else {
-            items[index] = item
-            notifyItemChanged(index)
+            override fun areContentsTheSame(oldItem: Song, newItem: Song): Boolean =
+                oldItem == newItem
         }
     }
 
-    internal fun upsertItems(items: List<Song>, sortByTrackOrder: Boolean = true) {
-        val increased = items.map { it.id } - this.items.map { it.id }
-        val decreased = this.items.map { it.id } - items.map { it.id }
-        increased.forEach { id -> upsertItem(items.first { it.id == id }, sortByTrackOrder) }
-        decreased.forEach { removeItem(it) }
+    fun submitList(list: List<Song>?, sortByTrackOrder: Boolean = true) {
+        submitList(
+            if (sortByTrackOrder) list?.sortedByTrackOrder()
+            else list?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {
+                (it.nameSort ?: it.name)?.toHiragana ?: UNKNOWN
+            })
+        )
     }
 
     private fun removeItem(songId: Long) {
-        items.asSequence().mapIndexed { i, s -> i to s }.filter { it.second.id == songId }.toList()
-            .forEach {
-                items.removeAt(it.first)
-                notifyItemRemoved(it.first)
-            }
-    }
-
-    internal fun addItems(items: List<Song>) {
-        val size = itemCount
-        this.items.addAll(items)
-        notifyItemRangeInserted(size, items.size)
+        submitList(currentList.dropLastWhile { it.id == songId })
     }
 
     internal fun removeByTrackNum(trackNum: Int) {
-        val index = this.items.indexOfFirst { it.trackNum == trackNum }
-        if (index !in this.items.indices) return
-        this.items.removeAt(index)
-        notifyItemRemoved(index)
+        submitList(currentList.dropWhile { it.trackNum == trackNum })
     }
 
     internal fun clearItems() {
-        this.items.clear()
-        notifyDataSetChanged()
+        submitList(null)
     }
 
     internal fun onNewQueue(context: Context, actionType: InsertActionType) {
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
         viewModel.onNewQueue(
-            items.let {
+            currentList.let {
                 if (sharedPreferences.ignoringEnabled) it.filter { it.ignored != true }
                 else it
             }, actionType, OrientedClassType.SONG
@@ -112,8 +88,6 @@ class SongListAdapter(
             LayoutInflater.from(parent.context), parent, false
         )
     )
-
-    override fun getItemCount(): Int = items.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         holder.bind()
@@ -197,7 +171,7 @@ class SongListAdapter(
         }
 
         fun bind() {
-            val song = items[adapterPosition]
+            val song = getItem(adapterPosition)
             binding.data = song
             binding.duration.text = song.durationString
             viewModel.viewModelScope.launch(Dispatchers.IO) {

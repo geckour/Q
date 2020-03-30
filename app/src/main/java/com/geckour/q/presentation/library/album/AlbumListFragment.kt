@@ -64,7 +64,7 @@ class AlbumListFragment : Fragment() {
     private var artist: Artist? = null
 
     override fun onCreateView(
-            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
         observeEvents()
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
@@ -121,7 +121,7 @@ class AlbumListFragment : Fragment() {
                 val toggleTo = sharedPreferences.isNightMode.not()
                 sharedPreferences.isNightMode = toggleTo
                 (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
-                        toggleTo.toNightModeInt
+                    toggleTo.toNightModeInt
                 return true
             }
 
@@ -143,12 +143,12 @@ class AlbumListFragment : Fragment() {
                     it != R.id.menu_insert_all_simple_shuffle_next || it != R.id.menu_insert_all_simple_shuffle_last || it != R.id.menu_override_all_simple_shuffle
                 }
                 mainViewModel.loading.postValue(true)
-                val songs = adapter.getItems().map {
+                val songs = adapter.currentList.map {
                     DB.getInstance(context).let { db ->
                         db.trackDao().findByAlbum(
-                                it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                            it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                         ).mapNotNull { getSong(db, it) }
-                                .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
+                            .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                     }
                 }.apply {
                     mainViewModel.loading.postValue(false)
@@ -172,7 +172,7 @@ class AlbumListFragment : Fragment() {
                     mainViewModel.loading.value = true
                     val items = withContext(Dispatchers.IO) { fetchAlbums(DB.getInstance(context)) }
                     mainViewModel.loading.value = false
-                    adapter.setItems(items)
+                    adapter.submitList(items)
                     binding.recyclerView.smoothScrollToPosition(0)
                 }
             }
@@ -203,8 +203,8 @@ class AlbumListFragment : Fragment() {
 
     private fun fetchAlbums(db: DB): List<Album> =
 
-            (artist?.let { db.albumDao().findByArtistId(it.id) }
-                    ?: db.albumDao().getAll()).getAlbumList(db)
+        (artist?.let { db.albumDao().findByArtistId(it.id) }
+            ?: db.albumDao().getAll()).getAlbumList(db)
 
     private fun upsertAlbumListIfPossible(db: DB) {
         viewModel.viewModelScope.launch {
@@ -220,7 +220,7 @@ class AlbumListFragment : Fragment() {
             chatteringCancelFlag = true
             viewModel.viewModelScope.launch {
                 delay(500)
-                adapter.upsertItems(items)
+                adapter.submitList(items)
                 chatteringCancelFlag = false
             }
         }

@@ -38,6 +38,7 @@ import kotlinx.coroutines.withContext
 class ArtistListFragment : Fragment() {
 
     companion object {
+
         fun newInstance(): ArtistListFragment = ArtistListFragment()
     }
 
@@ -134,7 +135,7 @@ class ArtistListFragment : Fragment() {
                 }
                 val artistAlbumMap = latestDbAlbumList.groupBy { it.artistId }
                 mainViewModel.loading.postValue(true)
-                val songs = adapter.getItems().mapNotNull {
+                val songs = adapter.currentList.mapNotNull {
                     artistAlbumMap[it.id]?.map {
                         DB.getInstance(context).let { db ->
                             db.trackDao().findByAlbum(
@@ -164,7 +165,7 @@ class ArtistListFragment : Fragment() {
             context?.also { context ->
                 viewModel.viewModelScope.launch {
                     mainViewModel.loading.value = true
-                    adapter.setItems(fetchArtists(DB.getInstance(context)))
+                    adapter.submitList(fetchArtists(DB.getInstance(context)))
                     mainViewModel.loading.value = false
                     binding.recyclerView.smoothScrollToPosition(0)
                 }
@@ -202,7 +203,7 @@ class ArtistListFragment : Fragment() {
                 val items = albumList.getArtistList(db)
                 mainViewModel.loading.value = false
 
-                adapter.upsertItems(items)
+                adapter.submitList(items)
                 chatteringCancelFlag = false
             }
         }

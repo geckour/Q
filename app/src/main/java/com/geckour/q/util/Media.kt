@@ -302,7 +302,6 @@ fun List<Song>.sortedByTrackOrder(): List<Song> =
         .groupBy { it.discNum }
         .map { it.key to it.value.sortedBy { it.trackNum } }
         .sortedBy { it.first }
-        .toList()
         .flatMap { it.second }
 
 fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> = when (classType) {
