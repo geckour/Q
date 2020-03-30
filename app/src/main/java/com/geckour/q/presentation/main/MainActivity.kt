@@ -37,7 +37,6 @@ import com.geckour.q.presentation.pay.PaymentViewModel
 import com.geckour.q.presentation.setting.SettingActivity
 import com.geckour.q.presentation.sheet.BottomSheetViewModel
 import com.geckour.q.service.MediaRetrieveService
-import com.geckour.q.service.PlayerService
 import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.ducking
 import com.geckour.q.util.isNightMode
@@ -388,21 +387,17 @@ class MainActivity : CrashlyticsBundledActivity() {
 
         bottomSheetViewModel.playbackButton.observe(this) {
             if (it == null) return@observe
-            PlayerService.mediaSession?.controller?.dispatchMediaButtonEvent(
-                KeyEvent(
-                    if (it == PlaybackButton.UNDEFINED)
-                        KeyEvent.ACTION_UP
-                    else KeyEvent.ACTION_DOWN,
-                    when (it) {
-                        PlaybackButton.PLAY_OR_PAUSE -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-                        PlaybackButton.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
-                        PlaybackButton.PREV -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
-                        PlaybackButton.FF -> KeyEvent.KEYCODE_MEDIA_FAST_FORWARD
-                        PlaybackButton.REWIND -> KeyEvent.KEYCODE_MEDIA_REWIND
-                        PlaybackButton.UNDEFINED -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-                    }
-                )
-            )
+            viewModel.player.value?.onMediaButtonEvent(KeyEvent(
+                if (it == PlaybackButton.UNDEFINED) KeyEvent.ACTION_UP else KeyEvent.ACTION_DOWN,
+                when (it) {
+                    PlaybackButton.PLAY_OR_PAUSE -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+                    PlaybackButton.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
+                    PlaybackButton.PREV -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
+                    PlaybackButton.FF -> KeyEvent.KEYCODE_MEDIA_FAST_FORWARD
+                    PlaybackButton.REWIND -> KeyEvent.KEYCODE_MEDIA_REWIND
+                    PlaybackButton.UNDEFINED -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+                }
+            ))
         }
 
         bottomSheetViewModel.clearQueue.observe(this) {

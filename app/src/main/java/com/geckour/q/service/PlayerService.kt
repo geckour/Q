@@ -54,12 +54,14 @@ import com.google.android.exoplayer2.source.TrackGroupArray
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
+import com.google.android.exoplayer2.util.EventLogger
 import com.google.android.exoplayer2.util.Util
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
@@ -85,9 +87,7 @@ class PlayerService : Service() {
 
         private const val SOURCE_ACTION_WIRED_STATE = Intent.ACTION_HEADSET_PLUG
         private const val SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE =
-                BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED
-
-        var mediaSession: MediaSessionCompat? = null
+            BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED
     }
 
     private val binder = PlayerBinder()
@@ -186,8 +186,10 @@ class PlayerService : Service() {
 
     private val player: SimpleExoPlayer by lazy {
         ducking = sharedPreferences.ducking
-        ExoPlayerFactory.newSimpleInstance(this, DefaultTrackSelector()).apply {
+        val trackSelector = DefaultTrackSelector()
+        ExoPlayerFactory.newSimpleInstance(this, trackSelector).apply {
             addAudioListener(object : AudioListener {
+
                 override fun onAudioSessionId(audioSessionId: Int) {
                     super.onAudioSessionId(audioSessionId)
 
@@ -196,8 +198,11 @@ class PlayerService : Service() {
             })
             addListener(eventListener)
             setAudioAttributes(AudioAttributes.Builder().build(), ducking)
+            addAnalyticsListener(EventLogger(trackSelector))
         }
     }
+
+    lateinit var mediaSession: MediaSessionCompat
     private val currentPosition
         get() = when (player.currentWindowIndex) {
             -1 -> if (source.size > 0) 0 else -1
@@ -233,11 +238,9 @@ class PlayerService : Service() {
         override fun onSeekProcessed() = Unit
 
         override fun onTracksChanged(
-                trackGroups: TrackGroupArray?, trackSelections: TrackSelectionArray?
+            trackGroups: TrackGroupArray?, trackSelections: TrackSelectionArray?
         ) {
-            serviceScope.launch(Dispatchers.Main) {
-                onCurrentPositionChanged?.invoke(currentPosition, songChanged)
-            }
+            onCurrentPositionChanged?.invoke(currentPosition, songChanged)
             notificationUpdateJob.cancel()
             notificationUpdateJob = showNotification()
             playbackCountIncreaseJob = increasePlaybackCount()
@@ -254,46 +257,48 @@ class PlayerService : Service() {
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = Unit
 
         override fun onTimelineChanged(timeline: Timeline?, manifest: Any?, reason: Int) {
-            serviceScope.launch(Dispatchers.Main) {
-                onQueueChanged?.invoke(queue)
-                onCurrentPositionChanged?.invoke(currentPosition, songChanged)
-            }
+            onQueueChanged?.invoke(queue)
+            onCurrentPositionChanged?.invoke(currentPosition, songChanged)
             if (source.size < 1) {
                 destroyNotification()
             }
         }
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
-            val sessionPlaybackState = when (playbackState) {
-                Player.STATE_BUFFERING -> PlaybackState.STATE_BUFFERING
-                Player.STATE_ENDED -> PlaybackState.STATE_STOPPED
-                Player.STATE_IDLE -> PlaybackState.STATE_NONE
-                Player.STATE_READY -> {
-                    if (playWhenReady) PlaybackState.STATE_PLAYING
-                    else PlaybackState.STATE_PAUSED
-                }
-                else -> PlaybackState.STATE_ERROR
-            }
-            mediaSession?.setPlaybackState(PlaybackStateCompat.Builder()
-                    .setState(sessionPlaybackState, player.currentPosition, 1f)
-                    .build())
+            mediaSession.setPlaybackState(
+                PlaybackStateCompat.Builder()
+                    .setState(
+                        getPlaybackState(playWhenReady, playbackState),
+                        player.currentPosition,
+                        1f
+                    )
+                    .build()
+            )
 
             if (currentPosition == source.size - 1
-                    && playbackState == Player.STATE_ENDED
-                    && player.repeatMode == Player.REPEAT_MODE_OFF) {
-                stop()
-            }
+                && playbackState == Player.STATE_ENDED
+                && player.repeatMode == Player.REPEAT_MODE_OFF
+            ) stop()
 
             if (playbackState == Player.STATE_READY) {
                 notificationUpdateJob.cancel()
                 notificationUpdateJob = showNotification()
             }
-
-            serviceScope.launch(Dispatchers.Main) {
-                onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
-            }
+            onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
         }
     }
+
+    private fun getPlaybackState(playWhenReady: Boolean, playbackState: Int) =
+        when (playbackState) {
+            Player.STATE_BUFFERING -> PlaybackState.STATE_BUFFERING
+            Player.STATE_ENDED -> PlaybackState.STATE_STOPPED
+            Player.STATE_IDLE -> PlaybackState.STATE_NONE
+            Player.STATE_READY -> {
+                if (playWhenReady) PlaybackState.STATE_PLAYING
+                else PlaybackState.STATE_PAUSED
+            }
+            else -> PlaybackState.STATE_ERROR
+        }
 
     private val headsetStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -319,7 +324,7 @@ class PlayerService : Service() {
 
     private var job = Job()
     private val serviceScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = job
+        override val coroutineContext: CoroutineContext get() = job + Dispatchers.IO
     }
     private var notificationUpdateJob: Job = Job()
     private var notifyPlaybackRatioJob: Job = Job()
@@ -347,27 +352,33 @@ class PlayerService : Service() {
         job = Job()
 
         mediaSession = MediaSessionCompat(this, TAG).apply {
-            setPlaybackState(PlaybackStateCompat.Builder()
-                    .setActions(PlaybackStateCompat.ACTION_PLAY or
-                            PlaybackStateCompat.ACTION_PAUSE or
-                            PlaybackStateCompat.ACTION_PLAY_PAUSE or
-                            PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
-                            PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
-                            PlaybackStateCompat.ACTION_FAST_FORWARD or
-                            PlaybackStateCompat.ACTION_REWIND or
-                            PlaybackStateCompat.ACTION_SEEK_TO)
-                    .build())
-            setFlags(MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS
-                    or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS)
+            setPlaybackState(
+                PlaybackStateCompat.Builder()
+                    .setActions(
+                        PlaybackStateCompat.ACTION_PLAY or
+                                PlaybackStateCompat.ACTION_PAUSE or
+                                PlaybackStateCompat.ACTION_PLAY_PAUSE or
+                                PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
+                                PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
+                                PlaybackStateCompat.ACTION_FAST_FORWARD or
+                                PlaybackStateCompat.ACTION_REWIND or
+                                PlaybackStateCompat.ACTION_SEEK_TO
+                    )
+                    .build()
+            )
+            setFlags(
+                MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS
+                        or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
+            )
             setCallback(mediaSessionCallback)
             isActive = false
         }
 
         mediaSourceFactory = ProgressiveMediaSource.Factory(
-                DefaultDataSourceFactory(
-                        applicationContext,
-                        Util.getUserAgent(applicationContext, packageName)
-                )
+            DefaultDataSourceFactory(
+                applicationContext,
+                Util.getUserAgent(applicationContext, packageName)
+            )
         )
 
         registerReceiver(headsetStateReceiver, IntentFilter().apply {
@@ -383,8 +394,6 @@ class PlayerService : Service() {
 
         stop()
         player.stop(true)
-        mediaSession = null
-        equalizer = null
         destroyNotification()
         unregisterReceiver(headsetStateReceiver)
         job.cancel()
@@ -395,39 +404,14 @@ class PlayerService : Service() {
         super.onDestroy()
     }
 
-    private fun onNotificationAction(intent: Intent) {
-        if (intent.hasExtra(ARGS_KEY_CONTROL_COMMAND)) {
-            val key = intent.extras?.getInt(ARGS_KEY_CONTROL_COMMAND, -1) ?: return
-            when (NotificationCommand.values()[key]) {
-                NotificationCommand.PLAY_PAUSE ->
-                    sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
-                NotificationCommand.NEXT ->
-                    sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_NEXT)
-                NotificationCommand.PREV ->
-                    sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
-                NotificationCommand.DESTROY -> onRequestedStopService()
-            }
+    fun onRequestedStopService() {
+        if (player.playWhenReady.not()) {
+            stopSelf()
         }
     }
 
-    private fun sendMediaButtonDownEvent(keyCode: Int) {
-        mediaSession?.controller?.dispatchMediaButtonEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
-    }
-
-    private fun sendMediaButtonUpEvent(keyCode: Int) {
-        mediaSession?.controller?.dispatchMediaButtonEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
-    }
-
-    private fun onSettingAction(intent: Intent) {
-        if (intent.hasExtra(ARGS_KEY_SETTING_COMMAND)) {
-            val key = intent.extras?.getInt(ARGS_KEY_SETTING_COMMAND, -1) ?: return
-            when (SettingCommand.values()[key]) {
-                SettingCommand.SET_EQUALIZER ->
-                    player.audioSessionId.apply { setEqualizer(if (this != 0) this else null) }
-                SettingCommand.UNSET_EQUALIZER -> setEqualizer(null)
-                SettingCommand.REFLECT_EQUALIZER_SETTING -> reflectEqualizerSettings()
-            }
-        }
+    fun onMediaButtonEvent(event: KeyEvent) {
+        mediaSession.controller?.dispatchMediaButtonEvent(event)
     }
 
     fun setOnQueueChangedListener(listener: ((List<Song>) -> Unit)?) {
@@ -439,7 +423,8 @@ class PlayerService : Service() {
     }
 
     fun setOnPlaybackStateChangeListener(
-            listener: ((playbackState: Int, playWhenReady: Boolean) -> Unit)?) {
+        listener: ((playbackState: Int, playWhenReady: Boolean) -> Unit)?
+    ) {
         this.onPlaybackStateChanged = listener
     }
 
@@ -459,16 +444,6 @@ class PlayerService : Service() {
         this.onDestroyed = listener
     }
 
-    private fun PlayerState.set() {
-        val insertQueue =
-                QueueInfo(QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.SONG),
-                        queue)
-        submitQueue(insertQueue, true)
-        forcePosition(currentPosition)
-        seek(progress)
-        player.repeatMode = repeatMode
-    }
-
     fun submitQueue(queueInfo: QueueInfo, force: Boolean = false) {
         val needPrepare = source.size == 0
         when (queueInfo.metadata.actionType) {
@@ -477,12 +452,12 @@ class PlayerService : Service() {
 
                 this.queue.addAll(position, queueInfo.queue)
                 source.addMediaSources(position,
-                        queueInfo.queue.map { it.getMediaSource(mediaSourceFactory) })
+                    queueInfo.queue.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.LAST -> {
                 this.queue.addAll(this.queue.size, queueInfo.queue)
                 source.addMediaSources(source.size,
-                        queueInfo.queue.map { it.getMediaSource(mediaSourceFactory) })
+                    queueInfo.queue.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.OVERRIDE -> override(queueInfo.queue, force)
             InsertActionType.SHUFFLE_NEXT -> {
@@ -491,14 +466,14 @@ class PlayerService : Service() {
 
                 this.queue.addAll(position, shuffled)
                 source.addMediaSources(position,
-                        shuffled.map { it.getMediaSource(mediaSourceFactory) })
+                    shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_LAST -> {
                 val shuffled = queueInfo.queue.shuffleByClassType(queueInfo.metadata.classType)
 
                 this.queue.addAll(this.queue.size, shuffled)
                 source.addMediaSources(source.size,
-                        shuffled.map { it.getMediaSource(mediaSourceFactory) })
+                    shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_OVERRIDE -> {
                 val shuffled = queueInfo.queue.shuffleByClassType(queueInfo.metadata.classType)
@@ -511,14 +486,14 @@ class PlayerService : Service() {
 
                 this.queue.addAll(position, shuffled)
                 source.addMediaSources(position,
-                        shuffled.map { it.getMediaSource(mediaSourceFactory) })
+                    shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_SIMPLE_LAST -> {
                 val shuffled = queueInfo.queue.shuffled()
 
                 this.queue.addAll(this.queue.size, shuffled)
                 source.addMediaSources(source.size,
-                        shuffled.map { it.getMediaSource(mediaSourceFactory) })
+                    shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
                 val shuffled = queueInfo.queue.shuffled()
@@ -545,29 +520,10 @@ class PlayerService : Service() {
 
     fun removeQueue(trackId: Long) {
         this.queue.filter { it.id == trackId }
-                .forEach {
-                    val index = this.queue.indexOf(it)
-                    removeQueue(index)
-                }
-    }
-
-    private fun forcePosition(position: Int) {
-        player.seekToDefaultPosition(position)
-    }
-
-    private fun increasePlaybackCount() = serviceScope.launch {
-        currentSong?.also { song ->
-            val db = DB.getInstance(this@PlayerService)
-            db.trackDao().increasePlaybackCount(song.id)
-            db.albumDao().increasePlaybackCount(song.albumId)
-            db.artistDao().apply {
-                val artist = findArtist(song.artist).firstOrNull()
-                        ?: db.albumDao().get(song.albumId)?.artistId?.let {
-                            get(it)
-                        }
-                artist?.apply { increasePlaybackCount(id) }
+            .forEach {
+                val index = this.queue.indexOf(it)
+                removeQueue(index)
             }
-        }
     }
 
     private fun play() {
@@ -575,11 +531,14 @@ class PlayerService : Service() {
         getSystemService(AudioManager::class.java).apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val audioFocusRequest = AudioFocusRequest.Builder(
-                        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK).build()
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+                ).build()
                 requestAudioFocus(audioFocusRequest)
             } else {
-                requestAudioFocus({}, AudioManager.STREAM_MUSIC,
-                        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                requestAudioFocus(
+                    {}, AudioManager.STREAM_MUSIC,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+                )
             }
         }
 
@@ -594,9 +553,9 @@ class PlayerService : Service() {
         Timber.d("qgeck resume invoked")
 
         notifyPlaybackRatioJob.cancel()
-        notifyPlaybackRatioJob = serviceScope.launch {
-            while (true) {
-                val song = currentSong ?: break
+        notifyPlaybackRatioJob = serviceScope.launch(Dispatchers.Main) {
+            val song = currentSong ?: return@launch
+            while (this.isActive) {
                 withContext(Dispatchers.Main) {
                     onPlaybackRatioChanged?.invoke(player.contentPosition.toFloat() / song.duration)
                 }
@@ -606,7 +565,7 @@ class PlayerService : Service() {
 
         if (player.playWhenReady.not()) {
             player.playWhenReady = true
-            mediaSession?.isActive = true
+            mediaSession.isActive = true
         }
     }
 
@@ -620,7 +579,8 @@ class PlayerService : Service() {
         getSystemService(AudioManager::class.java).apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val audioFocusRequest = AudioFocusRequest.Builder(
-                        AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK).build()
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+                ).build()
                 abandonAudioFocusRequest(audioFocusRequest)
             } else {
                 abandonAudioFocus {}
@@ -639,13 +599,14 @@ class PlayerService : Service() {
     fun stop() {
         pause()
         seekToHead()
-        mediaSession?.isActive = false
+        mediaSession.isActive = false
     }
 
     fun clear(keepCurrentIfPlaying: Boolean = false) {
         val before = if (keepCurrentIfPlaying
-                && player.playbackState == Player.STATE_READY
-                && player.playWhenReady) {
+            && player.playbackState == Player.STATE_READY
+            && player.playWhenReady
+        ) {
             currentPosition
         } else source.size
         clear(before)
@@ -693,9 +654,9 @@ class PlayerService : Service() {
 
     private fun prev() {
         val index =
-                if (player.currentWindowIndex > 0)
-                    player.currentWindowIndex - 1
-                else 0
+            if (player.currentWindowIndex > 0)
+                player.currentWindowIndex - 1
+            else 0
         player.seekToDefaultPosition(index)
     }
 
@@ -786,25 +747,93 @@ class PlayerService : Service() {
         }
     }
 
+    private fun onNotificationAction(intent: Intent) {
+        if (intent.hasExtra(ARGS_KEY_CONTROL_COMMAND)) {
+            val key = intent.extras?.getInt(ARGS_KEY_CONTROL_COMMAND, -1) ?: return
+            when (NotificationCommand.values()[key]) {
+                NotificationCommand.PLAY_PAUSE ->
+                    sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+                NotificationCommand.NEXT ->
+                    sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_NEXT)
+                NotificationCommand.PREV ->
+                    sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
+                NotificationCommand.DESTROY -> onRequestedStopService()
+            }
+        }
+    }
+
+    private fun sendMediaButtonDownEvent(keyCode: Int) {
+        mediaSession.controller?.dispatchMediaButtonEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
+    }
+
+    private fun sendMediaButtonUpEvent(keyCode: Int) {
+        mediaSession.controller?.dispatchMediaButtonEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
+    }
+
+    private fun onSettingAction(intent: Intent) {
+        if (intent.hasExtra(ARGS_KEY_SETTING_COMMAND)) {
+            val key = intent.extras?.getInt(ARGS_KEY_SETTING_COMMAND, -1) ?: return
+            when (SettingCommand.values()[key]) {
+                SettingCommand.SET_EQUALIZER ->
+                    player.audioSessionId.apply { setEqualizer(if (this != 0) this else null) }
+                SettingCommand.UNSET_EQUALIZER -> setEqualizer(null)
+                SettingCommand.REFLECT_EQUALIZER_SETTING -> reflectEqualizerSettings()
+            }
+        }
+    }
+
+    private fun PlayerState.set() {
+        val insertQueue =
+            QueueInfo(
+                QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.SONG),
+                queue
+            )
+        submitQueue(insertQueue, true)
+        forcePosition(currentPosition)
+        seek(progress)
+        player.repeatMode = repeatMode
+    }
+
+    private fun forcePosition(position: Int) {
+        player.seekToDefaultPosition(position)
+    }
+
+    private fun increasePlaybackCount() = serviceScope.launch(Dispatchers.Main) {
+        currentSong?.let { song ->
+            withContext(Dispatchers.IO) {
+                val db = DB.getInstance(this@PlayerService)
+                db.trackDao().increasePlaybackCount(song.id)
+                db.albumDao().increasePlaybackCount(song.albumId)
+                db.artistDao().apply {
+                    val artist = findArtist(song.artist).firstOrNull()
+                        ?: db.albumDao().get(song.albumId)?.artistId?.let {
+                            get(it)
+                        }
+                    artist?.apply { increasePlaybackCount(id) }
+                }
+            }
+        }
+    }
+
     private fun setEqualizer(audioSessionId: Int?) {
         if (audioSessionId != null) {
             if (equalizer == null) {
                 try {
                     equalizer = Equalizer(0, audioSessionId).apply {
                         val params = EqualizerParams(
-                                bandLevelRange.let { it.first().toInt() to it.last().toInt() },
-                                (0 until numberOfBands).map {
-                                    val short = it.toShort()
-                                    EqualizerParams.Band(
-                                            getBandFreqRange(short).let { it.first() to it.last() },
-                                            getCenterFreq(short)
-                                    )
-                                }
+                            bandLevelRange.let { it.first().toInt() to it.last().toInt() },
+                            (0 until numberOfBands).map {
+                                val short = it.toShort()
+                                EqualizerParams.Band(
+                                    getBandFreqRange(short).let { it.first() to it.last() },
+                                    getCenterFreq(short)
+                                )
+                            }
                         )
                         sharedPreferences.equalizerParams = params
                         if (sharedPreferences.equalizerSettings == null) {
                             sharedPreferences.equalizerSettings =
-                                    EqualizerSettings(params.bands.map { 0 })
+                                EqualizerSettings(params.bands.map { 0 })
                         }
                     }
                 } catch (t: Throwable) {
@@ -837,23 +866,17 @@ class PlayerService : Service() {
         }
     }
 
-    fun onRequestedStopService() {
-        if (player.playWhenReady.not()) {
-            stopSelf()
-        }
-    }
-
     private fun storeState() {
         val state = PlayerState(
-                player.playWhenReady,
-                queue,
-                currentPosition,
-                player.currentPosition,
-                player.repeatMode
+            player.playWhenReady,
+            queue,
+            currentPosition,
+            player.currentPosition,
+            player.repeatMode
         )
         sharedPreferences.edit()
-                .putString(PREF_KEY_PLAYER_STATE, Gson().toJson(state))
-                .apply()
+            .putString(PREF_KEY_PLAYER_STATE, Gson().toJson(state))
+            .apply()
     }
 
     private fun restoreState() {
@@ -880,12 +903,11 @@ class PlayerService : Service() {
         pause()
     }
 
-    private fun showNotification() = serviceScope.launch {
+    private fun showNotification() = serviceScope.launch(Dispatchers.Main) {
         val song = currentSong ?: return@launch
 
-        mediaSession?.setMetadata(song.getMediaMetadata(this@PlayerService))
-        getPlayerNotification(this@PlayerService, mediaSession?.sessionToken, song, playing)
-                ?.show()
+        mediaSession.setMetadata(song.getMediaMetadata(this@PlayerService))
+        getPlayerNotification(this@PlayerService, mediaSession.sessionToken, song, playing).show()
     }
 
     private fun Notification.show() {
@@ -896,7 +918,7 @@ class PlayerService : Service() {
             Timber.d("qgeck starting player service as NOT foreground")
             stopForeground(false)
             getSystemService(NotificationManager::class.java)
-                    .notify(NOTIFICATION_ID_PLAYER, this)
+                .notify(NOTIFICATION_ID_PLAYER, this)
         }
     }
 

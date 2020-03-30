@@ -189,6 +189,7 @@ class BottomSheetFragment : Fragment() {
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private fun observeEvents() {
         mainViewModel.player.observe(this) { player ->
             player ?: return@observe
@@ -293,6 +294,7 @@ class BottomSheetFragment : Fragment() {
         }
     }
 
+    @SuppressLint("ClickableViewAccessibility")
     private fun onCurrentQueuePositionChanged(position: Int, songChanged: Boolean) {
         adapter.setNowPlayingPosition(position)
         viewModel.currentPosition = position

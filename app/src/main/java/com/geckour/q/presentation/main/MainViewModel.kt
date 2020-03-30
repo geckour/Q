@@ -40,9 +40,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
-class MainViewModel(
-        application: Application
-) : AndroidViewModel(application) {
+class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     internal var player: MutableLiveData<PlayerService> = MutableLiveData()
 
@@ -112,7 +110,9 @@ class MainViewModel(
         if (isBoundService.not()) {
             val app = getApplication<App>()
             app.bindService(
-                    PlayerService.createIntent(app), serviceConnection, Context.BIND_AUTO_CREATE
+                PlayerService.createIntent(app),
+                serviceConnection,
+                Context.BIND_AUTO_CREATE
             )
         }
     }
@@ -152,84 +152,94 @@ class MainViewModel(
             val items = mutableListOf<SearchItem>()
 
             val tracks = db.searchTrackByFuzzyTitle(query)
-                    .take(3)
-                    .mapNotNull {
-                        SearchItem(
-                                it.title ?: UNKNOWN,
-                                getSong(db, it) ?: return@mapNotNull null,
-                                SearchItem.SearchItemType.TRACK
-                        )
-                    }
+                .take(3)
+                .mapNotNull {
+                    SearchItem(
+                        it.title ?: UNKNOWN,
+                        getSong(db, it) ?: return@mapNotNull null,
+                        SearchItem.SearchItemType.TRACK
+                    )
+                }
             if (tracks.isNotEmpty()) {
-                items.add(SearchItem(
+                items.add(
+                    SearchItem(
                         context.getString(R.string.search_category_song),
                         SearchCategory(),
                         SearchItem.SearchItemType.CATEGORY
-                ))
+                    )
+                )
                 items.addAll(tracks)
             }
 
             val albums = db.searchAlbumByFuzzyTitle(query)
-                    .take(3)
-                    .map {
-                        SearchItem(
-                                it.title ?: UNKNOWN,
-                                it.toDomainModel(),
-                                SearchItem.SearchItemType.ALBUM
-                        )
-                    }
+                .take(3)
+                .map {
+                    SearchItem(
+                        it.title ?: UNKNOWN,
+                        it.toDomainModel(),
+                        SearchItem.SearchItemType.ALBUM
+                    )
+                }
             if (albums.isNotEmpty()) {
-                items.add(SearchItem(
+                items.add(
+                    SearchItem(
                         context.getString(R.string.search_category_album),
                         SearchCategory(),
                         SearchItem.SearchItemType.CATEGORY
-                ))
+                    )
+                )
                 items.addAll(albums)
             }
 
             val artists = db.searchArtistByFuzzyTitle(query)
-                    .take(3)
-                    .map {
-                        SearchItem(
-                                it.title ?: UNKNOWN,
-                                it.toDomainModel(),
-                                SearchItem.SearchItemType.ARTIST
-                        )
-                    }
+                .take(3)
+                .map {
+                    SearchItem(
+                        it.title ?: UNKNOWN,
+                        it.toDomainModel(),
+                        SearchItem.SearchItemType.ARTIST
+                    )
+                }
             if (artists.isNotEmpty()) {
-                items.add(SearchItem(
+                items.add(
+                    SearchItem(
                         context.getString(R.string.search_category_artist),
                         SearchCategory(),
                         SearchItem.SearchItemType.CATEGORY
-                ))
+                    )
+                )
                 items.addAll(artists)
             }
 
             val playlists = getApplication<App>().searchPlaylistByFuzzyTitle(query)
-                    .take(3)
-                    .map { SearchItem(it.name, it, SearchItem.SearchItemType.PLAYLIST) }
+                .take(3)
+                .map { SearchItem(it.name, it, SearchItem.SearchItemType.PLAYLIST) }
             if (playlists.isNotEmpty()) {
-                items.add(SearchItem(
+                items.add(
+                    SearchItem(
                         context.getString(R.string.search_category_playlist),
                         SearchCategory(),
                         SearchItem.SearchItemType.CATEGORY
-                ))
+                    )
+                )
                 items.addAll(playlists)
             }
 
             val genres = getApplication<App>().searchGenreByFuzzyTitle(query)
-                    .take(3)
-                    .map { SearchItem(it.name, it, SearchItem.SearchItemType.GENRE) }
+                .take(3)
+                .map { SearchItem(it.name, it, SearchItem.SearchItemType.GENRE) }
             if (genres.isNotEmpty()) {
-                items.add(SearchItem(
+                items.add(
+                    SearchItem(
                         context.getString(R.string.search_category_genre),
                         SearchCategory(),
                         SearchItem.SearchItemType.CATEGORY
-                ))
+                    )
+                )
                 items.addAll(genres)
             }
 
-            withContext(Dispatchers.Main) { searchItems.value = items }
+            searchItems.postValue(items)
         }
     }
 
@@ -273,9 +283,12 @@ class MainViewModel(
 
     internal fun checkDBIsEmpty() {
         viewModelScope.launch(Dispatchers.IO) {
-            if (DB.getInstance(this@MainViewModel.getApplication()).trackDao().count() == 0) withContext(
-                    Dispatchers.Main
-            ) { dbEmpty.call() }
+            val trackCount = DB.getInstance(this@MainViewModel.getApplication())
+                .trackDao()
+                .count()
+            if (trackCount == 0) {
+                withContext(Dispatchers.Main) { dbEmpty.call() }
+            }
         }
     }
 
@@ -284,14 +297,13 @@ class MainViewModel(
             val db = DB.getInstance(this@MainViewModel.getApplication())
             val track = db.trackDao().get(song.id) ?: return@launch
 
-            player.value?.removeQueue(track.id)
+            withContext(Dispatchers.Main) {
+                player.value?.removeQueue(track.id)
+            }
 
             val deleted = db.trackDao().delete(track.id) > 0
-            if (deleted) {
-                withContext(Dispatchers.Main) {
-                    deletedSongId.value = track.id
-                }
-            }
+            if (deleted) deletedSongId.postValue(track.id)
+
             if (db.trackDao().findByAlbum(track.albumId, Bool.UNDEFINED).isEmpty()) {
                 db.albumDao().delete(track.albumId)
             }
@@ -302,9 +314,7 @@ class MainViewModel(
     }
 
     fun onNewQueue(songs: List<Song>, actionType: InsertActionType, classType: OrientedClassType) {
-        newQueueInfo.value = QueueInfo(
-                QueueMetadata(actionType, classType), songs
-        )
+        newQueueInfo.value = QueueInfo(QueueMetadata(actionType, classType), songs)
     }
 
     fun onQueueSwap(from: Int, to: Int) {

@@ -372,13 +372,11 @@ suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat =
 
 suspend fun getPlayerNotification(
     context: Context,
-    sessionToken: MediaSessionCompat.Token?,
+    sessionToken: MediaSessionCompat.Token,
     song: Song,
     playing: Boolean
-): Notification? =
+): Notification =
     withContext(Dispatchers.IO) {
-        if (sessionToken == null) return@withContext null
-
         val artwork = try {
             Glide.with(context)
                 .asDrawable()
