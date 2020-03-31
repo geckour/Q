@@ -71,7 +71,7 @@ dependencies {
     def glide_ver = '4.10.0'
     def checkerframework_ver = '3.2.0'
     def checkerframework_compat_ver = '2.5.5'
-    def kotlin_annotations_ver = ''
+    def exo_ver = '2.11.3'
 
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
@@ -123,9 +123,9 @@ dependencies {
     kapt "com.github.bumptech.glide:compiler:$glide_ver"
 
     // Player
+    implementation "com.google.android.exoplayer:exoplayer-core:$exo_ver"
     compileOnly "org.checkerframework:checker-qual:$checkerframework_ver"
     compileOnly "org.checkerframework:checker-compat-qual:$checkerframework_compat_ver"
-    compileOnly "org.jetbrains.kotlin:kotlin-annotations-jvm:$kotlin_version"
 
     // Vertical SeekBar
     implementation 'com.h6ah4i.android.widget.verticalseekbar:verticalseekbar:1.0.0'
