@@ -11,13 +11,17 @@ apply plugin: 'io.fabric'
 kotlin.experimental.coroutines 'enable'
 
 android {
-    compileSdkVersion 28
+    compileSdkVersion 29
     defaultConfig {
         applicationId "com.geckour.q"
         minSdkVersion 24
         versionCode 4
         versionName "1.2.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+    }
+    sourceSets.main {
+        jniLibs.srcDir 'src/main/libs'
+        jni.srcDirs = [] // Disable the automatic ndk-build call by Android Studio.
     }
     signingConfigs {
         release {
@@ -58,22 +62,23 @@ repositories {
 }
 
 dependencies {
-    def firebase_ver = '17.2.1'
-    def aac_lifecycle_ver = '2.2.0-rc01'
-    def aac_room_ver = '2.2.1'
+    def firebase_ver = '17.3.0'
+    def aac_lifecycle_ver = '2.3.0-alpha01'
+    def aac_room_ver = '2.2.5'
     def coroutines_ver = '1.2.2'
     def permission_dispatcher_ver = '4.5.0'
     def stetho_ver = '1.5.1'
-    def glide_ver = '4.9.0'
-    def exo_ver = '2.10.3'
-    def exo_ext_ver = '2.10.2'
+    def glide_ver = '4.10.0'
+    def checkerframework_ver = '3.2.0'
+    def checkerframework_compat_ver = '2.5.5'
+    def kotlin_annotations_ver = ''
 
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    implementation 'androidx.constraintlayout:constraintlayout:2.0.0-beta3'
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.0-beta4'
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation "androidx.media:media:1.1.0"
-    implementation 'com.google.android.material:material:1.2.0-alpha01'
+    implementation 'com.google.android.material:material:1.2.0-alpha05'
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test:runner:1.2.0'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
@@ -106,8 +111,8 @@ dependencies {
     testImplementation "androidx.room:room-testing:$aac_room_ver"
 
     // KTX
-    implementation 'androidx.fragment:fragment-ktx:1.2.0-rc01'
-    implementation 'androidx.activity:activity-ktx:1.1.0-rc01'
+    implementation 'androidx.fragment:fragment-ktx:1.3.0-alpha02'
+    implementation 'androidx.activity:activity-ktx:1.2.0-alpha02'
 
     // Permission
     implementation "org.permissionsdispatcher:permissionsdispatcher:$permission_dispatcher_ver"
@@ -118,13 +123,9 @@ dependencies {
     kapt "com.github.bumptech.glide:compiler:$glide_ver"
 
     // Player
-    implementation "com.google.android.exoplayer:exoplayer-core:$exo_ver"
-    implementation("com.github.PaulWoitaschek.ExoPlayer-Extensions:extension-flac:$exo_ext_ver") {
-        transitive = false
-    }
-    implementation("com.github.PaulWoitaschek.ExoPlayer-Extensions:extension-opus:$exo_ext_ver") {
-        transitive = false
-    }
+    compileOnly "org.checkerframework:checker-qual:$checkerframework_ver"
+    compileOnly "org.checkerframework:checker-compat-qual:$checkerframework_compat_ver"
+    compileOnly "org.jetbrains.kotlin:kotlin-annotations-jvm:$kotlin_version"
 
     // Vertical SeekBar
     implementation 'com.h6ah4i.android.widget.verticalseekbar:verticalseekbar:1.0.0'

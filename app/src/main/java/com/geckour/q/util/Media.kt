@@ -33,7 +33,7 @@ import com.geckour.q.domain.model.Song
 import com.geckour.q.presentation.LauncherActivity
 import com.geckour.q.service.PlayerService
 import com.google.android.exoplayer2.source.MediaSource
-import com.google.android.exoplayer2.source.ads.AdsMediaSource
+import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.commons.codec.binary.Hex
@@ -236,17 +236,10 @@ fun List<Uri?>.getThumb(context: Context): Bitmap? {
     val canvas = Canvas(bitmap)
     this@getThumb.reversed().forEachIndexed { i, uri ->
         val b =
-            Glide.with(context)
-                .asBitmap()
-                .load(uri ?: return@forEachIndexed)
-                .applyDefaultSettings()
-                .submit()
-                .get()?.let {
+            Glide.with(context).asBitmap().load(uri ?: return@forEachIndexed).applyDefaultSettings()
+                .submit().get()?.let {
                     Bitmap.createScaledBitmap(
-                        it,
-                        unit,
-                        (it.height * unit.toFloat() / it.width).toInt(),
-                        false
+                        it, unit, (it.height * unit.toFloat() / it.width).toInt(), false
                     )
                 } ?: return@forEachIndexed
         canvas.drawBitmap(b, bitmap.width - (i + 1) * unit * 0.9f, (unit - b.height) / 2f, Paint())
@@ -294,15 +287,12 @@ fun getTrackMediaIdByPlaylistId(context: Context, playlistId: Long): List<Pair<L
         return@use trackMediaIdList
     } ?: emptyList()
 
-fun Song.getMediaSource(mediaSourceFactory: AdsMediaSource.MediaSourceFactory): MediaSource =
+fun Song.getMediaSource(mediaSourceFactory: ProgressiveMediaSource.Factory): MediaSource =
     mediaSourceFactory.createMediaSource(Uri.fromFile(File(sourcePath)))
 
 fun List<Song>.sortedByTrackOrder(): List<Song> =
-    this.asSequence()
-        .groupBy { it.discNum }
-        .map { it.key to it.value.sortedBy { it.trackNum } }
-        .sortedBy { it.first }
-        .flatMap { it.second }
+    this.asSequence().groupBy { it.discNum }.map { it.key to it.value.sortedBy { it.trackNum } }
+        .sortedBy { it.first }.flatMap { it.second }
 
 fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> = when (classType) {
     OrientedClassType.ARTIST -> {
@@ -345,107 +335,72 @@ suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat =
             .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist)
             .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album)
             .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, uriString)
-            .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer)
-            .apply {
-                if (uriString != null
-                    && PreferenceManager.getDefaultSharedPreferences(context)
-                        .showArtworkOnLockScreen
-                ) {
+            .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer).apply {
+                if (uriString != null && PreferenceManager.getDefaultSharedPreferences(context).showArtworkOnLockScreen) {
                     val bitmap = try {
-                        Glide.with(context)
-                            .asDrawable()
-                            .load(uriString)
-                            .applyDefaultSettings()
-                            .submit()
-                            .get()
-                            .bitmap()
+                        Glide.with(context).asDrawable().load(uriString).applyDefaultSettings()
+                            .submit().get().bitmap()
                     } catch (t: Throwable) {
                         Timber.e(t)
                         null
                     }
                     putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
                 }
-            }
-            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
-            .build()
+            }.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration).build()
     }
 
 suspend fun getPlayerNotification(
-    context: Context,
-    sessionToken: MediaSessionCompat.Token,
-    song: Song,
-    playing: Boolean
-): Notification =
-    withContext(Dispatchers.IO) {
-        val artwork = try {
-            Glide.with(context)
-                .asDrawable()
-                .load(
-                    DB.getInstance(context)
-                        .getArtworkUriStringFromId(song.albumId)
-                        .orDefaultForModel
-                )
-                .applyDefaultSettings()
-                .submit()
-                .get()
-                .bitmap()
-        } catch (t: Throwable) {
-            Timber.e(t)
-            null
-        }
-        context.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER)
-            .setSmallIcon(R.drawable.ic_notification_player)
-            .setLargeIcon(artwork)
-            .setContentTitle(song.name)
-            .setContentText(song.artist)
-            .setSubText(song.album)
-            .setOngoing(playing)
-            .setStyle(
-                androidx.media.app.NotificationCompat.MediaStyle()
-                    .setShowActionsInCompactView(0, 1, 2)
-                    .setMediaSession(sessionToken)
-            )
-            .setShowWhen(false)
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    context,
-                    App.REQUEST_CODE_LAUNCH_APP,
-                    LauncherActivity.createIntent(context),
-                    PendingIntent.FLAG_UPDATE_CURRENT
-                )
-            )
-            .addAction(
-                NotificationCompat.Action.Builder(
-                    R.drawable.ic_backward,
-                    context.getString(R.string.notification_action_prev),
-                    getCommandPendingIntent(context, NotificationCommand.PREV)
-                ).build()
-            )
-            .addAction(
-                if (playing) {
-                    NotificationCompat.Action.Builder(
-                        R.drawable.ic_pause,
-                        context.getString(R.string.notification_action_pause),
-                        getCommandPendingIntent(context, NotificationCommand.PLAY_PAUSE)
-                    ).build()
-                } else {
-                    NotificationCompat.Action.Builder(
-                        R.drawable.ic_play,
-                        context.getString(R.string.notification_action_play),
-                        getCommandPendingIntent(context, NotificationCommand.PLAY_PAUSE)
-                    ).build()
-                }
-            )
-            .addAction(
-                NotificationCompat.Action.Builder(
-                    R.drawable.ic_forward,
-                    context.getString(R.string.notification_action_next),
-                    getCommandPendingIntent(context, NotificationCommand.NEXT)
-                ).build()
-            )
-            .setDeleteIntent(getCommandPendingIntent(context, NotificationCommand.DESTROY))
-            .build()
+    context: Context, sessionToken: MediaSessionCompat.Token, song: Song, playing: Boolean
+): Notification = withContext(Dispatchers.IO) {
+    val artwork = try {
+        Glide.with(context).asDrawable().load(
+                DB.getInstance(context).getArtworkUriStringFromId(song.albumId).orDefaultForModel
+            ).applyDefaultSettings().submit().get().bitmap()
+    } catch (t: Throwable) {
+        Timber.e(t)
+        null
     }
+    context.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER)
+        .setSmallIcon(R.drawable.ic_notification_player).setLargeIcon(artwork)
+        .setContentTitle(song.name).setContentText(song.artist).setSubText(song.album)
+        .setOngoing(playing).setStyle(
+            androidx.media.app.NotificationCompat.MediaStyle().setShowActionsInCompactView(0, 1, 2)
+                .setMediaSession(sessionToken)
+        ).setShowWhen(false).setContentIntent(
+            PendingIntent.getActivity(
+                context,
+                App.REQUEST_CODE_LAUNCH_APP,
+                LauncherActivity.createIntent(context),
+                PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        ).addAction(
+            NotificationCompat.Action.Builder(
+                R.drawable.ic_backward,
+                context.getString(R.string.notification_action_prev),
+                getCommandPendingIntent(context, NotificationCommand.PREV)
+            ).build()
+        ).addAction(
+            if (playing) {
+                NotificationCompat.Action.Builder(
+                    R.drawable.ic_pause,
+                    context.getString(R.string.notification_action_pause),
+                    getCommandPendingIntent(context, NotificationCommand.PLAY_PAUSE)
+                ).build()
+            } else {
+                NotificationCompat.Action.Builder(
+                    R.drawable.ic_play,
+                    context.getString(R.string.notification_action_play),
+                    getCommandPendingIntent(context, NotificationCommand.PLAY_PAUSE)
+                ).build()
+            }
+        ).addAction(
+            NotificationCompat.Action.Builder(
+                R.drawable.ic_forward,
+                context.getString(R.string.notification_action_next),
+                getCommandPendingIntent(context, NotificationCommand.NEXT)
+            ).build()
+        ).setDeleteIntent(getCommandPendingIntent(context, NotificationCommand.DESTROY)).build()
+}
 
 private fun getCommandPendingIntent(context: Context, command: NotificationCommand): PendingIntent =
     PendingIntent.getService(context, 343, PlayerService.createIntent(context).apply {
@@ -463,9 +418,7 @@ fun Long.getTimeString(): String {
 }
 
 fun DB.storeMediaInfo(
-    context: Context,
-    trackPath: String,
-    trackMediaId: Long
+    context: Context, trackPath: String, trackMediaId: Long
 ): Long {
     val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackMediaId)
 
@@ -488,18 +441,16 @@ fun DB.storeMediaInfo(
     val albumTitle = tag.getAll(FieldKey.ALBUM).firstOrNull { it.isNotBlank() } ?: UNKNOWN
     val artistTitle = tag.getAll(FieldKey.ARTIST).firstOrNull { it.isNotBlank() } ?: UNKNOWN
     val duration = header.trackLength.toLong() * 1000
-    val trackNum =
-        try {
-            tag.getFirst(FieldKey.TRACK).toInt()
-        } catch (t: Throwable) {
-            null
-        }
-    val discNum =
-        try {
-            tag.getFirst(FieldKey.DISC_NO).toInt()
-        } catch (t: Throwable) {
-            null
-        }
+    val trackNum = try {
+        tag.getFirst(FieldKey.TRACK).toInt()
+    } catch (t: Throwable) {
+        null
+    }
+    val discNum = try {
+        tag.getFirst(FieldKey.DISC_NO).toInt()
+    } catch (t: Throwable) {
+        null
+    }
     val composerTitle = tag.getAll(FieldKey.COMPOSER).firstOrNull { it.isNotBlank() } ?: UNKNOWN
     val artworkUriString = albumDao().findByTitle(title).firstOrNull()?.artworkUriString
         ?: tag.firstArtwork?.let { artwork ->
@@ -515,14 +466,10 @@ fun DB.storeMediaInfo(
 
             imgFile.path
         }
-    val albumArtistTitle =
-        tag.getAll(FieldKey.ALBUM_ARTIST).firstOrNull { it.isNotBlank() }
+    val albumArtistTitle = tag.getAll(FieldKey.ALBUM_ARTIST).firstOrNull { it.isNotBlank() }
 
     val artistId = Artist(
-        0,
-        artistTitle,
-        tag.getAll(FieldKey.ARTIST_SORT).firstOrNull { it.isNotBlank() },
-        0
+        0, artistTitle, tag.getAll(FieldKey.ARTIST_SORT).firstOrNull { it.isNotBlank() }, 0
     ).upsert(this)
     val albumArtistId = albumArtistTitle?.let {
         Artist(
@@ -573,9 +520,7 @@ private fun Drawable.bitmap(minimumSideLength: Int = 1000, supportAlpha: Boolean
     val min = min(intrinsicWidth, intrinsicHeight)
     val scale = if (min < minimumSideLength) minimumSideLength.toFloat() / min else 1f
     return Bitmap.createBitmap(
-        (intrinsicWidth * scale).toInt(),
-        (intrinsicHeight * scale).toInt(),
-        Bitmap.Config.ARGB_8888
+        (intrinsicWidth * scale).toInt(), (intrinsicHeight * scale).toInt(), Bitmap.Config.ARGB_8888
     ).apply {
         bounds = Rect(0, 0, width, height)
         draw(Canvas(this).apply {

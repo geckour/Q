@@ -187,7 +187,7 @@ class MainActivity : CrashlyticsBundledActivity() {
             onNavigationItemSelected(binding.navigationView.menu.findItem(navId))
         } else if (savedInstanceState.containsKey(STATE_KEY_REQUESTED_TRANSACTION)) {
             requestedTransaction =
-                savedInstanceState.getParcelable(STATE_KEY_REQUESTED_TRANSACTION) as RequestedTransaction
+                savedInstanceState.getParcelable(STATE_KEY_REQUESTED_TRANSACTION) as RequestedTransaction?
         }
     }
 
