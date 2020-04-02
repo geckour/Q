@@ -34,14 +34,19 @@ fun Float.getReadableString(digitToKeep: Int = 3): String {
     }
 }
 
-fun DBArtist.toDomainModel(): Artist = Artist(id, title ?: UNKNOWN, titleSort, null, 0)
+fun DBArtist.toDomainModel(): Artist = Artist(id, title, titleSort, null, 0)
 
 fun DBAlbum.toDomainModel(
-    artistName: String? = null,
-    artistNameSort: String? = null,
-    totalDuration: Long = 0
-): Album =
-    Album(id, title, titleSort, artistName, artistNameSort, artworkUriString, totalDuration)
+    artistName: String? = null, artistNameSort: String? = null, totalDuration: Long = 0
+): Album = Album(
+    id,
+    title,
+    titleSort,
+    artistName ?: UNKNOWN,
+    artistNameSort ?: UNKNOWN,
+    artworkUriString,
+    totalDuration
+)
 
 val Boolean.toNightModeInt: Int
     get() = if (this) AppCompatDelegate.MODE_NIGHT_YES

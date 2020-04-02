@@ -23,16 +23,6 @@ android {
         jniLibs.srcDir 'src/main/libs'
         jni.srcDirs = [] // Disable the automatic ndk-build call by Android Studio.
     }
-    signingConfigs {
-        release {
-            def releaseSettingGradleFile = new File("${project.rootDir}/app/signing/release.gradle")
-            if (releaseSettingGradleFile.exists()) {
-                apply from: releaseSettingGradleFile, to: android
-            } else {
-                throw new GradleException("Missing ${releaseSettingGradleFile.getAbsolutePath()} . Generate the file by copying and modifying ${project.rootDir}/app/signing/release.gradle.sample .")
-            }
-        }
-    }
     buildTypes {
         debug {
             applicationIdSuffix '.debug'
@@ -40,7 +30,6 @@ android {
         release {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.release
         }
     }
     androidExtensions {
@@ -54,6 +43,7 @@ android {
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_1_8
     }
+    ndkVersion = "21.0.6113669"
 }
 
 repositories {
