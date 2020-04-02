@@ -47,9 +47,7 @@ class BottomSheetFragment : Fragment() {
 
     private val touchLockListener: (View, MotionEvent) -> Boolean = { _, event ->
         behavior.onTouchEvent(
-            requireActivity().findViewById(R.id.coordinator_main),
-            binding.sheet,
-            event
+            requireActivity().findViewById(R.id.coordinator_main), binding.sheet, event
         )
         true
     }
@@ -67,8 +65,7 @@ class BottomSheetFragment : Fragment() {
         adapter = QueueListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
         ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
-            ItemTouchHelper.UP or ItemTouchHelper.DOWN,
-            0
+            ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
         ) {
             var from: Int? = null
             var to: Int? = null
@@ -98,8 +95,10 @@ class BottomSheetFragment : Fragment() {
                 val from = this.from
                 val to = this.to
 
-                if (viewHolder == null && from != null && to != null)
-                    mainViewModel.onQueueSwap(from, to)
+                if (viewHolder == null && from != null && to != null) mainViewModel.onQueueSwap(
+                    from,
+                    to
+                )
 
                 this.from = null
                 this.to = null
@@ -163,7 +162,7 @@ class BottomSheetFragment : Fragment() {
                     }
                 )
                 if (state == BottomSheetBehavior.STATE_EXPANDED) {
-                    viewModel.scrollToCurrent.call()
+                    viewModel.scrollToCurrent.value = null
                 }
             }
         })
@@ -286,8 +285,8 @@ class BottomSheetFragment : Fragment() {
         binding.isQueueNotEmpty = notEmpty
 
         val totalTime = queue.map { it.duration }.sum()
-        binding.textTimeTotal.text = requireContext()
-            .getString(R.string.bottom_sheet_time_total, totalTime.getTimeString())
+        binding.textTimeTotal.text =
+            requireContext().getString(R.string.bottom_sheet_time_total, totalTime.getTimeString())
 
         if (changed && behavior.state == BottomSheetBehavior.STATE_COLLAPSED) {
             binding.buttonToggleVisibleQueue.shake()
@@ -326,10 +325,12 @@ class BottomSheetFragment : Fragment() {
 
         val elapsed = (song.duration * ratio).toLong()
         binding.textTimeLeft.text = elapsed.getTimeString()
-        binding.textTimeRight.text =
-            if (sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false))
-                "-${(song.duration - elapsed).getTimeString()}"
-            else song.durationString
+        binding.textTimeRight.text = if (sharedPreferences.getBoolean(
+                PREF_KEY_SHOW_CURRENT_REMAIN,
+                false
+            )
+        ) "-${(song.duration - elapsed).getTimeString()}"
+        else song.durationString
         val remain = adapter.getItemsAfter((viewModel.currentPosition) + 1)
             .map { it.duration }
             .sum() + (song.duration - elapsed)

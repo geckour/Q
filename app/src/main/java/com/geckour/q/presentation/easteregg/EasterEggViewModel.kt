@@ -1,21 +1,21 @@
 package com.geckour.q.presentation.easteregg
 
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.geckour.q.domain.model.Song
-import com.geckour.q.util.SingleLiveEvent
 
 class EasterEggViewModel : ViewModel() {
 
     var song: Song? = null
-    internal val tap: SingleLiveEvent<Unit> = SingleLiveEvent()
-    internal val longTap: SingleLiveEvent<Unit> = SingleLiveEvent()
+    internal val tap: MutableLiveData<Unit> = MutableLiveData()
+    internal val longTap: MutableLiveData<Unit> = MutableLiveData()
 
     fun onTapped() {
-        tap.call()
+        tap.value = null
     }
 
     fun onLongTapped(): Boolean {
-        longTap.call()
+        longTap.value = null
         return true
     }
 }

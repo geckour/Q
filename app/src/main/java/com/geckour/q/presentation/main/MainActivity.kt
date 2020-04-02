@@ -212,10 +212,12 @@ class MainActivity : CrashlyticsBundledActivity() {
 
     override fun onBackPressed() {
         when {
-            binding.drawerLayout.isDrawerOpen(binding.navigationView) -> binding.drawerLayout.closeDrawer(
-                binding.navigationView
-            )
-            bottomSheetViewModel.sheetState == BottomSheetBehavior.STATE_EXPANDED -> bottomSheetViewModel.toggleSheetState.call()
+            binding.drawerLayout.isDrawerOpen(binding.navigationView) -> {
+                binding.drawerLayout.closeDrawer(binding.navigationView)
+            }
+            bottomSheetViewModel.sheetState == BottomSheetBehavior.STATE_EXPANDED -> {
+                bottomSheetViewModel.toggleSheetState.value = null
+            }
             else -> super.onBackPressed()
         }
     }

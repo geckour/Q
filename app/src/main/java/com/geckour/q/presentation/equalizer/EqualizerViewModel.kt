@@ -1,15 +1,15 @@
 package com.geckour.q.presentation.equalizer
 
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.geckour.q.util.SingleLiveEvent
 
 class EqualizerViewModel : ViewModel() {
 
-    internal val flatten: SingleLiveEvent<Unit> = SingleLiveEvent()
-    val enabled: SingleLiveEvent<Boolean> = SingleLiveEvent()
+    internal val flatten: MutableLiveData<Unit> = MutableLiveData()
+    val enabled: MutableLiveData<Boolean> = MutableLiveData()
 
     fun onFlatten() {
-        flatten.call()
+        flatten.value = null
     }
 
     fun onToggleEnabled() {

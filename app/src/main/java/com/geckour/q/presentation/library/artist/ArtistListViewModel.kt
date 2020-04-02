@@ -4,18 +4,18 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.domain.model.Artist
-import com.geckour.q.util.SingleLiveEvent
 import com.geckour.q.util.toDomainModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class ArtistListViewModel(application: Application) : AndroidViewModel(application) {
 
-    internal val artistIdDeleted: SingleLiveEvent<Long> = SingleLiveEvent()
+    internal val artistIdDeleted: MutableLiveData<Long> = MutableLiveData()
 
     private val _albumListData: LiveData<List<Album>> =
         DB.getInstance(application).albumDao().getAllAsync()

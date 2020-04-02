@@ -9,6 +9,7 @@ import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.widget.ImageView
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.bumptech.glide.Glide
 import com.geckour.q.App
@@ -19,7 +20,6 @@ import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.Song
 import com.geckour.q.presentation.dialog.playlist.QueueAddPlaylistListAdapter
 import com.geckour.q.presentation.main.MainViewModel
-import com.geckour.q.util.SingleLiveEvent
 import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.fetchPlaylists
 import com.geckour.q.util.orDefaultForModel
@@ -33,20 +33,20 @@ import kotlinx.coroutines.withContext
 class BottomSheetViewModel(application: Application) : AndroidViewModel(application) {
 
     internal var sheetState: Int = BottomSheetBehavior.STATE_COLLAPSED
-    internal val artworkLongClick: SingleLiveEvent<Unit> = SingleLiveEvent()
-    internal val toggleSheetState: SingleLiveEvent<Unit> = SingleLiveEvent()
-    internal val playbackButton: SingleLiveEvent<PlaybackButton> = SingleLiveEvent()
+    internal val artworkLongClick: MutableLiveData<Unit> = MutableLiveData()
+    internal val toggleSheetState: MutableLiveData<Unit> = MutableLiveData()
+    internal val playbackButton: MutableLiveData<PlaybackButton> = MutableLiveData()
     internal var currentQueue: List<Song> = emptyList()
     internal var currentPosition = -1
-    internal val clearQueue: SingleLiveEvent<Unit> = SingleLiveEvent()
-    internal val newSeekBarProgress: SingleLiveEvent<Float> = SingleLiveEvent()
-    internal val shuffle: SingleLiveEvent<Unit> = SingleLiveEvent()
-    internal val scrollToCurrent: SingleLiveEvent<Unit> = SingleLiveEvent()
+    internal val clearQueue: MutableLiveData<Unit> = MutableLiveData()
+    internal val newSeekBarProgress: MutableLiveData<Float> = MutableLiveData()
+    internal val shuffle: MutableLiveData<Unit> = MutableLiveData()
+    internal val scrollToCurrent: MutableLiveData<Unit> = MutableLiveData()
 
-    internal val changeRepeatMode: SingleLiveEvent<Unit> = SingleLiveEvent()
-    internal val toggleCurrentRemain: SingleLiveEvent<Unit> = SingleLiveEvent()
-    internal val touchLock: SingleLiveEvent<Boolean> = SingleLiveEvent()
-    internal val share: SingleLiveEvent<Song> = SingleLiveEvent()
+    internal val changeRepeatMode: MutableLiveData<Unit> = MutableLiveData()
+    internal val toggleCurrentRemain: MutableLiveData<Unit> = MutableLiveData()
+    internal val touchLock: MutableLiveData<Boolean> = MutableLiveData()
+    internal val share: MutableLiveData<Song> = MutableLiveData()
 
     val currentSong: Song? get() = currentQueue.getOrNull(currentPosition)
 
@@ -54,39 +54,41 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
 
     fun onLongClickArtwork(): Boolean {
         if (currentQueue.isNotEmpty()) {
-            artworkLongClick.call()
+            artworkLongClick.value = null
             return true
         }
         return false
     }
 
     fun onClickQueueButton() {
-        toggleSheetState.call()
+        toggleSheetState.value = null
     }
 
     fun onClickAddQueueToPlaylistButton(context: Context) {
         viewModelScope.launch {
             val playlists = fetchPlaylists(context)
             val binding = DialogAddQueuePlaylistBinding.inflate(LayoutInflater.from(context))
-            val dialog =
-                    AlertDialog.Builder(context).setTitle(R.string.dialog_title_add_queue_to_playlist)
-                            .setMessage(R.string.dialog_desc_add_queue_to_playlist).setView(binding.root)
-                            .setNegativeButton(R.string.dialog_ng) { dialog, _ ->
-                                dialog.dismiss()
-                            }.setPositiveButton(R.string.dialog_ok) { _, _ -> }
-                            .setCancelable(true)
-                            .create()
+            val dialog = AlertDialog.Builder(context)
+                .setTitle(R.string.dialog_title_add_queue_to_playlist)
+                .setMessage(R.string.dialog_desc_add_queue_to_playlist)
+                .setView(binding.root)
+                .setNegativeButton(R.string.dialog_ng) { dialog, _ ->
+                    dialog.dismiss()
+                }
+                .setPositiveButton(R.string.dialog_ok) { _, _ -> }
+                .setCancelable(true)
+                .create()
             binding.recyclerView.adapter = QueueAddPlaylistListAdapter(playlists) {
                 currentQueue.forEachIndexed { i, song ->
                     context.contentResolver.insert(MediaStore.Audio.Playlists.Members.getContentUri(
-                            "external", it.id
+                        "external", it.id
                     ), ContentValues().apply {
                         put(
-                                MediaStore.Audio.Playlists.Members.PLAY_ORDER,
-                                it.memberCount + 1 + i
+                            MediaStore.Audio.Playlists.Members.PLAY_ORDER,
+                            it.memberCount + 1 + i
                         )
                         put(
-                                MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId
+                            MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId
                         )
                     })
                 }
@@ -106,23 +108,23 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun onClickClearQueueButton() {
-        clearQueue.call()
+        clearQueue.value = null
     }
 
     fun onClickShuffleButton() {
-        shuffle.call()
+        shuffle.value = null
     }
 
     fun onClickScrollToCurrentButton() {
-        scrollToCurrent.call()
+        scrollToCurrent.value = null
     }
 
     fun onClickRepeatButton() {
-        changeRepeatMode.call()
+        changeRepeatMode.value = null
     }
 
     fun onClickToggleCurrentRemainButton() {
-        toggleCurrentRemain.call()
+        toggleCurrentRemain.value = null
     }
 
     fun onClickTouchOffButton() {
@@ -162,8 +164,11 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     internal fun onTransitionToArtist(mainViewModel: MainViewModel) = viewModelScope.launch {
         mainViewModel.selectedArtist.value = withContext((Dispatchers.IO)) {
             currentSong?.artist?.let {
-                DB.getInstance(getApplication()).artistDao().findArtist(it)
-                        .firstOrNull()?.toDomainModel()
+                DB.getInstance(getApplication())
+                    .artistDao()
+                    .findArtist(it)
+                    .firstOrNull()
+                    ?.toDomainModel()
             }
         }
     }
@@ -171,33 +176,35 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     internal fun onTransitionToAlbum(mainViewModel: MainViewModel) = viewModelScope.launch {
         mainViewModel.selectedAlbum.value = withContext(Dispatchers.IO) {
             currentSong?.albumId?.let {
-                DB.getInstance(getApplication()).albumDao().get(it)
-                        ?.toDomainModel()
+                DB.getInstance(getApplication()).albumDao().get(it)?.toDomainModel()
             }
         }
     }
 
     private fun createPlaylist(title: String) {
         val playlistId = getApplication<App>().contentResolver.insert(
-                MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
-                ContentValues().apply {
-                    val now = System.currentTimeMillis()
-                    put(MediaStore.Audio.PlaylistsColumns.NAME, title)
-                    put(MediaStore.Audio.PlaylistsColumns.DATE_ADDED, now)
-                    put(MediaStore.Audio.PlaylistsColumns.DATE_MODIFIED, now)
-                }
-        )?.let { ContentUris.parseId(it) } ?: run {
+            MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
+            ContentValues().apply {
+                val now = System.currentTimeMillis()
+                put(
+                    MediaStore.Audio.PlaylistsColumns.NAME, title
+                )
+                put(
+                    MediaStore.Audio.PlaylistsColumns.DATE_ADDED, now
+                )
+                put(
+                    MediaStore.Audio.PlaylistsColumns.DATE_MODIFIED, now
+                )
+            })?.let { ContentUris.parseId(it) } ?: run {
             return
         }
         currentQueue.forEachIndexed { i, song ->
-            getApplication<App>().contentResolver
-                    .insert(MediaStore.Audio.Playlists.Members.getContentUri(
-                            "external",
-                            playlistId
-                    ), ContentValues().apply {
-                        put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, i + 1)
-                        put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
-                    })
+            getApplication<App>().contentResolver.insert(MediaStore.Audio.Playlists.Members.getContentUri(
+                "external", playlistId
+            ), ContentValues().apply {
+                put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, i + 1)
+                put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
+            })
         }
     }
 
@@ -209,11 +216,11 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
                     null -> null
                     else -> {
                         Glide.with(imageView)
-                                .asDrawable()
-                                .load(it.thumbUriString.orDefaultForModel)
-                                .applyDefaultSettings()
-                                .submit()
-                                .get()
+                            .asDrawable()
+                            .load(it.thumbUriString.orDefaultForModel)
+                            .applyDefaultSettings()
+                            .submit()
+                            .get()
                     }
                 }
             }

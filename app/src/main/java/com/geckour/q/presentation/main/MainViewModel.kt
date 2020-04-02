@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.ServiceConnection
 import android.os.IBinder
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.geckour.q.App
@@ -26,7 +25,6 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.QueueInfo
 import com.geckour.q.util.QueueMetadata
-import com.geckour.q.util.SingleLiveEvent
 import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.getSong
 import com.geckour.q.util.searchAlbumByFuzzyTitle
@@ -47,27 +45,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private var isBoundService = false
 
-    internal val currentFragmentId: SingleLiveEvent<Int> = SingleLiveEvent()
-    internal val selectedArtist: SingleLiveEvent<Artist> = SingleLiveEvent()
-    internal val selectedAlbum: SingleLiveEvent<Album> = SingleLiveEvent()
+    internal val currentFragmentId: MutableLiveData<Int> = MutableLiveData()
+    internal val selectedArtist: MutableLiveData<Artist> = MutableLiveData()
+    internal val selectedAlbum: MutableLiveData<Album> = MutableLiveData()
     internal var selectedSong: Song? = null
-    internal val selectedGenre: SingleLiveEvent<Genre> = SingleLiveEvent()
-    internal val selectedPlaylist: SingleLiveEvent<Playlist> = SingleLiveEvent()
+    internal val selectedGenre: MutableLiveData<Genre> = MutableLiveData()
+    internal val selectedPlaylist: MutableLiveData<Playlist> = MutableLiveData()
 
-    internal val dbEmpty: SingleLiveEvent<Unit> = SingleLiveEvent()
+    internal val dbEmpty: MutableLiveData<Unit> = MutableLiveData()
 
-    internal val newQueueInfo: SingleLiveEvent<QueueInfo> = SingleLiveEvent()
+    internal val newQueueInfo: MutableLiveData<QueueInfo> = MutableLiveData()
 
-    internal val requestedPositionInQueue: SingleLiveEvent<Int> = SingleLiveEvent()
-    internal val swappedQueuePositions: SingleLiveEvent<Pair<Int, Int>> = SingleLiveEvent()
-    internal val removedQueueIndex: SingleLiveEvent<Int> = SingleLiveEvent()
+    internal val requestedPositionInQueue: MutableLiveData<Int> = MutableLiveData()
+    internal val swappedQueuePositions: MutableLiveData<Pair<Int, Int>> = MutableLiveData()
+    internal val removedQueueIndex: MutableLiveData<Int> = MutableLiveData()
 
-    internal val toRemovePlayOrderOfPlaylist: SingleLiveEvent<Int> = SingleLiveEvent()
-    internal val songToDelete: SingleLiveEvent<Song> = SingleLiveEvent()
+    internal val toRemovePlayOrderOfPlaylist: MutableLiveData<Int> = MutableLiveData()
+    internal val songToDelete: MutableLiveData<Song> = MutableLiveData()
 
-    internal val deletedSongId: SingleLiveEvent<Long> = SingleLiveEvent()
+    internal val deletedSongId: MutableLiveData<Long> = MutableLiveData()
 
-    internal val searchItems: SingleLiveEvent<List<SearchItem>> = SingleLiveEvent()
+    internal val searchItems: MutableLiveData<List<SearchItem>> = MutableLiveData()
 
     internal val scrollToTop = MutableLiveData<Unit>()
     internal val forceLoad = MutableLiveData<Unit>()
@@ -75,7 +73,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var currentOrientedClassType: OrientedClassType? = null
 
     internal var syncing = false
-    val loading: SingleLiveEvent<Boolean> = SingleLiveEvent()
+    val loading: MutableLiveData<Boolean> = MutableLiveData()
 
     private var searchJob: Job = Job()
 
@@ -112,9 +110,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (isBoundService.not()) {
             val app = getApplication<App>()
             app.bindService(
-                PlayerService.createIntent(app),
-                serviceConnection,
-                Context.BIND_AUTO_CREATE
+                PlayerService.createIntent(app), serviceConnection, Context.BIND_AUTO_CREATE
             )
         }
     }
@@ -144,7 +140,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     internal fun search(context: Context, query: String?) {
         if (query.isNullOrBlank()) {
-            searchItems.call()
+            searchItems.value = null
             return
         }
 
@@ -153,15 +149,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         searchJob = viewModelScope.launch(Dispatchers.IO) {
             val items = mutableListOf<SearchItem>()
 
-            val tracks = db.searchTrackByFuzzyTitle(query)
-                .take(3)
-                .mapNotNull {
-                    SearchItem(
-                        it.title ?: UNKNOWN,
-                        getSong(db, it) ?: return@mapNotNull null,
-                        SearchItem.SearchItemType.TRACK
-                    )
-                }
+            val tracks = db.searchTrackByFuzzyTitle(query).take(3).mapNotNull {
+                SearchItem(
+                    it.title ?: UNKNOWN,
+                    getSong(db, it) ?: return@mapNotNull null,
+                    SearchItem.SearchItemType.TRACK
+                )
+            }
             if (tracks.isNotEmpty()) {
                 items.add(
                     SearchItem(
@@ -173,15 +167,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 items.addAll(tracks)
             }
 
-            val albums = db.searchAlbumByFuzzyTitle(query)
-                .take(3)
-                .map {
-                    SearchItem(
-                        it.title ?: UNKNOWN,
-                        it.toDomainModel(),
-                        SearchItem.SearchItemType.ALBUM
-                    )
-                }
+            val albums = db.searchAlbumByFuzzyTitle(query).take(3).map {
+                SearchItem(
+                    it.title ?: UNKNOWN, it.toDomainModel(), SearchItem.SearchItemType.ALBUM
+                )
+            }
             if (albums.isNotEmpty()) {
                 items.add(
                     SearchItem(
@@ -193,15 +183,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 items.addAll(albums)
             }
 
-            val artists = db.searchArtistByFuzzyTitle(query)
-                .take(3)
-                .map {
-                    SearchItem(
-                        it.title ?: UNKNOWN,
-                        it.toDomainModel(),
-                        SearchItem.SearchItemType.ARTIST
-                    )
-                }
+            val artists = db.searchArtistByFuzzyTitle(query).take(3).map {
+                SearchItem(
+                    it.title ?: UNKNOWN, it.toDomainModel(), SearchItem.SearchItemType.ARTIST
+                )
+            }
             if (artists.isNotEmpty()) {
                 items.add(
                     SearchItem(
@@ -285,11 +271,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     internal fun checkDBIsEmpty() {
         viewModelScope.launch(Dispatchers.IO) {
-            val trackCount = DB.getInstance(this@MainViewModel.getApplication())
-                .trackDao()
-                .count()
+            val trackCount = DB.getInstance(this@MainViewModel.getApplication()).trackDao().count()
             if (trackCount == 0) {
-                withContext(Dispatchers.Main) { dbEmpty.call() }
+                withContext(Dispatchers.Main) { dbEmpty.value = null }
             }
         }
     }

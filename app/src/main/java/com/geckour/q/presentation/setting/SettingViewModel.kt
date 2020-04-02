@@ -1,13 +1,13 @@
 package com.geckour.q.presentation.setting
 
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.geckour.q.util.SingleLiveEvent
 
 class SettingViewModel : ViewModel() {
 
-    internal val scrollToTop: SingleLiveEvent<Unit> = SingleLiveEvent()
+    internal val scrollToTop: MutableLiveData<Unit> = MutableLiveData()
 
     fun onToolbarClick() {
-        scrollToTop.call()
+        scrollToTop.value = null
     }
 }
