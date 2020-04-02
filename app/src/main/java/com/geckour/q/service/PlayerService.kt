@@ -127,7 +127,8 @@ class PlayerService : Service() {
         }
 
         override fun onMediaButtonEvent(mediaButtonEvent: Intent): Boolean {
-            val keyEvent: KeyEvent = mediaButtonEvent.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
+            val keyEvent: KeyEvent =
+                mediaButtonEvent.getParcelableExtra(Intent.EXTRA_KEY_EVENT) ?: return false
             return when (keyEvent.action) {
                 KeyEvent.ACTION_DOWN -> {
                     when (keyEvent.keyCode) {
@@ -541,7 +542,6 @@ class PlayerService : Service() {
 
         if (player.playWhenReady.not()) {
             player.playWhenReady = true
-            mediaSession.isActive = true
         }
     }
 
@@ -575,7 +575,6 @@ class PlayerService : Service() {
     fun stop() {
         pause()
         seekToHead()
-        mediaSession.isActive = false
     }
 
     fun clear(keepCurrentIfPlaying: Boolean = false) {
@@ -866,6 +865,7 @@ class PlayerService : Service() {
         val song = currentSong ?: return@launch
 
         mediaSession.setMetadata(song.getMediaMetadata(this@PlayerService))
+        mediaSession.isActive = true
         getPlayerNotification(this@PlayerService, mediaSession.sessionToken, song, playing).show()
     }
 
@@ -881,6 +881,7 @@ class PlayerService : Service() {
     }
 
     private fun destroyNotification() {
+        mediaSession.isActive = false
         notificationUpdateJob.cancel()
         stopForeground(true)
         getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID_PLAYER)
