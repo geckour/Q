@@ -45,7 +45,7 @@ interface AlbumDao {
 
 fun Album.upsert(db: DB): Long {
     val album = db.albumDao().findByTitle(title).firstOrNull()?.let { album ->
-        this.copy(id = album.id)
+        this.copy(id = album.id, totalDuration = album.totalDuration + totalDuration)
     } ?: this
 
     return db.albumDao().insert(album)

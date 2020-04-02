@@ -39,6 +39,9 @@ interface TrackDao {
     @Query("select * from track where albumId = :albumId and ignored != :ignore")
     fun findByAlbum(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
 
+    @Query("select * from track where albumId = :albumId and ignored != :ignore order by trackNum")
+    fun findByAlbumSorted(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
+
     @Query("select * from track where albumId = :albumId and ignored != :ignore")
     fun findByAlbumAsync(albumId: Long, ignore: Bool = Bool.UNDEFINED): LiveData<List<Track>>
 

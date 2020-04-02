@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.ServiceConnection
 import android.os.IBinder
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.geckour.q.App
@@ -68,7 +69,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     internal val searchItems: SingleLiveEvent<List<SearchItem>> = SingleLiveEvent()
 
-    internal val scrollToTop: SingleLiveEvent<Unit> = SingleLiveEvent()
+    internal val scrollToTop = MutableLiveData<Unit>()
+    internal val forceLoad = MutableLiveData<Unit>()
 
     private var currentOrientedClassType: OrientedClassType? = null
 
@@ -334,6 +336,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onToolbarClick() {
-        scrollToTop.call()
+        scrollToTop.postValue(Unit)
     }
 }

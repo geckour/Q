@@ -26,7 +26,6 @@ import com.geckour.q.util.getTimeString
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.sortedByTrackOrder
-import com.geckour.q.util.toHiragana
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -49,9 +48,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
 
     override fun submitList(list: List<Album>?) {
         super.submitList(
-            list?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {
-                it.nameSort.toHiragana
-            })
+            list?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.nameSort })
         )
     }
 

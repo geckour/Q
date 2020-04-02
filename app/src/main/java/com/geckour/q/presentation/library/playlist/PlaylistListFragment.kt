@@ -10,6 +10,7 @@ import android.view.ViewGroup
 import android.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.DividerItemDecoration
@@ -34,7 +35,7 @@ class PlaylistListFragment : Fragment() {
         fun newInstance(): PlaylistListFragment = PlaylistListFragment()
     }
 
-    private val viewModel: PlaylistListViewModel by activityViewModels()
+    private val viewModel: PlaylistListViewModel by viewModels()
     private val mainViewModel: MainViewModel by activityViewModels()
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: PlaylistListAdapter by lazy { PlaylistListAdapter(mainViewModel) }
@@ -144,11 +145,11 @@ class PlaylistListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        viewModel.scrollToTop.observe(this) {
+        mainViewModel.scrollToTop.observe(this) {
             binding.recyclerView.smoothScrollToPosition(0)
         }
 
-        viewModel.forceLoad.observe(this) {
+        mainViewModel.forceLoad.observe(this) {
             viewModel.viewModelScope.launch {
                 context?.apply {
                     mainViewModel.loading.value = true

@@ -465,13 +465,13 @@ fun DB.storeMediaInfo(
 
     val title = tag.getAll(FieldKey.TITLE).firstOrNull { it.isNotBlank() }
     val titleSort =
-        (tag.getAll(FieldKey.TITLE_SORT).firstOrNull { it.isNotBlank() } ?: title)?.toHiragana
+        (tag.getAll(FieldKey.TITLE_SORT).firstOrNull { it.isNotBlank() } ?: title)?.hiraganized
     val albumTitle = tag.getAll(FieldKey.ALBUM).firstOrNull { it.isNotBlank() }
     val albumTitleSort =
-        (tag.getAll(FieldKey.ALBUM_SORT).firstOrNull { it.isNotBlank() } ?: albumTitle)?.toHiragana
+        (tag.getAll(FieldKey.ALBUM_SORT).firstOrNull { it.isNotBlank() } ?: albumTitle)?.hiraganized
     val artistTitle = tag.getAll(FieldKey.ARTIST).firstOrNull { it.isNotBlank() }
     val artistTitleSort = (tag.getAll(FieldKey.ARTIST_SORT).firstOrNull { it.isNotBlank() }
-        ?: artistTitle)?.toHiragana
+        ?: artistTitle)?.hiraganized
     val duration = header.trackLength.toLong() * 1000
     val trackNum = try {
         tag.getFirst(FieldKey.TRACK).toInt()
@@ -485,7 +485,7 @@ fun DB.storeMediaInfo(
     }
     val composerTitle = tag.getAll(FieldKey.COMPOSER).firstOrNull { it.isNotBlank() }
     val composerTitleSort = (tag.getAll(FieldKey.COMPOSER_SORT).firstOrNull { it.isNotBlank() }
-        ?: composerTitle)?.toHiragana
+        ?: composerTitle)?.hiraganized
     val artworkUriString = title?.let {
         albumDao().findByTitle(it).firstOrNull()?.artworkUriString
             ?: tag.firstArtwork?.let { artwork ->
@@ -504,13 +504,14 @@ fun DB.storeMediaInfo(
     }
     val albumArtistTitle = tag.getAll(FieldKey.ALBUM_ARTIST).firstOrNull { it.isNotBlank() }
     val albumArtistTitleSort =
-        tag.getAll(FieldKey.ALBUM_ARTIST_SORT).firstOrNull { it.isNotBlank() } ?: albumArtistTitle
+        (tag.getAll(FieldKey.ALBUM_ARTIST_SORT).firstOrNull { it.isNotBlank() }
+            ?: albumArtistTitle)?.hiraganized
 
     val artistId = Artist(
-        0, artistTitle ?: UNKNOWN, artistTitleSort ?: UNKNOWN, 0
+        0, artistTitle ?: UNKNOWN, artistTitleSort ?: UNKNOWN, 0, duration
     ).upsert(this)
     val albumArtistId = albumArtistTitle?.let {
-        Artist(0, albumArtistTitle, albumArtistTitleSort!!, 0).upsert(this)
+        Artist(0, albumArtistTitle, albumArtistTitleSort!!, 0, duration).upsert(this)
     }
 
     val albumId = Album(
@@ -520,7 +521,8 @@ fun DB.storeMediaInfo(
         albumTitleSort ?: UNKNOWN,
         artworkUriString,
         albumArtistId != null,
-        0
+        0,
+        duration
     ).upsert(this)
 
     val track = Track(

@@ -2,7 +2,6 @@ package com.geckour.q.presentation.library.artist
 
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.preference.PreferenceManager
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
@@ -12,28 +11,24 @@ import android.view.ViewGroup
 import android.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.viewModelScope
+import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.Album
 import com.geckour.q.databinding.FragmentListLibraryBinding
-import com.geckour.q.domain.model.Artist
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.BoolConverter
 import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.getSong
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
-import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toNightModeInt
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class ArtistListFragment : Fragment() {
 
@@ -42,7 +37,7 @@ class ArtistListFragment : Fragment() {
         fun newInstance(): ArtistListFragment = ArtistListFragment()
     }
 
-    private val viewModel: ArtistListViewModel by activityViewModels()
+    private val viewModel: ArtistListViewModel by viewModels()
     private val mainViewModel: MainViewModel by activityViewModels()
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: ArtistListAdapter by lazy { ArtistListAdapter(mainViewModel) }
@@ -50,9 +45,6 @@ class ArtistListFragment : Fragment() {
     private val sharedPreferences: SharedPreferences by lazy {
         PreferenceManager.getDefaultSharedPreferences(requireContext())
     }
-
-    private var latestDbAlbumList: List<Album> = emptyList()
-    private var chatteringCancelFlag: Boolean = false
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -68,8 +60,6 @@ class ArtistListFragment : Fragment() {
         setHasOptionsMenu(true)
 
         binding.recyclerView.adapter = adapter
-
-        if (adapter.itemCount == 0) observeArtists()
     }
 
     override fun onResume() {
@@ -130,26 +120,29 @@ class ArtistListFragment : Fragment() {
             }
 
             viewModel.viewModelScope.launch(Dispatchers.IO) {
-                val sortByTrackOrder = item.itemId.let {
-                    it != R.id.menu_insert_all_simple_shuffle_next || it != R.id.menu_insert_all_simple_shuffle_last || it != R.id.menu_override_all_simple_shuffle
-                }
-                val artistAlbumMap = latestDbAlbumList.groupBy { it.artistId }
+                val sortByTrackOrder = item.itemId !in listOf(
+                    R.id.menu_insert_all_simple_shuffle_next,
+                    R.id.menu_insert_all_simple_shuffle_last,
+                    R.id.menu_override_all_simple_shuffle
+                )
+
                 mainViewModel.loading.postValue(true)
-                val songs = adapter.currentList.mapNotNull {
-                    artistAlbumMap[it.id]?.map {
-                        DB.getInstance(context).let { db ->
-                            db.trackDao()
-                                .findByAlbum(
-                                    it.id,
-                                    BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                                )
-                                .mapNotNull { getSong(db, it) }
-                                .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
+                val db = DB.getInstance(context)
+                val songs = adapter.currentList.flatMap {
+                    db.albumDao().findByArtistId(it.id).flatMap {
+                        if (sortByTrackOrder) {
+                            db.trackDao().findByAlbumSorted(
+                                it.id,
+                                BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                            ).mapNotNull { getSong(db, it) }
+                        } else {
+                            db.trackDao().findByAlbum(
+                                it.id,
+                                BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                            ).mapNotNull { getSong(db, it) }
                         }
-                    }?.flatten()
-                }.apply {
-                    mainViewModel.loading.postValue(true)
-                }.flatten()
+                    }
+                }
 
                 adapter.onNewQueue(songs, actionType)
             }
@@ -159,74 +152,17 @@ class ArtistListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        viewModel.scrollToTop.observe(this) {
+        viewModel.artistListData.observe(viewLifecycleOwner) {
+            adapter.submitList(it)
+        }
+
+        mainViewModel.scrollToTop.observe(viewLifecycleOwner) {
             binding.recyclerView.smoothScrollToPosition(0)
         }
 
-        viewModel.forceLoad.observe(this) {
-            context?.also { context ->
-                viewModel.viewModelScope.launch {
-                    mainViewModel.loading.value = true
-                    adapter.submitList(fetchArtists(DB.getInstance(context)))
-                    mainViewModel.loading.value = false
-                    binding.recyclerView.smoothScrollToPosition(0)
-                }
-            }
-        }
-
-        viewModel.artistIdDeleted.observe(this) {
+        viewModel.artistIdDeleted.observe(viewLifecycleOwner) {
             if (it == null) return@observe
             adapter.onArtistDeleted(it)
         }
     }
-
-    private fun observeArtists() {
-        context?.apply {
-            DB.getInstance(this).also { db ->
-                db.albumDao().getAllAsync().observe(this@ArtistListFragment) { dbAlbumList ->
-                    if (dbAlbumList == null) return@observe
-
-                    latestDbAlbumList = dbAlbumList
-                    upsertArtistListIfPossible(db)
-                }
-            }
-        }
-    }
-
-    private suspend fun fetchArtists(db: DB): List<Artist> =
-        withContext(Dispatchers.IO) { db.albumDao().getAll().getArtistList(db) }
-
-    private fun upsertArtistListIfPossible(db: DB, albumList: List<Album> = latestDbAlbumList) {
-        if (chatteringCancelFlag.not()) {
-            chatteringCancelFlag = true
-            viewModel.viewModelScope.launch {
-                delay(500)
-                mainViewModel.loading.value = true
-                val items = albumList.getArtistList(db)
-                mainViewModel.loading.value = false
-
-                adapter.submitList(items)
-                chatteringCancelFlag = false
-            }
-        }
-    }
-
-    private suspend fun List<Album>.getArtistList(db: DB): List<Artist> =
-        withContext(Dispatchers.IO) {
-            this@getArtistList.asSequence().groupBy { it.artistId }.map { artistIdToAlbumMap ->
-                val artworkUriString =
-                    artistIdToAlbumMap.value.sortedByDescending { it.playbackCount }
-                        .firstOrNull { it.artworkUriString != null }?.artworkUriString
-                val totalDuration =
-                    db.trackDao().findByArtist(artistIdToAlbumMap.key).map { it.duration }.sum()
-                val artist = db.artistDao().get(artistIdToAlbumMap.key)
-                Artist(
-                    artistIdToAlbumMap.key,
-                    artist?.title ?: UNKNOWN,
-                    artist?.titleSort ?: UNKNOWN,
-                    artworkUriString,
-                    totalDuration
-                )
-            }
-        }
 }

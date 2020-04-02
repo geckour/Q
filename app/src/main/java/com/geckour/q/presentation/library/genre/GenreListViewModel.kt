@@ -1,5 +1,6 @@
 package com.geckour.q.presentation.library.genre
 
-import com.geckour.q.presentation.library.LibraryViewModel
+import androidx.lifecycle.AndroidViewModel
+import android.app.Application
 
-class GenreListViewModel : LibraryViewModel()
+class GenreListViewModel(application: Application) : AndroidViewModel(application)

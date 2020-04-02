@@ -1,5 +1,6 @@
 package com.geckour.q.presentation.library.playlist
 
-import com.geckour.q.presentation.library.LibraryViewModel
+import androidx.lifecycle.AndroidViewModel
+import android.app.Application
 
-class PlaylistListViewModel : LibraryViewModel()
+class PlaylistListViewModel(application: Application) : AndroidViewModel(application)

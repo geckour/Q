@@ -11,6 +11,7 @@ import android.view.ViewGroup
 import android.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
@@ -72,7 +73,7 @@ class SongListFragment : Fragment() {
         }
     }
 
-    private val viewModel: SongListViewModel by activityViewModels()
+    private val viewModel: SongListViewModel by viewModels()
     private val mainViewModel: MainViewModel by activityViewModels()
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: SongListAdapter by lazy {
@@ -173,11 +174,11 @@ class SongListFragment : Fragment() {
             if (removed) adapter.removeByTrackNum(it)
         }
 
-        viewModel.scrollToTop.observe(this) {
+        mainViewModel.scrollToTop.observe(this) {
             binding.recyclerView.smoothScrollToPosition(0)
         }
 
-        viewModel.forceLoad.observe(this) {
+        mainViewModel.forceLoad.observe(this) {
             adapter.clearItems()
             fetchSongs()
         }

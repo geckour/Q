@@ -1,5 +1,6 @@
 package com.geckour.q.data.db.dao
 
+import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -29,6 +30,9 @@ interface ArtistDao {
     @Query("select * from artist")
     fun getAll(): List<Artist>
 
+    @Query("select * from artist")
+    fun getAllAsync(): LiveData<List<Artist>>
+
     @Query("select * from artist where id = :id")
     fun get(id: Long): Artist?
 
@@ -38,7 +42,11 @@ interface ArtistDao {
 
 fun Artist.upsert(db: DB): Long {
     val artist = db.artistDao().findArtist(title).firstOrNull()?.let { artist ->
-        this.copy(id = artist.id, playbackCount = artist.playbackCount)
+        this.copy(
+            id = artist.id,
+            playbackCount = artist.playbackCount,
+            totalDuration = artist.totalDuration + totalDuration
+        )
     } ?: this
 
     return db.artistDao().insert(artist)

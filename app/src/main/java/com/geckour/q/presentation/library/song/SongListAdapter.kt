@@ -25,7 +25,6 @@ import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainModel
-import com.geckour.q.util.toHiragana
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -50,9 +49,7 @@ class SongListAdapter(
     fun submitList(list: List<Song>?, sortByTrackOrder: Boolean = true) {
         submitList(
             if (sortByTrackOrder) list?.sortedByTrackOrder()
-            else list?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {
-                it.nameSort.toHiragana
-            })
+            else list?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.nameSort })
         )
     }
 

@@ -52,5 +52,5 @@ val Boolean.toNightModeInt: Int
     get() = if (this) AppCompatDelegate.MODE_NIGHT_YES
     else AppCompatDelegate.MODE_NIGHT_NO
 
-val String.toHiragana: String
+val String.hiraganized: String
     get() = this.map { if (it in 'ァ'..'ヶ') it - 0x60 else it }.toString()

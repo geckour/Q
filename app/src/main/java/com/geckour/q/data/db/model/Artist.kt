@@ -8,5 +8,6 @@ data class Artist(
     @PrimaryKey(autoGenerate = true) var id: Long,
     var title: String,
     var titleSort: String,
-    var playbackCount: Long
+    var playbackCount: Long,
+    var totalDuration: Long
 )

@@ -17,6 +17,8 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModelProvider
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.domain.model.PlaybackButton
@@ -25,13 +27,10 @@ import com.geckour.q.domain.model.Song
 import com.geckour.q.presentation.easteregg.EasterEggFragment
 import com.geckour.q.presentation.equalizer.EqualizerFragment
 import com.geckour.q.presentation.library.album.AlbumListFragment
-import com.geckour.q.presentation.library.album.AlbumListViewModel
 import com.geckour.q.presentation.library.artist.ArtistListFragment
-import com.geckour.q.presentation.library.artist.ArtistListViewModel
 import com.geckour.q.presentation.library.genre.GenreListFragment
 import com.geckour.q.presentation.library.playlist.PlaylistListFragment
 import com.geckour.q.presentation.library.song.SongListFragment
-import com.geckour.q.presentation.library.song.SongListViewModel
 import com.geckour.q.presentation.pay.PaymentFragment
 import com.geckour.q.presentation.pay.PaymentViewModel
 import com.geckour.q.presentation.setting.SettingActivity
@@ -80,11 +79,6 @@ class MainActivity : CrashlyticsBundledActivity() {
     private val viewModel: MainViewModel by viewModels()
 
     private val bottomSheetViewModel: BottomSheetViewModel by viewModels()
-    private val artistListViewModel: ArtistListViewModel by viewModels()
-    private val albumListViewModel: AlbumListViewModel by viewModels()
-    private val songListViewModel: SongListViewModel by viewModels()
-    private val genreListViewModel: SongListViewModel by viewModels()
-    private val playlistListViewModel: SongListViewModel by viewModels()
     private val paymentViewModel: PaymentViewModel by viewModels()
 
     internal lateinit var binding: ActivityMainBinding
@@ -104,13 +98,7 @@ class MainActivity : CrashlyticsBundledActivity() {
                     if (this) {
                         viewModel.syncing = false
                         setLockingIndicator()
-                        when (supportFragmentManager.fragments.lastOrNull { it.isVisible }) {
-                            is ArtistListFragment -> artistListViewModel.forceLoad.call()
-                            is AlbumListFragment -> albumListViewModel.forceLoad.call()
-                            is SongListFragment -> songListViewModel.forceLoad.call()
-                            is GenreListFragment -> genreListViewModel.forceLoad.call()
-                            is PlaylistListFragment -> playlistListViewModel.forceLoad.call()
-                        }
+                        viewModel.forceLoad.postValue(Unit)
                     }
                 }
                 (extras?.get(EXTRA_SYNCING_PROGRESS) as? Pair<Int, Int>)?.apply {
@@ -314,14 +302,6 @@ class MainActivity : CrashlyticsBundledActivity() {
             setLockingIndicator()
         }
 
-        viewModel.scrollToTop.observe(this) {
-            artistListViewModel.scrollToTop.call()
-            albumListViewModel.scrollToTop.call()
-            songListViewModel.scrollToTop.call()
-            genreListViewModel.scrollToTop.call()
-            playlistListViewModel.scrollToTop.call()
-        }
-
         viewModel.selectedArtist.observe(this) {
             if (it == null) return@observe
             requestedTransaction = RequestedTransaction(
@@ -387,17 +367,19 @@ class MainActivity : CrashlyticsBundledActivity() {
 
         bottomSheetViewModel.playbackButton.observe(this) {
             if (it == null) return@observe
-            viewModel.player.value?.onMediaButtonEvent(KeyEvent(
-                if (it == PlaybackButton.UNDEFINED) KeyEvent.ACTION_UP else KeyEvent.ACTION_DOWN,
-                when (it) {
-                    PlaybackButton.PLAY_OR_PAUSE -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-                    PlaybackButton.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
-                    PlaybackButton.PREV -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
-                    PlaybackButton.FF -> KeyEvent.KEYCODE_MEDIA_FAST_FORWARD
-                    PlaybackButton.REWIND -> KeyEvent.KEYCODE_MEDIA_REWIND
-                    PlaybackButton.UNDEFINED -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-                }
-            ))
+            viewModel.player.value?.onMediaButtonEvent(
+                KeyEvent(
+                    if (it == PlaybackButton.UNDEFINED) KeyEvent.ACTION_UP else KeyEvent.ACTION_DOWN,
+                    when (it) {
+                        PlaybackButton.PLAY_OR_PAUSE -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+                        PlaybackButton.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
+                        PlaybackButton.PREV -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
+                        PlaybackButton.FF -> KeyEvent.KEYCODE_MEDIA_FAST_FORWARD
+                        PlaybackButton.REWIND -> KeyEvent.KEYCODE_MEDIA_REWIND
+                        PlaybackButton.UNDEFINED -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+                    }
+                )
+            )
         }
 
         bottomSheetViewModel.clearQueue.observe(this) {
@@ -431,7 +413,8 @@ class MainActivity : CrashlyticsBundledActivity() {
         binding.drawerLayout.addDrawerListener(drawerToggle)
         drawerToggle.syncState()
         binding.navigationView.setNavigationItemSelectedListener(onNavigationItemSelected)
-        binding.navigationView.getHeaderView(0).findViewById<View>(R.id.drawer_head_icon)
+        binding.navigationView.getHeaderView(0)
+            .findViewById<View>(R.id.drawer_head_icon)
             ?.setOnLongClickListener {
                 requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.EASTER_EGG)
                 tryTransaction()
@@ -563,4 +546,7 @@ class MainActivity : CrashlyticsBundledActivity() {
 
         viewModel.deleteSongFromDB(song)
     }
+
+    private inline fun <reified T : AndroidViewModel> createAndroidViewModel(): T =
+        ViewModelProvider.AndroidViewModelFactory(application).create(T::class.java)
 }

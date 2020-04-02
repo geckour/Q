@@ -11,5 +11,6 @@ data class Album(
     var titleSort: String,
     var artworkUriString: String?,
     var hasAlbumArtist: Boolean,
-    var playbackCount: Long
+    var playbackCount: Long,
+    var totalDuration: Long
 )
