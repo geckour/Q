@@ -12,10 +12,10 @@ data class Track(
     var albumArtistId: Long?,
     var mediaId: Long,
     var sourcePath: String,
-    var title: String?,
-    var titleSort: String?,
-    var composer: String?,
-    var composerSort: String?,
+    var title: String,
+    var titleSort: String,
+    var composer: String,
+    var composerSort: String,
     var duration: Long,
     var trackNum: Int?,
     var discNum: Int?,
@@ -24,7 +24,5 @@ data class Track(
 )
 
 enum class Bool {
-    TRUE,
-    FALSE,
-    UNDEFINED;
+    TRUE, FALSE, UNDEFINED;
 }

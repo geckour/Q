@@ -52,21 +52,21 @@ class GenreListFragment : Fragment() {
     private val adapter: GenreListAdapter by lazy { GenreListAdapter(mainViewModel) }
 
     override fun onCreateView(
-            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
         observeEvents()
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
         return binding.root
     }
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
         setHasOptionsMenu(true)
 
         binding.recyclerView.adapter = adapter
         binding.recyclerView.addItemDecoration(
-                DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL)
+            DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL)
         )
 
 
@@ -120,7 +120,7 @@ class GenreListFragment : Fragment() {
                 val toggleTo = sharedPreferences.isNightMode.not()
                 sharedPreferences.isNightMode = toggleTo
                 (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
-                        toggleTo.toNightModeInt
+                    toggleTo.toNightModeInt
                 return true
             }
 
@@ -172,11 +172,11 @@ class GenreListFragment : Fragment() {
     private suspend fun fetchGenres(): List<Genre> = context?.let { context ->
         withContext(Dispatchers.IO) {
             context.contentResolver?.query(
-                    MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
-                    arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME),
-                    null,
-                    null,
-                    null
+                MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
+                arrayOf(MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME),
+                null,
+                null,
+                null
             )?.use {
                 val db = DB.getInstance(context)
                 val list: ArrayList<Genre> = ArrayList()
@@ -187,12 +187,12 @@ class GenreListFragment : Fragment() {
                     }
                     val totalDuration = tracks.map { it.duration }.sum()
                     val genre = Genre(
-                            id,
-                            tracks.getGenreThumb(context),
-                            it.getString(it.getColumnIndex(MediaStore.Audio.Genres.NAME)).let {
-                                if (it.isBlank()) UNKNOWN else it
-                            },
-                            totalDuration
+                        id,
+                        tracks.getGenreThumb(context),
+                        it.getString(it.getColumnIndex(MediaStore.Audio.Genres.NAME)).let {
+                            if (it.isBlank()) UNKNOWN else it
+                        },
+                        totalDuration
                     )
                     list.add(genre)
                 }

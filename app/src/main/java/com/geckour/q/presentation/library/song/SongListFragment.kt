@@ -1,7 +1,6 @@
 package com.geckour.q.presentation.library.song
 
 import android.os.Bundle
-import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.Menu
@@ -13,6 +12,7 @@ import android.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.viewModelScope
+import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Track
@@ -77,8 +77,9 @@ class SongListFragment : Fragment() {
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: SongListAdapter by lazy {
         SongListAdapter(
-            mainViewModel, arguments?.getSerializable(ARGS_KEY_CLASS_TYPE)
-                    as? OrientedClassType ?: OrientedClassType.SONG
+            mainViewModel,
+            arguments?.getSerializable(ARGS_KEY_CLASS_TYPE) as? OrientedClassType
+                ?: OrientedClassType.SONG
         )
     }
     private var chatteringCancelFlag: Boolean = false
@@ -91,8 +92,8 @@ class SongListFragment : Fragment() {
         return binding.root
     }
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
         setHasOptionsMenu(true)
 
@@ -215,7 +216,8 @@ class SongListFragment : Fragment() {
     private fun observeSongsWithAlbum(album: Album) {
         context?.also {
             DB.getInstance(it).also { db ->
-                db.trackDao().findByAlbumAsync(album.id)
+                db.trackDao()
+                    .findByAlbumAsync(album.id)
                     .observe(this@SongListFragment) { dbTrackList ->
                         if (dbTrackList == null) return@observe
 

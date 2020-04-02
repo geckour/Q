@@ -49,9 +49,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
 
     override fun submitList(list: List<Artist>?) {
         super.submitList(
-            list?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {
-                (it.nameSort ?: it.name).toHiragana
-            })
+            list?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.nameSort.toHiragana })
         )
     }
 
@@ -150,8 +148,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
                                 it.id,
                                 BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                             ).mapNotNull { getSong(db, it) }.let {
-                                if (sortByTrackOrder)
-                                    it.sortedByTrackOrder()
+                                if (sortByTrackOrder) it.sortedByTrackOrder()
                                 else it
                             }
                         }.apply {

@@ -71,8 +71,8 @@ class AlbumListFragment : Fragment() {
         return binding.root
     }
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
         setHasOptionsMenu(true)
         binding.recyclerView.adapter = adapter
@@ -145,9 +145,12 @@ class AlbumListFragment : Fragment() {
                 mainViewModel.loading.postValue(true)
                 val songs = adapter.currentList.map {
                     DB.getInstance(context).let { db ->
-                        db.trackDao().findByAlbum(
-                            it.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                        ).mapNotNull { getSong(db, it) }
+                        db.trackDao()
+                            .findByAlbum(
+                                it.id,
+                                BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                            )
+                            .mapNotNull { getSong(db, it) }
                             .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                     }
                 }.apply {
@@ -203,8 +206,8 @@ class AlbumListFragment : Fragment() {
 
     private fun fetchAlbums(db: DB): List<Album> =
 
-        (artist?.let { db.albumDao().findByArtistId(it.id) }
-            ?: db.albumDao().getAll()).getAlbumList(db)
+        (artist?.let { db.albumDao().findByArtistId(it.id) } ?: db.albumDao()
+            .getAll()).getAlbumList(db)
 
     private fun upsertAlbumListIfPossible(db: DB) {
         viewModel.viewModelScope.launch {

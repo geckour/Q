@@ -113,9 +113,9 @@ suspend fun getSong(
         track.title,
         track.titleSort,
         artist?.title ?: UNKNOWN,
-        artist?.titleSort,
+        artist?.titleSort ?: UNKNOWN,
         album?.title ?: UNKNOWN,
-        album?.titleSort,
+        album?.titleSort ?: UNKNOWN,
         track.composer,
         track.composerSort,
         artwork,
@@ -235,13 +235,17 @@ fun List<Uri?>.getThumb(context: Context): Bitmap? {
     )
     val canvas = Canvas(bitmap)
     this@getThumb.reversed().forEachIndexed { i, uri ->
-        val b =
-            Glide.with(context).asBitmap().load(uri ?: return@forEachIndexed).applyDefaultSettings()
-                .submit().get()?.let {
-                    Bitmap.createScaledBitmap(
-                        it, unit, (it.height * unit.toFloat() / it.width).toInt(), false
-                    )
-                } ?: return@forEachIndexed
+        val b = Glide.with(context)
+            .asBitmap()
+            .load(uri ?: return@forEachIndexed)
+            .applyDefaultSettings()
+            .submit()
+            .get()
+            ?.let {
+                Bitmap.createScaledBitmap(
+                    it, unit, (it.height * unit.toFloat() / it.width).toInt(), false
+                )
+            } ?: return@forEachIndexed
         canvas.drawBitmap(b, bitmap.width - (i + 1) * unit * 0.9f, (unit - b.height) / 2f, Paint())
     }
     return bitmap
@@ -290,9 +294,11 @@ fun getTrackMediaIdByPlaylistId(context: Context, playlistId: Long): List<Pair<L
 fun Song.getMediaSource(mediaSourceFactory: ProgressiveMediaSource.Factory): MediaSource =
     mediaSourceFactory.createMediaSource(Uri.fromFile(File(sourcePath)))
 
-fun List<Song>.sortedByTrackOrder(): List<Song> =
-    this.asSequence().groupBy { it.discNum }.map { it.key to it.value.sortedBy { it.trackNum } }
-        .sortedBy { it.first }.flatMap { it.second }
+fun List<Song>.sortedByTrackOrder(): List<Song> = this.asSequence()
+    .groupBy { it.discNum }
+    .map { it.key to it.value.sortedBy { it.trackNum } }
+    .sortedBy { it.first }
+    .flatMap { it.second }
 
 fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> = when (classType) {
     OrientedClassType.ARTIST -> {
@@ -335,18 +341,26 @@ suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat =
             .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist)
             .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album)
             .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, uriString)
-            .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer).apply {
+            .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer)
+            .apply {
                 if (uriString != null && PreferenceManager.getDefaultSharedPreferences(context).showArtworkOnLockScreen) {
                     val bitmap = try {
-                        Glide.with(context).asDrawable().load(uriString).applyDefaultSettings()
-                            .submit().get().bitmap()
+                        Glide.with(context)
+                            .asDrawable()
+                            .load(uriString)
+                            .applyDefaultSettings()
+                            .submit()
+                            .get()
+                            .bitmap()
                     } catch (t: Throwable) {
                         Timber.e(t)
                         null
                     }
                     putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
                 }
-            }.putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration).build()
+            }
+            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
+            .build()
     }
 
 suspend fun getPlayerNotification(
@@ -354,32 +368,41 @@ suspend fun getPlayerNotification(
 ): Notification = withContext(Dispatchers.IO) {
     val artwork = try {
         Glide.with(context).asDrawable().load(
-                DB.getInstance(context).getArtworkUriStringFromId(song.albumId).orDefaultForModel
-            ).applyDefaultSettings().submit().get().bitmap()
+            DB.getInstance(context).getArtworkUriStringFromId(song.albumId).orDefaultForModel
+        ).applyDefaultSettings().submit().get().bitmap()
     } catch (t: Throwable) {
         Timber.e(t)
         null
     }
     context.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER)
-        .setSmallIcon(R.drawable.ic_notification_player).setLargeIcon(artwork)
-        .setContentTitle(song.name).setContentText(song.artist).setSubText(song.album)
-        .setOngoing(playing).setStyle(
-            androidx.media.app.NotificationCompat.MediaStyle().setShowActionsInCompactView(0, 1, 2)
+        .setSmallIcon(R.drawable.ic_notification_player)
+        .setLargeIcon(artwork)
+        .setContentTitle(song.name)
+        .setContentText(song.artist)
+        .setSubText(song.album)
+        .setOngoing(playing)
+        .setStyle(
+            androidx.media.app.NotificationCompat.MediaStyle()
+                .setShowActionsInCompactView(0, 1, 2)
                 .setMediaSession(sessionToken)
-        ).setShowWhen(false).setContentIntent(
+        )
+        .setShowWhen(false)
+        .setContentIntent(
             PendingIntent.getActivity(
                 context,
                 App.REQUEST_CODE_LAUNCH_APP,
                 LauncherActivity.createIntent(context),
                 PendingIntent.FLAG_UPDATE_CURRENT
             )
-        ).addAction(
+        )
+        .addAction(
             NotificationCompat.Action.Builder(
                 R.drawable.ic_backward,
                 context.getString(R.string.notification_action_prev),
                 getCommandPendingIntent(context, NotificationCommand.PREV)
             ).build()
-        ).addAction(
+        )
+        .addAction(
             if (playing) {
                 NotificationCompat.Action.Builder(
                     R.drawable.ic_pause,
@@ -393,13 +416,16 @@ suspend fun getPlayerNotification(
                     getCommandPendingIntent(context, NotificationCommand.PLAY_PAUSE)
                 ).build()
             }
-        ).addAction(
+        )
+        .addAction(
             NotificationCompat.Action.Builder(
                 R.drawable.ic_forward,
                 context.getString(R.string.notification_action_next),
                 getCommandPendingIntent(context, NotificationCommand.NEXT)
             ).build()
-        ).setDeleteIntent(getCommandPendingIntent(context, NotificationCommand.DESTROY)).build()
+        )
+        .setDeleteIntent(getCommandPendingIntent(context, NotificationCommand.DESTROY))
+        .build()
 }
 
 private fun getCommandPendingIntent(context: Context, command: NotificationCommand): PendingIntent =
@@ -437,9 +463,15 @@ fun DB.storeMediaInfo(
     val tag = audioFile.tag
     val header = audioFile.audioHeader
 
-    val title = tag.getAll(FieldKey.TITLE).firstOrNull { it.isNotBlank() } ?: UNKNOWN
-    val albumTitle = tag.getAll(FieldKey.ALBUM).firstOrNull { it.isNotBlank() } ?: UNKNOWN
-    val artistTitle = tag.getAll(FieldKey.ARTIST).firstOrNull { it.isNotBlank() } ?: UNKNOWN
+    val title = tag.getAll(FieldKey.TITLE).firstOrNull { it.isNotBlank() }
+    val titleSort =
+        (tag.getAll(FieldKey.TITLE_SORT).firstOrNull { it.isNotBlank() } ?: title)?.toHiragana
+    val albumTitle = tag.getAll(FieldKey.ALBUM).firstOrNull { it.isNotBlank() }
+    val albumTitleSort =
+        (tag.getAll(FieldKey.ALBUM_SORT).firstOrNull { it.isNotBlank() } ?: albumTitle)?.toHiragana
+    val artistTitle = tag.getAll(FieldKey.ARTIST).firstOrNull { it.isNotBlank() }
+    val artistTitleSort = (tag.getAll(FieldKey.ARTIST_SORT).firstOrNull { it.isNotBlank() }
+        ?: artistTitle)?.toHiragana
     val duration = header.trackLength.toLong() * 1000
     val trackNum = try {
         tag.getFirst(FieldKey.TRACK).toInt()
@@ -451,40 +483,41 @@ fun DB.storeMediaInfo(
     } catch (t: Throwable) {
         null
     }
-    val composerTitle = tag.getAll(FieldKey.COMPOSER).firstOrNull { it.isNotBlank() } ?: UNKNOWN
-    val artworkUriString = albumDao().findByTitle(title).firstOrNull()?.artworkUriString
-        ?: tag.firstArtwork?.let { artwork ->
-            val hex = String(Hex.encodeHex(DigestUtils.md5(artwork.binaryData)))
-            val dirName = "images"
-            val dir = File(context.externalMediaDirs[0], dirName)
-            if (dir.exists().not()) dir.mkdir()
-            val imgFile = File(dir, hex)
-            FileOutputStream(imgFile).use {
-                it.write(artwork.binaryData)
-                it.flush()
-            }
+    val composerTitle = tag.getAll(FieldKey.COMPOSER).firstOrNull { it.isNotBlank() }
+    val composerTitleSort = (tag.getAll(FieldKey.COMPOSER_SORT).firstOrNull { it.isNotBlank() }
+        ?: composerTitle)?.toHiragana
+    val artworkUriString = title?.let {
+        albumDao().findByTitle(it).firstOrNull()?.artworkUriString
+            ?: tag.firstArtwork?.let { artwork ->
+                val hex = String(Hex.encodeHex(DigestUtils.md5(artwork.binaryData)))
+                val dirName = "images"
+                val dir = File(context.externalMediaDirs[0], dirName)
+                if (dir.exists().not()) dir.mkdir()
+                val imgFile = File(dir, hex)
+                FileOutputStream(imgFile).use {
+                    it.write(artwork.binaryData)
+                    it.flush()
+                }
 
-            imgFile.path
-        }
+                imgFile.path
+            }
+    }
     val albumArtistTitle = tag.getAll(FieldKey.ALBUM_ARTIST).firstOrNull { it.isNotBlank() }
+    val albumArtistTitleSort =
+        tag.getAll(FieldKey.ALBUM_ARTIST_SORT).firstOrNull { it.isNotBlank() } ?: albumArtistTitle
 
     val artistId = Artist(
-        0, artistTitle, tag.getAll(FieldKey.ARTIST_SORT).firstOrNull { it.isNotBlank() }, 0
+        0, artistTitle ?: UNKNOWN, artistTitleSort ?: UNKNOWN, 0
     ).upsert(this)
     val albumArtistId = albumArtistTitle?.let {
-        Artist(
-            0,
-            albumArtistTitle,
-            tag.getAll(FieldKey.ALBUM_ARTIST_SORT).firstOrNull { it.isNotBlank() },
-            0
-        ).upsert(this)
+        Artist(0, albumArtistTitle, albumArtistTitleSort!!, 0).upsert(this)
     }
 
     val albumId = Album(
         0,
         albumArtistId ?: artistId,
-        albumTitle,
-        tag.getAll(FieldKey.ALBUM_SORT).firstOrNull { it.isNotBlank() },
+        albumTitle ?: UNKNOWN,
+        albumTitleSort ?: UNKNOWN,
         artworkUriString,
         albumArtistId != null,
         0
@@ -498,10 +531,10 @@ fun DB.storeMediaInfo(
         albumArtistId,
         trackMediaId,
         trackPath,
-        title,
-        tag.getAll(FieldKey.TITLE_SORT).firstOrNull { it.isNotBlank() },
-        composerTitle,
-        tag.getAll(FieldKey.COMPOSER_SORT).firstOrNull { it.isNotBlank() },
+        title ?: UNKNOWN,
+        titleSort ?: UNKNOWN,
+        composerTitle ?: UNKNOWN,
+        composerTitleSort ?: UNKNOWN,
         duration,
         trackNum,
         discNum,

@@ -1,7 +1,6 @@
 package com.geckour.q.presentation.library.playlist
 
 import android.os.Bundle
-import android.preference.PreferenceManager
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
@@ -12,6 +11,7 @@ import android.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.viewModelScope
+import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.DividerItemDecoration
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -40,21 +40,21 @@ class PlaylistListFragment : Fragment() {
     private val adapter: PlaylistListAdapter by lazy { PlaylistListAdapter(mainViewModel) }
 
     override fun onCreateView(
-            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
         observeEvents()
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
         return binding.root
     }
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
         setHasOptionsMenu(true)
 
         binding.recyclerView.adapter = adapter
         binding.recyclerView.addItemDecoration(
-                DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL)
+            DividerItemDecoration(requireContext(), DividerItemDecoration.VERTICAL)
         )
 
 
@@ -108,7 +108,7 @@ class PlaylistListFragment : Fragment() {
                 val toggleTo = sharedPreferences.isNightMode.not()
                 sharedPreferences.isNightMode = toggleTo
                 (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
-                        toggleTo.toNightModeInt
+                    toggleTo.toNightModeInt
                 return true
             }
 
@@ -130,7 +130,7 @@ class PlaylistListFragment : Fragment() {
                 val songs = adapter.getItems().map { playlist ->
                     playlist.getTrackMediaIds(context).mapNotNull {
                         getSong(
-                                DB.getInstance(context), it.first, playlistId = playlist.id
+                            DB.getInstance(context), it.first, playlistId = playlist.id
                         )
                     }
                 }.apply {

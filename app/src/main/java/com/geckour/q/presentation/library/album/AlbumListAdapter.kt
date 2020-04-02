@@ -20,7 +20,6 @@ import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.BoolConverter
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.getSong
 import com.geckour.q.util.getTimeString
@@ -51,7 +50,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
     override fun submitList(list: List<Album>?) {
         super.submitList(
             list?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {
-                (it.nameSort ?: it.name)?.toHiragana ?: UNKNOWN
+                it.nameSort.toHiragana
             })
         )
     }
@@ -136,17 +135,18 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
 
             viewModel.viewModelScope.launch {
                 val sortByTrackOrder =
-                    id != R.id.menu_insert_all_simple_shuffle_next
-                            || id != R.id.menu_insert_all_simple_shuffle_last
-                            || id != R.id.menu_override_all_simple_shuffle
+                    id != R.id.menu_insert_all_simple_shuffle_next || id != R.id.menu_insert_all_simple_shuffle_last || id != R.id.menu_override_all_simple_shuffle
                 val songs = withContext(Dispatchers.IO) {
                     DB.getInstance(context).let { db ->
                         val sharedPreferences =
                             PreferenceManager.getDefaultSharedPreferences(context)
                         viewModel.loading.postValue(true)
-                        db.trackDao().findByAlbum(
-                            album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                        ).mapNotNull { getSong(db, it) }
+                        db.trackDao()
+                            .findByAlbum(
+                                album.id,
+                                BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                            )
+                            .mapNotNull { getSong(db, it) }
                             .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                             .apply { viewModel.loading.postValue(false) }
                     }

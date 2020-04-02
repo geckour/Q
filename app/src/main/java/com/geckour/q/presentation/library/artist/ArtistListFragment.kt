@@ -62,8 +62,8 @@ class ArtistListFragment : Fragment() {
         return binding.root
     }
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
         setHasOptionsMenu(true)
 
@@ -138,10 +138,12 @@ class ArtistListFragment : Fragment() {
                 val songs = adapter.currentList.mapNotNull {
                     artistAlbumMap[it.id]?.map {
                         DB.getInstance(context).let { db ->
-                            db.trackDao().findByAlbum(
-                                it.id,
-                                BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                            ).mapNotNull { getSong(db, it) }
+                            db.trackDao()
+                                .findByAlbum(
+                                    it.id,
+                                    BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                                )
+                                .mapNotNull { getSong(db, it) }
                                 .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                         }
                     }?.flatten()
@@ -211,25 +213,20 @@ class ArtistListFragment : Fragment() {
 
     private suspend fun List<Album>.getArtistList(db: DB): List<Artist> =
         withContext(Dispatchers.IO) {
-            this@getArtistList.asSequence()
-                .groupBy { it.artistId }
-                .map { artistIdToAlbumMap ->
-                    val artworkUriString = artistIdToAlbumMap.value
-                        .sortedByDescending { it.playbackCount }
-                        .firstOrNull { it.artworkUriString != null }
-                        ?.artworkUriString
-                    val totalDuration = db.trackDao()
-                        .findByArtist(artistIdToAlbumMap.key)
-                        .map { it.duration }
-                        .sum()
-                    val artist = db.artistDao().get(artistIdToAlbumMap.key)
-                    Artist(
-                        artistIdToAlbumMap.key,
-                        artist?.title ?: UNKNOWN,
-                        artist?.titleSort,
-                        artworkUriString,
-                        totalDuration
-                    )
-                }
+            this@getArtistList.asSequence().groupBy { it.artistId }.map { artistIdToAlbumMap ->
+                val artworkUriString =
+                    artistIdToAlbumMap.value.sortedByDescending { it.playbackCount }
+                        .firstOrNull { it.artworkUriString != null }?.artworkUriString
+                val totalDuration =
+                    db.trackDao().findByArtist(artistIdToAlbumMap.key).map { it.duration }.sum()
+                val artist = db.artistDao().get(artistIdToAlbumMap.key)
+                Artist(
+                    artistIdToAlbumMap.key,
+                    artist?.title ?: UNKNOWN,
+                    artist?.titleSort ?: UNKNOWN,
+                    artworkUriString,
+                    totalDuration
+                )
+            }
         }
 }

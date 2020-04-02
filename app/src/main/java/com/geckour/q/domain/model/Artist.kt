@@ -7,7 +7,7 @@ import kotlinx.android.parcel.Parcelize
 data class Artist(
     val id: Long,
     val name: String,
-    val nameSort: String?,
+    val nameSort: String,
     val thumbUriString: String?,
     val totalDuration: Long
 ) : Parcelable, MediaItem

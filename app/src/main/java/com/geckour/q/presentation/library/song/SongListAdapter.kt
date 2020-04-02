@@ -1,12 +1,12 @@
 package com.geckour.q.presentation.library.song
 
 import android.content.Context
-import android.preference.PreferenceManager
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
 import androidx.lifecycle.viewModelScope
+import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -19,7 +19,6 @@ import com.geckour.q.domain.model.Song
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.ignoringEnabled
@@ -52,7 +51,7 @@ class SongListAdapter(
         submitList(
             if (sortByTrackOrder) list?.sortedByTrackOrder()
             else list?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) {
-                (it.nameSort ?: it.name)?.toHiragana ?: UNKNOWN
+                it.nameSort.toHiragana
             })
         )
     }
@@ -127,8 +126,11 @@ class SongListAdapter(
                         viewModel.viewModelScope.launch {
                             viewModel.selectedArtist.value = withContext((Dispatchers.IO)) {
                                 binding.data?.artist?.let {
-                                    DB.getInstance(binding.root.context).artistDao().findArtist(it)
-                                        .firstOrNull()?.toDomainModel()
+                                    DB.getInstance(binding.root.context)
+                                        .artistDao()
+                                        .findArtist(it)
+                                        .firstOrNull()
+                                        ?.toDomainModel()
                                 }
                             }
                         }
@@ -137,7 +139,9 @@ class SongListAdapter(
                         viewModel.viewModelScope.launch {
                             viewModel.selectedAlbum.value = withContext(Dispatchers.IO) {
                                 binding.data?.albumId?.let {
-                                    DB.getInstance(binding.root.context).albumDao().get(it)
+                                    DB.getInstance(binding.root.context)
+                                        .albumDao()
+                                        .get(it)
                                         ?.toDomainModel()
                                 }
                             }
@@ -177,8 +181,7 @@ class SongListAdapter(
             viewModel.viewModelScope.launch(Dispatchers.IO) {
                 try {
                     val uriString = DB.getInstance(binding.root.context)
-                        .getArtworkUriStringFromId(song.albumId)
-                        .orDefaultForModel
+                        .getArtworkUriStringFromId(song.albumId).orDefaultForModel
                     withContext(Dispatchers.Main) {
                         Glide.with(binding.thumb)
                             .load(uriString)
@@ -211,23 +214,19 @@ class SongListAdapter(
         private fun onSongSelected(song: Song) {
             viewModel.onRequestNavigate(song)
             shortPopupMenu.show()
-            shortPopupMenu.menu.findItem(R.id.menu_ignore).title =
-                binding.root.context.getString(
-                    if (binding.data?.ignored == true)
-                        R.string.menu_ignore_to_false
-                    else R.string.menu_ignore_to_true
-                )
+            shortPopupMenu.menu.findItem(R.id.menu_ignore).title = binding.root.context.getString(
+                if (binding.data?.ignored == true) R.string.menu_ignore_to_false
+                else R.string.menu_ignore_to_true
+            )
         }
 
         private fun onSongLongTapped(song: Song): Boolean {
             viewModel.onRequestNavigate(song)
             longPopupMenu.show()
-            longPopupMenu.menu.findItem(R.id.menu_ignore).title =
-                binding.root.context.getString(
-                    if (binding.data?.ignored == true)
-                        R.string.menu_ignore_to_false
-                    else R.string.menu_ignore_to_true
-                )
+            longPopupMenu.menu.findItem(R.id.menu_ignore).title = binding.root.context.getString(
+                if (binding.data?.ignored == true) R.string.menu_ignore_to_false
+                else R.string.menu_ignore_to_true
+            )
 
             return true
         }

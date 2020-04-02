@@ -55,16 +55,10 @@ interface TrackDao {
     fun count(): Int
 }
 
-fun Track.upsert(db: DB): Long =
-    db.trackDao().getByMediaId(this.mediaId).let {
-        if (it != null) {
-            db.trackDao().update(
-                this.copy(
-                    id = it.id,
-                    playbackCount = it.playbackCount,
-                    ignored = it.ignored
-                )
-            )
-            it.id
-        } else db.trackDao().insert(this)
-    }
+fun Track.upsert(db: DB): Long {
+    val track = db.trackDao().getByMediaId(mediaId)?.let { track ->
+        this.copy(id = track.id, playbackCount = track.playbackCount, ignored = track.ignored)
+    } ?: this
+
+    return db.trackDao().insert(track)
+}

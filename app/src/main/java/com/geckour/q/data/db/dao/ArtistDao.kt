@@ -2,6 +2,7 @@ package com.geckour.q.data.db.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import com.geckour.q.data.db.DB
@@ -10,7 +11,7 @@ import com.geckour.q.data.db.model.Artist
 @Dao
 interface ArtistDao {
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insert(artist: Artist): Long
 
     @Update
@@ -35,9 +36,10 @@ interface ArtistDao {
     fun increasePlaybackCount(artistId: Long)
 }
 
-fun Artist.upsert(db: DB): Long = title?.let {
-    db.artistDao().findArtist(it).firstOrNull()?.let { artist ->
-        db.artistDao().update(this.copy(id = artist.id, playbackCount = playbackCount))
-        artist.id
-    } ?: db.artistDao().insert(this)
-} ?: -1
+fun Artist.upsert(db: DB): Long {
+    val artist = db.artistDao().findArtist(title).firstOrNull()?.let { artist ->
+        this.copy(id = artist.id, playbackCount = artist.playbackCount)
+    } ?: this
+
+    return db.artistDao().insert(artist)
+}
