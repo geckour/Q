@@ -7,30 +7,33 @@ import androidx.lifecycle.MediatorLiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.Album
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.util.toDomainModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import com.geckour.q.data.db.model.Artist as DBArtist
 
 class ArtistListViewModel(application: Application) : AndroidViewModel(application) {
 
     internal val artistIdDeleted: MutableLiveData<Long> = MutableLiveData()
 
-    private val _albumListData: LiveData<List<Album>> =
-        DB.getInstance(application).albumDao().getAllAsync()
+    private val _artistListData: LiveData<List<DBArtist>> =
+        DB.getInstance(application).artistDao().getAllOrientedAlbumAsync()
     internal val artistListData = MediatorLiveData<List<Artist>>().apply {
-        addSource(_albumListData) { flowDataWithArtwork(it) }
+        addSource(_artistListData) { flowDataWithArtwork(it) }
     }
 
-    private fun flowDataWithArtwork(data: List<Album>) {
+    private fun flowDataWithArtwork(data: List<DBArtist>) {
         viewModelScope.launch(Dispatchers.IO) {
             val db = DB.getInstance(getApplication())
-            artistListData.postValue(data.groupBy { it.artistId }.mapNotNull {
-                val thumbString =
-                    it.value.sortedBy { it.playbackCount }.map { it.artworkUriString }.firstOrNull()
+            artistListData.postValue(data.map {
+                val thumbString = db.albumDao()
+                    .findByArtistId(it.id)
+                    .sortedBy { it.playbackCount }
+                    .map { it.artworkUriString }
+                    .firstOrNull()
 
-                db.artistDao().get(it.key)?.toDomainModel()?.copy(thumbUriString = thumbString)
+                it.toDomainModel().copy(thumbUriString = thumbString)
             })
         }
     }

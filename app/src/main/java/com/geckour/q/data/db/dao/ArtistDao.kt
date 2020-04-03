@@ -33,6 +33,9 @@ interface ArtistDao {
     @Query("select * from artist")
     fun getAllAsync(): LiveData<List<Artist>>
 
+    @Query("select * from artist where id in (select artistId from album group by artistId)")
+    fun getAllOrientedAlbumAsync(): LiveData<List<Artist>>
+
     @Query("select * from artist where id = :id")
     fun get(id: Long): Artist?
 
