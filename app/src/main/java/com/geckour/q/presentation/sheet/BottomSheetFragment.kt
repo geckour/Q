@@ -162,7 +162,7 @@ class BottomSheetFragment : Fragment() {
                     }
                 )
                 if (state == BottomSheetBehavior.STATE_EXPANDED) {
-                    viewModel.scrollToCurrent.value = null
+                    viewModel.scrollToCurrent.value = Unit
                 }
             }
         })

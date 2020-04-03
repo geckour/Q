@@ -22,6 +22,6 @@ class PaymentViewModel : ViewModel() {
     }
 
     fun onClickSave() {
-        save.value = null
+        save.value = Unit
     }
 }

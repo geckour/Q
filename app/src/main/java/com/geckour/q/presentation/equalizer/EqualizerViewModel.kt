@@ -9,7 +9,7 @@ class EqualizerViewModel : ViewModel() {
     val enabled: MutableLiveData<Boolean> = MutableLiveData()
 
     fun onFlatten() {
-        flatten.value = null
+        flatten.value = Unit
     }
 
     fun onToggleEnabled() {

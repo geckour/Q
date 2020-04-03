@@ -273,7 +273,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch(Dispatchers.IO) {
             val trackCount = DB.getInstance(this@MainViewModel.getApplication()).trackDao().count()
             if (trackCount == 0) {
-                withContext(Dispatchers.Main) { dbEmpty.value = null }
+                withContext(Dispatchers.Main) { dbEmpty.value = Unit }
             }
         }
     }

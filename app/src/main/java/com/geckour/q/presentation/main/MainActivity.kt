@@ -216,7 +216,7 @@ class MainActivity : CrashlyticsBundledActivity() {
                 binding.drawerLayout.closeDrawer(binding.navigationView)
             }
             bottomSheetViewModel.sheetState == BottomSheetBehavior.STATE_EXPANDED -> {
-                bottomSheetViewModel.toggleSheetState.value = null
+                bottomSheetViewModel.toggleSheetState.value = Unit
             }
             else -> super.onBackPressed()
         }

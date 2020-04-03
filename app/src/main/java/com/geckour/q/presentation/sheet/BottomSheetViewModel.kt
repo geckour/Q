@@ -54,14 +54,14 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
 
     fun onLongClickArtwork(): Boolean {
         if (currentQueue.isNotEmpty()) {
-            artworkLongClick.value = null
+            artworkLongClick.value = Unit
             return true
         }
         return false
     }
 
     fun onClickQueueButton() {
-        toggleSheetState.value = null
+        toggleSheetState.value = Unit
     }
 
     fun onClickAddQueueToPlaylistButton(context: Context) {
@@ -108,23 +108,23 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun onClickClearQueueButton() {
-        clearQueue.value = null
+        clearQueue.value = Unit
     }
 
     fun onClickShuffleButton() {
-        shuffle.value = null
+        shuffle.value = Unit
     }
 
     fun onClickScrollToCurrentButton() {
-        scrollToCurrent.value = null
+        scrollToCurrent.value = Unit
     }
 
     fun onClickRepeatButton() {
-        changeRepeatMode.value = null
+        changeRepeatMode.value = Unit
     }
 
     fun onClickToggleCurrentRemainButton() {
-        toggleCurrentRemain.value = null
+        toggleCurrentRemain.value = Unit
     }
 
     fun onClickTouchOffButton() {

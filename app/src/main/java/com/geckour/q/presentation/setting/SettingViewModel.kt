@@ -8,6 +8,6 @@ class SettingViewModel : ViewModel() {
     internal val scrollToTop: MutableLiveData<Unit> = MutableLiveData()
 
     fun onToolbarClick() {
-        scrollToTop.value = null
+        scrollToTop.value = Unit
     }
 }

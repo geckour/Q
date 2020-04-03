@@ -11,11 +11,11 @@ class EasterEggViewModel : ViewModel() {
     internal val longTap: MutableLiveData<Unit> = MutableLiveData()
 
     fun onTapped() {
-        tap.value = null
+        tap.value = Unit
     }
 
     fun onLongTapped(): Boolean {
-        longTap.value = null
+        longTap.value = Unit
         return true
     }
 }
