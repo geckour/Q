@@ -467,11 +467,15 @@ fun DB.storeMediaInfo(
     val titleSort =
         (tag.getAll(FieldKey.TITLE_SORT).firstOrNull { it.isNotBlank() } ?: title)?.hiraganized
     val albumTitle = tag.getAll(FieldKey.ALBUM).firstOrNull { it.isNotBlank() }
+    val cachedAlbum = albumTitle?.let { albumDao().findByTitle(it).firstOrNull() }
     val albumTitleSort =
-        (tag.getAll(FieldKey.ALBUM_SORT).firstOrNull { it.isNotBlank() } ?: albumTitle)?.hiraganized
+        cachedAlbum?.titleSort ?: (tag.getAll(FieldKey.ALBUM_SORT).firstOrNull { it.isNotBlank() }
+            ?: albumTitle)?.hiraganized
     val artistTitle = tag.getAll(FieldKey.ARTIST).firstOrNull { it.isNotBlank() }
-    val artistTitleSort = (tag.getAll(FieldKey.ARTIST_SORT).firstOrNull { it.isNotBlank() }
-        ?: artistTitle)?.hiraganized
+    val cachedArtist = artistTitle?.let { artistDao().findArtist(it).firstOrNull() }
+    val artistTitleSort =
+        cachedArtist?.titleSort ?: (tag.getAll(FieldKey.ARTIST_SORT).firstOrNull { it.isNotBlank() }
+            ?: artistTitle)?.hiraganized
     val duration = header.trackLength.toLong() * 1000
     val trackNum = try {
         tag.getFirst(FieldKey.TRACK).toInt()
@@ -486,21 +490,18 @@ fun DB.storeMediaInfo(
     val composerTitle = tag.getAll(FieldKey.COMPOSER).firstOrNull { it.isNotBlank() }
     val composerTitleSort = (tag.getAll(FieldKey.COMPOSER_SORT).firstOrNull { it.isNotBlank() }
         ?: composerTitle)?.hiraganized
-    val artworkUriString = title?.let {
-        albumDao().findByTitle(it).firstOrNull()?.artworkUriString
-            ?: tag.firstArtwork?.let { artwork ->
-                val hex = String(Hex.encodeHex(DigestUtils.md5(artwork.binaryData)))
-                val dirName = "images"
-                val dir = File(context.externalMediaDirs[0], dirName)
-                if (dir.exists().not()) dir.mkdir()
-                val imgFile = File(dir, hex)
-                FileOutputStream(imgFile).use {
-                    it.write(artwork.binaryData)
-                    it.flush()
-                }
+    val artworkUriString = cachedAlbum?.artworkUriString ?: tag.firstArtwork?.let { artwork ->
+        val hex = String(Hex.encodeHex(DigestUtils.md5(artwork.binaryData)))
+        val dirName = "images"
+        val dir = File(context.externalMediaDirs[0], dirName)
+        if (dir.exists().not()) dir.mkdir()
+        val imgFile = File(dir, hex)
+        FileOutputStream(imgFile).use {
+            it.write(artwork.binaryData)
+            it.flush()
+        }
 
-                imgFile.path
-            }
+        imgFile.path
     }
     val albumArtistTitle = tag.getAll(FieldKey.ALBUM_ARTIST).firstOrNull { it.isNotBlank() }
     val albumArtistTitleSort =
