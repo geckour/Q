@@ -1,10 +1,12 @@
 package com.geckour.q.data.db.dao
 
+import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
@@ -20,6 +22,9 @@ interface AlbumDao {
 
     @Query("delete from album where id = :id")
     fun delete(id: Long): Int
+
+    @Query("delete from track where albumId = :albumId")
+    fun deleteTrackByAlbum(albumId: Long): Int
 
     @Query("select * from album")
     fun getAll(): List<Album>
@@ -41,12 +46,29 @@ interface AlbumDao {
 
     @Query("update album set playbackCount = (select playbackCount from album where id = :albumId) + 1 where id = :albumId")
     fun increasePlaybackCount(albumId: Long)
-}
 
-fun Album.upsert(db: DB): Long {
-    val album = db.albumDao().findByTitle(title).firstOrNull()?.let { album ->
-        this.copy(id = album.id, totalDuration = album.totalDuration + totalDuration)
-    } ?: this
+    @Transaction
+    fun deleteIncludingRootIfEmpty(context: Context, id: Long) {
+        val album = get(id) ?: return
 
-    return db.albumDao().insert(album)
+        delete(album.id)
+
+        if (findByArtistId(album.artistId).isEmpty()) {
+            DB.getInstance(context).artistDao().delete(album.artistId)
+        }
+    }
+
+    @Transaction
+    fun deleteRecursively(id: Long) {
+        deleteTrackByAlbum(id)
+        delete(id)
+    }
+
+    fun upsert(album: Album): Long {
+        val toInsert = findByTitle(album.title).firstOrNull()?.let {
+            album.copy(id = it.id, totalDuration = it.totalDuration + album.totalDuration)
+        } ?: album
+
+        return insert(toInsert)
+    }
 }

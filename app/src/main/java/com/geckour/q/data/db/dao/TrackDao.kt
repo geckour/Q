@@ -1,9 +1,11 @@
 package com.geckour.q.data.db.dao
 
+import android.content.Context
 import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Bool
@@ -56,12 +58,23 @@ interface TrackDao {
 
     @Query("select count(*) from track")
     fun count(): Int
-}
 
-fun Track.upsert(db: DB): Long {
-    val track = db.trackDao().getByMediaId(mediaId)?.let { track ->
-        this.copy(id = track.id, playbackCount = track.playbackCount, ignored = track.ignored)
-    } ?: this
+    @Transaction
+    fun deleteIncludingRootIfEmpty(context: Context, id: Long) {
+        val track = get(id) ?: return
 
-    return db.trackDao().insert(track)
+        delete(track.id)
+
+        if (findByAlbum(track.albumId, Bool.UNDEFINED).isEmpty()) {
+            DB.getInstance(context).albumDao().deleteIncludingRootIfEmpty(context, track.albumId)
+        }
+    }
+
+    fun upsert(track: Track): Long {
+        val toInsert = getByMediaId(track.mediaId)?.let {
+            track.copy(id = it.id, playbackCount = it.playbackCount, ignored = it.ignored)
+        } ?: track
+
+        return insert(toInsert)
+    }
 }

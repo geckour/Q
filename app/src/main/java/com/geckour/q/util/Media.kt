@@ -11,18 +11,17 @@ import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.drawable.Drawable
 import android.net.Uri
-import android.preference.PreferenceManager
 import android.provider.MediaStore
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import androidx.core.app.NotificationCompat
+import androidx.preference.PreferenceManager
 import com.bumptech.glide.Glide
 import com.bumptech.glide.RequestBuilder
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.dao.upsert
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Bool
@@ -508,14 +507,16 @@ fun DB.storeMediaInfo(
         (tag.getAll(FieldKey.ALBUM_ARTIST_SORT).firstOrNull { it.isNotBlank() }
             ?: albumArtistTitle)?.hiraganized
 
-    val artistId = Artist(
+    val artist = Artist(
         0, artistTitle ?: UNKNOWN, artistTitleSort ?: UNKNOWN, 0, duration
-    ).upsert(this)
+    )
+    val artistId = artistDao().upsert(artist)
     val albumArtistId = albumArtistTitle?.let {
-        Artist(0, albumArtistTitle, albumArtistTitleSort!!, 0, duration).upsert(this)
+        val albumArtist = Artist(0, albumArtistTitle, albumArtistTitleSort!!, 0, duration)
+        artistDao().upsert(albumArtist)
     }
 
-    val albumId = Album(
+    val album = Album(
         0,
         albumArtistId ?: artistId,
         albumTitle ?: UNKNOWN,
@@ -524,7 +525,8 @@ fun DB.storeMediaInfo(
         albumArtistId != null,
         0,
         duration
-    ).upsert(this)
+    )
+    val albumId = albumDao().upsert(album)
 
     val track = Track(
         0,
@@ -543,7 +545,7 @@ fun DB.storeMediaInfo(
         discNum,
         0
     )
-    return track.upsert(this)
+    return trackDao().upsert(track)
 }
 
 val String?.orDefaultForModel get() = this?.let { File(this) } ?: R.drawable.ic_empty
