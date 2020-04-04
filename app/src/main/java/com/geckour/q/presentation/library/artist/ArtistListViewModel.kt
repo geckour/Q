@@ -30,7 +30,7 @@ class ArtistListViewModel(application: Application) : AndroidViewModel(applicati
                 val thumbString = db.albumDao()
                     .findByArtistId(it.id)
                     .sortedBy { it.playbackCount }
-                    .map { it.artworkUriString }
+                    .mapNotNull { it.artworkUriString }
                     .firstOrNull()
 
                 it.toDomainModel().copy(thumbUriString = thumbString)
