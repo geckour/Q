@@ -172,6 +172,7 @@
             android:layout_height="0dp"
             android:max="10000"
             android:progressTint="?attr/colorButtonNormal"
+            android:progressBackgroundTint="@color/colorBackgroundProgress"
             app:thumbTintAttr="@{isQueueNotEmpty ? R.attr.colorButtonNormal : R.attr.colorInactive}"
             tools:progress="2000" />
 
