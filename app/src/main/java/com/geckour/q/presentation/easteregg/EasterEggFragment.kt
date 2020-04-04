@@ -1,7 +1,6 @@
 package com.geckour.q.presentation.easteregg
 
 import android.os.Bundle
-import android.preference.PreferenceManager
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.Menu
@@ -14,6 +13,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.viewModelScope
+import androidx.preference.PreferenceManager
 import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -47,7 +47,7 @@ class EasterEggFragment : Fragment() {
     private val mainViewModel: MainViewModel by activityViewModels()
 
     override fun onCreateView(
-            inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
     ): View? {
         binding = FragmentEasterEggBinding.inflate(inflater, container, false)
 
@@ -58,9 +58,9 @@ class EasterEggFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         FirebaseAnalytics.getInstance(requireContext())
-                .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
-                    putString(FirebaseAnalytics.Param.ITEM_NAME, "Show easter egg screen")
-                })
+            .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
+                putString(FirebaseAnalytics.Param.ITEM_NAME, "Show easter egg screen")
+            })
 
         viewModel.viewModelScope.launch(Dispatchers.IO) {
             val db = DB.getInstance(requireContext())
@@ -69,7 +69,7 @@ class EasterEggFragment : Fragment() {
 
             val max = trackList.size
             val seed = Calendar.getInstance(TimeZone.getDefault())
-                    .let { it.get(Calendar.DAY_OF_YEAR) * 1000 + it.get(Calendar.YEAR) }
+                .let { it.get(Calendar.DAY_OF_YEAR) * 1000 + it.get(Calendar.YEAR) }
             val random = Random(seed.toLong())
             while (true) {
                 val index = random.nextInt(max)
@@ -112,11 +112,11 @@ class EasterEggFragment : Fragment() {
         when (item.itemId) {
             R.id.menu_toggle_daynight -> {
                 val sharedPreferences =
-                        PreferenceManager.getDefaultSharedPreferences(requireContext())
+                    PreferenceManager.getDefaultSharedPreferences(requireContext())
                 val toggleTo = sharedPreferences.isNightMode.not()
                 sharedPreferences.isNightMode = toggleTo
                 (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
-                        toggleTo.toNightModeInt
+                    toggleTo.toNightModeInt
             }
             else -> return false
         }
@@ -126,21 +126,21 @@ class EasterEggFragment : Fragment() {
     private fun setSong() {
         binding.viewModel = viewModel
         Glide.with(binding.artwork)
-                .load(viewModel.song?.thumbUriString.orDefaultForModel)
-                .applyDefaultSettings()
-                .into(binding.artwork)
+            .load(viewModel.song?.thumbUriString.orDefaultForModel)
+            .applyDefaultSettings()
+            .into(binding.artwork)
     }
 
     private fun observeEvents() {
         viewModel.tap.observe(this) {
             FirebaseAnalytics.getInstance(requireContext())
-                    .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
-                        putString(FirebaseAnalytics.Param.ITEM_NAME, "Tapped today's song")
-                    })
+                .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
+                    putString(FirebaseAnalytics.Param.ITEM_NAME, "Tapped today's song")
+                })
 
             viewModel.song?.apply {
                 mainViewModel.onNewQueue(
-                        listOf(this), InsertActionType.NEXT, OrientedClassType.SONG
+                    listOf(this), InsertActionType.NEXT, OrientedClassType.SONG
                 )
             }
         }
@@ -152,23 +152,25 @@ class EasterEggFragment : Fragment() {
                         return@setOnMenuItemClickListener when (it.itemId) {
                             R.id.menu_transition_to_artist -> {
                                 viewModel.viewModelScope.launch {
-                                    mainViewModel.selectedArtist.value = withContext((Dispatchers.IO)) {
-                                        viewModel.song?.artist?.let {
-                                            DB.getInstance(context).artistDao().findArtist(it)
+                                    mainViewModel.selectedArtist.value =
+                                        withContext((Dispatchers.IO)) {
+                                            viewModel.song?.artist?.let {
+                                                DB.getInstance(context).artistDao().findArtist(it)
                                                     .firstOrNull()?.toDomainModel()
+                                            }
                                         }
-                                    }
                                 }
                                 true
                             }
                             R.id.menu_transition_to_album -> {
                                 viewModel.viewModelScope.launch {
-                                    mainViewModel.selectedAlbum.value = withContext(Dispatchers.IO) {
-                                        viewModel.song?.albumId?.let {
-                                            DB.getInstance(context).albumDao().get(it)
+                                    mainViewModel.selectedAlbum.value =
+                                        withContext(Dispatchers.IO) {
+                                            viewModel.song?.albumId?.let {
+                                                DB.getInstance(context).albumDao().get(it)
                                                     ?.toDomainModel()
+                                            }
                                         }
-                                    }
                                 }
                                 true
                             }

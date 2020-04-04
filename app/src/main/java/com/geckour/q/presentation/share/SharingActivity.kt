@@ -6,8 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.preference.PreferenceManager
 import androidx.core.app.ShareCompat
+import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.domain.model.Song
 import com.geckour.q.setCrashlytics
@@ -34,10 +34,10 @@ class SharingActivity : CrashlyticsBundledActivity() {
         private const val ARGS_KEY_REQUIRE_UNLOCK = "args_key_require_unlock"
 
         fun getIntent(context: Context, song: Song, requireUnlock: Boolean = false): Intent =
-                Intent(context, SharingActivity::class.java).apply {
-                    putExtra(ARGS_KEY_SONG, song)
-                    putExtra(ARGS_KEY_REQUIRE_UNLOCK, requireUnlock)
-                }
+            Intent(context, SharingActivity::class.java).apply {
+                putExtra(ARGS_KEY_SONG, song)
+                putExtra(ARGS_KEY_REQUIRE_UNLOCK, requireUnlock)
+            }
     }
 
     private var job = Job()
@@ -85,18 +85,18 @@ class SharingActivity : CrashlyticsBundledActivity() {
                 val sharingText: String = song.getSharingText(this@SharingActivity, song.album)
                 withContext(Dispatchers.Main) {
                     ShareCompat.IntentBuilder.from(this@SharingActivity)
-                            .setChooserTitle(R.string.share_chooser_title).setText(sharingText).also {
-                                if (sharedPreferences.bundleArtwork && song.thumbUriString != null) {
-                                    it.setStream(Uri.parse(song.thumbUriString)).setType("image/*")
-                                } else it.setType("text/plain")
-                            }.createChooserIntent().apply {
-                                PendingIntent.getActivity(
-                                        this@SharingActivity,
-                                        IntentRequestCode.SHARE.code,
-                                        this@apply,
-                                        PendingIntent.FLAG_CANCEL_CURRENT
-                                ).send()
-                            }
+                        .setChooserTitle(R.string.share_chooser_title).setText(sharingText).also {
+                            if (sharedPreferences.bundleArtwork && song.thumbUriString != null) {
+                                it.setStream(Uri.parse(song.thumbUriString)).setType("image/*")
+                            } else it.setType("text/plain")
+                        }.createChooserIntent().apply {
+                            PendingIntent.getActivity(
+                                this@SharingActivity,
+                                IntentRequestCode.SHARE.code,
+                                this@apply,
+                                PendingIntent.FLAG_CANCEL_CURRENT
+                            ).send()
+                        }
                 }
             }
         }
@@ -107,7 +107,7 @@ class SharingActivity : CrashlyticsBundledActivity() {
         if (this == null) return default
 
         return if (this.hasExtra(ARGS_KEY_REQUIRE_UNLOCK)) this.getBooleanExtra(
-                ARGS_KEY_REQUIRE_UNLOCK, default
+            ARGS_KEY_REQUIRE_UNLOCK, default
         )
         else default
     }
@@ -116,51 +116,51 @@ class SharingActivity : CrashlyticsBundledActivity() {
 }
 
 fun Song.getSharingText(context: Context, albumName: String?): String =
-        context.formatPattern.getSharingText(this, albumName)
+    context.formatPattern.getSharingText(this, albumName)
 
 fun String.getSharingText(song: Song, albumName: String?): String =
-        this.splitIncludeDelimiter("''", "'", "TI", "AR", "AL", "\\\\n").let { splitList ->
-            val escapes = splitList.mapIndexed { i, s -> Pair(i, s) }.filter { it.second == "'" }
-                    .apply { if (lastIndex < 0) return@let splitList }
+    this.splitIncludeDelimiter("''", "'", "TI", "AR", "AL", "\\\\n").let { splitList ->
+        val escapes = splitList.mapIndexed { i, s -> Pair(i, s) }.filter { it.second == "'" }
+            .apply { if (lastIndex < 0) return@let splitList }
 
-            return@let ArrayList<String>().apply {
-                for (i in 0 until escapes.lastIndex step 2) {
-                    this.addAll(
-                            splitList.subList(
-                                    if (i == 0) 0 else escapes[i - 1].first + 1, escapes[i].first
-                            )
-                    )
-
-                    this.add(
-                            splitList.subList(
-                                    escapes[i].first, escapes[i + 1].first + 1
-                            ).joinToString("")
-                    )
-                }
-
+        return@let ArrayList<String>().apply {
+            for (i in 0 until escapes.lastIndex step 2) {
                 this.addAll(
-                        splitList.subList(
-                                if (escapes[escapes.lastIndex].first + 1 < splitList.lastIndex) escapes[escapes.lastIndex].first + 1
-                                else splitList.lastIndex, splitList.size
-                        )
+                    splitList.subList(
+                        if (i == 0) 0 else escapes[i - 1].first + 1, escapes[i].first
+                    )
+                )
+
+                this.add(
+                    splitList.subList(
+                        escapes[i].first, escapes[i + 1].first + 1
+                    ).joinToString("")
                 )
             }
-        }.joinToString("") {
-            return@joinToString Regex("^'(.+)'$").let { regex ->
-                if (it.matches(regex)) it.replace(regex, "$1")
-                else when (it) {
-                    "'" -> ""
-                    "''" -> "'"
-                    "TI" -> song.name ?: UNKNOWN
-                    "AR" -> song.artist
-                    "AL" -> albumName ?: UNKNOWN
-                    "\\n" -> "\n"
-                    else -> it
-                }
+
+            this.addAll(
+                splitList.subList(
+                    if (escapes[escapes.lastIndex].first + 1 < splitList.lastIndex) escapes[escapes.lastIndex].first + 1
+                    else splitList.lastIndex, splitList.size
+                )
+            )
+        }
+    }.joinToString("") {
+        return@joinToString Regex("^'(.+)'$").let { regex ->
+            if (it.matches(regex)) it.replace(regex, "$1")
+            else when (it) {
+                "'" -> ""
+                "''" -> "'"
+                "TI" -> song.name ?: UNKNOWN
+                "AR" -> song.artist
+                "AL" -> albumName ?: UNKNOWN
+                "\\n" -> "\n"
+                else -> it
             }
         }
+    }
 
 fun String.splitIncludeDelimiter(vararg delimiters: String) =
-        delimiters.joinToString("|").let { pattern ->
-            this.split(Regex("(?<=$pattern)|(?=$pattern)"))
-        }
+    delimiters.joinToString("|").let { pattern ->
+        this.split(Regex("(?<=$pattern)|(?=$pattern)"))
+    }

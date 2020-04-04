@@ -16,10 +16,10 @@ import android.media.session.PlaybackState
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
-import android.preference.PreferenceManager
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.view.KeyEvent
+import androidx.preference.PreferenceManager
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.Song
@@ -431,12 +431,12 @@ class PlayerService : Service() {
 
                 this.queue.addAll(position, queueInfo.queue)
                 source.addMediaSources(position,
-                                       queueInfo.queue.map { it.getMediaSource(mediaSourceFactory) })
+                    queueInfo.queue.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.LAST -> {
                 this.queue.addAll(this.queue.size, queueInfo.queue)
                 source.addMediaSources(source.size,
-                                       queueInfo.queue.map { it.getMediaSource(mediaSourceFactory) })
+                    queueInfo.queue.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.OVERRIDE -> override(queueInfo.queue, force)
             InsertActionType.SHUFFLE_NEXT -> {
@@ -445,14 +445,14 @@ class PlayerService : Service() {
 
                 this.queue.addAll(position, shuffled)
                 source.addMediaSources(position,
-                                       shuffled.map { it.getMediaSource(mediaSourceFactory) })
+                    shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_LAST -> {
                 val shuffled = queueInfo.queue.shuffleByClassType(queueInfo.metadata.classType)
 
                 this.queue.addAll(this.queue.size, shuffled)
                 source.addMediaSources(source.size,
-                                       shuffled.map { it.getMediaSource(mediaSourceFactory) })
+                    shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_OVERRIDE -> {
                 val shuffled = queueInfo.queue.shuffleByClassType(queueInfo.metadata.classType)
@@ -465,14 +465,14 @@ class PlayerService : Service() {
 
                 this.queue.addAll(position, shuffled)
                 source.addMediaSources(position,
-                                       shuffled.map { it.getMediaSource(mediaSourceFactory) })
+                    shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_SIMPLE_LAST -> {
                 val shuffled = queueInfo.queue.shuffled()
 
                 this.queue.addAll(this.queue.size, shuffled)
                 source.addMediaSources(source.size,
-                                       shuffled.map { it.getMediaSource(mediaSourceFactory) })
+                    shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
                 val shuffled = queueInfo.queue.shuffled()
