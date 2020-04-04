@@ -871,12 +871,12 @@ class PlayerService : Service() {
 
     private fun Notification.show() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && playing) {
-            Timber.d("qgeck starting player service as foreground")
+            Timber.d("qgeck starting foreground player service")
             startForeground(NOTIFICATION_ID_PLAYER, this)
         } else {
-            Timber.d("qgeck starting player service as NOT foreground")
+            Timber.d("qgeck stopping foreground player service")
             stopForeground(false)
-            getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID_PLAYER, this)
+            getSystemService(NotificationManager::class.java)?.notify(NOTIFICATION_ID_PLAYER, this)
         }
     }
 
@@ -884,6 +884,6 @@ class PlayerService : Service() {
         mediaSession.isActive = false
         notificationUpdateJob.cancel()
         stopForeground(true)
-        getSystemService(NotificationManager::class.java).cancel(NOTIFICATION_ID_PLAYER)
+        getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID_PLAYER)
     }
 }

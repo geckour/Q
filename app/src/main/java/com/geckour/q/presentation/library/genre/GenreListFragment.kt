@@ -73,9 +73,9 @@ class GenreListFragment : Fragment() {
 
         if (adapter.itemCount == 0) {
             viewModel.viewModelScope.launch {
-                mainViewModel.loading.value = true
+                mainViewModel.onLoadStateChanged(true)
                 adapter.setItems(fetchGenres())
-                mainViewModel.loading.value = false
+                mainViewModel.onLoadStateChanged(false)
                 binding.recyclerView.smoothScrollToPosition(0)
             }
         }
@@ -90,7 +90,7 @@ class GenreListFragment : Fragment() {
     override fun onStop() {
         super.onStop()
 
-        mainViewModel.loading.value = false
+        mainViewModel.onLoadStateChanged(false)
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -131,13 +131,13 @@ class GenreListFragment : Fragment() {
             }
 
             viewModel.viewModelScope.launch(Dispatchers.IO) {
-                mainViewModel.loading.postValue(true)
+                mainViewModel.onLoadStateChanged(true)
                 val songs = adapter.getItems().map { genre ->
                     genre.getTrackMediaIds(context).mapNotNull {
                         getSong(DB.getInstance(context), it, genreId = genre.id)
                     }
                 }.apply {
-                    mainViewModel.loading.postValue(false)
+                    mainViewModel.onLoadStateChanged(false)
                 }.flatten()
 
                 adapter.onNewQueue(songs, actionType)
@@ -154,9 +154,9 @@ class GenreListFragment : Fragment() {
 
         mainViewModel.forceLoad.observe(this) {
             viewModel.viewModelScope.launch {
-                mainViewModel.loading.value = true
+                mainViewModel.onLoadStateChanged(true)
                 adapter.setItems(fetchGenres())
-                mainViewModel.loading.value = false
+                mainViewModel.onLoadStateChanged(false)
                 binding.recyclerView.smoothScrollToPosition(0)
             }
         }

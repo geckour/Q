@@ -6,10 +6,9 @@
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginBottom="@dimen/bottom_sheet_peek_height"
         android:layout_marginLeft="40dp"
         android:layout_marginRight="40dp"
-        android:layout_marginTop="?attr/actionBarSize"
+        android:layout_marginBottom="@dimen/bottom_sheet_peek_height"
         android:elevation="28dp">
 
         <androidx.recyclerview.widget.RecyclerView

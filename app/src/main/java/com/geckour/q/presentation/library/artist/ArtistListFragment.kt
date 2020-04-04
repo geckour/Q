@@ -71,7 +71,7 @@ class ArtistListFragment : Fragment() {
     override fun onStop() {
         super.onStop()
 
-        mainViewModel.loading.value = false
+        mainViewModel.onLoadStateChanged(false)
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -118,7 +118,7 @@ class ArtistListFragment : Fragment() {
                     R.id.menu_override_all_simple_shuffle
                 )
 
-                mainViewModel.loading.postValue(true)
+                mainViewModel.onLoadStateChanged(true)
                 val db = DB.getInstance(context)
                 val songs = adapter.currentList.flatMap {
                     db.albumDao().getAllByArtistId(it.id).flatMap {

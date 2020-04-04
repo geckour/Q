@@ -200,8 +200,8 @@ class SongListAdapter(
         }
 
         private fun deleteSong(song: Song?) {
-            if (song == null) return
-            viewModel.songToDelete.value = song
+            song ?: return
+            viewModel.onRequestDeleteSong(song)
         }
 
         private fun removeFromPlaylist(playOrder: Int) {

@@ -141,7 +141,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
                     DB.getInstance(context).let { db ->
                         val sharedPreferences =
                             PreferenceManager.getDefaultSharedPreferences(context)
-                        viewModel.loading.postValue(true)
+                        viewModel.onLoadStateChanged(true)
                         db.albumDao().getAllByArtistId(artist.id).map {
                             db.trackDao().getAllByAlbum(
                                 it.id,
@@ -151,7 +151,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
                                 else it
                             }
                         }.apply {
-                            viewModel.loading.postValue(false)
+                            viewModel.onLoadStateChanged(false)
                         }.flatten()
                     }
                 }

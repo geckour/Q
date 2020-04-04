@@ -61,9 +61,9 @@ class PlaylistListFragment : Fragment() {
 
         if (adapter.itemCount == 0) {
             viewModel.viewModelScope.launch {
-                mainViewModel.loading.value = true
+                mainViewModel.onLoadStateChanged(true)
                 context?.apply { adapter.setItems(fetchPlaylists(this)) }
-                mainViewModel.loading.value = false
+                mainViewModel.onLoadStateChanged(false)
                 binding.recyclerView.smoothScrollToPosition(0)
             }
         }
@@ -78,7 +78,7 @@ class PlaylistListFragment : Fragment() {
     override fun onStop() {
         super.onStop()
 
-        mainViewModel.loading.value = false
+        mainViewModel.onLoadStateChanged(false)
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -119,7 +119,7 @@ class PlaylistListFragment : Fragment() {
             }
 
             viewModel.viewModelScope.launch {
-                mainViewModel.loading.postValue(true)
+                mainViewModel.onLoadStateChanged(true)
                 val songs = adapter.getItems().map { playlist ->
                     playlist.getTrackMediaIds(context).mapNotNull {
                         getSong(
@@ -127,7 +127,7 @@ class PlaylistListFragment : Fragment() {
                         )
                     }
                 }.apply {
-                    mainViewModel.loading.postValue(false)
+                    mainViewModel.onLoadStateChanged(false)
                 }.flatten()
                 adapter.onNewQueue(songs, actionType)
             }
@@ -144,9 +144,9 @@ class PlaylistListFragment : Fragment() {
         mainViewModel.forceLoad.observe(this) {
             viewModel.viewModelScope.launch {
                 context?.apply {
-                    mainViewModel.loading.value = true
+                    mainViewModel.onLoadStateChanged(true)
                     adapter.setItems(fetchPlaylists(this))
-                    mainViewModel.loading.value = false
+                    mainViewModel.onLoadStateChanged(false)
                     binding.recyclerView.smoothScrollToPosition(0)
                 }
             }

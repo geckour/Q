@@ -7,8 +7,11 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import android.widget.SearchView
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.distinctUntilChanged
 import androidx.lifecycle.viewModelScope
+import androidx.preference.PreferenceManager
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -21,16 +24,19 @@ import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.Song
 import com.geckour.q.service.MediaRetrieveService
 import com.geckour.q.service.PlayerService
+import com.geckour.q.util.BoolConverter
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.QueueInfo
 import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.getSong
+import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.searchAlbumByFuzzyTitle
 import com.geckour.q.util.searchArtistByFuzzyTitle
 import com.geckour.q.util.searchGenreByFuzzyTitle
 import com.geckour.q.util.searchPlaylistByFuzzyTitle
 import com.geckour.q.util.searchTrackByFuzzyTitle
+import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -51,15 +57,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     internal val selectedGenre = MutableLiveData<Genre>()
     internal val selectedPlaylist = MutableLiveData<Playlist>()
 
-    internal val newQueueInfo = MutableLiveData<QueueInfo>()
-    internal val requestedPositionInQueue = MutableLiveData<Int>()
-    internal val swappedQueuePositions = MutableLiveData<Pair<Int, Int>>()
-    internal val removedQueueIndex = MutableLiveData<Int>()
+    private val _newQueueInfo = MutableLiveData<QueueInfo>()
+    internal val newQueueInfo: LiveData<QueueInfo> = _newQueueInfo.distinctUntilChanged()
+    private val _requestedPositionInQueue = MutableLiveData<Int>()
+    internal val requestedPositionInQueue: LiveData<Int> =
+        _requestedPositionInQueue.distinctUntilChanged()
+    private val _swappedQueuePositions = MutableLiveData<Pair<Int, Int>>()
+    internal val swappedQueuePositions: LiveData<Pair<Int, Int>> =
+        _swappedQueuePositions.distinctUntilChanged()
+    private val _removedQueueIndex = MutableLiveData<Int>()
+    internal val removedQueueIndex: LiveData<Int> = _removedQueueIndex.distinctUntilChanged()
 
-    internal val toRemovePlayOrderOfPlaylist = MutableLiveData<Int>()
-    internal val songToDelete = MutableLiveData<Song>()
+    private val _toRemovePlayOrderOfPlaylist = MutableLiveData<Int>()
+    internal val toRemovePlayOrderOfPlaylist: LiveData<Int> =
+        _toRemovePlayOrderOfPlaylist.distinctUntilChanged()
+    private val _songToDelete = MutableLiveData<Song>()
+    internal val songToDelete: LiveData<Song> = _songToDelete.distinctUntilChanged()
 
-    internal val deletedSongId = MutableLiveData<Long>()
+    private val _deletedSongId = MutableLiveData<Long>()
+    internal val deletedSongId: LiveData<Long> = _deletedSongId.distinctUntilChanged()
 
     internal val searchItems = MutableLiveData<List<SearchItem>>()
 
@@ -70,7 +86,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var currentOrientedClassType: OrientedClassType? = null
 
     internal var syncing = false
-    internal val loading = MutableLiveData<Boolean>()
+    private val _loading = MutableLiveData<Boolean>()
+    internal val loading: LiveData<Boolean> = _loading.distinctUntilChanged()
     internal var isSearchViewOpened = false
 
     private var searchJob: Job = Job()
@@ -87,30 +104,40 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         override fun onServiceDisconnected(name: ComponentName?) {
             if (name == ComponentName(getApplication(), PlayerService::class.java)) {
-                onDestroyPlayer()
+                onDestroyedPlayer()
             }
         }
 
         override fun onBindingDied(name: ComponentName?) {
             super.onBindingDied(name)
             if (name == ComponentName(getApplication(), PlayerService::class.java)) {
-                onDestroyPlayer()
+                onDestroyedPlayer()
             }
         }
 
         override fun onNullBinding(name: ComponentName?) {
             super.onNullBinding(name)
             if (name == ComponentName(getApplication(), PlayerService::class.java)) {
-                onDestroyPlayer()
+                onDestroyedPlayer()
             }
         }
+    }
+
+    init {
+        bindPlayer()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+
+        unbindPlayer()
     }
 
     internal fun initSearchQueryListener(searchView: SearchView) {
         searchQueryListener = SearchQueryListener(searchView)
     }
 
-    internal fun bindPlayer() {
+    private fun bindPlayer() {
         if (isBoundService.not()) {
             val app = getApplication<App>()
             app.bindService(
@@ -119,7 +146,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    internal fun unbindPlayer() {
+    private fun unbindPlayer() {
         try {
             getApplication<App>().startService(PlayerService.createIntent(getApplication()))
         } catch (t: Throwable) {
@@ -131,7 +158,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    internal fun onDestroyPlayer() {
+    internal fun onDestroyedPlayer() {
         isBoundService = false
         player.value = null
     }
@@ -289,20 +316,54 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    internal fun onSongMenuAction(actionType: InsertActionType, album: Album, sortByTrackOrder: Boolean) {
+        viewModelScope.launch {
+            val songs = withContext(Dispatchers.IO) {
+                DB.getInstance(getApplication()).let { db ->
+                    val sharedPreferences =
+                        PreferenceManager.getDefaultSharedPreferences(getApplication())
+                    _loading.postValue(true)
+                    db.trackDao()
+                        .getAllByAlbum(
+                            album.id,
+                            BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                        )
+                        .mapNotNull { getSong(db, it) }
+                        .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
+                        .apply { _loading.postValue(false) }
+                }
+            }
+
+            onNewQueue(songs, actionType, OrientedClassType.SONG)
+        }
+    }
+
+    internal fun onLoadStateChanged(state: Boolean) {
+        _loading.postValue(state)
+    }
+
+    internal fun onRequestDeleteSong(song: Song) {
+        _songToDelete.postValue(song)
+    }
+
+    internal fun onChangeRequestedPositionInQueue(position: Int) {
+        _requestedPositionInQueue.postValue(position)
+    }
+
     fun onNewQueue(songs: List<Song>, actionType: InsertActionType, classType: OrientedClassType) {
-        newQueueInfo.value = QueueInfo(QueueMetadata(actionType, classType), songs)
+        _newQueueInfo.value = QueueInfo(QueueMetadata(actionType, classType), songs)
     }
 
     fun onQueueSwap(from: Int, to: Int) {
-        swappedQueuePositions.value = Pair(from, to)
+        _swappedQueuePositions.value = Pair(from, to)
     }
 
     fun onQueueRemove(index: Int) {
-        removedQueueIndex.value = index
+        _removedQueueIndex.value = index
     }
 
     fun onRequestRemoveSongFromPlaylist(playOrder: Int) {
-        toRemovePlayOrderOfPlaylist.value = playOrder
+        _toRemovePlayOrderOfPlaylist.value = playOrder
     }
 
     fun onCancelSync(context: Context) {

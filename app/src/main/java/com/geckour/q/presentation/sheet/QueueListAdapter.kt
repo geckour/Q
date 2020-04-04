@@ -175,7 +175,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
 
         private fun onSongSelected(song: Song, position: Int) {
             viewModel.onRequestNavigate(song)
-            viewModel.requestedPositionInQueue.value = position
+            viewModel.onChangeRequestedPositionInQueue(position)
         }
 
         private fun onSongLongTapped(song: Song): Boolean {
@@ -188,8 +188,8 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
         }
 
         private fun deleteSong(song: Song?) {
-            if (song == null) return
-            viewModel.songToDelete.value = song
+            song ?: return
+            viewModel.onRequestDeleteSong(song)
         }
 
         fun dismissPopupMenu() {

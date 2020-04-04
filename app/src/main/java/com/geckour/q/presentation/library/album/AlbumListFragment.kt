@@ -28,7 +28,6 @@ import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
-import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainModel
 import com.geckour.q.util.toNightModeInt
 import kotlinx.coroutines.Dispatchers
@@ -91,7 +90,7 @@ class AlbumListFragment : Fragment() {
     override fun onStop() {
         super.onStop()
 
-        mainViewModel.loading.value = false
+        mainViewModel.onLoadStateChanged(false)
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -135,19 +134,27 @@ class AlbumListFragment : Fragment() {
                 val sortByTrackOrder = item.itemId.let {
                     it != R.id.menu_insert_all_simple_shuffle_next || it != R.id.menu_insert_all_simple_shuffle_last || it != R.id.menu_override_all_simple_shuffle
                 }
-                mainViewModel.loading.postValue(true)
-                val songs = adapter.currentList.map {
+                mainViewModel.onLoadStateChanged(true)
+                val songs = adapter.currentList.map { album ->
                     DB.getInstance(context).let { db ->
                         db.trackDao()
-                            .getAllByAlbum(
-                                it.id,
-                                BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                            )
+                            .let {
+                                if (sortByTrackOrder) {
+                                    it.getAllByAlbumSorted(
+                                        album.id,
+                                        BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                                    )
+                                } else {
+                                    it.getAllByAlbum(
+                                        album.id,
+                                        BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                                    )
+                                }
+                            }
                             .mapNotNull { getSong(db, it) }
-                            .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                     }
                 }.apply {
-                    mainViewModel.loading.postValue(false)
+                    mainViewModel.onLoadStateChanged(false)
                 }.flatten()
 
                 adapter.onNewQueue(songs, actionType)
@@ -165,9 +172,9 @@ class AlbumListFragment : Fragment() {
         mainViewModel.forceLoad.observe(this) {
             context?.also { context ->
                 viewModel.viewModelScope.launch {
-                    mainViewModel.loading.value = true
+                    mainViewModel.onLoadStateChanged(true)
                     val items = withContext(Dispatchers.IO) { fetchAlbums(DB.getInstance(context)) }
-                    mainViewModel.loading.value = false
+                    mainViewModel.onLoadStateChanged(false)
                     adapter.submitList(items)
                     binding.recyclerView.smoothScrollToPosition(0)
                 }
@@ -188,10 +195,10 @@ class AlbumListFragment : Fragment() {
                 } ?: db.albumDao().getAllAsync()).observe(this@AlbumListFragment) { dbAlbumList ->
                     if (dbAlbumList == null) return@observe
 
-                    mainViewModel.loading.value = true
+                    mainViewModel.onLoadStateChanged(true)
                     latestDbAlbumList = dbAlbumList
                     upsertAlbumListIfPossible(db)
-                    mainViewModel.loading.value = false
+                    mainViewModel.onLoadStateChanged(false)
                 }
             }
         }
@@ -204,9 +211,9 @@ class AlbumListFragment : Fragment() {
 
     private fun upsertAlbumListIfPossible(db: DB) {
         viewModel.viewModelScope.launch {
-            mainViewModel.loading.value = true
+            mainViewModel.onLoadStateChanged(true)
             val items = withContext(Dispatchers.IO) { latestDbAlbumList.getAlbumList(db) }
-            mainViewModel.loading.value = false
+            mainViewModel.onLoadStateChanged(false)
             upsertAlbumListIfPossible(items)
         }
     }

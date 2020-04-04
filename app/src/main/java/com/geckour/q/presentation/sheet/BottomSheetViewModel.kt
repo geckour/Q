@@ -9,8 +9,11 @@ import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.widget.ImageView
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.distinctUntilChanged
 import androidx.lifecycle.viewModelScope
+import androidx.preference.PreferenceManager
 import com.bumptech.glide.Glide
 import com.geckour.q.App
 import com.geckour.q.R
@@ -32,25 +35,39 @@ import kotlinx.coroutines.withContext
 
 class BottomSheetViewModel(application: Application) : AndroidViewModel(application) {
 
+    companion object {
+        internal const val PREF_KEY_SHOW_LOCK_TOUCH_QUEUE = "pref_key_lock_touch_queue"
+    }
+
+    var playing = false
     internal var sheetState: Int = BottomSheetBehavior.STATE_COLLAPSED
-    internal val artworkLongClick: MutableLiveData<Unit> = MutableLiveData()
-    internal val toggleSheetState: MutableLiveData<Unit> = MutableLiveData()
-    internal val playbackButton: MutableLiveData<PlaybackButton> = MutableLiveData()
+    internal val artworkLongClick = MutableLiveData<Unit>()
+    internal val toggleSheetState = MutableLiveData<Unit>()
+    private val _playbackButton = MutableLiveData<PlaybackButton>()
+    internal val playbackButton: LiveData<PlaybackButton> = _playbackButton.distinctUntilChanged()
     internal var currentQueue: List<Song> = emptyList()
     internal var currentPosition = -1
-    internal val clearQueue: MutableLiveData<Unit> = MutableLiveData()
-    internal val newSeekBarProgress: MutableLiveData<Float> = MutableLiveData()
-    internal val shuffle: MutableLiveData<Unit> = MutableLiveData()
-    internal val scrollToCurrent: MutableLiveData<Unit> = MutableLiveData()
+    internal val clearQueue = MutableLiveData<Unit>()
+    private val _newSeekBarProgress = MutableLiveData<Float>()
+    internal val newSeekBarProgress: LiveData<Float> = _newSeekBarProgress.distinctUntilChanged()
+    internal val shuffle = MutableLiveData<Unit>()
+    internal val scrollToCurrent = MutableLiveData<Unit>()
 
-    internal val changeRepeatMode: MutableLiveData<Unit> = MutableLiveData()
-    internal val toggleCurrentRemain: MutableLiveData<Unit> = MutableLiveData()
-    internal val touchLock: MutableLiveData<Boolean> = MutableLiveData()
-    internal val share: MutableLiveData<Song> = MutableLiveData()
+    internal val changeRepeatMode = MutableLiveData<Unit>()
+    internal val toggleCurrentRemain = MutableLiveData<Unit>()
+    private val _touchLock = MutableLiveData<Boolean>()
+    internal val touchLock: LiveData<Boolean> = _touchLock.distinctUntilChanged()
+    private val _share = MutableLiveData<Song>()
+    internal val share: LiveData<Song> = _share.distinctUntilChanged()
 
     val currentSong: Song? get() = currentQueue.getOrNull(currentPosition)
 
-    var updateArtworkJob: Job = Job()
+    private var updateArtworkJob: Job = Job()
+
+    init {
+        _touchLock.value = PreferenceManager.getDefaultSharedPreferences(application)
+            .getBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, false)
+    }
 
     fun onLongClickArtwork(): Boolean {
         if (currentQueue.isNotEmpty()) {
@@ -128,37 +145,45 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun onClickTouchOffButton() {
-        touchLock.value = touchLock.value?.not() ?: true
+        _touchLock.value = touchLock.value?.not() ?: true
     }
 
     fun onClickShareButton() {
-        share.value = currentSong
+        _share.value = currentSong
     }
 
     fun onPlayOrPause() {
-        playbackButton.value = PlaybackButton.PLAY_OR_PAUSE
+        _playbackButton.value = if (playing) PlaybackButton.PAUSE else PlaybackButton.PLAY
     }
 
     fun onNext() {
-        playbackButton.value = PlaybackButton.NEXT
+        _playbackButton.value = PlaybackButton.NEXT
     }
 
     fun onPrev() {
-        playbackButton.value = PlaybackButton.PREV
+        _playbackButton.value = PlaybackButton.PREV
     }
 
     fun onFF(): Boolean {
-        playbackButton.value = PlaybackButton.FF
+        _playbackButton.value = PlaybackButton.FF
         return true
     }
 
     fun onRewind(): Boolean {
-        playbackButton.value = PlaybackButton.REWIND
+        _playbackButton.value = PlaybackButton.REWIND
         return true
     }
 
     internal fun reAttach() {
-        touchLock.value = touchLock.value
+        _touchLock.value = touchLock.value
+    }
+
+    internal fun onNewSeekBarProgress(progress: Float) {
+        _newSeekBarProgress.value = progress
+    }
+
+    internal fun onNewPlaybackButton(playbackButton: PlaybackButton) {
+        _playbackButton.value = playbackButton
     }
 
     internal fun onTransitionToArtist(mainViewModel: MainViewModel) = viewModelScope.launch {

@@ -111,14 +111,14 @@ class GenreListAdapter(private val viewModel: MainViewModel) :
             }
 
             viewModel.viewModelScope.launch {
-                viewModel.loading.value = true
+                viewModel.onLoadStateChanged(true)
                 val songs = withContext(Dispatchers.IO) {
                     genre.getTrackMediaIds(context)
                         .mapNotNull {
                             getSong(DB.getInstance(context), it, genreId = genre.id)
                         }
                 }
-                viewModel.loading.value = false
+                viewModel.onLoadStateChanged(false)
 
                 onNewQueue(songs, actionType, OrientedClassType.SONG)
             }

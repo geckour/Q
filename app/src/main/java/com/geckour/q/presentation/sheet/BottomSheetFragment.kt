@@ -22,6 +22,7 @@ import com.geckour.q.domain.model.Song
 import com.geckour.q.presentation.main.MainActivity
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.presentation.share.SharingActivity
+import com.geckour.q.presentation.sheet.BottomSheetViewModel.Companion.PREF_KEY_SHOW_LOCK_TOUCH_QUEUE
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.observe
 import com.geckour.q.util.shake
@@ -32,7 +33,8 @@ class BottomSheetFragment : Fragment() {
 
     companion object {
         private const val PREF_KEY_SHOW_CURRENT_REMAIN = "pref_key_show_current_remain"
-        private const val PREF_KEY_SHOW_LOCK_TOUCH_QUEUE = "pref_key_lock_touch_queue"
+
+        fun newInstance(): BottomSheetFragment = BottomSheetFragment()
     }
 
     private val viewModel: BottomSheetViewModel by activityViewModels()
@@ -47,9 +49,71 @@ class BottomSheetFragment : Fragment() {
 
     private val touchLockListener: (View, MotionEvent) -> Boolean = { _, event ->
         behavior.onTouchEvent(
-            requireActivity().findViewById(R.id.coordinator_main), binding.sheet, event
+            requireActivity().findViewById(R.id.content_main), binding.sheet, event
         )
         true
+    }
+
+    private val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+        ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
+    ) {
+        var from: Int? = null
+        var to: Int? = null
+
+        override fun onMove(
+            recyclerView: RecyclerView,
+            fromHolder: RecyclerView.ViewHolder,
+            toHolder: RecyclerView.ViewHolder
+        ): Boolean {
+            val from = fromHolder.adapterPosition
+            val to = toHolder.adapterPosition
+
+            if (this.from == null) this.from = from
+            this.to = to
+
+            adapter.move(from, to)
+            (fromHolder as QueueListAdapter.ViewHolder).dismissPopupMenu()
+
+            return true
+        }
+
+        override fun onSwiped(holder: RecyclerView.ViewHolder, position: Int) = Unit
+
+        override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
+            super.onSelectedChanged(viewHolder, actionState)
+
+            val from = this.from
+            val to = this.to
+
+            if (viewHolder == null && from != null && to != null) mainViewModel.onQueueSwap(
+                from,
+                to
+            )
+
+            this.from = null
+            this.to = null
+        }
+    })
+
+    private val bottomSheetCallback = object : BottomSheetBehavior.BottomSheetCallback() {
+        override fun onSlide(v: View, dy: Float) {
+            binding.sheet.progress = dy
+        }
+
+        @SuppressLint("SwitchIntDef")
+        override fun onStateChanged(v: View, state: Int) {
+            viewModel.sheetState = state
+            reloadBindingVariable()
+            binding.buttonToggleVisibleQueue.setImageResource(
+                when (state) {
+                    BottomSheetBehavior.STATE_EXPANDED -> R.drawable.ic_collapse
+                    else -> R.drawable.ic_queue
+                }
+            )
+            if (state == BottomSheetBehavior.STATE_EXPANDED) {
+                viewModel.scrollToCurrent.value = Unit
+            }
+        }
     }
 
     override fun onCreateView(
@@ -62,65 +126,19 @@ class BottomSheetFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        binding.viewModel = viewModel
         adapter = QueueListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
-        ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
-            ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
-        ) {
-            var from: Int? = null
-            var to: Int? = null
-
-            override fun onMove(
-                recyclerView: RecyclerView,
-                fromHolder: RecyclerView.ViewHolder,
-                toHolder: RecyclerView.ViewHolder
-            ): Boolean {
-                val from = fromHolder.adapterPosition
-                val to = toHolder.adapterPosition
-
-                if (this.from == null) this.from = from
-                this.to = to
-
-                adapter.move(from, to)
-                (fromHolder as QueueListAdapter.ViewHolder).dismissPopupMenu()
-
-                return true
-            }
-
-            override fun onSwiped(holder: RecyclerView.ViewHolder, position: Int) = Unit
-
-            override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
-                super.onSelectedChanged(viewHolder, actionState)
-
-                val from = this.from
-                val to = this.to
-
-                if (viewHolder == null && from != null && to != null) mainViewModel.onQueueSwap(
-                    from,
-                    to
-                )
-
-                this.from = null
-                this.to = null
-            }
-        }).attachToRecyclerView(binding.recyclerView)
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
-
-        binding.viewModel = viewModel
+        itemTouchHelper.attachToRecyclerView(binding.recyclerView)
 
         binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) {
-            }
+            override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) =
+                Unit
 
-            override fun onStartTrackingTouch(seekBar: SeekBar) {
-            }
+            override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
 
             override fun onStopTrackingTouch(seekBar: SeekBar) {
-                viewModel.newSeekBarProgress.value = seekBar.progress.toFloat() / seekBar.max
+                viewModel.onNewSeekBarProgress(seekBar.progress.toFloat() / seekBar.max)
             }
         })
 
@@ -132,7 +150,7 @@ class BottomSheetFragment : Fragment() {
             it.setOnTouchListener { _, event ->
                 when (event.action) {
                     MotionEvent.ACTION_UP -> {
-                        viewModel.playbackButton.value = PlaybackButton.UNDEFINED
+                        viewModel.onNewPlaybackButton(PlaybackButton.UNDEFINED)
                     }
                 }
 
@@ -140,32 +158,10 @@ class BottomSheetFragment : Fragment() {
             }
         }
 
-        viewModel.touchLock.value =
-            sharedPreferences.getBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, false)
-
         behavior = BottomSheetBehavior.from(
             (requireActivity() as MainActivity).binding.root.findViewById(R.id.bottom_sheet)
         )
-        behavior.setBottomSheetCallback(object : BottomSheetBehavior.BottomSheetCallback() {
-            override fun onSlide(v: View, dy: Float) {
-                binding.sheet.progress = dy
-            }
-
-            @SuppressLint("SwitchIntDef")
-            override fun onStateChanged(v: View, state: Int) {
-                viewModel.sheetState = state
-                reloadBindingVariable()
-                binding.buttonToggleVisibleQueue.setImageResource(
-                    when (state) {
-                        BottomSheetBehavior.STATE_EXPANDED -> R.drawable.ic_collapse
-                        else -> R.drawable.ic_queue
-                    }
-                )
-                if (state == BottomSheetBehavior.STATE_EXPANDED) {
-                    viewModel.scrollToCurrent.value = Unit
-                }
-            }
-        })
+        behavior.addBottomSheetCallback(bottomSheetCallback)
 
         observeEvents()
     }
@@ -315,6 +311,7 @@ class BottomSheetFragment : Fragment() {
     }
 
     private fun onPlayingChanged(playing: Boolean) {
+        viewModel.playing = playing
         binding.playing = playing
     }
 
@@ -354,7 +351,6 @@ class BottomSheetFragment : Fragment() {
     private fun reloadBindingVariable() {
         binding.viewModel = binding.viewModel
         binding.isQueueNotEmpty = binding.isQueueNotEmpty
-        binding.playing = binding.playing
         binding.queueUnTouchable = binding.queueUnTouchable
     }
 }

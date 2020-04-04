@@ -92,6 +92,7 @@ dependencies {
     // AAC ViewModel
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$aac_lifecycle_ver"
     implementation "androidx.lifecycle:lifecycle-livedata:$aac_lifecycle_ver"
+    implementation "androidx.lifecycle:lifecycle-livedata-ktx:$aac_lifecycle_ver"
     implementation "androidx.lifecycle:lifecycle-common-java8:$aac_lifecycle_ver"
     testImplementation 'androidx.arch.core:core-testing:2.1.0'
 

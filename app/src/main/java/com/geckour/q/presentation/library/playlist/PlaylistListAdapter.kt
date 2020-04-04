@@ -128,7 +128,7 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
             }
 
             viewModel.viewModelScope.launch {
-                viewModel.loading.value = true
+                viewModel.onLoadStateChanged(true)
                 val songs = withContext(Dispatchers.IO) {
                     playlist.getTrackMediaIds(context)
                         .sortedBy { it.second }
@@ -136,7 +136,7 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
                             getSong(DB.getInstance(context), it.first, playlistId = playlist.id)
                         }
                 }
-                viewModel.loading.value = false
+                viewModel.onLoadStateChanged(false)
 
                 onNewQueue(songs, actionType, OrientedClassType.SONG)
             }

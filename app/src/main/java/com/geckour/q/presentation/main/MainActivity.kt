@@ -11,13 +11,11 @@ import android.view.KeyEvent
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
-import android.widget.FrameLayout
 import androidx.activity.viewModels
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.ViewModelProvider
+import androidx.fragment.app.commit
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivityMainBinding
@@ -34,6 +32,7 @@ import com.geckour.q.presentation.library.song.SongListFragment
 import com.geckour.q.presentation.pay.PaymentFragment
 import com.geckour.q.presentation.pay.PaymentViewModel
 import com.geckour.q.presentation.setting.SettingActivity
+import com.geckour.q.presentation.sheet.BottomSheetFragment
 import com.geckour.q.presentation.sheet.BottomSheetViewModel
 import com.geckour.q.service.MediaRetrieveService
 import com.geckour.q.util.CrashlyticsBundledActivity
@@ -104,7 +103,7 @@ class MainActivity : CrashlyticsBundledActivity() {
                 (extras?.get(EXTRA_SYNCING_PROGRESS) as? Pair<Int, Int>)?.apply {
                     viewModel.syncing = true
                     setLockingIndicator()
-                    binding.coordinatorMain.indicatorLocking.progressSync.text =
+                    binding.indicatorLocking.progressSync.text =
                         getString(R.string.progress_sync, this.first, this.second)
                 }
             }
@@ -112,7 +111,7 @@ class MainActivity : CrashlyticsBundledActivity() {
     }
 
     private val onNavigationItemSelected: (MenuItem) -> Boolean = {
-        val fragment = when (it.itemId) {
+        when (it.itemId) {
             R.id.nav_artist -> ArtistListFragment.newInstance()
             R.id.nav_album -> AlbumListFragment.newInstance()
             R.id.nav_song -> SongListFragment.newInstance()
@@ -138,17 +137,15 @@ class MainActivity : CrashlyticsBundledActivity() {
             }
             R.id.nav_pay -> PaymentFragment.newInstance()
             else -> null
-        }
-        if (fragment != null) {
-            supportFragmentManager.beginTransaction().apply {
-                if ((binding.coordinatorMain.contentMain.root as FrameLayout).childCount == 0) add(
-                    R.id.content_main, fragment
-                )
+        }?.let {
+            supportFragmentManager.commit {
+                if (binding.contentMain.childCount == 0)
+                    add(R.id.content_main, it)
                 else {
-                    replace(R.id.content_main, fragment)
+                    replace(R.id.content_main, it)
                     addToBackStack(null)
                 }
-            }.commit()
+            }
         }
         binding.drawerLayout.post { binding.drawerLayout.closeDrawers() }
         true
@@ -158,14 +155,13 @@ class MainActivity : CrashlyticsBundledActivity() {
         super.onCreate(savedInstanceState)
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
-        binding.coordinatorMain.viewModel = viewModel
-        binding.coordinatorMain.contentSearch.recyclerView.adapter = searchListAdapter
+        binding.viewModel = viewModel
+        binding.contentSearch.recyclerView.adapter = searchListAdapter
 
         observeEvents()
         registerReceiver(syncingProgressReceiver, IntentFilter(ACTION_SYNCING))
-        viewModel.bindPlayer()
 
-        setSupportActionBar(binding.coordinatorMain.toolbar)
+        setSupportActionBar(binding.toolbar)
         setupDrawer()
 
         if (savedInstanceState == null) {
@@ -176,6 +172,10 @@ class MainActivity : CrashlyticsBundledActivity() {
         } else if (savedInstanceState.containsKey(STATE_KEY_REQUESTED_TRANSACTION)) {
             requestedTransaction =
                 savedInstanceState.getParcelable(STATE_KEY_REQUESTED_TRANSACTION) as RequestedTransaction?
+        }
+
+        supportFragmentManager.commit {
+            add(R.id.bottom_sheet, BottomSheetFragment.newInstance())
         }
     }
 
@@ -206,7 +206,6 @@ class MainActivity : CrashlyticsBundledActivity() {
     override fun onDestroy() {
         super.onDestroy()
 
-        viewModel.unbindPlayer()
         unregisterReceiver(syncingProgressReceiver)
     }
 
@@ -214,7 +213,7 @@ class MainActivity : CrashlyticsBundledActivity() {
         when {
             viewModel.isSearchViewOpened -> {
                 viewModel.searchQueryListener.reset()
-                binding.coordinatorMain.contentSearch.root.visibility = View.GONE
+                binding.contentSearch.root.visibility = View.GONE
             }
             binding.drawerLayout.isDrawerOpen(binding.navigationView) -> {
                 binding.drawerLayout.closeDrawer(binding.navigationView)
@@ -265,7 +264,7 @@ class MainActivity : CrashlyticsBundledActivity() {
             player ?: return@observe
 
             player.setOnDestroyedListener {
-                viewModel.onDestroyPlayer()
+                viewModel.onDestroyedPlayer()
             }
 
             player.publishStatus()
@@ -364,9 +363,9 @@ class MainActivity : CrashlyticsBundledActivity() {
 
         viewModel.searchItems.observe(this) {
             if (it == null) {
-                binding.coordinatorMain.contentSearch.root.visibility = View.GONE
+                binding.contentSearch.root.visibility = View.GONE
                 return@observe
-            } else binding.coordinatorMain.contentSearch.root.visibility = View.VISIBLE
+            } else binding.contentSearch.root.visibility = View.VISIBLE
 
             searchListAdapter.replaceItems(it)
         }
@@ -377,7 +376,8 @@ class MainActivity : CrashlyticsBundledActivity() {
                 KeyEvent(
                     if (it == PlaybackButton.UNDEFINED) KeyEvent.ACTION_UP else KeyEvent.ACTION_DOWN,
                     when (it) {
-                        PlaybackButton.PLAY_OR_PAUSE -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+                        PlaybackButton.PLAY -> KeyEvent.KEYCODE_MEDIA_PLAY
+                        PlaybackButton.PAUSE -> KeyEvent.KEYCODE_MEDIA_PAUSE
                         PlaybackButton.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
                         PlaybackButton.PREV -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
                         PlaybackButton.FF -> KeyEvent.KEYCODE_MEDIA_FAST_FORWARD
@@ -412,7 +412,7 @@ class MainActivity : CrashlyticsBundledActivity() {
         drawerToggle = ActionBarDrawerToggle(
             this,
             binding.drawerLayout,
-            binding.coordinatorMain.toolbar,
+            binding.toolbar,
             R.string.drawer_open,
             R.string.drawer_close
         )
@@ -445,19 +445,19 @@ class MainActivity : CrashlyticsBundledActivity() {
     }
 
     private fun indicateSync() {
-        binding.coordinatorMain.indicatorLocking.descLocking.text = getString(R.string.syncing)
-        binding.coordinatorMain.indicatorLocking.progressSync.visibility = View.VISIBLE
-        binding.coordinatorMain.indicatorLocking.buttonCancelSync.visibility = View.VISIBLE
+        binding.indicatorLocking.descLocking.text = getString(R.string.syncing)
+        binding.indicatorLocking.progressSync.visibility = View.VISIBLE
+        binding.indicatorLocking.buttonCancelSync.visibility = View.VISIBLE
     }
 
     private fun indicateLoad() {
-        binding.coordinatorMain.indicatorLocking.descLocking.text = getString(R.string.loading)
-        binding.coordinatorMain.indicatorLocking.progressSync.visibility = View.GONE
-        binding.coordinatorMain.indicatorLocking.buttonCancelSync.visibility = View.GONE
+        binding.indicatorLocking.descLocking.text = getString(R.string.loading)
+        binding.indicatorLocking.progressSync.visibility = View.GONE
+        binding.indicatorLocking.buttonCancelSync.visibility = View.GONE
     }
 
     private fun toggleIndicateLock(locking: Boolean) {
-        binding.coordinatorMain.indicatorLocking.root.visibility =
+        binding.indicatorLocking.root.visibility =
             if (locking) View.VISIBLE else View.GONE
         binding.drawerLayout.setDrawerLockMode(
             if (locking) DrawerLayout.LOCK_MODE_LOCKED_CLOSED
@@ -530,8 +530,8 @@ class MainActivity : CrashlyticsBundledActivity() {
     }
 
     private fun dismissSearch() {
-        binding.coordinatorMain.contentSearch.root.visibility = View.GONE
-        getSystemService(InputMethodManager::class.java).hideSoftInputFromWindow(
+        binding.contentSearch.root.visibility = View.GONE
+        getSystemService(InputMethodManager::class.java)?.hideSoftInputFromWindow(
             currentFocus?.windowToken, 0
         )
     }
@@ -552,7 +552,4 @@ class MainActivity : CrashlyticsBundledActivity() {
 
         viewModel.deleteSongFromDB(song)
     }
-
-    private inline fun <reified T : AndroidViewModel> createAndroidViewModel(): T =
-        ViewModelProvider.AndroidViewModelFactory(application).create(T::class.java)
 }

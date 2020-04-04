@@ -112,7 +112,7 @@ class SongListFragment : Fragment() {
     override fun onStop() {
         super.onStop()
 
-        mainViewModel.loading.value = false
+        mainViewModel.onLoadStateChanged(false)
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -223,13 +223,13 @@ class SongListFragment : Fragment() {
     private fun fetchSongsWithGenre(genre: Genre) {
         context?.also {
             viewModel.viewModelScope.launch {
-                mainViewModel.loading.value = true
+                mainViewModel.onLoadStateChanged(true)
                 adapter.submitList(
                     getSongListFromTrackMediaId(
                         DB.getInstance(it), genre.getTrackMediaIds(it), genreId = genre.id
                     ), false
                 )
-                mainViewModel.loading.value = false
+                mainViewModel.onLoadStateChanged(false)
                 binding.recyclerView.smoothScrollToPosition(0)
             }
         }
@@ -238,13 +238,13 @@ class SongListFragment : Fragment() {
     private fun fetchSongsWithPlaylist(playlist: Playlist) {
         context?.also {
             viewModel.viewModelScope.launch {
-                mainViewModel.loading.value = true
+                mainViewModel.onLoadStateChanged(true)
                 adapter.submitList(
                     getSongListFromTrackMediaIdWithTrackNum(
                         DB.getInstance(it), playlist.getTrackMediaIds(it), playlistId = playlist.id
                     )
                 )
-                mainViewModel.loading.value = false
+                mainViewModel.onLoadStateChanged(false)
                 binding.recyclerView.smoothScrollToPosition(0)
             }
         }
@@ -257,10 +257,10 @@ class SongListFragment : Fragment() {
             chatteringCancelFlag = true
             viewModel.viewModelScope.launch {
                 delay(500)
-                mainViewModel.loading.value = true
+                mainViewModel.onLoadStateChanged(true)
                 val items = getSongListFromTrackList(db, dbTrackList)
                 adapter.submitList(items, sortByTrackOrder)
-                mainViewModel.loading.value = false
+                mainViewModel.onLoadStateChanged(false)
                 chatteringCancelFlag = false
             }
         }
