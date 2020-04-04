@@ -28,7 +28,7 @@ class ArtistListViewModel(application: Application) : AndroidViewModel(applicati
             val db = DB.getInstance(getApplication())
             artistListData.postValue(data.map {
                 val thumbString = db.albumDao()
-                    .findByArtistId(it.id)
+                    .getAllByArtistId(it.id)
                     .sortedBy { it.playbackCount }
                     .mapNotNull { it.artworkUriString }
                     .firstOrNull()

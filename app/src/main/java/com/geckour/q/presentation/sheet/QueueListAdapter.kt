@@ -99,7 +99,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
                         viewModel.viewModelScope.launch {
                             viewModel.selectedArtist.value = withContext((Dispatchers.IO)) {
                                 binding.data?.artist?.let {
-                                    DB.getInstance(binding.root.context).artistDao().findArtist(it)
+                                    DB.getInstance(binding.root.context).artistDao().getAllByTitle(it)
                                         .firstOrNull()?.toDomainModel()
                                 }
                             }

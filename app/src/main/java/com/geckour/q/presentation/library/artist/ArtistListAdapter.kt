@@ -142,8 +142,8 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
                         val sharedPreferences =
                             PreferenceManager.getDefaultSharedPreferences(context)
                         viewModel.loading.postValue(true)
-                        db.albumDao().findByArtistId(artist.id).map {
-                            db.trackDao().findByAlbum(
+                        db.albumDao().getAllByArtistId(artist.id).map {
+                            db.trackDao().getAllByAlbum(
                                 it.id,
                                 BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                             ).mapNotNull { getSong(db, it) }.let {

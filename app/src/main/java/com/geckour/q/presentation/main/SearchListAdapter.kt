@@ -120,7 +120,7 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
                 val artworkUriString = when (item.type) {
                     SearchItem.SearchItemType.ARTIST -> {
                         (item.data as? Artist)?.id?.let {
-                            db.albumDao().findByArtistId(it)
+                            db.albumDao().getAllByArtistId(it)
                                     .firstOrNull { it.artworkUriString != null }
                                     ?.artworkUriString
                         }

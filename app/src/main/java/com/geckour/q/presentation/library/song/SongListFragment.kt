@@ -218,7 +218,7 @@ class SongListFragment : Fragment() {
         context?.also {
             DB.getInstance(it).also { db ->
                 db.trackDao()
-                    .findByAlbumAsync(album.id)
+                    .getAllByAlbumAsync(album.id)
                     .observe(this@SongListFragment) { dbTrackList ->
                         if (dbTrackList == null) return@observe
 

@@ -8,7 +8,6 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
-import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
 
 @Dao
@@ -29,17 +28,11 @@ interface ArtistDao {
     @Query("delete from track where artistId = :artistId")
     fun deleteTrackByArtist(artistId: Long)
 
-    @Query("select * from artist where title like :title")
-    fun findLikeTitle(title: String): List<Artist>
-
     @Query("select * from artist where title = :title")
-    fun findArtist(title: String): List<Artist>
+    fun getAllByTitle(title: String): List<Artist>
 
-    @Query("select * from artist")
-    fun getAll(): List<Artist>
-
-    @Query("select * from artist")
-    fun getAllAsync(): LiveData<List<Artist>>
+    @Query("select * from artist where title like :title")
+    fun findAllByTitle(title: String): List<Artist>
 
     @Query("select * from artist where id in (select artistId from album group by artistId)")
     fun getAllOrientedAlbumAsync(): LiveData<List<Artist>>
@@ -58,7 +51,7 @@ interface ArtistDao {
     }
 
     fun upsert(artist: Artist): Long {
-        val toInsert = findArtist(artist.title).firstOrNull()?.let {
+        val toInsert = getAllByTitle(artist.title).firstOrNull()?.let {
             artist.copy(
                 id = it.id,
                 playbackCount = it.playbackCount,

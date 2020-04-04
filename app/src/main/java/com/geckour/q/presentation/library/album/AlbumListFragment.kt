@@ -147,7 +147,7 @@ class AlbumListFragment : Fragment() {
                 val songs = adapter.currentList.map {
                     DB.getInstance(context).let { db ->
                         db.trackDao()
-                            .findByAlbum(
+                            .getAllByAlbum(
                                 it.id,
                                 BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                             )
@@ -192,7 +192,7 @@ class AlbumListFragment : Fragment() {
         context?.apply {
             DB.getInstance(this).also { db ->
                 (artist?.let {
-                    db.albumDao().findByArtistIdAsync(it.id)
+                    db.albumDao().getAllByArtistIdAsync(it.id)
                 } ?: db.albumDao().getAllAsync()).observe(this@AlbumListFragment) { dbAlbumList ->
                     if (dbAlbumList == null) return@observe
 
@@ -207,7 +207,7 @@ class AlbumListFragment : Fragment() {
 
     private fun fetchAlbums(db: DB): List<Album> =
 
-        (artist?.let { db.albumDao().findByArtistId(it.id) } ?: db.albumDao()
+        (artist?.let { db.albumDao().getAllByArtistId(it.id) } ?: db.albumDao()
             .getAll()).getAlbumList(db)
 
     private fun upsertAlbumListIfPossible(db: DB) {
@@ -234,7 +234,7 @@ class AlbumListFragment : Fragment() {
         val artist = db.artistDao().get(it.artistId)
         val artistName = artist?.title ?: return@mapNotNull null
         val artistNameSort = artist.titleSort
-        val totalDuration = db.trackDao().findByAlbum(it.id).map { it.duration }.sum()
+        val totalDuration = db.trackDao().getAllByAlbum(it.id).map { it.duration }.sum()
         it.toDomainModel(artistName, artistNameSort, totalDuration)
     }
 }

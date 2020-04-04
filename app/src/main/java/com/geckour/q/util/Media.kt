@@ -172,15 +172,15 @@ private suspend fun List<Track>.getPlaylistThumb(context: Context): Bitmap? =
     }
 
 suspend fun DB.searchArtistByFuzzyTitle(title: String): List<Artist> = withContext(Dispatchers.IO) {
-    this@searchArtistByFuzzyTitle.artistDao().findLikeTitle("%${title.escapeSql}%")
+    this@searchArtistByFuzzyTitle.artistDao().findAllByTitle("%${title.escapeSql}%")
 }
 
 suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<Album> = withContext(Dispatchers.IO) {
-    this@searchAlbumByFuzzyTitle.albumDao().findByTitle("%${title.escapeSql}%")
+    this@searchAlbumByFuzzyTitle.albumDao().findAllByTitle("%${title.escapeSql}%")
 }
 
 suspend fun DB.searchTrackByFuzzyTitle(title: String): List<Track> = withContext(Dispatchers.IO) {
-    this@searchTrackByFuzzyTitle.trackDao().findByTitle("%${title.escapeSql}%", Bool.UNDEFINED)
+    this@searchTrackByFuzzyTitle.trackDao().getAllByTitle("%${title.escapeSql}%", Bool.UNDEFINED)
 }
 
 fun Context.searchPlaylistByFuzzyTitle(title: String): List<Playlist> = contentResolver.query(
@@ -466,12 +466,12 @@ fun DB.storeMediaInfo(
     val titleSort =
         (tag.getAll(FieldKey.TITLE_SORT).firstOrNull { it.isNotBlank() } ?: title)?.hiraganized
     val albumTitle = tag.getAll(FieldKey.ALBUM).firstOrNull { it.isNotBlank() }
-    val cachedAlbum = albumTitle?.let { albumDao().findByTitle(it).firstOrNull() }
+    val cachedAlbum = albumTitle?.let { albumDao().findAllByTitle(it).firstOrNull() }
     val albumTitleSort =
         cachedAlbum?.titleSort ?: (tag.getAll(FieldKey.ALBUM_SORT).firstOrNull { it.isNotBlank() }
             ?: albumTitle)?.hiraganized
     val artistTitle = tag.getAll(FieldKey.ARTIST).firstOrNull { it.isNotBlank() }
-    val cachedArtist = artistTitle?.let { artistDao().findArtist(it).firstOrNull() }
+    val cachedArtist = artistTitle?.let { artistDao().getAllByTitle(it).firstOrNull() }
     val artistTitleSort =
         cachedArtist?.titleSort ?: (tag.getAll(FieldKey.ARTIST_SORT).firstOrNull { it.isNotBlank() }
             ?: artistTitle)?.hiraganized

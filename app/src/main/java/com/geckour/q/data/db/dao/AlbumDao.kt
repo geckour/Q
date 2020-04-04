@@ -26,23 +26,23 @@ interface AlbumDao {
     @Query("delete from track where albumId = :albumId")
     fun deleteTrackByAlbum(albumId: Long): Int
 
+    @Query("select * from album where id = :id")
+    fun get(id: Long): Album?
+
     @Query("select * from album")
     fun getAll(): List<Album>
 
     @Query("select * from album")
     fun getAllAsync(): LiveData<List<Album>>
 
-    @Query("select * from album where id = :id")
-    fun get(id: Long): Album?
+    @Query("select * from album where artistId = :id")
+    fun getAllByArtistId(id: Long): List<Album>
 
     @Query("select * from album where artistId = :id")
-    fun findByArtistId(id: Long): List<Album>
-
-    @Query("select * from album where artistId = :id")
-    fun findByArtistIdAsync(id: Long): LiveData<List<Album>>
+    fun getAllByArtistIdAsync(id: Long): LiveData<List<Album>>
 
     @Query("select * from album where title like :title")
-    fun findByTitle(title: String): List<Album>
+    fun findAllByTitle(title: String): List<Album>
 
     @Query("update album set playbackCount = (select playbackCount from album where id = :albumId) + 1 where id = :albumId")
     fun increasePlaybackCount(albumId: Long)
@@ -53,7 +53,7 @@ interface AlbumDao {
 
         delete(album.id)
 
-        if (findByArtistId(album.artistId).isEmpty()) {
+        if (getAllByArtistId(album.artistId).isEmpty()) {
             DB.getInstance(context).artistDao().delete(album.artistId)
         }
     }
@@ -65,7 +65,7 @@ interface AlbumDao {
     }
 
     fun upsert(album: Album): Long {
-        val toInsert = findByTitle(album.title).firstOrNull()?.let {
+        val toInsert = findAllByTitle(album.title).firstOrNull()?.let {
             album.copy(id = it.id, totalDuration = it.totalDuration + album.totalDuration)
         } ?: album
 

@@ -770,7 +770,7 @@ class PlayerService : Service() {
                 db.trackDao().increasePlaybackCount(song.id)
                 db.albumDao().increasePlaybackCount(song.albumId)
                 db.artistDao().apply {
-                    val artist = findArtist(song.artist).firstOrNull() ?: db.albumDao()
+                    val artist = getAllByTitle(song.artist).firstOrNull() ?: db.albumDao()
                         .get(song.albumId)?.artistId?.let {
                             get(it)
                         }

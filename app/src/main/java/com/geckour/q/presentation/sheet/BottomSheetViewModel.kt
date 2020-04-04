@@ -166,7 +166,7 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
             currentSong?.artist?.let {
                 DB.getInstance(getApplication())
                     .artistDao()
-                    .findArtist(it)
+                    .getAllByTitle(it)
                     .firstOrNull()
                     ?.toDomainModel()
             }

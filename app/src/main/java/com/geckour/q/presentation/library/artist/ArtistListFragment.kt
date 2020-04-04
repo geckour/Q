@@ -129,14 +129,14 @@ class ArtistListFragment : Fragment() {
                 mainViewModel.loading.postValue(true)
                 val db = DB.getInstance(context)
                 val songs = adapter.currentList.flatMap {
-                    db.albumDao().findByArtistId(it.id).flatMap {
+                    db.albumDao().getAllByArtistId(it.id).flatMap {
                         if (sortByTrackOrder) {
-                            db.trackDao().findByAlbumSorted(
+                            db.trackDao().getAllByAlbumSorted(
                                 it.id,
                                 BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                             ).mapNotNull { getSong(db, it) }
                         } else {
-                            db.trackDao().findByAlbum(
+                            db.trackDao().getAllByAlbum(
                                 it.id,
                                 BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                             ).mapNotNull { getSong(db, it) }

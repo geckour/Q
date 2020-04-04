@@ -139,7 +139,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
                             PreferenceManager.getDefaultSharedPreferences(context)
                         viewModel.loading.postValue(true)
                         db.trackDao()
-                            .findByAlbum(
+                            .getAllByAlbum(
                                 album.id,
                                 BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                             )

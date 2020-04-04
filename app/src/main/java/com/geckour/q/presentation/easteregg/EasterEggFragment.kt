@@ -155,7 +155,7 @@ class EasterEggFragment : Fragment() {
                                     mainViewModel.selectedArtist.value =
                                         withContext((Dispatchers.IO)) {
                                             viewModel.song?.artist?.let {
-                                                DB.getInstance(context).artistDao().findArtist(it)
+                                                DB.getInstance(context).artistDao().getAllByTitle(it)
                                                     .firstOrNull()?.toDomainModel()
                                             }
                                         }

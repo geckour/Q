@@ -125,7 +125,7 @@ class SongListAdapter(
                                 binding.data?.artist?.let {
                                     DB.getInstance(binding.root.context)
                                         .artistDao()
-                                        .findArtist(it)
+                                        .getAllByTitle(it)
                                         .firstOrNull()
                                         ?.toDomainModel()
                                 }

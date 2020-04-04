@@ -218,9 +218,9 @@ class MediaRetrieveService : IntentService(NAME) {
     private fun DB.deleteTrack(mediaId: Long) {
         trackDao().getByMediaId(mediaId)?.apply {
             trackDao().delete(this.id)
-            if (trackDao().findByAlbum(this.albumId).isEmpty())
+            if (trackDao().getAllByAlbum(this.albumId).isEmpty())
                 albumDao().delete(this.albumId)
-            if (trackDao().findByArtist(this.artistId).isEmpty())
+            if (trackDao().getAllByArtist(this.artistId).isEmpty())
                 artistDao().delete(this.artistId)
         }
     }

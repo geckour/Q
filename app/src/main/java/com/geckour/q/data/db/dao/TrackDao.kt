@@ -23,32 +23,32 @@ interface TrackDao {
     @Query("delete from track where id = :id")
     fun delete(id: Long): Int
 
-    @Query("select * from track where ignored != :ignore")
-    fun getAllAsync(ignore: Bool = Bool.UNDEFINED): LiveData<List<Track>>
-
-    @Query("select * from track where ignored != :ignore")
-    fun getAll(ignore: Bool = Bool.UNDEFINED): List<Track>
-
     @Query("select * from track where id = :id")
     fun get(id: Long): Track?
 
     @Query("select * from track where mediaId = :trackId")
     fun getByMediaId(trackId: Long): Track?
 
+    @Query("select * from track where ignored != :ignore")
+    fun getAll(ignore: Bool = Bool.UNDEFINED): List<Track>
+
+    @Query("select * from track where ignored != :ignore")
+    fun getAllAsync(ignore: Bool = Bool.UNDEFINED): LiveData<List<Track>>
+
     @Query("select * from track where title like :title and ignored != :ignore")
-    fun findByTitle(title: String, ignore: Bool = Bool.UNDEFINED): List<Track>
+    fun getAllByTitle(title: String, ignore: Bool = Bool.UNDEFINED): List<Track>
 
     @Query("select * from track where albumId = :albumId and ignored != :ignore")
-    fun findByAlbum(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
+    fun getAllByAlbum(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
 
     @Query("select * from track where albumId = :albumId and ignored != :ignore order by trackNum")
-    fun findByAlbumSorted(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
+    fun getAllByAlbumSorted(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
 
     @Query("select * from track where albumId = :albumId and ignored != :ignore")
-    fun findByAlbumAsync(albumId: Long, ignore: Bool = Bool.UNDEFINED): LiveData<List<Track>>
+    fun getAllByAlbumAsync(albumId: Long, ignore: Bool = Bool.UNDEFINED): LiveData<List<Track>>
 
     @Query("select * from track where artistId = :artistId and ignored != :ignore")
-    fun findByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
+    fun getAllByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
 
     @Query("update track set playbackCount = (select playbackCount from track where id = :trackId) + 1 where id = :trackId")
     fun increasePlaybackCount(trackId: Long)
@@ -65,7 +65,7 @@ interface TrackDao {
 
         delete(track.id)
 
-        if (findByAlbum(track.albumId, Bool.UNDEFINED).isEmpty()) {
+        if (getAllByAlbum(track.albumId, Bool.UNDEFINED).isEmpty()) {
             DB.getInstance(context).albumDao().deleteIncludingRootIfEmpty(context, track.albumId)
         }
     }
