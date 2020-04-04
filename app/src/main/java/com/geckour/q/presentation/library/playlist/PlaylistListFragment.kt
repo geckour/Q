@@ -85,19 +85,11 @@ class PlaylistListFragment : Fragment() {
         super.onCreateOptionsMenu(menu, inflater)
 
         inflater.inflate(R.menu.playlists_toolbar, menu)
-        (menu.findItem(R.id.menu_search)?.actionView as? SearchView?)?.apply {
-            setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-                override fun onQueryTextSubmit(newText: String?): Boolean {
-                    mainViewModel.search(requireContext(), newText)
-                    return true
-                }
-
-                override fun onQueryTextChange(query: String?): Boolean {
-                    mainViewModel.search(requireContext(), query)
-                    return true
-                }
-            })
-        }
+        (menu.findItem(R.id.menu_search)?.actionView as? SearchView?)
+            ?.let {
+                mainViewModel.initSearchQueryListener(it)
+                it.setOnQueryTextListener(mainViewModel.searchQueryListener)
+            }
 
         menu.setIconTint()
     }

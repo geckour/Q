@@ -212,6 +212,10 @@ class MainActivity : CrashlyticsBundledActivity() {
 
     override fun onBackPressed() {
         when {
+            viewModel.isSearchViewOpened -> {
+                viewModel.searchQueryListener.reset()
+                binding.coordinatorMain.contentSearch.root.visibility = View.GONE
+            }
             binding.drawerLayout.isDrawerOpen(binding.navigationView) -> {
                 binding.drawerLayout.closeDrawer(binding.navigationView)
             }

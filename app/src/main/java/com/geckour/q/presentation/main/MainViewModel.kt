@@ -5,6 +5,7 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.ServiceConnection
 import android.os.IBinder
+import android.widget.SearchView
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
@@ -69,9 +70,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var currentOrientedClassType: OrientedClassType? = null
 
     internal var syncing = false
-    val loading = MutableLiveData<Boolean>()
+    internal val loading = MutableLiveData<Boolean>()
+    internal var isSearchViewOpened = false
 
     private var searchJob: Job = Job()
+
+    internal lateinit var searchQueryListener: SearchQueryListener
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
@@ -100,6 +104,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 onDestroyPlayer()
             }
         }
+    }
+
+    internal fun initSearchQueryListener(searchView: SearchView) {
+        searchQueryListener = SearchQueryListener(searchView)
     }
 
     internal fun bindPlayer() {
@@ -276,7 +284,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 player.value?.removeQueue(song.id)
             }
 
-            DB.getInstance(getApplication()).trackDao().deleteIncludingRootIfEmpty(getApplication(), song.id)
+            DB.getInstance(getApplication()).trackDao()
+                .deleteIncludingRootIfEmpty(getApplication(), song.id)
         }
     }
 
@@ -302,5 +311,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onToolbarClick() {
         scrollToTop.postValue(Unit)
+    }
+
+    inner class SearchQueryListener(private val searchView: SearchView) :
+        SearchView.OnQueryTextListener {
+
+        override fun onQueryTextSubmit(query: String?): Boolean {
+            search(searchView.context, query)
+            searchView.clearFocus()
+            isSearchViewOpened = true
+            return true
+        }
+
+        override fun onQueryTextChange(newText: String?): Boolean {
+            search(searchView.context, newText)
+            isSearchViewOpened = true
+            return true
+        }
+
+        fun reset() {
+            searchView.setQuery(null, false)
+            searchView.onActionViewCollapsed()
+        }
     }
 }
