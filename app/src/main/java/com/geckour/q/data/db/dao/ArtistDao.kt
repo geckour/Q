@@ -28,6 +28,12 @@ interface ArtistDao {
     @Query("delete from track where artistId = :artistId")
     fun deleteTrackByArtist(artistId: Long)
 
+    @Query("select * from artist where id = :id")
+    fun get(id: Long): Artist?
+
+    @Query("select * from artist where title = :title")
+    fun getByTitle(title: String): Artist?
+
     @Query("select * from artist where title = :title")
     fun getAllByTitle(title: String): List<Artist>
 
@@ -36,9 +42,6 @@ interface ArtistDao {
 
     @Query("select * from artist where id in (select artistId from album group by artistId)")
     fun getAllOrientedAlbumAsync(): LiveData<List<Artist>>
-
-    @Query("select * from artist where id = :id")
-    fun get(id: Long): Artist?
 
     @Query("update artist set playbackCount = (select playbackCount from artist where id = :artistId) + 1 where id = :artistId")
     fun increasePlaybackCount(artistId: Long)
@@ -51,7 +54,7 @@ interface ArtistDao {
     }
 
     fun upsert(artist: Artist): Long {
-        val toInsert = getAllByTitle(artist.title).firstOrNull()?.let {
+        val toInsert = getByTitle(artist.title)?.let {
             artist.copy(
                 id = it.id,
                 playbackCount = it.playbackCount,

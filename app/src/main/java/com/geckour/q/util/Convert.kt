@@ -34,7 +34,7 @@ fun Float.getReadableString(digitToKeep: Int = 3): String {
     }
 }
 
-fun DBArtist.toDomainModel(): Artist = Artist(id, title, titleSort, null, 0)
+fun DBArtist.toDomainModel(): Artist = Artist(id, title, titleSort, null, totalDuration)
 
 fun DBAlbum.toDomainModel(
     artistName: String? = null, artistNameSort: String? = null, totalDuration: Long = 0

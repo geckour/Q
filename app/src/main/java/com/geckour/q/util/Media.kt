@@ -180,7 +180,7 @@ suspend fun DB.searchArtistByFuzzyTitle(title: String): List<Artist> = withConte
 }
 
 suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<Album> = withContext(Dispatchers.IO) {
-    this@searchAlbumByFuzzyTitle.albumDao().findAllByTitle("%${title.escapeSql}%")
+    this@searchAlbumByFuzzyTitle.albumDao().getAllByTitle("%${title.escapeSql}%")
 }
 
 suspend fun DB.searchTrackByFuzzyTitle(title: String): List<Track> = withContext(Dispatchers.IO) {
@@ -470,7 +470,7 @@ fun DB.storeMediaInfo(
     val titleSort =
         (tag.getAll(FieldKey.TITLE_SORT).firstOrNull { it.isNotBlank() } ?: title)?.hiraganized
     val albumTitle = tag.getAll(FieldKey.ALBUM).firstOrNull { it.isNotBlank() }
-    val cachedAlbum = albumTitle?.let { albumDao().findAllByTitle(it).firstOrNull() }
+    val cachedAlbum = albumTitle?.let { albumDao().getAllByTitle(it).firstOrNull() }
     val albumTitleSort =
         cachedAlbum?.titleSort ?: (tag.getAll(FieldKey.ALBUM_SORT).firstOrNull { it.isNotBlank() }
             ?: albumTitle)?.hiraganized

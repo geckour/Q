@@ -29,6 +29,9 @@ interface AlbumDao {
     @Query("select * from album where id = :id")
     fun get(id: Long): Album?
 
+    @Query("select * from album where title like :title")
+    fun getByTitle(title: String): Album?
+
     @Query("select * from album")
     fun getAll(): List<Album>
 
@@ -42,7 +45,7 @@ interface AlbumDao {
     fun getAllByArtistIdAsync(id: Long): LiveData<List<Album>>
 
     @Query("select * from album where title like :title")
-    fun findAllByTitle(title: String): List<Album>
+    fun getAllByTitle(title: String): List<Album>
 
     @Query("update album set playbackCount = (select playbackCount from album where id = :albumId) + 1 where id = :albumId")
     fun increasePlaybackCount(albumId: Long)
@@ -65,7 +68,7 @@ interface AlbumDao {
     }
 
     fun upsert(album: Album): Long {
-        val toInsert = findAllByTitle(album.title).firstOrNull()?.let {
+        val toInsert = getAllByTitle(album.title).firstOrNull()?.let {
             album.copy(id = it.id, totalDuration = it.totalDuration + album.totalDuration)
         } ?: album
 
