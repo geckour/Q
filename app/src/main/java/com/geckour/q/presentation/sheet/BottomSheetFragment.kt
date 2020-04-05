@@ -298,7 +298,7 @@ class BottomSheetFragment : Fragment() {
     @SuppressLint("ClickableViewAccessibility")
     private fun onCurrentQueuePositionChanged(position: Int, songChanged: Boolean) {
         adapter.setNowPlayingPosition(position)
-        viewModel.currentPosition.value = position
+        viewModel.onNewPosition(position)
         binding.viewModel = viewModel
 
         if (songChanged) {

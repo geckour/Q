@@ -340,26 +340,6 @@ class MainActivity : CrashlyticsBundledActivity() {
             tryTransaction()
         }
 
-        viewModel.newQueueInfo.observe(this) {
-            it ?: return@observe
-            viewModel.player.value?.submitQueue(it)
-        }
-
-        viewModel.requestedPositionInQueue.observe(this) {
-            it ?: return@observe
-            viewModel.player.value?.play(it)
-        }
-
-        viewModel.swappedQueuePositions.observe(this) {
-            it ?: return@observe
-            viewModel.player.value?.swapQueuePosition(it.first, it.second)
-        }
-
-        viewModel.removedQueueIndex.observe(this) {
-            it ?: return@observe
-            viewModel.player.value?.removeQueue(it)
-        }
-
         viewModel.songToDelete.observe(this) {
             it ?: return@observe
             deleteFromDeviceWithPermissionCheck(it)

@@ -55,11 +55,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     internal val selectedGenre = MutableLiveData<Genre>()
     internal val selectedPlaylist = MutableLiveData<Playlist>()
 
-    internal val newQueueInfo = MutableLiveData<QueueInfo>()
-    internal val requestedPositionInQueue = MutableLiveData<Int>()
-    internal val swappedQueuePositions = MutableLiveData<Pair<Int, Int>>()
-    internal val removedQueueIndex = MutableLiveData<Int>()
-
     internal val toRemovePlayOrderOfPlaylist = MutableLiveData<Int>()
     internal val songToDelete = MutableLiveData<Song>()
 
@@ -336,19 +331,19 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     internal fun onChangeRequestedPositionInQueue(position: Int) {
-        requestedPositionInQueue.postValue(position)
+        player.value?.play(position)
     }
 
     fun onNewQueue(songs: List<Song>, actionType: InsertActionType, classType: OrientedClassType) {
-        newQueueInfo.value = QueueInfo(QueueMetadata(actionType, classType), songs)
+        player.value?.submitQueue(QueueInfo(QueueMetadata(actionType, classType), songs))
     }
 
     fun onQueueSwap(from: Int, to: Int) {
-        swappedQueuePositions.value = Pair(from, to)
+        player.value?.swapQueuePosition(from, to)
     }
 
     fun onQueueRemove(index: Int) {
-        removedQueueIndex.value = index
+        player.value?.removeQueue(index)
     }
 
     fun onRequestRemoveSongFromPlaylist(playOrder: Int) {
