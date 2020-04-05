@@ -237,9 +237,10 @@ class BottomSheetFragment : Fragment() {
         }
 
         viewModel.toggleSheetState.observe(this) {
-            behavior.state = when (behavior.state) {
-                BottomSheetBehavior.STATE_EXPANDED -> BottomSheetBehavior.STATE_COLLAPSED
-                else -> BottomSheetBehavior.STATE_EXPANDED
+            behavior.state = when (val state = behavior.state) {
+                BottomSheetBehavior.STATE_COLLAPSED -> BottomSheetBehavior.STATE_EXPANDED
+                BottomSheetBehavior.STATE_SETTLING -> state
+                else -> BottomSheetBehavior.STATE_COLLAPSED
             }
         }
 
