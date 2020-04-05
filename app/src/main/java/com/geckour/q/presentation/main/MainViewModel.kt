@@ -7,9 +7,7 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import android.widget.SearchView
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.distinctUntilChanged
 import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
 import com.geckour.q.App
@@ -57,25 +55,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     internal val selectedGenre = MutableLiveData<Genre>()
     internal val selectedPlaylist = MutableLiveData<Playlist>()
 
-    private val _newQueueInfo = MutableLiveData<QueueInfo>()
-    internal val newQueueInfo: LiveData<QueueInfo> = _newQueueInfo.distinctUntilChanged()
-    private val _requestedPositionInQueue = MutableLiveData<Int>()
-    internal val requestedPositionInQueue: LiveData<Int> =
-        _requestedPositionInQueue.distinctUntilChanged()
-    private val _swappedQueuePositions = MutableLiveData<Pair<Int, Int>>()
-    internal val swappedQueuePositions: LiveData<Pair<Int, Int>> =
-        _swappedQueuePositions.distinctUntilChanged()
-    private val _removedQueueIndex = MutableLiveData<Int>()
-    internal val removedQueueIndex: LiveData<Int> = _removedQueueIndex.distinctUntilChanged()
+    internal val newQueueInfo = MutableLiveData<QueueInfo>()
+    internal val requestedPositionInQueue = MutableLiveData<Int>()
+    internal val swappedQueuePositions = MutableLiveData<Pair<Int, Int>>()
+    internal val removedQueueIndex = MutableLiveData<Int>()
 
-    private val _toRemovePlayOrderOfPlaylist = MutableLiveData<Int>()
-    internal val toRemovePlayOrderOfPlaylist: LiveData<Int> =
-        _toRemovePlayOrderOfPlaylist.distinctUntilChanged()
-    private val _songToDelete = MutableLiveData<Song>()
-    internal val songToDelete: LiveData<Song> = _songToDelete.distinctUntilChanged()
+    internal val toRemovePlayOrderOfPlaylist = MutableLiveData<Int>()
+    internal val songToDelete = MutableLiveData<Song>()
 
-    private val _deletedSongId = MutableLiveData<Long>()
-    internal val deletedSongId: LiveData<Long> = _deletedSongId.distinctUntilChanged()
+    internal val deletedSongId = MutableLiveData<Long>()
 
     internal val searchItems = MutableLiveData<List<SearchItem>>()
 
@@ -85,8 +73,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var currentOrientedClassType: OrientedClassType? = null
 
     internal var syncing = false
-    private val _loading = MutableLiveData<Boolean>()
-    internal val loading: LiveData<Boolean> = _loading.distinctUntilChanged()
+    internal val loading = MutableLiveData<Boolean>()
     internal var isSearchViewOpened = false
 
     private var searchJob: Job = Job()
@@ -325,7 +312,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 DB.getInstance(getApplication()).let { db ->
                     val sharedPreferences =
                         PreferenceManager.getDefaultSharedPreferences(getApplication())
-                    _loading.postValue(true)
+                    loading.postValue(true)
                     db.trackDao()
                         .getAllByAlbum(
                             album.id,
@@ -333,7 +320,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         )
                         .mapNotNull { getSong(db, it) }
                         .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
-                        .apply { _loading.postValue(false) }
+                        .apply { loading.postValue(false) }
                 }
             }
 
@@ -342,31 +329,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     internal fun onLoadStateChanged(state: Boolean) {
-        _loading.postValue(state)
+        loading.postValue(state)
     }
 
     internal fun onRequestDeleteSong(song: Song) {
-        _songToDelete.postValue(song)
+        songToDelete.postValue(song)
     }
 
     internal fun onChangeRequestedPositionInQueue(position: Int) {
-        _requestedPositionInQueue.postValue(position)
+        requestedPositionInQueue.postValue(position)
     }
 
     fun onNewQueue(songs: List<Song>, actionType: InsertActionType, classType: OrientedClassType) {
-        _newQueueInfo.value = QueueInfo(QueueMetadata(actionType, classType), songs)
+        newQueueInfo.value = QueueInfo(QueueMetadata(actionType, classType), songs)
     }
 
     fun onQueueSwap(from: Int, to: Int) {
-        _swappedQueuePositions.value = Pair(from, to)
+        swappedQueuePositions.value = Pair(from, to)
     }
 
     fun onQueueRemove(index: Int) {
-        _removedQueueIndex.value = index
+        removedQueueIndex.value = index
     }
 
     fun onRequestRemoveSongFromPlaylist(playOrder: Int) {
-        _toRemovePlayOrderOfPlaylist.value = playOrder
+        toRemovePlayOrderOfPlaylist.value = playOrder
     }
 
     fun onCancelSync(context: Context) {

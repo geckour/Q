@@ -186,7 +186,7 @@ class BottomSheetFragment : Fragment() {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun observeEvents() {
-        mainViewModel.player.observe(this) { player ->
+        mainViewModel.player.observe(requireActivity()) { player ->
             player ?: return@observe
 
             player.apply {
@@ -215,7 +215,7 @@ class BottomSheetFragment : Fragment() {
             }
         }
 
-        viewModel.artworkLongClick.observe(this) { _ ->
+        viewModel.artworkLongClick.observe(requireActivity()) { _ ->
             context?.also { context ->
                 PopupMenu(context, binding.artwork).apply {
                     setOnMenuItemClickListener {
@@ -236,7 +236,7 @@ class BottomSheetFragment : Fragment() {
             }
         }
 
-        viewModel.toggleSheetState.observe(this) {
+        viewModel.toggleSheetState.observe(requireActivity()) {
             behavior.state = when (val state = behavior.state) {
                 BottomSheetBehavior.STATE_COLLAPSED -> BottomSheetBehavior.STATE_EXPANDED
                 BottomSheetBehavior.STATE_SETTLING -> state
@@ -244,30 +244,30 @@ class BottomSheetFragment : Fragment() {
             }
         }
 
-        viewModel.scrollToCurrent.observe(this) {
+        viewModel.scrollToCurrent.observe(requireActivity()) {
             if (adapter.itemCount > 0) {
                 binding.recyclerView.smoothScrollToPosition(viewModel.currentPosition)
             }
         }
 
-        viewModel.toggleCurrentRemain.observe(this) {
+        viewModel.toggleCurrentRemain.observe(requireActivity()) {
             val changeTo = sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false).not()
             sharedPreferences.edit().putBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, changeTo).apply()
         }
 
-        viewModel.touchLock.observe(this) {
+        viewModel.touchLock.observe(requireActivity()) {
             it ?: return@observe
             sharedPreferences.edit().putBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, it).apply()
             binding.queueUnTouchable = it
             binding.recyclerView.setOnTouchListener(if (it) touchLockListener else null)
         }
 
-        viewModel.share.observe(this) {
+        viewModel.share.observe(requireActivity()) {
             it ?: return@observe
             startActivity(SharingActivity.getIntent(requireContext(), it))
         }
 
-        viewModel.changeRepeatMode.observe(this) {
+        viewModel.changeRepeatMode.observe(requireActivity()) {
             mainViewModel.player.value?.rotateRepeatMode()
         }
     }
