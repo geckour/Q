@@ -181,7 +181,7 @@
             android:id="@+id/text_time_right"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:onClick="@{() -> viewModel.onClickToggleCurrentRemainButton()}"
+            android:onClick="@{() -> viewModel.onClickTimeRight()}"
             android:textAlignment="viewStart"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="12sp"

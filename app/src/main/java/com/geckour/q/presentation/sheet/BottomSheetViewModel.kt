@@ -146,7 +146,7 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
         changeRepeatMode.value = Unit
     }
 
-    fun onClickToggleCurrentRemainButton() {
+    fun onClickTimeRight() {
         toggleCurrentRemain.value = Unit
     }
 

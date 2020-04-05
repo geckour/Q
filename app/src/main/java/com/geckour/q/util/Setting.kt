@@ -138,6 +138,8 @@ var SharedPreferences.ignoringEnabled by Pref.PrefBoolean("key_enabled_ignoring"
 var SharedPreferences.sleepTimerTime by Pref.PrefInt("key_time_sleep-timer", 0)
 var SharedPreferences.sleepTimerTolerance by Pref.PrefInt("key_tolerance_sleep-timer", 0)
 
+var SharedPreferences.showCurrentRemain by Pref.PrefBoolean("pref_key_show_current_remain", false)
+
 fun SharedPreferences.setEqualizerLevel(bandNum: Int, level: Int) {
     equalizerSettings?.apply {
         equalizerSettings =

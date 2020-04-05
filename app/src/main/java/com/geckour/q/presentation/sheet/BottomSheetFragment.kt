@@ -26,13 +26,13 @@ import com.geckour.q.presentation.sheet.BottomSheetViewModel.Companion.PREF_KEY_
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.observe
 import com.geckour.q.util.shake
+import com.geckour.q.util.showCurrentRemain
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 
 class BottomSheetFragment : Fragment() {
 
     companion object {
-        private const val PREF_KEY_SHOW_CURRENT_REMAIN = "pref_key_show_current_remain"
 
         fun newInstance(): BottomSheetFragment = BottomSheetFragment()
     }
@@ -251,8 +251,11 @@ class BottomSheetFragment : Fragment() {
         }
 
         viewModel.toggleCurrentRemain.observe(requireActivity()) {
-            val changeTo = sharedPreferences.getBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, false).not()
-            sharedPreferences.edit().putBoolean(PREF_KEY_SHOW_CURRENT_REMAIN, changeTo).apply()
+            sharedPreferences.showCurrentRemain = sharedPreferences.showCurrentRemain.not()
+            val song = viewModel.currentSong ?: return@observe
+            val ratio = binding.seekBar.progress / binding.seekBar.max.toFloat()
+            val elapsedTime = (song.duration * ratio).toLong()
+            setTimeRightText(song, elapsedTime)
         }
 
         viewModel.touchLock.observe(requireActivity()) {
@@ -323,17 +326,18 @@ class BottomSheetFragment : Fragment() {
 
         val elapsed = (song.duration * ratio).toLong()
         binding.textTimeLeft.text = elapsed.getTimeString()
-        binding.textTimeRight.text = if (sharedPreferences.getBoolean(
-                PREF_KEY_SHOW_CURRENT_REMAIN,
-                false
-            )
-        ) "-${(song.duration - elapsed).getTimeString()}"
-        else song.durationString
+        setTimeRightText(song, elapsed)
         val remain = adapter.getItemsAfter((viewModel.currentPosition) + 1)
             .map { it.duration }
             .sum() + (song.duration - elapsed)
         binding.textTimeRemain.text =
             getString(R.string.bottom_sheet_time_remain, remain.getTimeString())
+    }
+
+    private fun setTimeRightText(song: Song, elapsedTime: Long) {
+        binding.textTimeRight.text =
+            if (sharedPreferences.showCurrentRemain) "-${(song.duration - elapsedTime).getTimeString()}"
+            else song.durationString
     }
 
     private fun onRepeatModeChanged(mode: Int) {
