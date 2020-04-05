@@ -17,6 +17,7 @@ import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.PorterDuff
 import android.provider.MediaStore
+import androidx.core.app.NotificationCompat
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -68,11 +69,15 @@ class MediaRetrieveService : IntentService(NAME) {
         }
     }
 
+    private lateinit var notificationBuilder: NotificationCompat.Builder
+
     private var expired = false
 
     override fun onCreate() {
         super.onCreate()
 
+        notificationBuilder =
+            getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER)
         registerReceiver(receiver, IntentFilter(ACTION_CANCEL))
     }
 
@@ -141,37 +146,36 @@ class MediaRetrieveService : IntentService(NAME) {
         progress: Pair<Int, Int>,
         seed: Long,
         bitmap: Bitmap
-    ): Notification =
-        this.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER)
-            .setSmallIcon(R.drawable.ic_notification_sync)
-            .setLargeIcon(bitmap.drawProgressIcon(progress, seed))
-            .setContentTitle(getString(R.string.notification_title_retriever))
-            .setContentText(
-                getString(
-                    R.string.notification_text_retriever,
-                    progress.first,
-                    progress.second
-                )
+    ): Notification = notificationBuilder
+        .setSmallIcon(R.drawable.ic_notification_sync)
+        .setLargeIcon(bitmap.drawProgressIcon(progress, seed))
+        .setContentTitle(getString(R.string.notification_title_retriever))
+        .setContentText(
+            getString(
+                R.string.notification_text_retriever,
+                progress.first,
+                progress.second
             )
-            .setOngoing(true)
-            .setShowWhen(false)
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    this,
-                    App.REQUEST_CODE_LAUNCH_APP,
-                    LauncherActivity.createIntent(this),
-                    PendingIntent.FLAG_UPDATE_CURRENT
-                )
+        )
+        .setOngoing(true)
+        .setShowWhen(false)
+        .setContentIntent(
+            PendingIntent.getActivity(
+                this,
+                App.REQUEST_CODE_LAUNCH_APP,
+                LauncherActivity.createIntent(this),
+                PendingIntent.FLAG_UPDATE_CURRENT
             )
-            .setDeleteIntent(
-                PendingIntent.getBroadcast(
-                    this,
-                    0,
-                    Intent(ACTION_CANCEL),
-                    PendingIntent.FLAG_UPDATE_CURRENT
-                )
+        )
+        .setDeleteIntent(
+            PendingIntent.getBroadcast(
+                this,
+                0,
+                Intent(ACTION_CANCEL),
+                PendingIntent.FLAG_UPDATE_CURRENT
             )
-            .build()
+        )
+        .build()
 
     private fun Bitmap.drawProgressIcon(progress: Pair<Int, Int>, seed: Long): Bitmap {
         if (progress.second < 0) return this

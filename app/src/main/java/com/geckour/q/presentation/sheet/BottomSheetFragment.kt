@@ -23,6 +23,7 @@ import com.geckour.q.presentation.main.MainActivity
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.presentation.share.SharingActivity
 import com.geckour.q.presentation.sheet.BottomSheetViewModel.Companion.PREF_KEY_SHOW_LOCK_TOUCH_QUEUE
+import com.geckour.q.service.SleepTimerService
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.observe
 import com.geckour.q.util.shake
@@ -321,6 +322,9 @@ class BottomSheetFragment : Fragment() {
     private fun onPlayingChanged(playing: Boolean) {
         viewModel.playing = playing
         binding.playing = playing
+        if (playing.not()) {
+            requireContext().startService(SleepTimerService.getCancelIntent(requireContext()))
+        }
     }
 
     private fun onPlaybackRatioChanged() {

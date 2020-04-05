@@ -7,6 +7,7 @@ import android.content.Intent
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import androidx.core.app.NotificationCompat
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.domain.model.Song
@@ -94,7 +95,16 @@ class SleepTimerService : Service() {
 
     private val binder = SleepTimerBinder()
 
+    private lateinit var notificationBuilder: NotificationCompat.Builder
+
     override fun onBind(intent: Intent?): IBinder? = binder
+
+    override fun onCreate() {
+        super.onCreate()
+
+        notificationBuilder =
+            getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_SLEEP_TIMER)
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent ?: return START_STICKY
@@ -153,50 +163,49 @@ class SleepTimerService : Service() {
     }
 
     private fun showNotification(remaining: Long) {
-        val notification =
-            getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_SLEEP_TIMER)
-                .setSmallIcon(R.drawable.ic_hourglass_empty)
-                .setContentTitle(getString(R.string.notification_title_sleep_timer))
-                .setContentText(
-                    if (tolerance > 0) getString(
-                        R.string.notification_text_sleep_timer_with_tolerance,
-                        remaining.getTimeString(),
-                        tolerance.getTimeString()
-                    )
-                    else getString(
-                        R.string.notification_text_sleep_timer,
-                        remaining.getTimeString()
-                    )
+        val notification = notificationBuilder
+            .setSmallIcon(R.drawable.ic_hourglass_empty)
+            .setContentTitle(getString(R.string.notification_title_sleep_timer))
+            .setContentText(
+                if (tolerance > 0) getString(
+                    R.string.notification_text_sleep_timer_with_tolerance,
+                    remaining.getTimeString(),
+                    tolerance.getTimeString()
                 )
-                .setOngoing(true)
-                .addAction(
-                    R.drawable.ic_remove,
-                    getString(R.string.dialog_ng),
-                    PendingIntent.getService(
-                        this,
-                        0,
-                        getCancelIntent(this),
-                        PendingIntent.FLAG_UPDATE_CURRENT
-                    )
+                else getString(
+                    R.string.notification_text_sleep_timer,
+                    remaining.getTimeString()
                 )
-                .setShowWhen(false)
-                .setContentIntent(
-                    PendingIntent.getActivity(
-                        this,
-                        App.REQUEST_CODE_LAUNCH_APP,
-                        LauncherActivity.createIntent(this),
-                        PendingIntent.FLAG_UPDATE_CURRENT
-                    )
+            )
+            .setOngoing(true)
+            .addAction(
+                R.drawable.ic_remove,
+                getString(R.string.dialog_ng),
+                PendingIntent.getService(
+                    this,
+                    0,
+                    getCancelIntent(this),
+                    PendingIntent.FLAG_UPDATE_CURRENT
                 )
-                .setDeleteIntent(
-                    PendingIntent.getService(
-                        this,
-                        0,
-                        getCancelIntent(this),
-                        PendingIntent.FLAG_UPDATE_CURRENT
-                    )
+            )
+            .setShowWhen(false)
+            .setContentIntent(
+                PendingIntent.getActivity(
+                    this,
+                    App.REQUEST_CODE_LAUNCH_APP,
+                    LauncherActivity.createIntent(this),
+                    PendingIntent.FLAG_UPDATE_CURRENT
                 )
-                .build()
+            )
+            .setDeleteIntent(
+                PendingIntent.getService(
+                    this,
+                    0,
+                    getCancelIntent(this),
+                    PendingIntent.FLAG_UPDATE_CURRENT
+                )
+            )
+            .build()
         startForeground(NOTIFICATION_ID_SLEEP_TIMER, notification)
     }
 
