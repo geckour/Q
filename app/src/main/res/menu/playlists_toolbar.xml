@@ -9,7 +9,12 @@
     <item
         android:id="@+id/menu_toggle_daynight"
         android:icon="@drawable/ic_daynight"
-        android:title="@string/menu_search"
+        android:title="@string/menu_daynight"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/menu_sleep"
+        android:icon="@drawable/ic_hourglass_empty"
+        android:title="@string/menu_sleep"
         app:showAsAction="ifRoom" />
     <item
         android:id="@+id/menu_insert_all_next"

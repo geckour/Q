@@ -22,6 +22,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Genre
+import com.geckour.q.presentation.main.MainActivity
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.UNKNOWN
@@ -107,6 +108,10 @@ class GenreListFragment : Fragment() {
         context?.also { context ->
             if (item.itemId == R.id.menu_toggle_daynight) {
                 requireActivity().toggleDayNight()
+                return true
+            }
+            if (item.itemId == R.id.menu_sleep) {
+                (requireActivity() as? MainActivity)?.showSleepTimerDialog()
                 return true
             }
 

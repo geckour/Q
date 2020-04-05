@@ -65,6 +65,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import kotlin.coroutines.CoroutineContext
+import kotlin.math.abs
 
 class PlayerService : Service() {
 
@@ -237,12 +238,21 @@ class PlayerService : Service() {
     private lateinit var mediaSourceFactory: ProgressiveMediaSource.Factory
     private var source = ConcatenatingMediaSource()
 
+    private var requestedTimeToStartSleep: Long = -1
+        set(value) {
+            if (value < 0) pauseScheduled = false
+            field = value
+        }
+    private var sleepModeTolerance: Long = 0
+    private var pauseScheduled = false
+
     private val eventListener = object : Player.EventListener {
 
         override fun onTracksChanged(
             trackGroups: TrackGroupArray, trackSelections: TrackSelectionArray
         ) {
             onCurrentPositionChanged?.invoke(currentPosition, songChanged)
+            if (pauseScheduled && player.playWhenReady) pause()
             notificationUpdateJob.cancel()
             notificationUpdateJob = showNotification()
             playbackCountIncreaseJob = increasePlaybackCount()
@@ -280,18 +290,6 @@ class PlayerService : Service() {
             onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
         }
     }
-
-    private fun getPlaybackState(playWhenReady: Boolean, playbackState: Int) =
-        when (playbackState) {
-            Player.STATE_BUFFERING -> PlaybackState.STATE_BUFFERING
-            Player.STATE_ENDED -> PlaybackState.STATE_STOPPED
-            Player.STATE_IDLE -> PlaybackState.STATE_NONE
-            Player.STATE_READY -> {
-                if (playWhenReady) PlaybackState.STATE_PLAYING
-                else PlaybackState.STATE_PAUSED
-            }
-            else -> PlaybackState.STATE_ERROR
-        }
 
     private val headsetStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -537,6 +535,20 @@ class PlayerService : Service() {
             while (this.isActive) {
                 withContext(Dispatchers.Main) {
                     onPlaybackRatioChanged?.invoke(player.contentPosition.toFloat() / song.duration)
+
+                    if (requestedTimeToStartSleep > -1) {
+                        if (sleepModeTolerance > 0) {
+                            val endTimeCurrentSong =
+                                System.currentTimeMillis() + (song.duration - player.currentPosition)
+                            val diff = abs(endTimeCurrentSong - requestedTimeToStartSleep)
+
+                            if (diff < sleepModeTolerance) {
+                                pauseScheduled = true
+                            }
+                        } else if (requestedTimeToStartSleep < System.currentTimeMillis()) {
+                            pause()
+                        }
+                    }
                 }
                 delay(100)
             }
@@ -553,6 +565,7 @@ class PlayerService : Service() {
         if (player.playWhenReady) storeState()
 
         player.playWhenReady = false
+        requestedTimeToStartSleep = -1
         notifyPlaybackRatioJob.cancel()
         getSystemService(AudioManager::class.java)?.apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -748,6 +761,23 @@ class PlayerService : Service() {
             onRepeatModeChanged?.invoke(player.repeatMode)
         }
     }
+
+    fun setSleepTimer(timerValue: Int, tolerance: Int) {
+        requestedTimeToStartSleep = System.currentTimeMillis() + timerValue * 60000
+        sleepModeTolerance = tolerance * 60000L
+    }
+
+    private fun getPlaybackState(playWhenReady: Boolean, playbackState: Int) =
+        when (playbackState) {
+            Player.STATE_BUFFERING -> PlaybackState.STATE_BUFFERING
+            Player.STATE_ENDED -> PlaybackState.STATE_STOPPED
+            Player.STATE_IDLE -> PlaybackState.STATE_NONE
+            Player.STATE_READY -> {
+                if (playWhenReady) PlaybackState.STATE_PLAYING
+                else PlaybackState.STATE_PAUSED
+            }
+            else -> PlaybackState.STATE_ERROR
+        }
 
     private fun onNotificationAction(intent: Intent) {
         if (intent.hasExtra(ARGS_KEY_CONTROL_COMMAND)) {

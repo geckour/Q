@@ -12,6 +12,7 @@ import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.SeekBar
 import androidx.activity.viewModels
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
@@ -22,6 +23,7 @@ import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogShuffleMenuBinding
+import com.geckour.q.databinding.DialogSleepBinding
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.domain.model.Song
@@ -44,6 +46,8 @@ import com.geckour.q.util.ducking
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
 import com.geckour.q.util.preferScreen
+import com.geckour.q.util.sleepTimerTime
+import com.geckour.q.util.sleepTimerTolerance
 import com.geckour.q.util.toNightModeInt
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.snackbar.Snackbar
@@ -578,5 +582,56 @@ class MainActivity : CrashlyticsBundledActivity() {
         )
 
         viewModel.deleteSongFromDB(song)
+    }
+
+    internal fun showSleepTimerDialog() {
+        val binding = DialogSleepBinding.inflate(LayoutInflater.from(this)).apply {
+            timerValue = sharedPreferences.sleepTimerTime
+            toleranceValue = sharedPreferences.sleepTimerTolerance
+
+            timerSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(
+                    seekBar: SeekBar?,
+                    progress: Int,
+                    fromUser: Boolean
+                ) {
+                    val value = progress * 5
+                    timerValue = value
+                    sharedPreferences.sleepTimerTime = value
+                }
+
+                override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+
+                override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+            })
+            toleranceSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(
+                    seekBar: SeekBar?,
+                    progress: Int,
+                    fromUser: Boolean
+                ) {
+                    toleranceValue = progress
+                    sharedPreferences.sleepTimerTolerance = progress
+                }
+
+                override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+
+                override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+            })
+        }
+        AlertDialog.Builder(this)
+            .setCancelable(true)
+            .setView(binding.root)
+            .setTitle(R.string.dialog_title_sleep_timer)
+            .setMessage(R.string.dialog_desc_sleep_timer)
+            .setPositiveButton(R.string.dialog_ok) { dialog, _ ->
+                viewModel.player.value?.setSleepTimer(
+                    binding.timerValue!!,
+                    binding.toleranceValue!!
+                )
+                dialog.dismiss()
+            }
+            .setNegativeButton(R.string.dialog_ng) { dialog, _ -> dialog.dismiss() }
+            .show()
     }
 }

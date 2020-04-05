@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
+import com.geckour.q.presentation.main.MainActivity
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.fetchPlaylists
@@ -95,6 +96,10 @@ class PlaylistListFragment : Fragment() {
         context?.also { context ->
             if (item.itemId == R.id.menu_toggle_daynight) {
                 requireActivity().toggleDayNight()
+                return true
+            }
+            if (item.itemId == R.id.menu_sleep) {
+                (requireActivity() as? MainActivity)?.showSleepTimerDialog()
                 return true
             }
 

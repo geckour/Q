@@ -51,6 +51,8 @@
 
     <string name="menu_daynight">テーマを切替</string>
 
+    <string name="menu_sleep">おやすみモード</string>
+
     <string name="menu_ignore_to_false">一括追加時スキップを無効にする</string>
     <string name="menu_ignore_to_true">一括追加時スキップを有効にする</string>
 
@@ -112,6 +114,11 @@
     <string name="dialog_choice_reset_shuffle">シャッフルをリセット</string>
     <string name="dialog_choice_album_oriented_shuffle">アルバム単位でシャッフル</string>
     <string name="dialog_choice_artist_oriented_shuffle">アーティスト単位でシャッフル</string>
+
+    <string name="dialog_title_sleep_timer">おやすみモードの設定</string>
+    <string name="dialog_desc_sleep_timer">タイマーの長さと許容差を設定</string>
+    <string name="dialog_text_sleep_timer_time">%d分後に再生停止</string>
+    <string name="dialog_text_sleep_timer_tolerance">許容差: %d分</string>
 
 
     <string name="payment_desc">Kyashを利用した投げ銭を受け付けています</string>

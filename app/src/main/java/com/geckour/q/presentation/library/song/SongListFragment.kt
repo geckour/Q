@@ -20,6 +20,7 @@ import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
+import com.geckour.q.presentation.main.MainActivity
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -128,6 +129,10 @@ class SongListFragment : Fragment() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == R.id.menu_toggle_daynight) {
             requireActivity().toggleDayNight()
+            return true
+        }
+        if (item.itemId == R.id.menu_sleep) {
+            (requireActivity() as? MainActivity)?.showSleepTimerDialog()
             return true
         }
 

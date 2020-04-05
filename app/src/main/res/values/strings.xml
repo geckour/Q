@@ -59,6 +59,8 @@
 
     <string name="menu_daynight">Toggle theme</string>
 
+    <string name="menu_sleep">Set sleep timer</string>
+
     <string name="menu_ignore_to_false">Disable skip on multiple add</string>
     <string name="menu_ignore_to_true">Enable skip on multiple add</string>
 
@@ -120,6 +122,11 @@
     <string name="dialog_choice_reset_shuffle">Reset shuffle</string>
     <string name="dialog_choice_album_oriented_shuffle">Album oriented shuffle</string>
     <string name="dialog_choice_artist_oriented_shuffle">Artist oriented shuffle</string>
+
+    <string name="dialog_title_sleep_timer">Set sleep timer</string>
+    <string name="dialog_desc_sleep_timer">Set timer length and the tolerance</string>
+    <string name="dialog_text_sleep_timer_time">Pause %d min later</string>
+    <string name="dialog_text_sleep_timer_tolerance">Tolerance: %d min</string>
 
 
     <string name="payment_desc">Available donation with Kyash</string>

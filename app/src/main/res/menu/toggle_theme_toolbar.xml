@@ -4,6 +4,6 @@
     <item
         android:id="@+id/menu_toggle_daynight"
         android:icon="@drawable/ic_daynight"
-        android:title="@string/menu_search"
+        android:title="@string/menu_daynight"
         app:showAsAction="ifRoom" />
 </menu>

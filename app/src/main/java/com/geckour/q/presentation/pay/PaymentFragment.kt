@@ -16,6 +16,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentPaymentBinding
+import com.geckour.q.presentation.main.MainActivity
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
@@ -72,6 +73,7 @@ class PaymentFragment : Fragment() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_toggle_daynight -> requireActivity().toggleDayNight()
+            R.id.menu_sleep -> (requireActivity() as? MainActivity)?.showSleepTimerDialog()
             else -> return false
         }
         return true
