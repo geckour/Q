@@ -79,7 +79,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     internal val searchItems = MutableLiveData<List<SearchItem>>()
 
-    internal val dbEmpty = MutableLiveData<Unit>()
     internal val scrollToTop = MutableLiveData<Unit>()
     internal val forceLoad = MutableLiveData<Unit>()
 
@@ -296,11 +295,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         selectedPlaylist.value = null
     }
 
-    internal fun checkDBIsEmpty() {
+    internal fun checkDBIsEmpty(onEmpty: () -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             val trackCount = DB.getInstance(this@MainViewModel.getApplication()).trackDao().count()
             if (trackCount == 0) {
-                withContext(Dispatchers.Main) { dbEmpty.value = Unit }
+                withContext(Dispatchers.Main) { onEmpty() }
             }
         }
     }
@@ -316,7 +315,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    internal fun onSongMenuAction(actionType: InsertActionType, album: Album, sortByTrackOrder: Boolean) {
+    internal fun onSongMenuAction(
+        actionType: InsertActionType,
+        album: Album,
+        sortByTrackOrder: Boolean
+    ) {
         viewModelScope.launch {
             val songs = withContext(Dispatchers.IO) {
                 DB.getInstance(getApplication()).let { db ->

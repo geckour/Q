@@ -173,7 +173,7 @@ class MainActivity : CrashlyticsBundledActivity() {
         setupDrawer()
 
         if (savedInstanceState == null) {
-            viewModel.checkDBIsEmpty()
+            viewModel.checkDBIsEmpty { retrieveMediaWithPermissionCheck() }
 
             val navId = PreferenceManager.getDefaultSharedPreferences(this).preferScreen.value.navId
             onNavigationItemSelected(binding.navigationView.menu.findItem(navId))
@@ -276,10 +276,6 @@ class MainActivity : CrashlyticsBundledActivity() {
             }
 
             player.publishStatus()
-        }
-
-        viewModel.dbEmpty.observe(this) {
-            retrieveMediaWithPermissionCheck()
         }
 
         viewModel.currentFragmentId.observe(this) { navId ->
