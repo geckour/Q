@@ -145,11 +145,13 @@ class PlayerService : Service() {
                             onPlayPause()
                             true
                         }
-                        KeyEvent.KEYCODE_MEDIA_NEXT, KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD -> {
+                        KeyEvent.KEYCODE_MEDIA_NEXT,
+                        KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD -> {
                             onSkipToNext()
                             true
                         }
-                        KeyEvent.KEYCODE_MEDIA_PREVIOUS, KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD -> {
+                        KeyEvent.KEYCODE_MEDIA_PREVIOUS,
+                        KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD -> {
                             onSkipToPrevious()
                             true
                         }
@@ -166,7 +168,9 @@ class PlayerService : Service() {
                 }
                 KeyEvent.ACTION_UP -> {
                     when (keyEvent.keyCode) {
-                        KeyEvent.KEYCODE_MEDIA_FAST_FORWARD, KeyEvent.KEYCODE_MEDIA_REWIND, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
+                        KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,
+                        KeyEvent.KEYCODE_MEDIA_REWIND,
+                        KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
                             stopFastSeek()
                             true
                         }
@@ -266,12 +270,19 @@ class PlayerService : Service() {
 
         override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
             mediaSession.setPlaybackState(
-                PlaybackStateCompat.Builder().setState(
-                    getPlaybackState(playWhenReady, playbackState), player.currentPosition, 1f
-                ).build()
+                PlaybackStateCompat.Builder()
+                    .setState(
+                        getPlaybackState(playWhenReady, playbackState),
+                        player.currentPosition,
+                        1f
+                    )
+                    .build()
             )
 
-            if (currentPosition == source.size - 1 && playbackState == Player.STATE_ENDED && player.repeatMode == Player.REPEAT_MODE_OFF) stop()
+            if (currentPosition == source.size - 1 &&
+                playbackState == Player.STATE_ENDED
+                && player.repeatMode == Player.REPEAT_MODE_OFF
+            ) stop()
 
             if (playbackState == Player.STATE_READY) {
                 notificationUpdateJob.cancel()
@@ -334,11 +345,19 @@ class PlayerService : Service() {
         mediaSession = MediaSessionCompat(this, TAG).apply {
             setPlaybackState(
                 PlaybackStateCompat.Builder().setActions(
-                    PlaybackStateCompat.ACTION_PLAY or PlaybackStateCompat.ACTION_PAUSE or PlaybackStateCompat.ACTION_PLAY_PAUSE or PlaybackStateCompat.ACTION_SKIP_TO_NEXT or PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or PlaybackStateCompat.ACTION_FAST_FORWARD or PlaybackStateCompat.ACTION_REWIND or PlaybackStateCompat.ACTION_SEEK_TO
+                    PlaybackStateCompat.ACTION_PLAY or
+                            PlaybackStateCompat.ACTION_PAUSE or
+                            PlaybackStateCompat.ACTION_PLAY_PAUSE or
+                            PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
+                            PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
+                            PlaybackStateCompat.ACTION_FAST_FORWARD or
+                            PlaybackStateCompat.ACTION_REWIND or
+                            PlaybackStateCompat.ACTION_SEEK_TO
                 ).build()
             )
             setFlags(
-                MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
+                MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
+                        MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
             )
             setCallback(mediaSessionCallback)
             isActive = false
@@ -373,10 +392,8 @@ class PlayerService : Service() {
         super.onDestroy()
     }
 
-    fun onRequestedStopService() {
-        if (player.playWhenReady.not()) {
-            stopSelf()
-        }
+    private fun onStopServiceRequested() {
+        if (player.playWhenReady.not()) stopSelf()
     }
 
     fun onMediaButtonEvent(event: KeyEvent) {
@@ -498,13 +515,15 @@ class PlayerService : Service() {
         Timber.d("qgeck play invoked")
         getSystemService(AudioManager::class.java)?.apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val audioFocusRequest = AudioFocusRequest.Builder(
-                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
-                ).build()
+                val audioFocusRequest =
+                    AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                        .build()
                 requestAudioFocus(audioFocusRequest)
             } else {
                 requestAudioFocus(
-                    {}, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+                    {},
+                    AudioManager.STREAM_MUSIC,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
                 )
             }
         }
@@ -569,9 +588,10 @@ class PlayerService : Service() {
 
     fun clear(keepCurrentIfPlaying: Boolean = false) {
         val before =
-            if (keepCurrentIfPlaying && player.playbackState == Player.STATE_READY && player.playWhenReady) {
-                currentPosition
-            } else source.size
+            if (keepCurrentIfPlaying &&
+                player.playbackState == Player.STATE_READY && player.playWhenReady
+            ) currentPosition
+            else source.size
         clear(before)
     }
 
@@ -751,13 +771,13 @@ class PlayerService : Service() {
 
     private fun onPlayerControlAction(intent: Intent) {
         if (intent.hasExtra(ARGS_KEY_CONTROL_COMMAND)) {
-            val key = intent.extras?.getInt(ARGS_KEY_CONTROL_COMMAND, -1) ?: return
+            val key = intent.getIntExtra(ARGS_KEY_CONTROL_COMMAND, -1)
             when (PlayerControlCommand.values()[key]) {
                 PlayerControlCommand.PLAY_PAUSE -> sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
                 PlayerControlCommand.PAUSE -> sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_PAUSE)
                 PlayerControlCommand.NEXT -> sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_NEXT)
                 PlayerControlCommand.PREV -> sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
-                PlayerControlCommand.DESTROY -> onRequestedStopService()
+                PlayerControlCommand.DESTROY -> onStopServiceRequested()
             }
         }
     }
@@ -772,9 +792,11 @@ class PlayerService : Service() {
 
     private fun onSettingAction(intent: Intent) {
         if (intent.hasExtra(ARGS_KEY_SETTING_COMMAND)) {
-            val key = intent.extras?.getInt(ARGS_KEY_SETTING_COMMAND, -1) ?: return
+            val key = intent.getIntExtra(ARGS_KEY_SETTING_COMMAND, -1)
             when (SettingCommand.values()[key]) {
-                SettingCommand.SET_EQUALIZER -> player.audioSessionId.apply { setEqualizer(if (this != 0) this else null) }
+                SettingCommand.SET_EQUALIZER -> {
+                    player.audioSessionId.apply { setEqualizer(if (this != 0) this else null) }
+                }
                 SettingCommand.UNSET_EQUALIZER -> setEqualizer(null)
                 SettingCommand.REFLECT_EQUALIZER_SETTING -> reflectEqualizerSettings()
             }
@@ -868,7 +890,11 @@ class PlayerService : Service() {
             addAll(queue.map { it.id })
         }
         val state = PlayerState(
-            player.playWhenReady, queue, currentPosition, player.currentPosition, player.repeatMode
+            player.playWhenReady,
+            queue,
+            currentPosition,
+            player.currentPosition,
+            player.repeatMode
         )
         sharedPreferences.edit().putString(PREF_KEY_PLAYER_STATE, Gson().toJson(state)).apply()
     }

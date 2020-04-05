@@ -78,6 +78,25 @@ class MediaRetrieveService : IntentService(NAME) {
 
         notificationBuilder =
             getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER)
+                .setSmallIcon(R.drawable.ic_notification_sync)
+                .setOngoing(true)
+                .setShowWhen(false)
+                .setContentIntent(
+                    PendingIntent.getActivity(
+                        this,
+                        App.REQUEST_CODE_LAUNCH_APP,
+                        LauncherActivity.createIntent(this),
+                        PendingIntent.FLAG_UPDATE_CURRENT
+                    )
+                )
+                .setDeleteIntent(
+                    PendingIntent.getBroadcast(
+                        this,
+                        0,
+                        Intent(ACTION_CANCEL),
+                        PendingIntent.FLAG_UPDATE_CURRENT
+                    )
+                )
         registerReceiver(receiver, IntentFilter(ACTION_CANCEL))
     }
 
@@ -147,7 +166,6 @@ class MediaRetrieveService : IntentService(NAME) {
         seed: Long,
         bitmap: Bitmap
     ): Notification = notificationBuilder
-        .setSmallIcon(R.drawable.ic_notification_sync)
         .setLargeIcon(bitmap.drawProgressIcon(progress, seed))
         .setContentTitle(getString(R.string.notification_title_retriever))
         .setContentText(
@@ -155,24 +173,6 @@ class MediaRetrieveService : IntentService(NAME) {
                 R.string.notification_text_retriever,
                 progress.first,
                 progress.second
-            )
-        )
-        .setOngoing(true)
-        .setShowWhen(false)
-        .setContentIntent(
-            PendingIntent.getActivity(
-                this,
-                App.REQUEST_CODE_LAUNCH_APP,
-                LauncherActivity.createIntent(this),
-                PendingIntent.FLAG_UPDATE_CURRENT
-            )
-        )
-        .setDeleteIntent(
-            PendingIntent.getBroadcast(
-                this,
-                0,
-                Intent(ACTION_CANCEL),
-                PendingIntent.FLAG_UPDATE_CURRENT
             )
         )
         .build()

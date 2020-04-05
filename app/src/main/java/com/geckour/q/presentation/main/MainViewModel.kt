@@ -138,7 +138,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         } catch (t: Throwable) {
             Timber.e(t)
         }
-        player.value?.onRequestedStopService()
         if (isBoundService) {
             getApplication<App>().unbindService(serviceConnection)
         }

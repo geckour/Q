@@ -428,7 +428,6 @@ suspend fun getPlayerNotification(
                 getCommandPendingIntent(context, PlayerControlCommand.NEXT)
             ).build()
         )
-        .setDeleteIntent(getCommandPendingIntent(context, PlayerControlCommand.DESTROY))
         .build()
 }
 
@@ -438,7 +437,10 @@ fun getCommandIntent(context: Context, command: PlayerControlCommand): Intent =
         putExtra(PlayerService.ARGS_KEY_CONTROL_COMMAND, command.ordinal)
     }
 
-private fun getCommandPendingIntent(context: Context, command: PlayerControlCommand): PendingIntent =
+private fun getCommandPendingIntent(
+    context: Context,
+    command: PlayerControlCommand
+): PendingIntent =
     PendingIntent.getService(
         context,
         343,

@@ -104,6 +104,35 @@ class SleepTimerService : Service() {
 
         notificationBuilder =
             getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_SLEEP_TIMER)
+                .setSmallIcon(R.drawable.ic_hourglass_empty)
+                .setOngoing(true)
+                .addAction(
+                    R.drawable.ic_remove,
+                    getString(R.string.dialog_ng),
+                    PendingIntent.getService(
+                        this,
+                        0,
+                        getCancelIntent(this),
+                        PendingIntent.FLAG_UPDATE_CURRENT
+                    )
+                )
+                .setShowWhen(false)
+                .setContentIntent(
+                    PendingIntent.getActivity(
+                        this,
+                        App.REQUEST_CODE_LAUNCH_APP,
+                        LauncherActivity.createIntent(this),
+                        PendingIntent.FLAG_UPDATE_CURRENT
+                    )
+                )
+                .setDeleteIntent(
+                    PendingIntent.getService(
+                        this,
+                        0,
+                        getCancelIntent(this),
+                        PendingIntent.FLAG_UPDATE_CURRENT
+                    )
+                )
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -164,7 +193,6 @@ class SleepTimerService : Service() {
 
     private fun showNotification(remaining: Long) {
         val notification = notificationBuilder
-            .setSmallIcon(R.drawable.ic_hourglass_empty)
             .setContentTitle(getString(R.string.notification_title_sleep_timer))
             .setContentText(
                 if (tolerance > 0) getString(
@@ -175,34 +203,6 @@ class SleepTimerService : Service() {
                 else getString(
                     R.string.notification_text_sleep_timer,
                     remaining.getTimeString()
-                )
-            )
-            .setOngoing(true)
-            .addAction(
-                R.drawable.ic_remove,
-                getString(R.string.dialog_ng),
-                PendingIntent.getService(
-                    this,
-                    0,
-                    getCancelIntent(this),
-                    PendingIntent.FLAG_UPDATE_CURRENT
-                )
-            )
-            .setShowWhen(false)
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    this,
-                    App.REQUEST_CODE_LAUNCH_APP,
-                    LauncherActivity.createIntent(this),
-                    PendingIntent.FLAG_UPDATE_CURRENT
-                )
-            )
-            .setDeleteIntent(
-                PendingIntent.getService(
-                    this,
-                    0,
-                    getCancelIntent(this),
-                    PendingIntent.FLAG_UPDATE_CURRENT
                 )
             )
             .build()
