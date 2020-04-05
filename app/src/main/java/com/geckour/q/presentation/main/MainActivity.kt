@@ -582,8 +582,12 @@ class MainActivity : CrashlyticsBundledActivity() {
 
     internal fun showSleepTimerDialog() {
         val binding = DialogSleepBinding.inflate(LayoutInflater.from(this)).apply {
-            timerValue = sharedPreferences.sleepTimerTime
-            toleranceValue = sharedPreferences.sleepTimerTolerance
+            val cachedTimerValue = sharedPreferences.sleepTimerTime
+            val cachedToleranceValue = sharedPreferences.sleepTimerTolerance
+            timerValue = cachedTimerValue
+            toleranceValue = cachedToleranceValue
+            timerSlider.progress = cachedTimerValue / 5
+            toleranceSlider.progress = cachedToleranceValue
 
             timerSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(
@@ -593,7 +597,6 @@ class MainActivity : CrashlyticsBundledActivity() {
                 ) {
                     val value = progress * 5
                     timerValue = value
-                    sharedPreferences.sleepTimerTime = value
                 }
 
                 override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
@@ -607,7 +610,6 @@ class MainActivity : CrashlyticsBundledActivity() {
                     fromUser: Boolean
                 ) {
                     toleranceValue = progress
-                    sharedPreferences.sleepTimerTolerance = progress
                 }
 
                 override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
@@ -621,9 +623,13 @@ class MainActivity : CrashlyticsBundledActivity() {
             .setTitle(R.string.dialog_title_sleep_timer)
             .setMessage(R.string.dialog_desc_sleep_timer)
             .setPositiveButton(R.string.dialog_ok) { dialog, _ ->
+                val timerValue = binding.timerValue!!
+                val toleranceValue = binding.toleranceValue!!
+                sharedPreferences.sleepTimerTime = timerValue
+                sharedPreferences.sleepTimerTolerance = toleranceValue
                 viewModel.player.value?.setSleepTimer(
-                    binding.timerValue!!,
-                    binding.toleranceValue!!
+                    timerValue,
+                    toleranceValue
                 )
                 dialog.dismiss()
             }
