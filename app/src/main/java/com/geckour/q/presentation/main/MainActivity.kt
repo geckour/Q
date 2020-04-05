@@ -8,17 +8,20 @@ import android.content.IntentFilter
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.KeyEvent
+import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import androidx.activity.viewModels
 import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.appcompat.app.AlertDialog
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.commit
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivityMainBinding
+import com.geckour.q.databinding.DialogShuffleMenuBinding
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.domain.model.Song
@@ -36,6 +39,7 @@ import com.geckour.q.presentation.sheet.BottomSheetFragment
 import com.geckour.q.presentation.sheet.BottomSheetViewModel
 import com.geckour.q.service.MediaRetrieveService
 import com.geckour.q.util.CrashlyticsBundledActivity
+import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.ducking
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
@@ -398,6 +402,29 @@ class MainActivity : CrashlyticsBundledActivity() {
         }
 
         bottomSheetViewModel.shuffle.observe(this) { viewModel.player.value?.shuffle() }
+
+        bottomSheetViewModel.shuffleMenu.observe(this) {
+            val binding = DialogShuffleMenuBinding.inflate(LayoutInflater.from(this))
+            val dialog = AlertDialog.Builder(this)
+                .setView(binding.root)
+                .setCancelable(true)
+                .show()
+
+            binding.apply {
+                choiceReset.setOnClickListener {
+                    viewModel.player.value?.resetQueueOrder()
+                    dialog.dismiss()
+                }
+                choiceShuffleOrientedAlbum.setOnClickListener {
+                    viewModel.player.value?.shuffle(ShuffleActionType.SHUFFLE_ALBUM_ORIENTED)
+                    dialog.dismiss()
+                }
+                choiceShuffleOrientedArtist.setOnClickListener {
+                    viewModel.player.value?.shuffle(ShuffleActionType.SHUFFLE_ARTIST_ORIENTED)
+                    dialog.dismiss()
+                }
+            }
+        }
 
         paymentViewModel.saveSuccess.observe(this) {
             if (it == null) return@observe

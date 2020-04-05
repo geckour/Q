@@ -31,6 +31,7 @@ import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.QueueInfo
 import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.SettingCommand
+import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.ducking
 import com.geckour.q.util.equalizerEnabled
 import com.geckour.q.util.equalizerParams
@@ -223,7 +224,8 @@ class PlayerService : Service() {
 
     private var equalizer: Equalizer? = null
 
-    private val queue: ArrayList<Song> = ArrayList()
+    private val queue = mutableListOf<Song>()
+    private val cachedQueueOrder = mutableListOf<Long>()
     private var onQueueChanged: ((List<Song>) -> Unit)? = null
     private var onCurrentPositionChanged: ((Int, Boolean) -> Unit)? = null
     private var onPlaybackStateChanged: ((Int, Boolean) -> Unit)? = null
@@ -506,7 +508,7 @@ class PlayerService : Service() {
 
     private fun play() {
         Timber.d("qgeck play invoked")
-        getSystemService(AudioManager::class.java).apply {
+        getSystemService(AudioManager::class.java)?.apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val audioFocusRequest = AudioFocusRequest.Builder(
                     AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
@@ -552,7 +554,7 @@ class PlayerService : Service() {
 
         player.playWhenReady = false
         notifyPlaybackRatioJob.cancel()
-        getSystemService(AudioManager::class.java).apply {
+        getSystemService(AudioManager::class.java)?.apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val audioFocusRequest = AudioFocusRequest.Builder(
                     AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
@@ -694,15 +696,44 @@ class PlayerService : Service() {
         }
     }
 
-    fun shuffle() {
-        if (source.size < 1) return
+    fun shuffle(actionType: ShuffleActionType = ShuffleActionType.SHUFFLE_SIMPLE) {
+        if (source.size < 1 && source.size != queue.size) return
 
-        val shuffled = (0 until source.size).toList().shuffled()
+        val shuffled = when (actionType) {
+            ShuffleActionType.SHUFFLE_SIMPLE -> queue.map { it.id }.shuffled()
+            ShuffleActionType.SHUFFLE_ALBUM_ORIENTED -> {
+                queue.groupBy { it.albumId }
+                    .map { it.value }
+                    .shuffled()
+                    .flatten()
+                    .map { it.id }
+            }
+            ShuffleActionType.SHUFFLE_ARTIST_ORIENTED -> {
+                queue.groupBy { it.artist }
+                    .map { it.value }
+                    .shuffled()
+                    .flatten()
+                    .map { it.id }
+            }
+        }
 
-        (0 until source.size).forEach {
-            val moveTo = shuffled.indexOf(it)
-            source.moveMediaSource(it, moveTo)
-            this.queue.move(it, moveTo)
+        reorderQueue(shuffled)
+    }
+
+    fun resetQueueOrder() {
+        val isCacheValid =
+            queue.size == cachedQueueOrder.size &&
+                    queue.map { it.id }.containsAll(cachedQueueOrder)
+        if (source.size < 1 || isCacheValid.not()) return
+
+        reorderQueue(cachedQueueOrder)
+    }
+
+    private fun reorderQueue(order: List<Long>) {
+        order.forEachIndexed { i, id ->
+            val currentIndex = queue.indexOfFirst { it.id == id }
+            source.moveMediaSource(currentIndex, i)
+            queue.move(currentIndex, i)
         }
     }
 
@@ -772,8 +803,8 @@ class PlayerService : Service() {
                 db.artistDao().apply {
                     val artist = getAllByTitle(song.artist).firstOrNull() ?: db.albumDao()
                         .get(song.albumId)?.artistId?.let {
-                            get(it)
-                        }
+                        get(it)
+                    }
                     artist?.apply { increasePlaybackCount(id) }
                 }
             }
@@ -831,6 +862,10 @@ class PlayerService : Service() {
     }
 
     private fun storeState() {
+        cachedQueueOrder.apply {
+            clear()
+            addAll(queue.map { it.id })
+        }
         val state = PlayerState(
             player.playWhenReady, queue, currentPosition, player.currentPosition, player.repeatMode
         )

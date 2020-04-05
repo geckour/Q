@@ -51,6 +51,7 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     private val _newSeekBarProgress = MutableLiveData<Float>()
     internal val newSeekBarProgress: LiveData<Float> = _newSeekBarProgress.distinctUntilChanged()
     internal val shuffle = MutableLiveData<Unit>()
+    internal val shuffleMenu = MutableLiveData<Unit>()
     internal val scrollToCurrent = MutableLiveData<Unit>()
 
     internal val changeRepeatMode = MutableLiveData<Unit>()
@@ -130,6 +131,11 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
 
     fun onClickShuffleButton() {
         shuffle.value = Unit
+    }
+
+    fun onLongClickShuffleButton(): Boolean {
+        shuffleMenu.value = Unit
+        return true
     }
 
     fun onClickScrollToCurrentButton() {

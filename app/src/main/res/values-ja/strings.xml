@@ -109,6 +109,10 @@
     <string name="dialog_desc_pattern_format">曲名: TI\nアーティスト名: AR\nアルバム名: AL\nエスケープ: \' \' で囲む\n改行: \\n</string>
     <string name="dialog_hint_pattern_format">例: #NowPlaying TI - AR (AL)</string>
 
+    <string name="dialog_choice_reset_shuffle">シャッフルをリセット</string>
+    <string name="dialog_choice_album_oriented_shuffle">アルバム単位でシャッフル</string>
+    <string name="dialog_choice_artist_oriented_shuffle">アーティスト単位でシャッフル</string>
+
 
     <string name="payment_desc">Kyashを利用した投げ銭を受け付けています</string>
     <string name="payment_save_success">保存しました</string>
