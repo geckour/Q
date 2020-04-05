@@ -5,7 +5,6 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.content.res.Configuration
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.KeyEvent
@@ -41,6 +40,7 @@ import com.geckour.q.presentation.setting.SettingActivity
 import com.geckour.q.presentation.sheet.BottomSheetFragment
 import com.geckour.q.presentation.sheet.BottomSheetViewModel
 import com.geckour.q.service.MediaRetrieveService
+import com.geckour.q.service.SleepTimerService
 import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.ducking
@@ -280,7 +280,7 @@ class MainActivity : CrashlyticsBundledActivity() {
         }
 
         viewModel.currentFragmentId.observe(this) { navId ->
-            if (navId == null) return@observe
+            navId ?: return@observe
             binding.navigationView.setCheckedItem(navId)
             val title = supportFragmentManager.fragments.firstOrNull {
                 when (navId) {
@@ -308,12 +308,12 @@ class MainActivity : CrashlyticsBundledActivity() {
         }
 
         viewModel.loading.observe(this) {
-            if (it == null) return@observe
+            it ?: return@observe
             setLockingIndicator()
         }
 
         viewModel.selectedArtist.observe(this) {
-            if (it == null) return@observe
+            it ?: return@observe
             requestedTransaction = RequestedTransaction(
                 RequestedTransaction.Tag.ARTIST, artist = it
             )
@@ -321,19 +321,19 @@ class MainActivity : CrashlyticsBundledActivity() {
         }
 
         viewModel.selectedAlbum.observe(this) {
-            if (it == null) return@observe
+            it ?: return@observe
             requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.ALBUM, album = it)
             tryTransaction()
         }
 
         viewModel.selectedGenre.observe(this) {
-            if (it == null) return@observe
+            it ?: return@observe
             requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.GENRE, genre = it)
             tryTransaction()
         }
 
         viewModel.selectedPlaylist.observe(this) {
-            if (it == null) return@observe
+            it ?: return@observe
             requestedTransaction = RequestedTransaction(
                 RequestedTransaction.Tag.PLAYLIST, playlist = it
             )
@@ -341,28 +341,27 @@ class MainActivity : CrashlyticsBundledActivity() {
         }
 
         viewModel.newQueueInfo.observe(this) {
-            if (it == null) return@observe
+            it ?: return@observe
             viewModel.player.value?.submitQueue(it)
         }
 
         viewModel.requestedPositionInQueue.observe(this) {
-            if (it == null) return@observe
+            it ?: return@observe
             viewModel.player.value?.play(it)
         }
 
         viewModel.swappedQueuePositions.observe(this) {
-            if (it == null) return@observe
+            it ?: return@observe
             viewModel.player.value?.swapQueuePosition(it.first, it.second)
         }
 
         viewModel.removedQueueIndex.observe(this) {
-            if (it == null) return@observe
+            it ?: return@observe
             viewModel.player.value?.removeQueue(it)
         }
 
         viewModel.songToDelete.observe(this) {
-            if (it == null) return@observe
-
+            it ?: return@observe
             deleteFromDeviceWithPermissionCheck(it)
         }
 
@@ -376,7 +375,7 @@ class MainActivity : CrashlyticsBundledActivity() {
         }
 
         bottomSheetViewModel.playbackButton.observe(this) {
-            if (it == null) return@observe
+            it ?: return@observe
             viewModel.player.value?.onMediaButtonEvent(
                 KeyEvent(
                     if (it == PlaybackButton.UNDEFINED) KeyEvent.ACTION_UP else KeyEvent.ACTION_DOWN,
@@ -393,6 +392,13 @@ class MainActivity : CrashlyticsBundledActivity() {
             )
         }
 
+        bottomSheetViewModel.currentPosition.observe(this) {
+            it ?: return@observe
+            bottomSheetViewModel.currentSong?.let {
+                SleepTimerService.notifyTrackChanged(this, it, bottomSheetViewModel.playbackRatio)
+            }
+        }
+
         bottomSheetViewModel.clearQueue.observe(this) {
             viewModel.player.value?.clear(true)
         }
@@ -400,6 +406,9 @@ class MainActivity : CrashlyticsBundledActivity() {
         bottomSheetViewModel.newSeekBarProgress.observe(this) {
             if (it == null) return@observe
             viewModel.player.value?.seek(it)
+            bottomSheetViewModel.currentSong?.let { song ->
+                SleepTimerService.notifyTrackChanged(this, song, it)
+            }
         }
 
         bottomSheetViewModel.shuffle.observe(this) { viewModel.player.value?.shuffle() }
@@ -624,14 +633,19 @@ class MainActivity : CrashlyticsBundledActivity() {
             .setTitle(R.string.dialog_title_sleep_timer)
             .setMessage(R.string.dialog_desc_sleep_timer)
             .setPositiveButton(R.string.dialog_ok) { dialog, _ ->
-                val timerValue = binding.timerValue!!
-                val toleranceValue = binding.toleranceValue!!
-                sharedPreferences.sleepTimerTime = timerValue
-                sharedPreferences.sleepTimerTolerance = toleranceValue
-                viewModel.player.value?.setSleepTimer(
-                    timerValue,
-                    toleranceValue
-                )
+                bottomSheetViewModel.currentSong?.let {
+                    val timerValue = binding.timerValue!!
+                    val toleranceValue = binding.toleranceValue!!
+                    sharedPreferences.sleepTimerTime = timerValue
+                    sharedPreferences.sleepTimerTolerance = toleranceValue
+                    SleepTimerService.start(
+                        this,
+                        it,
+                        bottomSheetViewModel.playbackRatio,
+                        System.currentTimeMillis() + timerValue * 60000,
+                        toleranceValue * 60000L
+                    )
+                }
                 dialog.dismiss()
             }
             .setNegativeButton(R.string.dialog_ng) { dialog, _ -> dialog.dismiss() }

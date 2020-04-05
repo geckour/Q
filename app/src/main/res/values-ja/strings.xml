@@ -15,8 +15,13 @@
     <string name="notification_channel_description_player">プレイヤーを生存状態に保つためのプレイヤー情報通知</string>
     <string name="notification_channel_retriever">メディア探索</string>
     <string name="notification_channel_description_retriever">メディア探索サービスを生存状態に保つための通知</string>
+    <string name="notification_channel_sleep_timer">おやすみタイマー</string>
+    <string name="notification_channel_description_sleep_timer">おやすみタイマーの通知</string>
     <string name="notification_title_retriever">メディアを探索中</string>
     <string name="notification_text_retriever">%1$d / %2$d | ライブラリを同期しています…</string>
+    <string name="notification_title_sleep_timer">おやすみタイマー</string>
+    <string name="notification_text_sleep_timer">残り: %s</string>
+    <string name="notification_text_sleep_timer_with_tolerance">残り: %1$s ± %2$s</string>
     <string name="notification_action_prev">前へ</string>
     <string name="notification_action_play">再生</string>
     <string name="notification_action_pause">停止</string>

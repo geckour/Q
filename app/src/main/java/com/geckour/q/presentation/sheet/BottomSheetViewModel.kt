@@ -46,7 +46,8 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     private val _playbackButton = MutableLiveData<PlaybackButton>()
     internal val playbackButton: LiveData<PlaybackButton> = _playbackButton.distinctUntilChanged()
     internal var currentQueue: List<Song> = emptyList()
-    internal var currentPosition = -1
+    internal var currentPosition = MutableLiveData<Int>()
+    internal var playbackRatio: Float = 0f
     internal val clearQueue = MutableLiveData<Unit>()
     private val _newSeekBarProgress = MutableLiveData<Float>()
     internal val newSeekBarProgress: LiveData<Float> = _newSeekBarProgress.distinctUntilChanged()
@@ -61,7 +62,7 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     private val _share = MutableLiveData<Song>()
     internal val share: LiveData<Song> = _share.distinctUntilChanged()
 
-    val currentSong: Song? get() = currentQueue.getOrNull(currentPosition)
+    val currentSong: Song? get() = currentQueue.getOrNull(currentPosition.value ?: -1)
 
     private var updateArtworkJob: Job = Job()
 

@@ -48,6 +48,8 @@
 
         <service android:name=".service.MediaRetrieveService" />
 
+        <service android:name=".service.SleepTimerService" />
+
         <meta-data
             android:name="preloaded_fonts"
             android:resource="@array/preloaded_fonts" />

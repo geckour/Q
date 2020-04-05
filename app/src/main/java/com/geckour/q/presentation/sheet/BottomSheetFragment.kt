@@ -207,7 +207,8 @@ class BottomSheetFragment : Fragment() {
                     )
                 }
                 setOnPlaybackRatioChangedListener {
-                    onPlaybackRatioChanged(it)
+                    viewModel.playbackRatio = it
+                    onPlaybackRatioChanged()
                 }
                 setOnRepeatModeChangedListener {
                     onRepeatModeChanged(it)
@@ -246,7 +247,7 @@ class BottomSheetFragment : Fragment() {
 
         viewModel.scrollToCurrent.observe(requireActivity()) {
             if (adapter.itemCount > 0) {
-                binding.recyclerView.smoothScrollToPosition(viewModel.currentPosition)
+                binding.recyclerView.smoothScrollToPosition(viewModel.currentPosition.value ?: 0)
             }
         }
 
@@ -296,10 +297,13 @@ class BottomSheetFragment : Fragment() {
     @SuppressLint("ClickableViewAccessibility")
     private fun onCurrentQueuePositionChanged(position: Int, songChanged: Boolean) {
         adapter.setNowPlayingPosition(position)
-        viewModel.currentPosition = position
+        viewModel.currentPosition.value = position
         binding.viewModel = viewModel
 
-        if (songChanged) onPlaybackRatioChanged(0f)
+        if (songChanged) {
+            viewModel.playbackRatio = 0f
+            onPlaybackRatioChanged()
+        }
 
         val noCurrentSong = viewModel.currentSong == null
         binding.seekBar.setOnTouchListener { _, _ -> noCurrentSong }
@@ -319,15 +323,15 @@ class BottomSheetFragment : Fragment() {
         binding.playing = playing
     }
 
-    private fun onPlaybackRatioChanged(ratio: Float) {
-        binding.seekBar.progress = (binding.seekBar.max * ratio).toInt()
+    private fun onPlaybackRatioChanged() {
+        binding.seekBar.progress = (binding.seekBar.max * viewModel.playbackRatio).toInt()
 
         val song = viewModel.currentSong ?: return
 
-        val elapsed = (song.duration * ratio).toLong()
+        val elapsed = (song.duration * viewModel.playbackRatio).toLong()
         binding.textTimeLeft.text = elapsed.getTimeString()
         setTimeRightText(song, elapsed)
-        val remain = adapter.getItemsAfter((viewModel.currentPosition) + 1)
+        val remain = adapter.getItemsAfter((viewModel.currentPosition.value ?: -1) + 1)
             .map { it.duration }
             .sum() + (song.duration - elapsed)
         binding.textTimeRemain.text =

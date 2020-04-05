@@ -26,8 +26,8 @@ import com.geckour.q.domain.model.Song
 import com.geckour.q.util.EqualizerParams
 import com.geckour.q.util.EqualizerSettings
 import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.NotificationCommand
 import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.PlayerControlCommand
 import com.geckour.q.util.QueueInfo
 import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.SettingCommand
@@ -65,7 +65,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import kotlin.coroutines.CoroutineContext
-import kotlin.math.abs
 
 class PlayerService : Service() {
 
@@ -238,21 +237,12 @@ class PlayerService : Service() {
     private lateinit var mediaSourceFactory: ProgressiveMediaSource.Factory
     private var source = ConcatenatingMediaSource()
 
-    private var requestedTimeToStartSleep: Long = -1
-        set(value) {
-            if (value < 0) pauseScheduled = false
-            field = value
-        }
-    private var sleepModeTolerance: Long = 0
-    private var pauseScheduled = false
-
     private val eventListener = object : Player.EventListener {
 
         override fun onTracksChanged(
             trackGroups: TrackGroupArray, trackSelections: TrackSelectionArray
         ) {
             onCurrentPositionChanged?.invoke(currentPosition, songChanged)
-            if (pauseScheduled && player.playWhenReady) pause()
             notificationUpdateJob.cancel()
             notificationUpdateJob = showNotification()
             playbackCountIncreaseJob = increasePlaybackCount()
@@ -331,7 +321,7 @@ class PlayerService : Service() {
     override fun onBind(intent: Intent?): IBinder? = binder
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        onNotificationAction(intent)
+        onPlayerControlAction(intent)
         onSettingAction(intent)
         return START_STICKY
     }
@@ -535,20 +525,6 @@ class PlayerService : Service() {
             while (this.isActive) {
                 withContext(Dispatchers.Main) {
                     onPlaybackRatioChanged?.invoke(player.contentPosition.toFloat() / song.duration)
-
-                    if (requestedTimeToStartSleep > -1) {
-                        if (sleepModeTolerance > 0) {
-                            val endTimeCurrentSong =
-                                System.currentTimeMillis() + (song.duration - player.currentPosition)
-                            val diff = abs(endTimeCurrentSong - requestedTimeToStartSleep)
-
-                            if (diff < sleepModeTolerance) {
-                                pauseScheduled = true
-                            }
-                        } else if (requestedTimeToStartSleep < System.currentTimeMillis()) {
-                            pause()
-                        }
-                    }
                 }
                 delay(100)
             }
@@ -565,7 +541,6 @@ class PlayerService : Service() {
         if (player.playWhenReady) storeState()
 
         player.playWhenReady = false
-        requestedTimeToStartSleep = -1
         notifyPlaybackRatioJob.cancel()
         getSystemService(AudioManager::class.java)?.apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -762,11 +737,6 @@ class PlayerService : Service() {
         }
     }
 
-    fun setSleepTimer(timerValue: Int, tolerance: Int) {
-        requestedTimeToStartSleep = System.currentTimeMillis() + timerValue * 60000
-        sleepModeTolerance = tolerance * 60000L
-    }
-
     private fun getPlaybackState(playWhenReady: Boolean, playbackState: Int) =
         when (playbackState) {
             Player.STATE_BUFFERING -> PlaybackState.STATE_BUFFERING
@@ -779,14 +749,15 @@ class PlayerService : Service() {
             else -> PlaybackState.STATE_ERROR
         }
 
-    private fun onNotificationAction(intent: Intent) {
+    private fun onPlayerControlAction(intent: Intent) {
         if (intent.hasExtra(ARGS_KEY_CONTROL_COMMAND)) {
             val key = intent.extras?.getInt(ARGS_KEY_CONTROL_COMMAND, -1) ?: return
-            when (NotificationCommand.values()[key]) {
-                NotificationCommand.PLAY_PAUSE -> sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
-                NotificationCommand.NEXT -> sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_NEXT)
-                NotificationCommand.PREV -> sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
-                NotificationCommand.DESTROY -> onRequestedStopService()
+            when (PlayerControlCommand.values()[key]) {
+                PlayerControlCommand.PLAY_PAUSE -> sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
+                PlayerControlCommand.PAUSE -> sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_PAUSE)
+                PlayerControlCommand.NEXT -> sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_NEXT)
+                PlayerControlCommand.PREV -> sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
+                PlayerControlCommand.DESTROY -> onRequestedStopService()
             }
         }
     }

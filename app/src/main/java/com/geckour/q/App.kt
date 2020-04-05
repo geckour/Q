@@ -32,26 +32,36 @@ class App : Application() {
     @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannel() {
         val channelPlayer =
-                NotificationChannel(
-                        QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER.name,
-                        getString(R.string.notification_channel_player),
-                        NotificationManager.IMPORTANCE_LOW
-                ).apply {
-                    this.description = getString(R.string.notification_channel_description_player)
-                }
+            NotificationChannel(
+                QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER.name,
+                getString(R.string.notification_channel_player),
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                this.description = getString(R.string.notification_channel_description_player)
+            }
 
         val channelRetriever =
-                NotificationChannel(
-                        QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER.name,
-                        getString(R.string.notification_channel_retriever),
-                        NotificationManager.IMPORTANCE_LOW
-                ).apply {
-                    this.description = getString(R.string.notification_channel_description_retriever)
-                }
+            NotificationChannel(
+                QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER.name,
+                getString(R.string.notification_channel_retriever),
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                this.description = getString(R.string.notification_channel_description_retriever)
+            }
 
-        getSystemService(NotificationManager::class.java).apply {
+        val channelSleepTimer =
+            NotificationChannel(
+                QNotificationChannel.NOTIFICATION_CHANNEL_ID_SLEEP_TIMER.name,
+                getString(R.string.notification_channel_sleep_timer),
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                this.description = getString(R.string.notification_channel_description_sleep_timer)
+            }
+
+        getSystemService(NotificationManager::class.java)?.apply {
             createNotificationChannel(channelPlayer)
             createNotificationChannel(channelRetriever)
+            createNotificationChannel(channelSleepTimer)
         }
     }
 }

@@ -4,6 +4,7 @@ import android.app.Notification
 import android.app.PendingIntent
 import android.content.ContentUris
 import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -59,8 +60,8 @@ enum class OrientedClassType {
     ARTIST, ALBUM, SONG, GENRE, PLAYLIST
 }
 
-enum class NotificationCommand {
-    PLAY_PAUSE, NEXT, PREV, DESTROY
+enum class PlayerControlCommand {
+    PLAY_PAUSE, PAUSE, NEXT, PREV, DESTROY
 }
 
 enum class SettingCommand {
@@ -402,7 +403,7 @@ suspend fun getPlayerNotification(
             NotificationCompat.Action.Builder(
                 R.drawable.ic_backward,
                 context.getString(R.string.notification_action_prev),
-                getCommandPendingIntent(context, NotificationCommand.PREV)
+                getCommandPendingIntent(context, PlayerControlCommand.PREV)
             ).build()
         )
         .addAction(
@@ -410,13 +411,13 @@ suspend fun getPlayerNotification(
                 NotificationCompat.Action.Builder(
                     R.drawable.ic_pause,
                     context.getString(R.string.notification_action_pause),
-                    getCommandPendingIntent(context, NotificationCommand.PLAY_PAUSE)
+                    getCommandPendingIntent(context, PlayerControlCommand.PLAY_PAUSE)
                 ).build()
             } else {
                 NotificationCompat.Action.Builder(
                     R.drawable.ic_play,
                     context.getString(R.string.notification_action_play),
-                    getCommandPendingIntent(context, NotificationCommand.PLAY_PAUSE)
+                    getCommandPendingIntent(context, PlayerControlCommand.PLAY_PAUSE)
                 ).build()
             }
         )
@@ -424,18 +425,26 @@ suspend fun getPlayerNotification(
             NotificationCompat.Action.Builder(
                 R.drawable.ic_forward,
                 context.getString(R.string.notification_action_next),
-                getCommandPendingIntent(context, NotificationCommand.NEXT)
+                getCommandPendingIntent(context, PlayerControlCommand.NEXT)
             ).build()
         )
-        .setDeleteIntent(getCommandPendingIntent(context, NotificationCommand.DESTROY))
+        .setDeleteIntent(getCommandPendingIntent(context, PlayerControlCommand.DESTROY))
         .build()
 }
 
-private fun getCommandPendingIntent(context: Context, command: NotificationCommand): PendingIntent =
-    PendingIntent.getService(context, 343, PlayerService.createIntent(context).apply {
+fun getCommandIntent(context: Context, command: PlayerControlCommand): Intent =
+    PlayerService.createIntent(context).apply {
         action = command.name
         putExtra(PlayerService.ARGS_KEY_CONTROL_COMMAND, command.ordinal)
-    }, PendingIntent.FLAG_CANCEL_CURRENT)
+    }
+
+private fun getCommandPendingIntent(context: Context, command: PlayerControlCommand): PendingIntent =
+    PendingIntent.getService(
+        context,
+        343,
+        getCommandIntent(context, command),
+        PendingIntent.FLAG_CANCEL_CURRENT
+    )
 
 fun Long.getTimeString(): String {
     val hour = this / 3600000
