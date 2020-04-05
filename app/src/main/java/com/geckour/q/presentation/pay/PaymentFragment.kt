@@ -14,15 +14,12 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
-import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentPaymentBinding
 import com.geckour.q.presentation.main.MainViewModel
-import com.geckour.q.util.CrashlyticsBundledActivity
-import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
-import com.geckour.q.util.toNightModeInt
+import com.geckour.q.util.toggleDayNight
 
 class PaymentFragment : Fragment() {
 
@@ -74,14 +71,7 @@ class PaymentFragment : Fragment() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
-            R.id.menu_toggle_daynight -> {
-                val sharedPreferences =
-                    PreferenceManager.getDefaultSharedPreferences(requireContext())
-                val toggleTo = sharedPreferences.isNightMode.not()
-                sharedPreferences.isNightMode = toggleTo
-                (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
-                    toggleTo.toNightModeInt
-            }
+            R.id.menu_toggle_daynight -> requireActivity().toggleDayNight()
             else -> return false
         }
         return true

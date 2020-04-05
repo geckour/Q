@@ -21,7 +21,6 @@ import com.geckour.q.databinding.FragmentEqualizerBinding
 import com.geckour.q.databinding.ItemEqualizerSeekBarBinding
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.service.PlayerService
-import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.EqualizerParams
 import com.geckour.q.util.EqualizerSettings
 import com.geckour.q.util.SettingCommand
@@ -29,11 +28,10 @@ import com.geckour.q.util.equalizerEnabled
 import com.geckour.q.util.equalizerParams
 import com.geckour.q.util.equalizerSettings
 import com.geckour.q.util.getReadableString
-import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
 import com.geckour.q.util.setEqualizerLevel
 import com.geckour.q.util.setIconTint
-import com.geckour.q.util.toNightModeInt
+import com.geckour.q.util.toggleDayNight
 import com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBar
 
 class EqualizerFragment : Fragment() {
@@ -89,14 +87,7 @@ class EqualizerFragment : Fragment() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
-            R.id.menu_toggle_daynight -> {
-                val sharedPreferences =
-                    PreferenceManager.getDefaultSharedPreferences(requireContext())
-                val toggleTo = sharedPreferences.isNightMode.not()
-                sharedPreferences.isNightMode = toggleTo
-                (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
-                    toggleTo.toNightModeInt
-            }
+            R.id.menu_toggle_daynight -> requireActivity().toggleDayNight(sharedPreferences)
             else -> return false
         }
         return true

@@ -33,6 +33,7 @@ import com.geckour.q.util.preferScreen
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.showArtworkOnLockScreen
 import com.geckour.q.util.toNightModeInt
+import com.geckour.q.util.toggleDayNight
 
 class SettingActivity : CrashlyticsBundledActivity() {
 
@@ -76,11 +77,7 @@ class SettingActivity : CrashlyticsBundledActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem?): Boolean {
         when (item?.itemId) {
-            R.id.menu_toggle_daynight -> {
-                val toggleTo = sharedPreferences.isNightMode.not()
-                sharedPreferences.isNightMode = toggleTo
-                delegate.localNightMode = toggleTo.toNightModeInt
-            }
+            R.id.menu_toggle_daynight -> toggleDayNight(sharedPreferences)
             else -> return false
         }
         return true

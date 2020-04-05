@@ -13,23 +13,20 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.viewModelScope
-import androidx.preference.PreferenceManager
 import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentEasterEggBinding
 import com.geckour.q.presentation.main.MainViewModel
-import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.getSong
-import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
 import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toDomainModel
-import com.geckour.q.util.toNightModeInt
+import com.geckour.q.util.toggleDayNight
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -110,14 +107,7 @@ class EasterEggFragment : Fragment() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
-            R.id.menu_toggle_daynight -> {
-                val sharedPreferences =
-                    PreferenceManager.getDefaultSharedPreferences(requireContext())
-                val toggleTo = sharedPreferences.isNightMode.not()
-                sharedPreferences.isNightMode = toggleTo
-                (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
-                    toggleTo.toNightModeInt
-            }
+            R.id.menu_toggle_daynight -> requireActivity().toggleDayNight()
             else -> return false
         }
         return true
@@ -155,7 +145,8 @@ class EasterEggFragment : Fragment() {
                                     mainViewModel.selectedArtist.value =
                                         withContext((Dispatchers.IO)) {
                                             viewModel.song?.artist?.let {
-                                                DB.getInstance(context).artistDao().getAllByTitle(it)
+                                                DB.getInstance(context).artistDao()
+                                                    .getAllByTitle(it)
                                                     .firstOrNull()?.toDomainModel()
                                             }
                                         }

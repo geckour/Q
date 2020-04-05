@@ -1,9 +1,11 @@
 package com.geckour.q.util
 
+import android.app.Activity
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.annotation.IdRes
 import androidx.annotation.StringRes
+import androidx.appcompat.app.AppCompatActivity
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.google.gson.Gson
@@ -146,3 +148,14 @@ var Context.formatPattern: String
     set(value) {
         PreferenceManager.getDefaultSharedPreferences(this).patternFormatShareText = value
     }
+
+fun Activity.toggleDayNight(sharedPreferences: SharedPreferences? = null) {
+    if (this !is AppCompatActivity) return
+
+    (sharedPreferences ?: PreferenceManager.getDefaultSharedPreferences(this)).apply {
+        val toggleTo = isNightMode.not()
+        isNightMode = toggleTo
+
+        delegate.localNightMode = toggleTo.toNightModeInt
+    }
+}

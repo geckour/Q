@@ -16,7 +16,6 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.viewModelScope
-import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.DividerItemDecoration
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -24,7 +23,6 @@ import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.presentation.main.MainViewModel
-import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.getArtworkUriStringFromId
@@ -32,11 +30,10 @@ import com.geckour.q.util.getSong
 import com.geckour.q.util.getThumb
 import com.geckour.q.util.getTrackMediaIds
 import com.geckour.q.util.getTrackMediaIdsByGenreId
-import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.takeOrFillNull
-import com.geckour.q.util.toNightModeInt
+import com.geckour.q.util.toggleDayNight
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -109,11 +106,7 @@ class GenreListFragment : Fragment() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         context?.also { context ->
             if (item.itemId == R.id.menu_toggle_daynight) {
-                val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-                val toggleTo = sharedPreferences.isNightMode.not()
-                sharedPreferences.isNightMode = toggleTo
-                (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
-                    toggleTo.toNightModeInt
+                requireActivity().toggleDayNight()
                 return true
             }
 

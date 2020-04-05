@@ -15,6 +15,7 @@ import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toNightModeInt
+import com.geckour.q.util.toggleDayNight
 
 class LicenseActivity : CrashlyticsBundledActivity() {
 
@@ -78,11 +79,7 @@ class LicenseActivity : CrashlyticsBundledActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem?): Boolean {
         when (item?.itemId) {
-            R.id.menu_toggle_daynight -> {
-                val toggleTo = sharedPreferences.isNightMode.not()
-                sharedPreferences.isNightMode = toggleTo
-                delegate.localNightMode = toggleTo.toNightModeInt
-            }
+            R.id.menu_toggle_daynight -> toggleDayNight(sharedPreferences)
             else -> return false
         }
         return true

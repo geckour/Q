@@ -21,15 +21,13 @@ import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.BoolConverter
-import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.getSong
 import com.geckour.q.util.ignoringEnabled
-import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toDomainModel
-import com.geckour.q.util.toNightModeInt
+import com.geckour.q.util.toggleDayNight
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -109,11 +107,7 @@ class AlbumListFragment : Fragment() {
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         context?.also { context ->
             if (item.itemId == R.id.menu_toggle_daynight) {
-                val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
-                val toggleTo = sharedPreferences.isNightMode.not()
-                sharedPreferences.isNightMode = toggleTo
-                (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
-                    toggleTo.toNightModeInt
+                requireActivity().toggleDayNight(sharedPreferences)
                 return true
             }
 

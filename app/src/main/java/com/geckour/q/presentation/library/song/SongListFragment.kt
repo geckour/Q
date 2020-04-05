@@ -13,7 +13,6 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.viewModelScope
-import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Track
@@ -22,17 +21,15 @@ import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.presentation.main.MainViewModel
-import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.getSongListFromTrackList
 import com.geckour.q.util.getSongListFromTrackMediaId
 import com.geckour.q.util.getSongListFromTrackMediaIdWithTrackNum
 import com.geckour.q.util.getTrackMediaIds
-import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
-import com.geckour.q.util.toNightModeInt
+import com.geckour.q.util.toggleDayNight
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -130,11 +127,7 @@ class SongListFragment : Fragment() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == R.id.menu_toggle_daynight) {
-            val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(requireContext())
-            val toggleTo = sharedPreferences.isNightMode.not()
-            sharedPreferences.isNightMode = toggleTo
-            (requireActivity() as CrashlyticsBundledActivity).delegate.localNightMode =
-                toggleTo.toNightModeInt
+            requireActivity().toggleDayNight()
             return true
         }
 
