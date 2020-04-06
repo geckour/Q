@@ -36,7 +36,6 @@
         android:layout_height="match_parent"
         android:background="@drawable/sheet_background"
         android:clickable="true"
-        android:elevation="24dp"
         android:focusable="true"
         android:theme="?attr/bottomSheetStyle"
         app:layoutDescription="@xml/bottom_sheet_motion"
