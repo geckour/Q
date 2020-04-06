@@ -21,7 +21,6 @@ import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.Song
 import com.geckour.q.presentation.main.MainActivity
 import com.geckour.q.presentation.main.MainViewModel
-import com.geckour.q.presentation.share.SharingActivity
 import com.geckour.q.presentation.sheet.BottomSheetViewModel.Companion.PREF_KEY_SHOW_LOCK_TOUCH_QUEUE
 import com.geckour.q.service.SleepTimerService
 import com.geckour.q.util.getTimeString
@@ -86,10 +85,9 @@ class BottomSheetFragment : Fragment() {
             val from = this.from
             val to = this.to
 
-            if (viewHolder == null && from != null && to != null) mainViewModel.onQueueSwap(
-                from,
-                to
-            )
+            if (viewHolder == null && from != null && to != null) {
+                mainViewModel.onQueueSwap(from, to)
+            }
 
             this.from = null
             this.to = null
@@ -111,9 +109,7 @@ class BottomSheetFragment : Fragment() {
                     else -> R.drawable.ic_queue
                 }
             )
-            if (state == BottomSheetBehavior.STATE_EXPANDED) {
-                viewModel.scrollToCurrent.value = Unit
-            }
+            if (state == BottomSheetBehavior.STATE_EXPANDED) scrollToCurrent()
         }
     }
 
@@ -128,6 +124,7 @@ class BottomSheetFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.viewModel = viewModel
+        binding.mainViewModel = mainViewModel
         adapter = QueueListAdapter(mainViewModel)
         binding.recyclerView.adapter = adapter
         itemTouchHelper.attachToRecyclerView(binding.recyclerView)
@@ -139,7 +136,9 @@ class BottomSheetFragment : Fragment() {
             override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
 
             override fun onStopTrackingTouch(seekBar: SeekBar) {
-                viewModel.onNewSeekBarProgress(seekBar.progress.toFloat() / seekBar.max)
+                mainViewModel.onNewSeekBarProgress(
+                    seekBar.progress.toFloat() / seekBar.max, viewModel.currentSong
+                )
             }
         })
 
@@ -151,7 +150,7 @@ class BottomSheetFragment : Fragment() {
             it.setOnTouchListener { _, event ->
                 when (event.action) {
                     MotionEvent.ACTION_UP -> {
-                        viewModel.onNewPlaybackButton(PlaybackButton.UNDEFINED)
+                        mainViewModel.onNewPlaybackButton(PlaybackButton.UNDEFINED)
                     }
                 }
 
@@ -188,9 +187,7 @@ class BottomSheetFragment : Fragment() {
     @SuppressLint("ClickableViewAccessibility")
     private fun observeEvents() {
         mainViewModel.player.observe(requireActivity()) { player ->
-            player ?: return@observe
-
-            player.apply {
+            player?.apply {
                 setOnQueueChangedListener {
                     onQueueChanged(it)
                 }
@@ -217,7 +214,8 @@ class BottomSheetFragment : Fragment() {
             }
         }
 
-        viewModel.artworkLongClick.observe(requireActivity()) { _ ->
+        viewModel.artworkLongClick.observe(requireActivity()) { valid ->
+            if (valid != true) return@observe
             context?.also { context ->
                 PopupMenu(context, binding.artwork).apply {
                     setOnMenuItemClickListener {
@@ -235,6 +233,7 @@ class BottomSheetFragment : Fragment() {
                     }
                     inflate(R.menu.song_transition)
                 }.show()
+                viewModel.onArtworkDialogShown()
             }
         }
 
@@ -246,34 +245,33 @@ class BottomSheetFragment : Fragment() {
             }
         }
 
-        viewModel.scrollToCurrent.observe(requireActivity()) {
-            if (adapter.itemCount > 0) {
-                binding.recyclerView.smoothScrollToPosition(viewModel.currentPosition.value ?: 0)
-            }
-        }
-
         viewModel.toggleCurrentRemain.observe(requireActivity()) {
+            if (it != true) return@observe
             sharedPreferences.showCurrentRemain = sharedPreferences.showCurrentRemain.not()
             val song = viewModel.currentSong ?: return@observe
             val ratio = binding.seekBar.progress / binding.seekBar.max.toFloat()
             val elapsedTime = (song.duration * ratio).toLong()
             setTimeRightText(song, elapsedTime)
+            viewModel.onCurrentRemainToggled()
+        }
+
+        viewModel.scrollToCurrent.observe(requireActivity()) {
+            if (it != true) return@observe
+            scrollToCurrent()
+            viewModel.onScrollToCurrentInvoked()
         }
 
         viewModel.touchLock.observe(requireActivity()) {
             it ?: return@observe
             sharedPreferences.edit().putBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, it).apply()
-            binding.queueUnTouchable = it
+            binding.queueLocked = it
             binding.recyclerView.setOnTouchListener(if (it) touchLockListener else null)
         }
+    }
 
-        viewModel.share.observe(requireActivity()) {
-            it ?: return@observe
-            startActivity(SharingActivity.getIntent(requireContext(), it))
-        }
-
-        viewModel.changeRepeatMode.observe(requireActivity()) {
-            mainViewModel.player.value?.rotateRepeatMode()
+    private fun scrollToCurrent() {
+        if (adapter.itemCount > 0) {
+            binding.recyclerView.smoothScrollToPosition(viewModel.currentPosition)
         }
     }
 
@@ -320,7 +318,6 @@ class BottomSheetFragment : Fragment() {
     }
 
     private fun onPlayingChanged(playing: Boolean) {
-        viewModel.playing = playing
         binding.playing = playing
         if (playing.not()) {
             requireContext().startService(SleepTimerService.getCancelIntent(requireContext()))
@@ -335,7 +332,7 @@ class BottomSheetFragment : Fragment() {
         val elapsed = (song.duration * viewModel.playbackRatio).toLong()
         binding.textTimeLeft.text = elapsed.getTimeString()
         setTimeRightText(song, elapsed)
-        val remain = adapter.getItemsAfter((viewModel.currentPosition.value ?: -1) + 1)
+        val remain = adapter.getItemsAfter(viewModel.currentPosition + 1)
             .map { it.duration }
             .sum() + (song.duration - elapsed)
         binding.textTimeRemain.text =
@@ -364,6 +361,6 @@ class BottomSheetFragment : Fragment() {
     private fun reloadBindingVariable() {
         binding.viewModel = binding.viewModel
         binding.isQueueNotEmpty = binding.isQueueNotEmpty
-        binding.queueUnTouchable = binding.queueUnTouchable
+        binding.queueLocked = binding.queueLocked
     }
 }

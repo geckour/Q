@@ -19,10 +19,11 @@ import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.DialogAddQueuePlaylistBinding
-import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.Song
 import com.geckour.q.presentation.dialog.playlist.QueueAddPlaylistListAdapter
 import com.geckour.q.presentation.main.MainViewModel
+import com.geckour.q.presentation.share.SharingActivity
+import com.geckour.q.service.SleepTimerService
 import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.fetchPlaylists
 import com.geckour.q.util.orDefaultForModel
@@ -39,31 +40,22 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
         internal const val PREF_KEY_SHOW_LOCK_TOUCH_QUEUE = "pref_key_lock_touch_queue"
     }
 
-    var playing = false
     internal var sheetState: Int = BottomSheetBehavior.STATE_COLLAPSED
-    internal val artworkLongClick = MutableLiveData<Unit>()
+    private val _artworkLongClick = MutableLiveData<Boolean>()
+    internal val artworkLongClick: LiveData<Boolean> = _artworkLongClick.distinctUntilChanged()
     internal val toggleSheetState = MutableLiveData<Unit>()
-    private val _playbackButton = MutableLiveData<PlaybackButton>()
-    internal val playbackButton: LiveData<PlaybackButton> = _playbackButton.distinctUntilChanged()
     internal var currentQueue: List<Song> = emptyList()
-    private var _currentPosition = MutableLiveData<Int>()
-    internal var currentPosition: LiveData<Int> = _currentPosition.distinctUntilChanged()
+    internal var currentPosition: Int = -1
     internal var playbackRatio: Float = 0f
-    internal val clearQueue = MutableLiveData<Unit>()
-    private val _newSeekBarProgress = MutableLiveData<Float>()
-    internal val newSeekBarProgress: LiveData<Float> = _newSeekBarProgress.distinctUntilChanged()
-    internal val shuffle = MutableLiveData<Unit>()
-    internal val shuffleMenu = MutableLiveData<Unit>()
-    internal val scrollToCurrent = MutableLiveData<Unit>()
-
-    internal val changeRepeatMode = MutableLiveData<Unit>()
-    internal val toggleCurrentRemain = MutableLiveData<Unit>()
+    private val _toggleCurrentRemain = MutableLiveData<Boolean>()
+    internal val toggleCurrentRemain: LiveData<Boolean> =
+        _toggleCurrentRemain.distinctUntilChanged()
+    private val _scrollToCurrent = MutableLiveData<Boolean>()
+    internal val scrollToCurrent: LiveData<Boolean> = _scrollToCurrent.distinctUntilChanged()
     private val _touchLock = MutableLiveData<Boolean>()
     internal val touchLock: LiveData<Boolean> = _touchLock.distinctUntilChanged()
-    private val _share = MutableLiveData<Song>()
-    internal val share: LiveData<Song> = _share.distinctUntilChanged()
 
-    val currentSong: Song? get() = currentQueue.getOrNull(_currentPosition.value ?: -1)
+    val currentSong: Song? get() = currentQueue.getOrNull(currentPosition)
 
     private var updateArtworkJob: Job = Job()
 
@@ -74,7 +66,7 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
 
     fun onLongClickArtwork(): Boolean {
         if (currentQueue.isNotEmpty()) {
-            artworkLongClick.value = Unit
+            _artworkLongClick.value = true
             return true
         }
         return false
@@ -127,75 +119,31 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
         }
     }
 
-    fun onClickClearQueueButton() {
-        clearQueue.value = Unit
-    }
-
-    fun onClickShuffleButton() {
-        shuffle.value = Unit
-    }
-
-    fun onLongClickShuffleButton(): Boolean {
-        shuffleMenu.value = Unit
-        return true
-    }
-
-    fun onClickScrollToCurrentButton() {
-        scrollToCurrent.value = Unit
-    }
-
-    fun onClickRepeatButton() {
-        changeRepeatMode.value = Unit
-    }
-
     fun onClickTimeRight() {
-        toggleCurrentRemain.value = Unit
-    }
-
-    fun onClickTouchOffButton() {
-        _touchLock.value = touchLock.value?.not() ?: true
+        _toggleCurrentRemain.value = true
     }
 
     fun onClickShareButton() {
-        _share.value = currentSong
+        getApplication<Application>().startActivity(
+            SharingActivity.getIntent(getApplication(), currentSong ?: return)
+        )
     }
 
-    fun onPlayOrPause() {
-        _playbackButton.value = if (playing) PlaybackButton.PAUSE else PlaybackButton.PLAY
+    fun onClickScrollToCurrentButton() {
+        _scrollToCurrent.value = true
     }
 
-    fun onNext() {
-        _playbackButton.value = PlaybackButton.NEXT
-    }
-
-    fun onPrev() {
-        _playbackButton.value = PlaybackButton.PREV
-    }
-
-    fun onFF(): Boolean {
-        _playbackButton.value = PlaybackButton.FF
-        return true
-    }
-
-    fun onRewind(): Boolean {
-        _playbackButton.value = PlaybackButton.REWIND
-        return true
+    fun onClickTouchLockButton() {
+        _touchLock.value = _touchLock.value?.not() ?: true
     }
 
     internal fun onNewPosition(position: Int) {
-        _currentPosition.value = position
+        currentPosition = position
+        SleepTimerService.notifyTrackChanged(getApplication(), currentSong ?: return, playbackRatio)
     }
 
     internal fun reAttach() {
         _touchLock.value = touchLock.value
-    }
-
-    internal fun onNewSeekBarProgress(progress: Float) {
-        _newSeekBarProgress.value = progress
-    }
-
-    internal fun onNewPlaybackButton(playbackButton: PlaybackButton) {
-        _playbackButton.value = playbackButton
     }
 
     internal fun onTransitionToArtist(mainViewModel: MainViewModel) = viewModelScope.launch {
@@ -216,6 +164,38 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
                 DB.getInstance(getApplication()).albumDao().get(it)?.toDomainModel()
             }
         }
+    }
+
+    internal fun setArtwork(imageView: ImageView) {
+        updateArtworkJob.cancel()
+        updateArtworkJob = viewModelScope.launch(Dispatchers.IO) {
+            val drawable = currentSong.let {
+                when (it) {
+                    null -> null
+                    else -> {
+                        Glide.with(imageView)
+                            .asDrawable()
+                            .load(it.thumbUriString.orDefaultForModel)
+                            .applyDefaultSettings()
+                            .submit()
+                            .get()
+                    }
+                }
+            }
+            withContext(Dispatchers.Main) { imageView.setImageDrawable(drawable) }
+        }
+    }
+
+    internal fun onArtworkDialogShown() {
+        _artworkLongClick.value = false
+    }
+
+    internal fun onCurrentRemainToggled() {
+        _toggleCurrentRemain.value = false
+    }
+
+    internal fun onScrollToCurrentInvoked() {
+        _scrollToCurrent.value = false
     }
 
     private fun createPlaylist(title: String) {
@@ -242,26 +222,6 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
                 put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, i + 1)
                 put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
             })
-        }
-    }
-
-    internal fun setArtwork(imageView: ImageView) {
-        updateArtworkJob.cancel()
-        updateArtworkJob = viewModelScope.launch(Dispatchers.IO) {
-            val drawable = currentSong.let {
-                when (it) {
-                    null -> null
-                    else -> {
-                        Glide.with(imageView)
-                            .asDrawable()
-                            .load(it.thumbUriString.orDefaultForModel)
-                            .applyDefaultSettings()
-                            .submit()
-                            .get()
-                    }
-                }
-            }
-            withContext(Dispatchers.Main) { imageView.setImageDrawable(drawable) }
         }
     }
 }

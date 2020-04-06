@@ -14,6 +14,10 @@
             type="com.geckour.q.presentation.sheet.BottomSheetViewModel" />
 
         <variable
+            name="mainViewModel"
+            type="com.geckour.q.presentation.main.MainViewModel" />
+
+        <variable
             name="isQueueNotEmpty"
             type="Boolean" />
 
@@ -22,7 +26,7 @@
             type="Boolean" />
 
         <variable
-            name="queueUnTouchable"
+            name="queueLocked"
             type="Boolean" />
     </data>
 
@@ -81,8 +85,8 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> isQueueNotEmpty ? viewModel.onPrev() : null}"
-            android:onLongClick="@{() -> viewModel.onRewind()}"
+            android:onClick="@{() -> isQueueNotEmpty ? mainViewModel.onPrev() : null}"
+            android:onLongClick="@{() -> mainViewModel.onRewind()}"
             android:padding="8dp"
             android:src="@drawable/ic_backward"
             app:tintAttr="@{isQueueNotEmpty ? R.attr.colorButtonNormal : R.attr.colorInactive}"
@@ -93,7 +97,7 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> isQueueNotEmpty ? viewModel.onPlayOrPause() : null}"
+            android:onClick="@{() -> isQueueNotEmpty ? mainViewModel.onPlayOrPause(playing) : null}"
             android:padding="8dp"
             android:src="@{playing ? @drawable/ic_pause : @drawable/ic_play}"
             app:tintAttr="@{isQueueNotEmpty ? R.attr.colorButtonNormal : R.attr.colorInactive}"
@@ -105,8 +109,8 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> isQueueNotEmpty ? viewModel.onNext() : null}"
-            android:onLongClick="@{() -> viewModel.onFF()}"
+            android:onClick="@{() -> isQueueNotEmpty ? mainViewModel.onNext() : null}"
+            android:onLongClick="@{() -> mainViewModel.onFF()}"
             android:padding="8dp"
             android:src="@drawable/ic_forward"
             app:tintAttr="@{isQueueNotEmpty ? R.attr.colorButtonNormal : R.attr.colorInactive}"
@@ -117,7 +121,7 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> viewModel.onClickRepeatButton()}"
+            android:onClick="@{() -> mainViewModel.onClickRepeatButton()}"
             android:padding="6dp"
             android:tint="?attr/colorAccent"
             android:visibility="gone"
@@ -130,8 +134,8 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> isQueueNotEmpty ? viewModel.onClickShuffleButton() : null}"
-            android:onLongClick="@{() -> isQueueNotEmpty ? viewModel.onLongClickShuffleButton() : false}"
+            android:onClick="@{() -> isQueueNotEmpty ? mainViewModel.onClickShuffleButton() : null}"
+            android:onLongClick="@{() -> isQueueNotEmpty ? mainViewModel.onLongClickShuffleButton() : false}"
             android:padding="6dp"
             android:src="@drawable/ic_shuffle"
             app:tintAttr="@{isQueueNotEmpty ? R.attr.colorAccent : R.attr.colorInactive}"
@@ -219,10 +223,10 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> viewModel.onClickTouchOffButton()}"
+            android:onClick="@{() -> viewModel.onClickTouchLockButton()}"
             android:padding="6dp"
             android:src="@drawable/ic_touch_lock"
-            app:tintAttr="@{queueUnTouchable ? R.attr.colorAccent : R.attr.colorInactive}"
+            app:tintAttr="@{queueLocked ? R.attr.colorAccent : R.attr.colorInactive}"
             tools:tint="@color/colorInactive" />
 
         <ImageView
@@ -241,7 +245,7 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> isQueueNotEmpty ? viewModel.onClickClearQueueButton() : null}"
+            android:onClick="@{() -> isQueueNotEmpty ? mainViewModel.onClickClearQueueButton() : null}"
             android:padding="6dp"
             android:src="@drawable/ic_remove"
             app:tintAttr="@{isQueueNotEmpty ? R.attr.colorAccent : R.attr.colorInactive}"

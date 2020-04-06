@@ -7,7 +7,6 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
 import android.provider.MediaStore
-import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.View
@@ -24,7 +23,6 @@ import com.geckour.q.R
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogShuffleMenuBinding
 import com.geckour.q.databinding.DialogSleepBinding
-import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.domain.model.Song
 import com.geckour.q.presentation.easteregg.EasterEggFragment
@@ -148,8 +146,7 @@ class MainActivity : CrashlyticsBundledActivity() {
             else -> null
         }?.let {
             supportFragmentManager.commit {
-                if (binding.contentMain.childCount == 0)
-                    add(R.id.content_main, it)
+                if (binding.contentMain.childCount == 0) add(R.id.content_main, it)
                 else {
                     replace(R.id.content_main, it)
                     addToBackStack(null)
@@ -354,68 +351,6 @@ class MainActivity : CrashlyticsBundledActivity() {
             searchListAdapter.replaceItems(it)
         }
 
-        bottomSheetViewModel.playbackButton.observe(this) {
-            it ?: return@observe
-            viewModel.player.value?.onMediaButtonEvent(
-                KeyEvent(
-                    if (it == PlaybackButton.UNDEFINED) KeyEvent.ACTION_UP else KeyEvent.ACTION_DOWN,
-                    when (it) {
-                        PlaybackButton.PLAY -> KeyEvent.KEYCODE_MEDIA_PLAY
-                        PlaybackButton.PAUSE -> KeyEvent.KEYCODE_MEDIA_PAUSE
-                        PlaybackButton.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
-                        PlaybackButton.PREV -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
-                        PlaybackButton.FF -> KeyEvent.KEYCODE_MEDIA_FAST_FORWARD
-                        PlaybackButton.REWIND -> KeyEvent.KEYCODE_MEDIA_REWIND
-                        PlaybackButton.UNDEFINED -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-                    }
-                )
-            )
-        }
-
-        bottomSheetViewModel.currentPosition.observe(this) {
-            it ?: return@observe
-            bottomSheetViewModel.currentSong?.let {
-                SleepTimerService.notifyTrackChanged(this, it, bottomSheetViewModel.playbackRatio)
-            }
-        }
-
-        bottomSheetViewModel.clearQueue.observe(this) {
-            viewModel.player.value?.clear(true)
-        }
-
-        bottomSheetViewModel.newSeekBarProgress.observe(this) {
-            if (it == null) return@observe
-            viewModel.player.value?.seek(it)
-            bottomSheetViewModel.currentSong?.let { song ->
-                SleepTimerService.notifyTrackChanged(this, song, it)
-            }
-        }
-
-        bottomSheetViewModel.shuffle.observe(this) { viewModel.player.value?.shuffle() }
-
-        bottomSheetViewModel.shuffleMenu.observe(this) {
-            val binding = DialogShuffleMenuBinding.inflate(LayoutInflater.from(this))
-            val dialog = AlertDialog.Builder(this)
-                .setView(binding.root)
-                .setCancelable(true)
-                .show()
-
-            binding.apply {
-                choiceReset.setOnClickListener {
-                    viewModel.player.value?.resetQueueOrder()
-                    dialog.dismiss()
-                }
-                choiceShuffleOrientedAlbum.setOnClickListener {
-                    viewModel.player.value?.shuffle(ShuffleActionType.SHUFFLE_ALBUM_ORIENTED)
-                    dialog.dismiss()
-                }
-                choiceShuffleOrientedArtist.setOnClickListener {
-                    viewModel.player.value?.shuffle(ShuffleActionType.SHUFFLE_ARTIST_ORIENTED)
-                    dialog.dismiss()
-                }
-            }
-        }
-
         paymentViewModel.saveSuccess.observe(this) {
             if (it == null) return@observe
             Snackbar.make(
@@ -427,11 +362,7 @@ class MainActivity : CrashlyticsBundledActivity() {
 
     private fun setupDrawer() {
         drawerToggle = ActionBarDrawerToggle(
-            this,
-            binding.drawerLayout,
-            binding.toolbar,
-            R.string.drawer_open,
-            R.string.drawer_close
+            this, binding.drawerLayout, binding.toolbar, R.string.drawer_open, R.string.drawer_close
         )
         binding.drawerLayout.addDrawerListener(drawerToggle)
         drawerToggle.syncState()
@@ -474,8 +405,7 @@ class MainActivity : CrashlyticsBundledActivity() {
     }
 
     private fun toggleIndicateLock(locking: Boolean) {
-        binding.indicatorLocking.root.visibility =
-            if (locking) View.VISIBLE else View.GONE
+        binding.indicatorLocking.root.visibility = if (locking) View.VISIBLE else View.GONE
         binding.drawerLayout.setDrawerLockMode(
             if (locking) DrawerLayout.LOCK_MODE_LOCKED_CLOSED
             else DrawerLayout.LOCK_MODE_UNLOCKED
@@ -581,9 +511,7 @@ class MainActivity : CrashlyticsBundledActivity() {
 
             timerSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(
-                    seekBar: SeekBar?,
-                    progress: Int,
-                    fromUser: Boolean
+                    seekBar: SeekBar?, progress: Int, fromUser: Boolean
                 ) {
                     val value = progress * 5
                     timerValue = value
@@ -595,9 +523,7 @@ class MainActivity : CrashlyticsBundledActivity() {
             })
             toleranceSlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(
-                    seekBar: SeekBar?,
-                    progress: Int,
-                    fromUser: Boolean
+                    seekBar: SeekBar?, progress: Int, fromUser: Boolean
                 ) {
                     toleranceValue = progress
                 }

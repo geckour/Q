@@ -5,6 +5,8 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.ServiceConnection
 import android.os.IBinder
+import android.view.KeyEvent
+import android.view.LayoutInflater
 import android.widget.SearchView
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
@@ -13,20 +15,24 @@ import androidx.preference.PreferenceManager
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.databinding.DialogShuffleMenuBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.domain.model.Genre
+import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.SearchCategory
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.Song
 import com.geckour.q.service.MediaRetrieveService
 import com.geckour.q.service.PlayerService
+import com.geckour.q.service.SleepTimerService
 import com.geckour.q.util.BoolConverter
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.QueueInfo
 import com.geckour.q.util.QueueMetadata
+import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.getSong
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.searchAlbumByFuzzyTitle
@@ -113,6 +119,121 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         unbindPlayer()
     }
+
+    fun onRequestNavigate(artist: Artist) {
+        clearSelections()
+        selectedArtist.value = artist
+        currentOrientedClassType = OrientedClassType.ARTIST
+    }
+
+    fun onRequestNavigate(album: Album) {
+        clearSelections()
+        selectedAlbum.value = album
+        currentOrientedClassType = OrientedClassType.ALBUM
+    }
+
+    fun onRequestNavigate(song: Song) {
+        clearSelections()
+        selectedSong = song
+        currentOrientedClassType = OrientedClassType.SONG
+    }
+
+    fun onRequestNavigate(genre: Genre) {
+        clearSelections()
+        selectedGenre.value = genre
+        currentOrientedClassType = OrientedClassType.GENRE
+    }
+
+    fun onRequestNavigate(playlist: Playlist) {
+        clearSelections()
+        selectedPlaylist.value = playlist
+        currentOrientedClassType = OrientedClassType.PLAYLIST
+    }
+
+    fun onNewQueue(songs: List<Song>, actionType: InsertActionType, classType: OrientedClassType) {
+        player.value?.submitQueue(QueueInfo(QueueMetadata(actionType, classType), songs))
+        isQueueNotEmpty = songs.isNotEmpty()
+    }
+
+    fun onQueueSwap(from: Int, to: Int) {
+        player.value?.swapQueuePosition(from, to)
+    }
+
+    fun onQueueRemove(index: Int) {
+        player.value?.removeQueue(index)
+    }
+
+    fun onRequestRemoveSongFromPlaylist(playOrder: Int) {
+        toRemovePlayOrderOfPlaylist.value = playOrder
+    }
+
+    fun onCancelSync(context: Context) {
+        MediaRetrieveService.cancel(context)
+    }
+
+    fun onToolbarClick() {
+        scrollToTop.postValue(Unit)
+    }
+
+    fun onClickShuffleButton() {
+        player.value?.shuffle()
+    }
+
+    fun onLongClickShuffleButton(): Boolean {
+        val binding = DialogShuffleMenuBinding.inflate(LayoutInflater.from(getApplication()))
+        val dialog = androidx.appcompat.app.AlertDialog.Builder(getApplication())
+            .setView(binding.root)
+            .setCancelable(true)
+            .show()
+
+        binding.apply {
+            choiceReset.setOnClickListener {
+                player.value?.resetQueueOrder()
+                dialog.dismiss()
+            }
+            choiceShuffleOrientedAlbum.setOnClickListener {
+                player.value?.shuffle(ShuffleActionType.SHUFFLE_ALBUM_ORIENTED)
+                dialog.dismiss()
+            }
+            choiceShuffleOrientedArtist.setOnClickListener {
+                player.value?.shuffle(ShuffleActionType.SHUFFLE_ARTIST_ORIENTED)
+                dialog.dismiss()
+            }
+        }
+        return true
+    }
+
+    fun onPlayOrPause(playing: Boolean?) {
+        onNewPlaybackButton(if (playing == true) PlaybackButton.PAUSE else PlaybackButton.PLAY)
+    }
+
+    fun onNext() {
+        onNewPlaybackButton(PlaybackButton.NEXT)
+    }
+
+    fun onPrev() {
+        onNewPlaybackButton(PlaybackButton.PREV)
+    }
+
+    fun onFF(): Boolean {
+        onNewPlaybackButton(PlaybackButton.FF)
+        return true
+    }
+
+    fun onRewind(): Boolean {
+        onNewPlaybackButton(PlaybackButton.REWIND)
+        return true
+    }
+
+    fun onClickClearQueueButton() {
+        player.value?.clear(true)
+    }
+
+    fun onClickRepeatButton() {
+        player.value?.rotateRepeatMode()
+    }
+
+    var isQueueNotEmpty: Boolean = false
 
     internal fun initSearchQueryListener(searchView: SearchView) {
         searchQueryListener = SearchQueryListener(searchView)
@@ -238,36 +359,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun onRequestNavigate(artist: Artist) {
-        clearSelections()
-        selectedArtist.value = artist
-        currentOrientedClassType = OrientedClassType.ARTIST
-    }
-
-    fun onRequestNavigate(album: Album) {
-        clearSelections()
-        selectedAlbum.value = album
-        currentOrientedClassType = OrientedClassType.ALBUM
-    }
-
-    fun onRequestNavigate(song: Song) {
-        clearSelections()
-        selectedSong = song
-        currentOrientedClassType = OrientedClassType.SONG
-    }
-
-    fun onRequestNavigate(genre: Genre) {
-        clearSelections()
-        selectedGenre.value = genre
-        currentOrientedClassType = OrientedClassType.GENRE
-    }
-
-    fun onRequestNavigate(playlist: Playlist) {
-        clearSelections()
-        selectedPlaylist.value = playlist
-        currentOrientedClassType = OrientedClassType.PLAYLIST
-    }
-
     private fun clearSelections() {
         selectedArtist.value = null
         selectedAlbum.value = null
@@ -291,15 +382,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 player.value?.removeQueue(song.id)
             }
 
-            DB.getInstance(getApplication()).trackDao()
+            DB.getInstance(getApplication())
+                .trackDao()
                 .deleteIncludingRootIfEmpty(getApplication(), song.id)
         }
     }
 
     internal fun onSongMenuAction(
-        actionType: InsertActionType,
-        album: Album,
-        sortByTrackOrder: Boolean
+        actionType: InsertActionType, album: Album, sortByTrackOrder: Boolean
     ) {
         viewModelScope.launch {
             val songs = withContext(Dispatchers.IO) {
@@ -309,8 +399,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     loading.postValue(true)
                     db.trackDao()
                         .getAllByAlbum(
-                            album.id,
-                            BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                            album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                         )
                         .mapNotNull { getSong(db, it) }
                         .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
@@ -334,28 +423,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         player.value?.play(position)
     }
 
-    fun onNewQueue(songs: List<Song>, actionType: InsertActionType, classType: OrientedClassType) {
-        player.value?.submitQueue(QueueInfo(QueueMetadata(actionType, classType), songs))
+    internal fun onNewSeekBarProgress(progress: Float, currentSong: Song?) {
+        player.value?.seek(progress)
+        SleepTimerService.notifyTrackChanged(getApplication(), currentSong ?: return, progress)
     }
 
-    fun onQueueSwap(from: Int, to: Int) {
-        player.value?.swapQueuePosition(from, to)
-    }
-
-    fun onQueueRemove(index: Int) {
-        player.value?.removeQueue(index)
-    }
-
-    fun onRequestRemoveSongFromPlaylist(playOrder: Int) {
-        toRemovePlayOrderOfPlaylist.value = playOrder
-    }
-
-    fun onCancelSync(context: Context) {
-        MediaRetrieveService.cancel(context)
-    }
-
-    fun onToolbarClick() {
-        scrollToTop.postValue(Unit)
+    internal fun onNewPlaybackButton(playbackButton: PlaybackButton) {
+        player.value?.onMediaButtonEvent(
+            KeyEvent(
+                if (playbackButton == PlaybackButton.UNDEFINED) KeyEvent.ACTION_UP else KeyEvent.ACTION_DOWN,
+                when (playbackButton) {
+                    PlaybackButton.PLAY -> KeyEvent.KEYCODE_MEDIA_PLAY
+                    PlaybackButton.PAUSE -> KeyEvent.KEYCODE_MEDIA_PAUSE
+                    PlaybackButton.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
+                    PlaybackButton.PREV -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
+                    PlaybackButton.FF -> KeyEvent.KEYCODE_MEDIA_FAST_FORWARD
+                    PlaybackButton.REWIND -> KeyEvent.KEYCODE_MEDIA_REWIND
+                    PlaybackButton.UNDEFINED -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
+                }
+            )
+        )
     }
 
     inner class SearchQueryListener(private val searchView: SearchView) :
