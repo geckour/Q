@@ -106,7 +106,7 @@ suspend fun getSong(
 
 suspend fun getSong(
     db: DB, track: Track, genreId: Long? = null, playlistId: Long? = null, trackNum: Int? = null
-): Song? = withContext(Dispatchers.IO) {
+): Song = withContext(Dispatchers.IO) {
     val artist = db.artistDao().get(track.artistId)
     val album = db.albumDao().get(track.albumId)
     val artwork = db.albumDao().get(track.albumId)?.artworkUriString

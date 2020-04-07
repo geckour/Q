@@ -3,24 +3,24 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <RelativeLayout
+    <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="72dp"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:layout_height="match_parent">
 
         <com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBarWrapper
             android:layout_width="wrap_content"
             android:layout_height="0dp"
-            android:layout_alignParentBottom="true"
-            android:layout_alignParentTop="true"
-            android:layout_centerHorizontal="true">
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
 
             <com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBar
                 android:id="@+id/seek_bar"
                 android:layout_width="0dp"
                 android:layout_height="0dp"
-                android:paddingEnd="20dp"
                 android:paddingStart="20dp"
+                android:paddingEnd="20dp"
                 android:splitTrack="false"
                 app:seekBarRotation="CW270" />
         </com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBarWrapper>
@@ -29,12 +29,14 @@
             android:id="@+id/seek_bar_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            android:layout_centerHorizontal="true"
             android:ellipsize="end"
             android:maxLines="1"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="10sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
             tools:text="2kHz" />
-    </RelativeLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

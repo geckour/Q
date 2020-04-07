@@ -4,9 +4,13 @@ import android.app.Application
 import android.content.ComponentName
 import android.content.Context
 import android.content.ServiceConnection
+import android.os.Bundle
 import android.os.IBinder
+import android.view.Gravity
 import android.view.KeyEvent
 import android.view.LayoutInflater
+import android.view.View
+import android.widget.PopupMenu
 import android.widget.SearchView
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
@@ -42,6 +46,7 @@ import com.geckour.q.util.searchPlaylistByFuzzyTitle
 import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainModel
+import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -152,7 +157,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onNewQueue(songs: List<Song>, actionType: InsertActionType, classType: OrientedClassType) {
         player.value?.submitQueue(QueueInfo(QueueMetadata(actionType, classType), songs))
-        isQueueNotEmpty = songs.isNotEmpty()
     }
 
     fun onQueueSwap(from: Int, to: Int) {
@@ -233,7 +237,45 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         player.value?.rotateRepeatMode()
     }
 
-    var isQueueNotEmpty: Boolean = false
+    fun onEasterTapped(song: Song?) {
+        FirebaseAnalytics.getInstance(getApplication())
+            .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
+                putString(FirebaseAnalytics.Param.ITEM_NAME, "Tapped today's song")
+            })
+
+        song?.let { onNewQueue(listOf(it), InsertActionType.NEXT, OrientedClassType.SONG) }
+    }
+
+    fun onEasterLongTapped(song: Song?, anchorView: View): Boolean {
+        PopupMenu(getApplication(), anchorView, Gravity.BOTTOM).apply {
+            setOnMenuItemClickListener { menuItem ->
+                val db = DB.getInstance(getApplication())
+                when (menuItem.itemId) {
+                    R.id.menu_transition_to_artist -> {
+                        viewModelScope.launch(Dispatchers.IO) {
+                            selectedArtist.postValue(
+                                song?.artist?.let {
+                                    db.artistDao().getAllByTitle(it).firstOrNull()?.toDomainModel()
+                                }
+                            )
+                        }
+                        return@setOnMenuItemClickListener true
+                    }
+                    R.id.menu_transition_to_album -> {
+                        viewModelScope.launch(Dispatchers.IO) {
+                            selectedAlbum.postValue(
+                                song?.albumId?.let { db.albumDao().get(it)?.toDomainModel() }
+                            )
+                        }
+                        return@setOnMenuItemClickListener true
+                    }
+                }
+                return@setOnMenuItemClickListener false
+            }
+            inflate(R.menu.song_transition)
+        }.show()
+        return true
+    }
 
     internal fun initSearchQueryListener(searchView: SearchView) {
         searchQueryListener = SearchQueryListener(searchView)

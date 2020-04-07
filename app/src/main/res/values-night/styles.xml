@@ -16,7 +16,7 @@
         <item name="searchViewStyle">@style/SearchStyle</item>
         <item name="colorInactive">@color/colorInactiveInverse</item>
         <item name="colorOption">@color/colorOptionInverse</item>
-        <item name="colorNowPlaying">@color/colorNowPlayingInverse</item>
+        <item name="colorWeakAccent">@color/colorWeakAccentInverse</item>
         <item name="colorTextPrimary">@color/colorTextPrimaryInverse</item>
         <item name="colorTextSecondary">@color/colorTextSecondaryInverse</item>
         <item name="colorTextStrong">@color/colorTextStrongInverse</item>
@@ -25,6 +25,8 @@
         <item name="colorBackgroundInactive">@color/colorBackgroundInactiveInverse</item>
         <item name="colorBackgroundBottomSheet">@color/colorBackgroundBottomSheetInverse</item>
         <item name="colorBackgroundSearch">@color/colorBackgroundSearchInverse</item>
+        <item name="colorBackgroundNavItem">@color/colorWeakAccentInverse</item>
+        <item name="colorBackgroundProgress">@color/colorBackgroundProgressInverse</item>
         <item name="colorTransparent">@android:color/transparent</item>
         <item name="colorShadowBottomSheetStart">@color/colorShadowBottomSheetStartInverse</item>
         <item name="colorShadowBottomSheetCenter">@color/colorShadowBottomSheetCenterInverse</item>
@@ -33,6 +35,6 @@
     </style>
 
     <style name="SearchStyle" parent="AppTheme">
-        <item name="android:colorBackground">@color/colorBackgroundSearchInverse</item>
+        <item name="android:colorBackground">?attr/colorBackgroundSearch</item>
     </style>
 </resources>

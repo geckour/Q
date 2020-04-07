@@ -6,7 +6,7 @@ import androidx.lifecycle.ViewModel
 class EqualizerViewModel : ViewModel() {
 
     internal val flatten: MutableLiveData<Unit> = MutableLiveData()
-    val enabled: MutableLiveData<Boolean> = MutableLiveData()
+    val enabled: MutableLiveData<Boolean> = MutableLiveData(false)
 
     fun onFlatten() {
         flatten.value = Unit

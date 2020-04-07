@@ -40,6 +40,7 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
         internal const val PREF_KEY_SHOW_LOCK_TOUCH_QUEUE = "pref_key_lock_touch_queue"
     }
 
+    var playing = MutableLiveData<Boolean>(false)
     internal var sheetState: Int = BottomSheetBehavior.STATE_COLLAPSED
     private val _artworkLongClick = MutableLiveData<Boolean>()
     internal val artworkLongClick: LiveData<Boolean> = _artworkLongClick.distinctUntilChanged()
@@ -53,7 +54,8 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     private val _scrollToCurrent = MutableLiveData<Boolean>()
     internal val scrollToCurrent: LiveData<Boolean> = _scrollToCurrent.distinctUntilChanged()
     private val _touchLock = MutableLiveData<Boolean>()
-    internal val touchLock: LiveData<Boolean> = _touchLock.distinctUntilChanged()
+    val touchLock: LiveData<Boolean> = _touchLock.distinctUntilChanged()
+    val isQueueNotEmpty: Boolean get() = currentQueue.isEmpty().not()
 
     val currentSong: Song? get() = currentQueue.getOrNull(currentPosition)
 

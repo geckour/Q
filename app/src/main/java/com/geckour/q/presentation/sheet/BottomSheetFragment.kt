@@ -102,7 +102,6 @@ class BottomSheetFragment : Fragment() {
         @SuppressLint("SwitchIntDef")
         override fun onStateChanged(v: View, state: Int) {
             viewModel.sheetState = state
-            reloadBindingVariable()
             binding.buttonToggleVisibleQueue.setImageResource(
                 when (state) {
                     BottomSheetBehavior.STATE_EXPANDED -> R.drawable.ic_collapse
@@ -123,6 +122,7 @@ class BottomSheetFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        binding.lifecycleOwner = viewLifecycleOwner
         binding.viewModel = viewModel
         binding.mainViewModel = mainViewModel
         adapter = QueueListAdapter(mainViewModel)
@@ -186,7 +186,7 @@ class BottomSheetFragment : Fragment() {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun observeEvents() {
-        mainViewModel.player.observe(requireActivity()) { player ->
+        mainViewModel.player.observe(viewLifecycleOwner) { player ->
             player?.apply {
                 setOnQueueChangedListener {
                     onQueueChanged(it)
@@ -214,7 +214,7 @@ class BottomSheetFragment : Fragment() {
             }
         }
 
-        viewModel.artworkLongClick.observe(requireActivity()) { valid ->
+        viewModel.artworkLongClick.observe(viewLifecycleOwner) { valid ->
             if (valid != true) return@observe
             context?.also { context ->
                 PopupMenu(context, binding.artwork).apply {
@@ -237,7 +237,7 @@ class BottomSheetFragment : Fragment() {
             }
         }
 
-        viewModel.toggleSheetState.observe(requireActivity()) {
+        viewModel.toggleSheetState.observe(viewLifecycleOwner) {
             behavior.state = when (val state = behavior.state) {
                 BottomSheetBehavior.STATE_COLLAPSED -> BottomSheetBehavior.STATE_EXPANDED
                 BottomSheetBehavior.STATE_SETTLING -> state
@@ -245,7 +245,7 @@ class BottomSheetFragment : Fragment() {
             }
         }
 
-        viewModel.toggleCurrentRemain.observe(requireActivity()) {
+        viewModel.toggleCurrentRemain.observe(viewLifecycleOwner) {
             if (it != true) return@observe
             sharedPreferences.showCurrentRemain = sharedPreferences.showCurrentRemain.not()
             val song = viewModel.currentSong ?: return@observe
@@ -255,16 +255,15 @@ class BottomSheetFragment : Fragment() {
             viewModel.onCurrentRemainToggled()
         }
 
-        viewModel.scrollToCurrent.observe(requireActivity()) {
+        viewModel.scrollToCurrent.observe(viewLifecycleOwner) {
             if (it != true) return@observe
             scrollToCurrent()
             viewModel.onScrollToCurrentInvoked()
         }
 
-        viewModel.touchLock.observe(requireActivity()) {
+        viewModel.touchLock.observe(viewLifecycleOwner) {
             it ?: return@observe
             sharedPreferences.edit().putBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, it).apply()
-            binding.queueLocked = it
             binding.recyclerView.setOnTouchListener(if (it) touchLockListener else null)
         }
     }
@@ -277,12 +276,9 @@ class BottomSheetFragment : Fragment() {
 
     private fun onQueueChanged(queue: List<Song>) {
         adapter.setItems(queue)
-        viewModel.currentQueue = adapter.getItems()
+        viewModel.currentQueue = queue
 
         val changed = (adapter.getItemIds() == queue.map { it.id }).not()
-        val notEmpty = queue.isNotEmpty()
-
-        binding.isQueueNotEmpty = notEmpty
 
         val totalTime = queue.map { it.duration }.sum()
         binding.textTimeTotal.text =
@@ -318,7 +314,7 @@ class BottomSheetFragment : Fragment() {
     }
 
     private fun onPlayingChanged(playing: Boolean) {
-        binding.playing = playing
+        viewModel.playing.value = playing
         if (playing.not()) {
             requireContext().startService(SleepTimerService.getCancelIntent(requireContext()))
         }
@@ -356,11 +352,5 @@ class BottomSheetFragment : Fragment() {
             )
             visibility = View.VISIBLE
         }
-    }
-
-    private fun reloadBindingVariable() {
-        binding.viewModel = binding.viewModel
-        binding.isQueueNotEmpty = binding.isQueueNotEmpty
-        binding.queueLocked = binding.queueLocked
     }
 }

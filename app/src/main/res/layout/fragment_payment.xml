@@ -50,7 +50,7 @@
             android:layout_height="28dp"
             android:layout_marginTop="24dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> viewModel.onClickSave()}"
+            android:onClick="@{() -> viewModel.onClickSave(context)}"
             android:src="@drawable/ic_save"
             android:tint="?attr/colorOption"
             app:layout_constraintBottom_toTopOf="@id/guide_peek_height"

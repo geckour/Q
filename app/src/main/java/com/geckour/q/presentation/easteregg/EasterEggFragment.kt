@@ -54,30 +54,21 @@ class EasterEggFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        setHasOptionsMenu(true)
+
         FirebaseAnalytics.getInstance(requireContext())
             .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
                 putString(FirebaseAnalytics.Param.ITEM_NAME, "Show easter egg screen")
             })
 
-        viewModel.viewModelScope.launch(Dispatchers.IO) {
-            val db = DB.getInstance(requireContext())
-            val trackList = db.trackDao().getAll()
-            if (trackList.isEmpty()) return@launch
+        binding.lifecycleOwner = viewLifecycleOwner
+        binding.viewModel = viewModel
 
-            val max = trackList.size
-            val seed = Calendar.getInstance(TimeZone.getDefault())
-                .let { it.get(Calendar.DAY_OF_YEAR) * 1000 + it.get(Calendar.YEAR) }
-            val random = Random(seed.toLong())
-            while (true) {
-                val index = random.nextInt(max)
-                val song = getSong(db, trackList[index])
-                if (song != null) {
-                    viewModel.song = song
-
-                    withContext(Dispatchers.Main) { setSong() }
-                    return@launch
-                }
-            }
+        viewModel.song.observe(viewLifecycleOwner) {
+            Glide.with(binding.artwork)
+                .load(it?.thumbUriString.orDefaultForModel)
+                .applyDefaultSettings()
+                .into(binding.artwork)
         }
     }
 
@@ -85,16 +76,6 @@ class EasterEggFragment : Fragment() {
         super.onResume()
 
         mainViewModel.currentFragmentId.value = R.layout.fragment_easter_egg
-
-        if (viewModel.song != null) setSong()
-    }
-
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
-
-        setHasOptionsMenu(true)
-
-        observeEvents()
     }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
@@ -111,66 +92,5 @@ class EasterEggFragment : Fragment() {
             else -> return false
         }
         return true
-    }
-
-    private fun setSong() {
-        binding.viewModel = viewModel
-        Glide.with(binding.artwork)
-            .load(viewModel.song?.thumbUriString.orDefaultForModel)
-            .applyDefaultSettings()
-            .into(binding.artwork)
-    }
-
-    private fun observeEvents() {
-        viewModel.tap.observe(this) {
-            FirebaseAnalytics.getInstance(requireContext())
-                .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
-                    putString(FirebaseAnalytics.Param.ITEM_NAME, "Tapped today's song")
-                })
-
-            viewModel.song?.apply {
-                mainViewModel.onNewQueue(
-                    listOf(this), InsertActionType.NEXT, OrientedClassType.SONG
-                )
-            }
-        }
-
-        viewModel.longTap.observe(this) { _ ->
-            context?.also { context ->
-                PopupMenu(context, binding.artwork, Gravity.BOTTOM).apply {
-                    setOnMenuItemClickListener {
-                        return@setOnMenuItemClickListener when (it.itemId) {
-                            R.id.menu_transition_to_artist -> {
-                                viewModel.viewModelScope.launch {
-                                    mainViewModel.selectedArtist.value =
-                                        withContext((Dispatchers.IO)) {
-                                            viewModel.song?.artist?.let {
-                                                DB.getInstance(context).artistDao()
-                                                    .getAllByTitle(it)
-                                                    .firstOrNull()?.toDomainModel()
-                                            }
-                                        }
-                                }
-                                true
-                            }
-                            R.id.menu_transition_to_album -> {
-                                viewModel.viewModelScope.launch {
-                                    mainViewModel.selectedAlbum.value =
-                                        withContext(Dispatchers.IO) {
-                                            viewModel.song?.albumId?.let {
-                                                DB.getInstance(context).albumDao().get(it)
-                                                    ?.toDomainModel()
-                                            }
-                                        }
-                                }
-                                true
-                            }
-                            else -> false
-                        }
-                    }
-                    inflate(R.menu.song_transition)
-                }.show()
-            }
-        }
     }
 }

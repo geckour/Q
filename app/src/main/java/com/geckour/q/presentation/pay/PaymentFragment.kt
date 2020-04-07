@@ -42,18 +42,13 @@ class PaymentFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
+        binding.lifecycleOwner = viewLifecycleOwner
         binding.viewModel = viewModel
         binding.kyashQr.setOnTouchListener { v, event ->
             v.elevation =
                 (if (event.action == MotionEvent.ACTION_UP) 8 else 4) * resources.displayMetrics.density
             return@setOnTouchListener false
         }
-    }
-
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
-
-        observeEvents()
     }
 
     override fun onResume() {
@@ -79,28 +74,5 @@ class PaymentFragment : Fragment() {
         return true
     }
 
-    private fun observeEvents() {
-        viewModel.save.observe(this) {
-            val success = insertQRImage()
-            viewModel.saveSuccess.value = success
-        }
-    }
 
-    private fun insertQRImage(): Boolean = context?.let { context ->
-        val bitmap = (context.getDrawable(R.drawable.kyash_qr) as? BitmapDrawable)?.bitmap
-            ?: return@let false
-        val uri = context.contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-            ContentValues().apply {
-                put(MediaStore.Images.Media.TITLE, "Q_donation_QR.png")
-                put(MediaStore.Images.Media.DISPLAY_NAME, "Q donation QR code")
-                put(MediaStore.Images.Media.DESCRIPTION, "QR code for donation to author of Q")
-                put(MediaStore.Images.Media.MIME_TYPE, "image/png")
-                put(MediaStore.Images.Media.DATE_ADDED, System.currentTimeMillis() / 1000)
-            }) ?: return@let false
-        bitmap.compress(
-            Bitmap.CompressFormat.PNG,
-            100,
-            context.contentResolver.openOutputStream(uri)
-        )
-    } ?: false
 }
