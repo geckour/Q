@@ -26,6 +26,7 @@ import com.geckour.q.presentation.main.MainActivity
 import com.geckour.q.util.QNotificationChannel
 import com.geckour.q.util.getNotificationBuilder
 import com.geckour.q.util.storeMediaInfo
+import kotlinx.coroutines.runBlocking
 import timber.log.Timber
 import kotlin.math.PI
 import kotlin.math.cos
@@ -128,12 +129,13 @@ class MediaRetrieveService : IntentService(NAME) {
                         val trackMediaId = cursor.getLong(
                             cursor.getColumnIndex(MediaStore.Audio.Media._ID)
                         )
-                        val result = db.storeMediaInfo(
-                            applicationContext,
-                            trackPath,
-                            trackMediaId
-                        )
-                        if (result > -1) newTrackMediaIds.add(trackMediaId)
+                        runCatching {
+                            runBlocking {
+                                db.storeMediaInfo(applicationContext, trackPath, trackMediaId)
+                            }
+                        }.onSuccess {
+                            newTrackMediaIds.add(trackMediaId)
+                        }.onFailure { Timber.e(it) }
                         sendBroadcast(MainActivity.createProgressIntent(progress))
                         startForeground(
                             NOTIFICATION_ID_RETRIEVE,

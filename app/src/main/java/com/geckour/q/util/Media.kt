@@ -457,20 +457,20 @@ fun Long.getTimeString(): String {
     )
 }
 
-fun DB.storeMediaInfo(
+suspend fun DB.storeMediaInfo(
     context: Context, trackPath: String, trackMediaId: Long
-): Long {
+): Long = withContext(Dispatchers.IO) {
     val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackMediaId)
 
     val file = File(trackPath)
     if (file.exists().not()) {
         context.contentResolver.delete(uri, null, null)
-        return -1
+        throw IllegalStateException("Media file does not exist")
     }
 
     val lastModified = file.lastModified()
     trackDao().getByMediaId(trackMediaId)?.let {
-        if (it.lastModified >= lastModified) return it.id
+        if (it.lastModified >= lastModified) return@withContext it.id
     }
 
     val audioFile = AudioFileIO.read(file)
@@ -560,7 +560,7 @@ fun DB.storeMediaInfo(
         discNum,
         0
     )
-    return trackDao().upsert(track)
+    return@withContext trackDao().upsert(track)
 }
 
 val String?.orDefaultForModel get() = this?.let { File(this) } ?: R.drawable.ic_empty
