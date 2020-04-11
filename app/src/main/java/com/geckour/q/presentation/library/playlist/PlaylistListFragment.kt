@@ -135,11 +135,11 @@ class PlaylistListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        mainViewModel.scrollToTop.observe(this) {
+        mainViewModel.scrollToTop.observe(viewLifecycleOwner) {
             binding.recyclerView.smoothScrollToPosition(0)
         }
 
-        mainViewModel.forceLoad.observe(this) {
+        mainViewModel.forceLoad.observe(viewLifecycleOwner) {
             viewModel.viewModelScope.launch {
                 context?.apply {
                     mainViewModel.onLoadStateChanged(true)

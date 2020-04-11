@@ -101,7 +101,7 @@ class EqualizerFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        mainViewModel.player.observe(this) { player ->
+        mainViewModel.player.observe(viewLifecycleOwner) { player ->
             player ?: return@observe
 
             player.setOnEqualizerStateChangedListener {
@@ -109,7 +109,7 @@ class EqualizerFragment : Fragment() {
             }
         }
 
-        viewModel.enabled.observe(this) {
+        viewModel.enabled.observe(viewLifecycleOwner) {
             it ?: return@observe
 
             val changeTo = it.not()
@@ -120,7 +120,7 @@ class EqualizerFragment : Fragment() {
             )
         }
 
-        viewModel.flatten.observe(this) { flatten() }
+        viewModel.flatten.observe(viewLifecycleOwner) { flatten() }
     }
 
     private fun onEqualizerStateChanged(state: Boolean) {

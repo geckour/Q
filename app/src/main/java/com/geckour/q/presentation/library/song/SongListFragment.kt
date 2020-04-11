@@ -152,7 +152,7 @@ class SongListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        mainViewModel.toRemovePlayOrderOfPlaylist.observe(this) {
+        mainViewModel.toRemovePlayOrderOfPlaylist.observe(viewLifecycleOwner) {
             it ?: return@observe
 
             val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST) ?: return@observe
@@ -164,16 +164,16 @@ class SongListFragment : Fragment() {
             if (removed) adapter.removeByTrackNum(it)
         }
 
-        mainViewModel.scrollToTop.observe(this) {
+        mainViewModel.scrollToTop.observe(viewLifecycleOwner) {
             binding.recyclerView.smoothScrollToPosition(0)
         }
 
-        mainViewModel.forceLoad.observe(this) {
+        mainViewModel.forceLoad.observe(viewLifecycleOwner) {
             adapter.clearItems()
             fetchSongs()
         }
 
-        mainViewModel.deletedSongId.observe(this) {
+        mainViewModel.deletedSongId.observe(viewLifecycleOwner) {
             if (it == null) return@observe
             adapter.onSongDeleted(it)
         }

@@ -146,11 +146,11 @@ class GenreListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        mainViewModel.scrollToTop.observe(this) {
+        mainViewModel.scrollToTop.observe(viewLifecycleOwner) {
             binding.recyclerView.smoothScrollToPosition(0)
         }
 
-        mainViewModel.forceLoad.observe(this) {
+        mainViewModel.forceLoad.observe(viewLifecycleOwner) {
             viewModel.viewModelScope.launch {
                 mainViewModel.onLoadStateChanged(true)
                 adapter.setItems(fetchGenres())

@@ -164,11 +164,11 @@ class AlbumListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        mainViewModel.scrollToTop.observe(this) {
+        mainViewModel.scrollToTop.observe(viewLifecycleOwner) {
             binding.recyclerView.smoothScrollToPosition(0)
         }
 
-        mainViewModel.forceLoad.observe(this) {
+        mainViewModel.forceLoad.observe(viewLifecycleOwner) {
             context?.also { context ->
                 viewModel.viewModelScope.launch {
                     mainViewModel.onLoadStateChanged(true)
@@ -180,7 +180,7 @@ class AlbumListFragment : Fragment() {
             }
         }
 
-        viewModel.albumIdDeleted.observe(this) {
+        viewModel.albumIdDeleted.observe(viewLifecycleOwner) {
             if (it == null) return@observe
             adapter.onAlbumDeleted(it)
         }
