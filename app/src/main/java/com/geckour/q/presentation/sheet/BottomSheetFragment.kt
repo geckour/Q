@@ -184,7 +184,6 @@ class BottomSheetFragment : Fragment() {
         super.onDestroy()
         mainViewModel.player.value?.apply {
             setOnQueueChangedListener(null)
-            setOnCurrentPositionChangedListener(null)
             setOnPlaybackStateChangeListener(null)
             setOnPlaybackRatioChangedListener(null)
             setOnRepeatModeChangedListener(null)
@@ -195,11 +194,8 @@ class BottomSheetFragment : Fragment() {
     private fun observeEvents() {
         mainViewModel.player.observe(viewLifecycleOwner) { player ->
             player?.apply {
-                setOnQueueChangedListener {
-                    onQueueChanged(it)
-                }
-                setOnCurrentPositionChangedListener { position, songChanged ->
-                    onCurrentQueuePositionChanged(position, songChanged)
+                setOnQueueChangedListener { songs, position, songChanged ->
+                    onQueueChanged(songs, position, songChanged)
                 }
                 setOnPlaybackStateChangeListener { playbackState, playWhenReady ->
                     onPlayingChanged(
@@ -290,26 +286,21 @@ class BottomSheetFragment : Fragment() {
         }
     }
 
-    private fun onQueueChanged(queue: List<Song>) {
-        adapter.setItems(queue)
+    @SuppressLint("ClickableViewAccessibility")
+    private fun onQueueChanged(queue: List<Song>, position: Int, songChanged: Boolean) {
+        adapter.setNowPlayingPosition(position, queue)
         viewModel.currentQueue = queue
-
-        val changed = (adapter.getItemIds() == queue.map { it.id }).not()
+        viewModel.onNewPosition(position)
+        binding.viewModel = viewModel
 
         val totalTime = queue.map { it.duration }.sum()
         binding.textTimeTotal.text =
             requireContext().getString(R.string.bottom_sheet_time_total, totalTime.getTimeString())
 
+        val changed = (adapter.getItemIds() == queue.map { it.id }).not()
         if (changed && behavior.state == BottomSheetBehavior.STATE_COLLAPSED) {
             binding.buttonToggleVisibleQueue.shake()
         }
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private fun onCurrentQueuePositionChanged(position: Int, songChanged: Boolean) {
-        adapter.setNowPlayingPosition(position)
-        viewModel.onNewPosition(position)
-        binding.viewModel = viewModel
 
         if (songChanged) {
             viewModel.playbackRatio = 0f

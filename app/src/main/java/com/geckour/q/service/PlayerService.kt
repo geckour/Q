@@ -230,8 +230,7 @@ class PlayerService : Service() {
 
     private val queue = mutableListOf<Song>()
     private val cachedQueueOrder = mutableListOf<Long>()
-    private var onQueueChanged: ((List<Song>) -> Unit)? = null
-    private var onCurrentPositionChanged: ((Int, Boolean) -> Unit)? = null
+    private var onQueueChanged: ((List<Song>, Int, Boolean) -> Unit)? = null
     private var onPlaybackStateChanged: ((Int, Boolean) -> Unit)? = null
     private var onPlaybackRatioChanged: ((Float) -> Unit)? = null
     private var onRepeatModeChanged: ((Int) -> Unit)? = null
@@ -246,7 +245,7 @@ class PlayerService : Service() {
         override fun onTracksChanged(
             trackGroups: TrackGroupArray, trackSelections: TrackSelectionArray
         ) {
-            onCurrentPositionChanged?.invoke(currentPosition, songChanged)
+            onQueueChanged?.invoke(queue, currentPosition, songChanged)
             notificationUpdateJob.cancel()
             notificationUpdateJob = showNotification()
             playbackCountIncreaseJob = increasePlaybackCount()
@@ -261,8 +260,7 @@ class PlayerService : Service() {
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = Unit
 
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
-            onQueueChanged?.invoke(queue)
-            onCurrentPositionChanged?.invoke(currentPosition, songChanged)
+            onQueueChanged?.invoke(queue, currentPosition, songChanged)
             if (source.size < 1) {
                 destroyNotification()
             }
@@ -400,12 +398,8 @@ class PlayerService : Service() {
         mediaSession.controller?.dispatchMediaButtonEvent(event)
     }
 
-    fun setOnQueueChangedListener(listener: ((List<Song>) -> Unit)?) {
+    fun setOnQueueChangedListener(listener: ((songs: List<Song>, position: Int, songChanged: Boolean) -> Unit)?) {
         this.onQueueChanged = listener
-    }
-
-    fun setOnCurrentPositionChangedListener(listener: ((Int, Boolean) -> Unit)?) {
-        this.onCurrentPositionChanged = listener
     }
 
     fun setOnPlaybackStateChangeListener(
@@ -826,8 +820,8 @@ class PlayerService : Service() {
                 db.artistDao().apply {
                     val artist = getAllByTitle(song.artist).firstOrNull() ?: db.albumDao()
                         .get(song.albumId)?.artistId?.let {
-                        get(it)
-                    }
+                            get(it)
+                        }
                     artist?.apply { increasePlaybackCount(id) }
                 }
             }
@@ -909,8 +903,7 @@ class PlayerService : Service() {
 
     fun publishStatus() {
         serviceScope.launch(Dispatchers.Main) {
-            onQueueChanged?.invoke(queue)
-            onCurrentPositionChanged?.invoke(currentPosition, false)
+            onQueueChanged?.invoke(queue, currentPosition, false)
             currentSong?.apply {
                 onPlaybackRatioChanged?.invoke(player.currentPosition.toFloat() / this.duration)
             }

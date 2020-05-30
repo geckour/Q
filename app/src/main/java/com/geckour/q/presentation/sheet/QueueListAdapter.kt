@@ -5,6 +5,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
 import androidx.lifecycle.viewModelScope
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
@@ -17,7 +19,7 @@ import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.orDefaultForModel
-import com.geckour.q.util.swap
+import com.geckour.q.util.swapped
 import com.geckour.q.util.toDomainModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -25,65 +27,42 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class QueueListAdapter(private val viewModel: MainViewModel) :
-    RecyclerView.Adapter<QueueListAdapter.ViewHolder>() {
+    ListAdapter<Song, QueueListAdapter.ViewHolder>(diffUtil) {
 
-    private val items: MutableList<Song> = mutableListOf()
+    companion object {
+        private val diffUtil = object : DiffUtil.ItemCallback<Song>() {
 
-    internal fun getItems(): List<Song> = items
+            override fun areItemsTheSame(oldItem: Song, newItem: Song): Boolean =
+                oldItem.id == newItem.id
 
-    internal fun setItems(items: List<Song>) {
-        this.items.clear()
-        this.items.addAll(items)
-        notifyDataSetChanged()
-    }
-
-    internal fun getItemIds(): List<Long> = items.map { it.id }
-
-    internal fun getItemsAfter(start: Int): List<Song> =
-        if (start < items.lastIndex) items.subList(start, items.size)
-        else emptyList()
-
-    internal fun setNowPlayingPosition(index: Int?) {
-
-        if (index != null) {
-            if (index in 0 until items.size) {
-                val changed: MutableList<Int> = mutableListOf()
-                items.mapIndexed { i, song ->
-                    val matched = i == index
-                    if (song.nowPlaying != matched) changed.add(i)
-                }
-                changed.forEach {
-                    items[it] = items[it].let { it.copy(nowPlaying = it.nowPlaying.not()) }
-                    notifyItemChanged(it)
-                }
-            }
-        } else {
-            val changed: MutableList<Int> = mutableListOf()
-            items.mapIndexed { i, song -> if (song.nowPlaying) changed.add(i) }
-            changed.forEach {
-                items[it] = items[it].copy(nowPlaying = false)
-                notifyItemChanged(it)
-            }
+            override fun areContentsTheSame(oldItem: Song, newItem: Song): Boolean =
+                oldItem == newItem
         }
     }
 
+    internal fun getItemIds(): List<Long> = currentList.map { it.id }
+
+    internal fun getItemsAfter(start: Int): List<Song> =
+        if (start in currentList.indices) currentList.subList(start, currentList.size)
+        else emptyList()
+
+    internal fun setNowPlayingPosition(index: Int?, items: List<Song>? = null) {
+        submitList((items ?: currentList).mapIndexed { i, song -> song.copy(nowPlaying = i == index) })
+    }
+
     internal fun move(from: Int, to: Int) {
-        if (from !in items.indices || to !in items.indices) return
-        items.swap(from, to)
-        notifyItemMoved(from, to)
+        if (from !in currentList.indices || to !in currentList.indices) return
+        submitList(currentList.toMutableList().swapped(from, to))
     }
 
     private fun remove(index: Int) {
-        if (index !in items.indices) return
-        items.removeAt(index)
-        notifyItemRemoved(index)
+        if (index !in currentList.indices) return
+        submitList(currentList.toMutableList().apply { removeAt(index) })
         viewModel.onQueueRemove(index)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
         ViewHolder(ItemListSongBinding.inflate(LayoutInflater.from(parent.context), parent, false))
-
-    override fun getItemCount(): Int = items.size
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         holder.bind()
@@ -99,7 +78,8 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
                         viewModel.viewModelScope.launch {
                             viewModel.selectedArtist.value = withContext((Dispatchers.IO)) {
                                 binding.data?.artist?.let {
-                                    DB.getInstance(binding.root.context).artistDao().getAllByTitle(it)
+                                    DB.getInstance(binding.root.context).artistDao()
+                                        .getAllByTitle(it)
                                         .firstOrNull()?.toDomainModel()
                                 }
                             }
@@ -145,7 +125,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
         }
 
         fun bind() {
-            val song = items[adapterPosition]
+            val song = currentList[adapterPosition]
             binding.data = song
             binding.duration.text = song.durationString
             viewModel.viewModelScope.launch(Dispatchers.IO) {
