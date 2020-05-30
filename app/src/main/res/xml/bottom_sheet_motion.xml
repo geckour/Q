@@ -124,9 +124,10 @@
 
         <Constraint
             android:id="@+id/text_time_left"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toBottomOf="@id/seek_bar"
+            app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toLeftOf="@id/seek_bar"
             app:layout_constraintTop_toTopOf="@id/seek_bar" />
 
@@ -142,10 +143,11 @@
 
         <Constraint
             android:id="@+id/text_time_right"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toBottomOf="@id/seek_bar"
             app:layout_constraintLeft_toRightOf="@id/seek_bar"
+            app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="@id/seek_bar" />
 
         <Constraint
@@ -328,9 +330,10 @@
 
         <Constraint
             android:id="@id/text_time_left"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toBottomOf="@id/seek_bar"
+            app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toLeftOf="@id/seek_bar"
             app:layout_constraintTop_toTopOf="@id/seek_bar" />
 
@@ -346,10 +349,11 @@
 
         <Constraint
             android:id="@id/text_time_right"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toBottomOf="@id/seek_bar"
             app:layout_constraintLeft_toRightOf="@id/seek_bar"
+            app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="@id/seek_bar" />
 
         <Constraint

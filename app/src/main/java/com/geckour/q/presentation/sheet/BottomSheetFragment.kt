@@ -209,7 +209,7 @@ class BottomSheetFragment : Fragment() {
                 }
                 setOnPlaybackRatioChangedListener {
                     viewModel.playbackRatio = it
-                    onPlaybackRatioChanged()
+                    onPlaybackRatioChanged(viewModel.playbackRatio)
                 }
                 setOnRepeatModeChangedListener {
                     onRepeatModeChanged(it)
@@ -304,7 +304,7 @@ class BottomSheetFragment : Fragment() {
 
         if (songChanged) {
             viewModel.playbackRatio = 0f
-            onPlaybackRatioChanged()
+            onPlaybackRatioChanged(0f)
         }
 
         val noCurrentSong = viewModel.currentSong == null
@@ -328,12 +328,12 @@ class BottomSheetFragment : Fragment() {
         }
     }
 
-    private fun onPlaybackRatioChanged() {
-        binding.seekBar.progress = (binding.seekBar.max * viewModel.playbackRatio).toInt()
+    private fun onPlaybackRatioChanged(playbackRatio: Float) {
+        binding.seekBar.progress = (binding.seekBar.max * playbackRatio).toInt()
 
         val song = viewModel.currentSong ?: return
 
-        val elapsed = (song.duration * viewModel.playbackRatio).toLong()
+        val elapsed = (song.duration * playbackRatio).toLong()
         binding.textTimeLeft.text = elapsed.getTimeString()
         setTimeRightText(song, elapsed)
         val remain = adapter.getItemsAfter(viewModel.currentPosition + 1)
