@@ -12,6 +12,7 @@ import android.widget.SeekBar
 import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
@@ -29,6 +30,10 @@ import com.geckour.q.util.shake
 import com.geckour.q.util.showCurrentRemain
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class BottomSheetFragment : Fragment() {
 
@@ -141,6 +146,8 @@ class BottomSheetFragment : Fragment() {
                 )
             }
         })
+
+        resetMarquee()
 
         listOf(
             binding.buttonControllerLeft,
@@ -268,6 +275,15 @@ class BottomSheetFragment : Fragment() {
         }
     }
 
+    private fun resetMarquee() {
+        viewModel.viewModelScope.launch(Dispatchers.IO) {
+            val views = listOf(binding.textSong, binding.textArtistAndAlbum)
+            views.forEach { withContext(Dispatchers.Main) { it.isSelected = false } }
+            delay(1000)
+            views.forEach { withContext(Dispatchers.Main) { it.isSelected = true } }
+        }
+    }
+
     private fun scrollToCurrent() {
         if (adapter.itemCount > 0) {
             binding.recyclerView.smoothScrollToPosition(viewModel.currentPosition)
@@ -311,6 +327,7 @@ class BottomSheetFragment : Fragment() {
             }
         }
         viewModel.setArtwork(binding.artwork)
+        resetMarquee()
     }
 
     private fun onPlayingChanged(playing: Boolean) {
