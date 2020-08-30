@@ -9,7 +9,6 @@ import androidx.lifecycle.viewModelScope
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.util.toDomainModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import com.geckour.q.data.db.model.Artist as DBArtist
 
@@ -24,7 +23,7 @@ class ArtistListViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     private fun flowDataWithArtwork(data: List<DBArtist>) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             val db = DB.getInstance(getApplication())
             artistListData.postValue(data.map {
                 val thumbString = db.albumDao()

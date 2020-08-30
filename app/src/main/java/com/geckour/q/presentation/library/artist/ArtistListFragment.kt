@@ -110,7 +110,7 @@ class ArtistListFragment : Fragment() {
                 else -> return false
             }
 
-            viewModel.viewModelScope.launch(Dispatchers.IO) {
+            viewModel.viewModelScope.launch {
                 val sortByTrackOrder = item.itemId !in listOf(
                     R.id.menu_insert_all_simple_shuffle_next,
                     R.id.menu_insert_all_simple_shuffle_last,
@@ -125,12 +125,12 @@ class ArtistListFragment : Fragment() {
                             db.trackDao().getAllByAlbumSorted(
                                 it.id,
                                 BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                            ).mapNotNull { getSong(db, it) }
+                            ).map { getSong(db, it) }
                         } else {
                             db.trackDao().getAllByAlbum(
                                 it.id,
                                 BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                            ).mapNotNull { getSong(db, it) }
+                            ).map { getSong(db, it) }
                         }
                     }
                 }

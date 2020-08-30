@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import androidx.core.app.ShareCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.domain.model.Song
@@ -15,13 +16,8 @@ import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.bundleArtwork
 import com.geckour.q.util.formatPattern
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import timber.log.Timber
-import kotlin.coroutines.CoroutineContext
 
 class SharingActivity : CrashlyticsBundledActivity() {
 
@@ -40,12 +36,6 @@ class SharingActivity : CrashlyticsBundledActivity() {
             }
     }
 
-    private var job = Job()
-    private val coroutineScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext
-            get() = job + Dispatchers.Main
-    }
-
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
         if (intent == null) return
@@ -56,18 +46,10 @@ class SharingActivity : CrashlyticsBundledActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        job = Job()
-
         setCrashlytics()
 
         onNewIntent(intent)
         finish()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-
-        job.cancel()
     }
 
     private fun startShare(song: Song, requireUnlock: Boolean) {
@@ -81,23 +63,22 @@ class SharingActivity : CrashlyticsBundledActivity() {
         if (requireUnlock.not() || keyguardManager?.isDeviceLocked != true) {
             val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
 
-            coroutineScope.launch(Dispatchers.IO) {
+            lifecycleScope.launch {
                 val sharingText: String = song.getSharingText(this@SharingActivity, song.album)
-                withContext(Dispatchers.Main) {
-                    ShareCompat.IntentBuilder.from(this@SharingActivity)
-                        .setChooserTitle(R.string.share_chooser_title).setText(sharingText).also {
-                            if (sharedPreferences.bundleArtwork && song.thumbUriString != null) {
-                                it.setStream(Uri.parse(song.thumbUriString)).setType("image/*")
-                            } else it.setType("text/plain")
-                        }.createChooserIntent().apply {
-                            PendingIntent.getActivity(
-                                this@SharingActivity,
-                                IntentRequestCode.SHARE.code,
-                                this@apply,
-                                PendingIntent.FLAG_CANCEL_CURRENT
-                            ).send()
-                        }
-                }
+
+                ShareCompat.IntentBuilder.from(this@SharingActivity)
+                    .setChooserTitle(R.string.share_chooser_title).setText(sharingText).also {
+                        if (sharedPreferences.bundleArtwork && song.thumbUriString != null) {
+                            it.setStream(Uri.parse(song.thumbUriString)).setType("image/*")
+                        } else it.setType("text/plain")
+                    }.createChooserIntent().apply {
+                        PendingIntent.getActivity(
+                            this@SharingActivity,
+                            IntentRequestCode.SHARE.code,
+                            this@apply,
+                            PendingIntent.FLAG_CANCEL_CURRENT
+                        ).send()
+                    }
             }
         }
     }

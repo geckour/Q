@@ -149,42 +149,39 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     internal fun onTransitionToArtist(mainViewModel: MainViewModel) = viewModelScope.launch {
-        mainViewModel.selectedArtist.value = withContext((Dispatchers.IO)) {
-            currentSong?.artist?.let {
-                DB.getInstance(getApplication())
-                    .artistDao()
-                    .getAllByTitle(it)
-                    .firstOrNull()
-                    ?.toDomainModel()
-            }
+        mainViewModel.selectedArtist.value = currentSong?.artist?.let {
+            DB.getInstance(getApplication())
+                .artistDao()
+                .getAllByTitle(it)
+                .firstOrNull()
+                ?.toDomainModel()
         }
     }
 
     internal fun onTransitionToAlbum(mainViewModel: MainViewModel) = viewModelScope.launch {
-        mainViewModel.selectedAlbum.value = withContext(Dispatchers.IO) {
-            currentSong?.albumId?.let {
-                DB.getInstance(getApplication()).albumDao().get(it)?.toDomainModel()
-            }
+        mainViewModel.selectedAlbum.value = currentSong?.albumId?.let {
+            DB.getInstance(getApplication()).albumDao().get(it)?.toDomainModel()
         }
     }
 
     internal fun setArtwork(imageView: ImageView) {
         updateArtworkJob.cancel()
-        updateArtworkJob = viewModelScope.launch(Dispatchers.IO) {
-            val drawable = currentSong.let {
-                when (it) {
-                    null -> null
-                    else -> {
+        updateArtworkJob = viewModelScope.launch {
+            val drawable = when (val song = currentSong) {
+                null -> null
+                else -> {
+                    withContext(Dispatchers.IO) {
                         Glide.with(imageView)
                             .asDrawable()
-                            .load(it.thumbUriString.orDefaultForModel)
+                            .load(song.thumbUriString.orDefaultForModel)
                             .applyDefaultSettings()
                             .submit()
                             .get()
                     }
                 }
             }
-            withContext(Dispatchers.Main) { imageView.setImageDrawable(drawable) }
+
+            imageView.setImageDrawable(drawable)
         }
     }
 

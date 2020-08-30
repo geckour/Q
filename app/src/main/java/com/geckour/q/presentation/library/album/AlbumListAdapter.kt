@@ -19,9 +19,7 @@ import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.orDefaultForModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class AlbumListAdapter(private val viewModel: MainViewModel) :
@@ -94,14 +92,12 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
                 true
             }
             binding.option.setOnClickListener { getPopupMenu(it).show() }
-            viewModel.viewModelScope.launch(Dispatchers.IO) {
+            viewModel.viewModelScope.launch {
                 try {
-                    withContext(Dispatchers.Main) {
-                        Glide.with(binding.thumb)
-                            .load(album.thumbUriString.orDefaultForModel)
-                            .applyDefaultSettings()
-                            .into(binding.thumb)
-                    }
+                    Glide.with(binding.thumb)
+                        .load(album.thumbUriString.orDefaultForModel)
+                        .applyDefaultSettings()
+                        .into(binding.thumb)
                 } catch (t: Throwable) {
                     Timber.e(t)
                 }

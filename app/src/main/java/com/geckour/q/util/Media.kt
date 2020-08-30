@@ -2,7 +2,6 @@ package com.geckour.q.util
 
 import android.app.Notification
 import android.app.PendingIntent
-import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -36,13 +35,8 @@ import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.apache.commons.codec.binary.Hex
-import org.apache.commons.codec.digest.DigestUtils
-import org.jaudiotagger.audio.AudioFileIO
-import org.jaudiotagger.tag.FieldKey
 import timber.log.Timber
 import java.io.File
-import java.io.FileOutputStream
 import kotlin.math.min
 
 
@@ -77,7 +71,7 @@ data class QueueInfo(
 )
 
 suspend fun getSongListFromTrackList(db: DB, dbTrackList: List<Track>): List<Song> =
-    dbTrackList.mapNotNull { getSong(db, it) }
+    dbTrackList.map { getSong(db, it) }
 
 suspend fun getSongListFromTrackMediaId(
     db: DB, dbTrackIdList: List<Long>, genreId: Long? = null, playlistId: Long? = null
@@ -98,19 +92,22 @@ suspend fun getSong(
     genreId: Long? = null,
     playlistId: Long? = null,
     trackNum: Int? = null
-): Song? = withContext(Dispatchers.IO) {
-    db.trackDao().getByMediaId(trackMediaId)?.let {
-        getSong(db, it, genreId, playlistId, trackNum = trackNum)
-    }
+): Song? = db.trackDao().getByMediaId(trackMediaId)?.let {
+    getSong(db, it, genreId, playlistId, trackNum = trackNum)
 }
 
 suspend fun getSong(
-    db: DB, track: Track, genreId: Long? = null, playlistId: Long? = null, trackNum: Int? = null
-): Song = withContext(Dispatchers.IO) {
+    db: DB,
+    track: Track,
+    genreId: Long? = null,
+    playlistId: Long? = null,
+    trackNum: Int? = null
+): Song {
     val artist = db.artistDao().get(track.artistId)
     val album = db.albumDao().get(track.albumId)
     val artwork = db.albumDao().get(track.albumId)?.artworkUriString
-    Song(
+
+    return Song(
         track.id,
         track.mediaId,
         track.albumId,
@@ -133,60 +130,53 @@ suspend fun getSong(
     )
 }
 
-suspend fun fetchPlaylists(context: Context): List<Playlist> = withContext(Dispatchers.IO) {
-    context.contentResolver.query(
-        MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI, arrayOf(
-            MediaStore.Audio.Playlists._ID, MediaStore.Audio.Playlists.NAME
-        ), null, null, MediaStore.Audio.Playlists.DATE_MODIFIED
-    )?.use {
-        val db = DB.getInstance(context)
-        val list: ArrayList<Playlist> = ArrayList()
-        while (it.moveToNext()) {
-            val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists._ID))
-            val tracks = getTrackMediaIdByPlaylistId(context, id).mapNotNull {
-                db.trackDao().getByMediaId(it.first)
-            }
-            val totalDuration = tracks.map { it.duration }.sum()
-            val name = it.getString(it.getColumnIndex(MediaStore.Audio.Playlists.NAME)).let {
-                if (it.isBlank()) UNKNOWN else it
-            }
-            val count = context.contentResolver.query(
-                MediaStore.Audio.Playlists.Members.getContentUri("external", id),
-                null,
-                null,
-                null,
-                null
-            )?.use { it.count } ?: 0
-            val playlist =
-                Playlist(id, tracks.getPlaylistThumb(context), name, count, totalDuration)
-            list.add(playlist)
+suspend fun fetchPlaylists(context: Context): List<Playlist> = context.contentResolver.query(
+    MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
+    arrayOf(MediaStore.Audio.Playlists._ID, MediaStore.Audio.Playlists.NAME),
+    null,
+    null,
+    MediaStore.Audio.Playlists.DATE_MODIFIED
+)?.use {
+    val db = DB.getInstance(context)
+    val list: ArrayList<Playlist> = ArrayList()
+    while (it.moveToNext()) {
+        val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists._ID))
+        val tracks = getTrackMediaIdByPlaylistId(context, id).mapNotNull {
+            db.trackDao().getByMediaId(it.first)
         }
-
-        return@use list.toList().sortedBy { it.name }
-    } ?: emptyList()
-}
-
-private suspend fun List<Track>.getPlaylistThumb(context: Context): Bitmap? =
-    withContext(Dispatchers.IO) {
-        val db = DB.getInstance(context)
-        this@getPlaylistThumb.takeOrFillNull(10).map {
-            it?.let {
-                db.getArtworkUriStringFromId(it.albumId)?.let { Uri.parse(it) }
-            }
-        }.getThumb(context)
+        val totalDuration = tracks.map { it.duration }.sum()
+        val name = it.getString(it.getColumnIndex(MediaStore.Audio.Playlists.NAME)).let {
+            if (it.isBlank()) UNKNOWN else it
+        }
+        val count = context.contentResolver.query(
+            MediaStore.Audio.Playlists.Members.getContentUri("external", id),
+            null,
+            null,
+            null,
+            null
+        )?.use { it.count } ?: 0
+        val playlist =
+            Playlist(id, tracks.getPlaylistThumb(context), name, count, totalDuration)
+        list.add(playlist)
     }
 
-suspend fun DB.searchArtistByFuzzyTitle(title: String): List<Artist> = withContext(Dispatchers.IO) {
+    return@use list.toList().sortedBy { it.name }
+} ?: emptyList()
+
+private suspend fun List<Track>.getPlaylistThumb(context: Context): Bitmap? =
+    this@getPlaylistThumb.takeOrFillNull(10).map { track ->
+        track ?: return@map null
+        DB.getInstance(context).getArtworkUriStringFromId(track.albumId)
+    }.getThumb(context)
+
+suspend fun DB.searchArtistByFuzzyTitle(title: String): List<Artist> =
     this@searchArtistByFuzzyTitle.artistDao().findAllByTitle("%${title.escapeSql}%")
-}
 
-suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<Album> = withContext(Dispatchers.IO) {
+suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<Album> =
     this@searchAlbumByFuzzyTitle.albumDao().getAllByTitle("%${title.escapeSql}%")
-}
 
-suspend fun DB.searchTrackByFuzzyTitle(title: String): List<Track> = withContext(Dispatchers.IO) {
+suspend fun DB.searchTrackByFuzzyTitle(title: String): List<Track> =
     this@searchTrackByFuzzyTitle.trackDao().getAllByTitle("%${title.escapeSql}%", Bool.UNDEFINED)
-}
 
 fun Context.searchPlaylistByFuzzyTitle(title: String): List<Playlist> = contentResolver.query(
     MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
@@ -231,26 +221,35 @@ fun Context.searchGenreByFuzzyTitle(title: String): List<Genre> = contentResolve
 fun <T> List<T>.takeOrFillNull(n: Int): List<T?> =
     this.take(n).let { it + List(n - it.size) { null } }
 
-fun List<Uri?>.getThumb(context: Context): Bitmap? {
-    if (this@getThumb.isEmpty()) return null
+suspend fun List<String?>.getThumb(context: Context): Bitmap? {
+    if (this.isEmpty()) return null
     val unit = 100
     val bitmap = Bitmap.createBitmap(
-        ((this@getThumb.size * 0.9 - 0.1) * unit).toInt(), unit, Bitmap.Config.ARGB_8888
+        ((this.size * 0.9 - 0.1) * unit).toInt(), unit, Bitmap.Config.ARGB_8888
     )
     val canvas = Canvas(bitmap)
-    this@getThumb.reversed().forEachIndexed { i, uri ->
-        val b = Glide.with(context)
-            .asBitmap()
-            .load(uri ?: return@forEachIndexed)
-            .applyDefaultSettings()
-            .submit()
-            .get()
-            ?.let {
-                Bitmap.createScaledBitmap(
-                    it, unit, (it.height * unit.toFloat() / it.width).toInt(), false
-                )
+    withContext(Dispatchers.IO) {
+        this@getThumb.filterNotNull().reversed().forEachIndexed { i, uriString ->
+            val b = catchAsNull {
+                Glide.with(context)
+                    .asBitmap()
+                    .load(uriString)
+                    .applyDefaultSettings()
+                    .submit()
+                    .get()
+                    ?.let {
+                        Bitmap.createScaledBitmap(
+                            it, unit, (it.height * unit.toFloat() / it.width).toInt(), false
+                        )
+                    }
             } ?: return@forEachIndexed
-        canvas.drawBitmap(b, bitmap.width - (i + 1) * unit * 0.9f, (unit - b.height) / 2f, Paint())
+            canvas.drawBitmap(
+                b,
+                bitmap.width - (i + 1) * unit * 0.9f,
+                (unit - b.height) / 2f,
+                Paint()
+            )
+        }
     }
     return bitmap
 }
@@ -334,21 +333,20 @@ fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> = wh
     }
 }
 
-suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat =
-    withContext(Dispatchers.IO) {
-        val db = DB.getInstance(context)
-        val uriString = db.getArtworkUriStringFromId(albumId)
+suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat {
+    val uriString = DB.getInstance(context).getArtworkUriStringFromId(albumId)
 
-        MediaMetadataCompat.Builder()
-            .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaId.toString())
-            .putString(MediaMetadataCompat.METADATA_KEY_TITLE, name)
-            .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist)
-            .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album)
-            .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, uriString)
-            .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer)
-            .apply {
-                if (uriString != null && PreferenceManager.getDefaultSharedPreferences(context).showArtworkOnLockScreen) {
-                    val bitmap = try {
+    return MediaMetadataCompat.Builder()
+        .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaId.toString())
+        .putString(MediaMetadataCompat.METADATA_KEY_TITLE, name)
+        .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist)
+        .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album)
+        .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, uriString)
+        .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer)
+        .apply {
+            if (uriString != null && PreferenceManager.getDefaultSharedPreferences(context).showArtworkOnLockScreen) {
+                val bitmap = try {
+                    withContext(Dispatchers.IO) {
                         Glide.with(context)
                             .asDrawable()
                             .load(uriString)
@@ -356,29 +354,42 @@ suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat =
                             .submit()
                             .get()
                             .bitmap()
-                    } catch (t: Throwable) {
-                        Timber.e(t)
-                        null
                     }
-                    putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
+                } catch (t: Throwable) {
+                    Timber.e(t)
+                    null
                 }
+                putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
             }
-            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
-            .build()
-    }
+        }
+        .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
+        .build()
+}
 
 suspend fun getPlayerNotification(
-    context: Context, sessionToken: MediaSessionCompat.Token, song: Song, playing: Boolean
-): Notification = withContext(Dispatchers.IO) {
+    context: Context,
+    sessionToken: MediaSessionCompat.Token,
+    song: Song, playing: Boolean
+): Notification {
     val artwork = try {
-        Glide.with(context).asDrawable().load(
-            DB.getInstance(context).getArtworkUriStringFromId(song.albumId).orDefaultForModel
-        ).applyDefaultSettings().submit().get().bitmap()
+        withContext(Dispatchers.IO) {
+            Glide.with(context)
+                .asDrawable()
+                .load(
+                    DB.getInstance(context)
+                        .getArtworkUriStringFromId(song.albumId).orDefaultForModel
+                )
+                .applyDefaultSettings()
+                .submit()
+                .get()
+                .bitmap()
+        }
     } catch (t: Throwable) {
         Timber.e(t)
         null
     }
-    context.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER)
+
+    return context.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER)
         .setSmallIcon(R.drawable.ic_notification_player)
         .setLargeIcon(artwork)
         .setContentTitle(song.name)
@@ -455,112 +466,6 @@ fun Long.getTimeString(): String {
     return (if (hour > 0) String.format("%d:", hour) else "") + String.format(
         "%02d:%02d", minute, second
     )
-}
-
-suspend fun DB.storeMediaInfo(
-    context: Context, trackPath: String, trackMediaId: Long
-): Long = withContext(Dispatchers.IO) {
-    val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackMediaId)
-
-    val file = File(trackPath)
-    if (file.exists().not()) {
-        context.contentResolver.delete(uri, null, null)
-        throw IllegalStateException("Media file does not exist")
-    }
-
-    val lastModified = file.lastModified()
-    trackDao().getByMediaId(trackMediaId)?.let {
-        if (it.lastModified >= lastModified) return@withContext it.id
-    }
-
-    val audioFile = AudioFileIO.read(file)
-    val tag = audioFile.tag
-    val header = audioFile.audioHeader
-
-    val title = tag.getAll(FieldKey.TITLE).firstOrNull { it.isNotBlank() }
-    val titleSort =
-        (tag.getAll(FieldKey.TITLE_SORT).firstOrNull { it.isNotBlank() } ?: title)?.hiraganized
-    val albumTitle = tag.getAll(FieldKey.ALBUM).firstOrNull { it.isNotBlank() }
-    val cachedAlbum = albumTitle?.let { albumDao().getAllByTitle(it).firstOrNull() }
-    val albumTitleSort =
-        cachedAlbum?.titleSort ?: (tag.getAll(FieldKey.ALBUM_SORT).firstOrNull { it.isNotBlank() }
-            ?: albumTitle)?.hiraganized
-    val artistTitle = tag.getAll(FieldKey.ARTIST).firstOrNull { it.isNotBlank() }
-    val cachedArtist = artistTitle?.let { artistDao().getAllByTitle(it).firstOrNull() }
-    val artistTitleSort =
-        cachedArtist?.titleSort ?: (tag.getAll(FieldKey.ARTIST_SORT).firstOrNull { it.isNotBlank() }
-            ?: artistTitle)?.hiraganized
-    val duration = header.trackLength.toLong() * 1000
-    val trackNum = try {
-        tag.getFirst(FieldKey.TRACK).toInt()
-    } catch (t: Throwable) {
-        null
-    }
-    val discNum = try {
-        tag.getFirst(FieldKey.DISC_NO).toInt()
-    } catch (t: Throwable) {
-        null
-    }
-    val composerTitle = tag.getAll(FieldKey.COMPOSER).firstOrNull { it.isNotBlank() }
-    val composerTitleSort = (tag.getAll(FieldKey.COMPOSER_SORT).firstOrNull { it.isNotBlank() }
-        ?: composerTitle)?.hiraganized
-    val artworkUriString = cachedAlbum?.artworkUriString ?: tag.firstArtwork?.let { artwork ->
-        val hex = String(Hex.encodeHex(DigestUtils.md5(artwork.binaryData)))
-        val dirName = "images"
-        val dir = File(context.externalMediaDirs[0], dirName)
-        if (dir.exists().not()) dir.mkdir()
-        val imgFile = File(dir, hex)
-        FileOutputStream(imgFile).use {
-            it.write(artwork.binaryData)
-            it.flush()
-        }
-
-        imgFile.path
-    }
-    val albumArtistTitle = tag.getAll(FieldKey.ALBUM_ARTIST).firstOrNull { it.isNotBlank() }
-    val albumArtistTitleSort =
-        (tag.getAll(FieldKey.ALBUM_ARTIST_SORT).firstOrNull { it.isNotBlank() }
-            ?: albumArtistTitle)?.hiraganized
-
-    val artist = Artist(
-        0, artistTitle ?: UNKNOWN, artistTitleSort ?: UNKNOWN, 0, duration
-    )
-    val artistId = artistDao().upsert(artist)
-    val albumArtistId = albumArtistTitle?.let {
-        val albumArtist = Artist(0, albumArtistTitle, albumArtistTitleSort!!, 0, duration)
-        artistDao().upsert(albumArtist)
-    }
-
-    val album = Album(
-        0,
-        albumArtistId ?: artistId,
-        albumTitle ?: UNKNOWN,
-        albumTitleSort ?: UNKNOWN,
-        artworkUriString,
-        albumArtistId != null,
-        0,
-        duration
-    )
-    val albumId = albumDao().upsert(album)
-
-    val track = Track(
-        0,
-        lastModified,
-        albumId,
-        artistId,
-        albumArtistId,
-        trackMediaId,
-        trackPath,
-        title ?: UNKNOWN,
-        titleSort ?: UNKNOWN,
-        composerTitle ?: UNKNOWN,
-        composerTitleSort ?: UNKNOWN,
-        duration,
-        trackNum,
-        discNum,
-        0
-    )
-    return@withContext trackDao().upsert(track)
 }
 
 val String?.orDefaultForModel get() = this?.let { File(this) } ?: R.drawable.ic_empty

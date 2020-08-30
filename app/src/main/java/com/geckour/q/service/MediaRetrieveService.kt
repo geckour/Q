@@ -5,6 +5,7 @@ import android.app.IntentService
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
+import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -17,17 +18,27 @@ import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.PorterDuff
 import android.provider.MediaStore
-import androidx.core.app.NotificationCompat
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Album
+import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.Track
 import com.geckour.q.presentation.LauncherActivity
 import com.geckour.q.presentation.main.MainActivity
 import com.geckour.q.util.QNotificationChannel
+import com.geckour.q.util.UNKNOWN
+import com.geckour.q.util.catchAsNull
 import com.geckour.q.util.getNotificationBuilder
-import com.geckour.q.util.storeMediaInfo
+import com.geckour.q.util.hiraganized
 import kotlinx.coroutines.runBlocking
+import org.apache.commons.codec.binary.Hex
+import org.apache.commons.codec.digest.DigestUtils
+import org.jaudiotagger.audio.AudioFileIO
+import org.jaudiotagger.tag.FieldKey
 import timber.log.Timber
+import java.io.File
+import java.io.FileOutputStream
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -41,15 +52,19 @@ class MediaRetrieveService : IntentService(NAME) {
 
         private const val ACTION_CANCEL = "com.geckour.q.service.retrieve.cancel"
         private const val KEY_CLEAR = "key_clear"
+        private const val KEY_ONLY_ADDED = "key_only_added"
 
-        internal val projection = arrayOf(
+        private val projection = arrayOf(
             MediaStore.Audio.Media._ID,
             MediaStore.Audio.Media.DATA
         )
+        private const val SELECTION = "${MediaStore.Audio.Media.IS_MUSIC} != 0"
+        private const val ORDER = "${MediaStore.Audio.Media.TITLE} ASC"
 
-        fun getIntent(context: Context, clear: Boolean): Intent =
+        fun getIntent(context: Context, clear: Boolean, onlyAdded: Boolean): Intent =
             Intent(context, MediaRetrieveService::class.java).apply {
                 putExtra(KEY_CLEAR, clear)
+                putExtra(KEY_ONLY_ADDED, onlyAdded)
             }
 
         fun cancel(context: Context) {
@@ -60,44 +75,21 @@ class MediaRetrieveService : IntentService(NAME) {
     private val receiver = object : BroadcastReceiver() {
 
         override fun onReceive(context: Context?, intent: Intent?) {
-            intent?.apply {
-                when (action) {
-                    ACTION_CANCEL -> {
-                        expired = true
-                    }
+            intent ?: return
+
+            when (intent.action) {
+                ACTION_CANCEL -> {
+                    expired = true
                 }
             }
         }
     }
-
-    private lateinit var notificationBuilder: NotificationCompat.Builder
 
     private var expired = false
 
     override fun onCreate() {
         super.onCreate()
 
-        notificationBuilder =
-            getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER)
-                .setSmallIcon(R.drawable.ic_notification_sync)
-                .setOngoing(true)
-                .setShowWhen(false)
-                .setContentIntent(
-                    PendingIntent.getActivity(
-                        this,
-                        App.REQUEST_CODE_LAUNCH_APP,
-                        LauncherActivity.createIntent(this),
-                        PendingIntent.FLAG_UPDATE_CURRENT
-                    )
-                )
-                .setDeleteIntent(
-                    PendingIntent.getBroadcast(
-                        this,
-                        0,
-                        Intent(ACTION_CANCEL),
-                        PendingIntent.FLAG_UPDATE_CURRENT
-                    )
-                )
         registerReceiver(receiver, IntentFilter(ACTION_CANCEL))
     }
 
@@ -113,12 +105,19 @@ class MediaRetrieveService : IntentService(NAME) {
             if (intent?.getBooleanExtra(KEY_CLEAR, false) == true) {
                 db.clearAllTables()
             }
+            val onlyAdded = intent?.getBooleanExtra(KEY_ONLY_ADDED, false) == true
+            val selection =
+                if (onlyAdded) {
+                    val latest = runBlocking { db.trackDao().getLatestModifiedEpochTime() } / 1000
+                    "$SELECTION AND ${MediaStore.Audio.Media.DATE_MODIFIED} > $latest"
+                } else SELECTION
             applicationContext.contentResolver
                 .query(
-                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, projection,
-                    "${MediaStore.Audio.Media.IS_MUSIC} != 0",
+                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                    projection,
+                    selection,
                     null,
-                    "${MediaStore.Audio.Media.TITLE} ASC"
+                    ORDER
                 )?.use { cursor ->
                     val newTrackMediaIds = mutableListOf<Long>()
                     while (expired.not() && cursor.moveToNext()) {
@@ -130,9 +129,7 @@ class MediaRetrieveService : IntentService(NAME) {
                             cursor.getColumnIndex(MediaStore.Audio.Media._ID)
                         )
                         runCatching {
-                            runBlocking {
-                                db.storeMediaInfo(applicationContext, trackPath, trackMediaId)
-                            }
+                            db.storeMediaInfo(applicationContext, trackPath, trackMediaId)
                         }.onSuccess {
                             newTrackMediaIds.add(trackMediaId)
                         }.onFailure { Timber.e(it) }
@@ -143,13 +140,13 @@ class MediaRetrieveService : IntentService(NAME) {
                         )
                     }
 
-                    if (expired.not()) {
-                        val diff = db.trackDao().getAll().map { it.mediaId } - newTrackMediaIds
-                        diff.forEach { db.deleteTrack(it) }
+                    if (expired.not() && onlyAdded.not()) {
+                        val diff = runBlocking { db.trackDao().getAllMediaIds() } - newTrackMediaIds
+                        db.deleteTracks(diff)
                     }
                 }
 
-            Timber.d("qgeck track in db count: ${db.trackDao().count()}")
+            Timber.d("qgeck track in db count: ${runBlocking { db.trackDao().count() }}")
             Timber.d("qgeck media retrieve worker with state: ${expired.not()}")
             Thread.sleep(200)
             sendBroadcast(MainActivity.createSyncCompleteIntent(true))
@@ -167,7 +164,26 @@ class MediaRetrieveService : IntentService(NAME) {
         progress: Pair<Int, Int>,
         seed: Long,
         bitmap: Bitmap
-    ): Notification = notificationBuilder
+    ): Notification = getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER)
+        .setSmallIcon(R.drawable.ic_notification_sync)
+        .setOngoing(true)
+        .setShowWhen(false)
+        .setContentIntent(
+            PendingIntent.getActivity(
+                this,
+                App.REQUEST_CODE_LAUNCH_APP,
+                LauncherActivity.createIntent(this),
+                PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        )
+        .setDeleteIntent(
+            PendingIntent.getBroadcast(
+                this,
+                0,
+                Intent(ACTION_CANCEL),
+                PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        )
         .setLargeIcon(bitmap.drawProgressIcon(progress, seed))
         .setContentTitle(getString(R.string.notification_title_retriever))
         .setContentText(
@@ -221,13 +237,135 @@ class MediaRetrieveService : IntentService(NAME) {
         return this
     }
 
-    private fun DB.deleteTrack(mediaId: Long) {
-        trackDao().getByMediaId(mediaId)?.apply {
-            trackDao().delete(this.id)
-            if (trackDao().getAllByAlbum(this.albumId).isEmpty())
-                albumDao().delete(this.albumId)
-            if (trackDao().getAllByArtist(this.artistId).isEmpty())
-                artistDao().delete(this.artistId)
+    private fun DB.deleteTracks(mediaIds: List<Long>) = runBlocking {
+        trackDao().getByMediaIds(mediaIds).forEach {
+            trackDao().deleteIncludingRootIfEmpty(applicationContext, it)
         }
     }
+
+    private fun DB.storeMediaInfo(context: Context, trackPath: String, trackMediaId: Long): Long =
+        runBlocking {
+            val uri =
+                ContentUris.withAppendedId(
+                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                    trackMediaId
+                )
+
+            val file = File(trackPath)
+            if (file.exists().not()) {
+                context.contentResolver.delete(uri, null, null)
+                trackDao().deleteIncludingRootIfEmpty(context, trackMediaId)
+                throw IllegalStateException("Media file does not exist")
+            }
+
+            val lastModified = file.lastModified()
+            trackDao().getByMediaId(trackMediaId)?.let {
+                if (it.lastModified >= lastModified) return@runBlocking it.id
+            }
+
+            val audioFile = AudioFileIO.read(file)
+            val tag = audioFile.tag
+            val header = audioFile.audioHeader
+
+            val title = tag.getAll(FieldKey.TITLE).lastOrNull { it.isNotBlank() }
+            val titleSort =
+                (tag.getAll(FieldKey.TITLE_SORT).lastOrNull { it.isNotBlank() }
+                    ?: title)?.hiraganized
+
+            val albumTitle = tag.getAll(FieldKey.ALBUM).lastOrNull { it.isNotBlank() }
+            val cachedAlbum = albumTitle?.let { albumDao().getAllByTitle(it).firstOrNull() }
+            val albumTitleSort =
+                (tag.getAll(FieldKey.ALBUM_SORT).lastOrNull { it.isNotBlank() } ?: albumTitle)
+                    ?.hiraganized
+                    ?: cachedAlbum?.titleSort
+
+            val artistTitle = tag.getAll(FieldKey.ARTIST).lastOrNull { it.isNotBlank() }
+            val cachedArtist = artistTitle?.let { artistDao().getAllByTitle(it).firstOrNull() }
+            val artistTitleSort =
+                (tag.getAll(FieldKey.ARTIST_SORT).lastOrNull { it.isNotBlank() } ?: artistTitle)
+                    ?.hiraganized
+                    ?: cachedArtist?.titleSort
+
+            val albumArtistTitle = tag.getAll(FieldKey.ALBUM_ARTIST).firstOrNull { it.isNotBlank() }
+            val albumArtistTitleSort =
+                (tag.getAll(FieldKey.ALBUM_ARTIST_SORT).firstOrNull { it.isNotBlank() }
+                    ?: albumArtistTitle)
+                    ?.hiraganized
+
+            val duration = header.trackLength.toLong() * 1000
+            val trackNum = catchAsNull { tag.getFirst(FieldKey.TRACK).toInt() }
+            val discNum = catchAsNull { tag.getFirst(FieldKey.DISC_NO).toInt() }
+
+            val composerTitle = tag.getAll(FieldKey.COMPOSER).lastOrNull { it.isNotBlank() }
+            val composerTitleSort =
+                (tag.getAll(FieldKey.COMPOSER_SORT).lastOrNull { it.isNotBlank() } ?: composerTitle)
+                    ?.hiraganized
+
+            val artworkUriString = cachedAlbum?.artworkUriString
+                ?: tag.artworkList.lastOrNull()?.let { artwork ->
+                    val hex = String(Hex.encodeHex(DigestUtils.md5(artwork.binaryData)))
+                    val dirName = "images"
+                    val dir = File(context.externalMediaDirs[0], dirName)
+                    if (dir.exists().not()) dir.mkdir()
+                    val imgFile = File(dir, hex)
+                    FileOutputStream(imgFile).use {
+                        it.write(artwork.binaryData)
+                        it.flush()
+                    }
+
+                    imgFile.path
+                }
+
+            val artist = Artist(
+                0,
+                artistTitle ?: UNKNOWN,
+                artistTitleSort ?: UNKNOWN,
+                0,
+                duration
+            )
+            val artistId = artistDao().upsert(artist)
+            val albumArtistId =
+                if (albumArtistTitle != null && albumArtistTitleSort != null) {
+                    val albumArtist = Artist(
+                        0,
+                        albumArtistTitle,
+                        albumArtistTitleSort,
+                        0,
+                        duration
+                    )
+                    artistDao().upsert(albumArtist)
+                } else null
+
+            val album = Album(
+                0,
+                albumArtistId ?: artistId,
+                albumTitle ?: UNKNOWN,
+                albumTitleSort ?: UNKNOWN,
+                artworkUriString,
+                albumArtistId != null,
+                0,
+                duration
+            )
+            val albumId = albumDao().upsert(album)
+
+            val track = Track(
+                0,
+                lastModified,
+                albumId,
+                artistId,
+                albumArtistId,
+                trackMediaId,
+                trackPath,
+                title ?: UNKNOWN,
+                titleSort ?: UNKNOWN,
+                composerTitle ?: UNKNOWN,
+                composerTitleSort ?: UNKNOWN,
+                duration,
+                trackNum,
+                discNum,
+                0
+            )
+
+            return@runBlocking trackDao().upsert(track)
+        }
 }

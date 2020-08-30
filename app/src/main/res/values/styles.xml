@@ -33,6 +33,7 @@
         <item name="colorShadowBottomSheetCenter">@color/colorShadowBottomSheetCenter</item>
         <item name="colorButtonNormal">@color/colorPrimary</item>
         <item name="colorDivider">@color/colorDivider</item>
+        <item name="colorEqualizerScale">@color/colorEqualizerScale</item>
     </style>
 
     <style name="SearchStyle" parent="AppTheme">

@@ -32,6 +32,7 @@
         <item name="colorShadowBottomSheetCenter">@color/colorShadowBottomSheetCenterInverse</item>
         <item name="colorButtonNormal">@color/colorStrong</item>
         <item name="colorDivider">@color/colorDividerInverse</item>
+        <item name="colorEqualizerScale">@color/colorEqualizerScaleInverse</item>
     </style>
 
     <style name="SearchStyle" parent="AppTheme">

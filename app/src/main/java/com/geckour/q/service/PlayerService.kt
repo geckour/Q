@@ -583,7 +583,8 @@ class PlayerService : Service() {
     fun clear(keepCurrentIfPlaying: Boolean = false) {
         val before =
             if (keepCurrentIfPlaying &&
-                player.playbackState == Player.STATE_READY && player.playWhenReady
+                player.playbackState == Player.STATE_READY &&
+                player.playWhenReady
             ) currentPosition
             else source.size
         clear(before)
@@ -813,17 +814,15 @@ class PlayerService : Service() {
 
     private fun increasePlaybackCount() = serviceScope.launch(Dispatchers.Main) {
         currentSong?.let { song ->
-            withContext(Dispatchers.IO) {
-                val db = DB.getInstance(this@PlayerService)
-                db.trackDao().increasePlaybackCount(song.id)
-                db.albumDao().increasePlaybackCount(song.albumId)
-                db.artistDao().apply {
-                    val artist = getAllByTitle(song.artist).firstOrNull() ?: db.albumDao()
-                        .get(song.albumId)?.artistId?.let {
-                            get(it)
-                        }
-                    artist?.apply { increasePlaybackCount(id) }
-                }
+            val db = DB.getInstance(this@PlayerService)
+            db.trackDao().increasePlaybackCount(song.id)
+            db.albumDao().increasePlaybackCount(song.albumId)
+            db.artistDao().apply {
+                val artist = getAllByTitle(song.artist).firstOrNull() ?: db.albumDao()
+                    .get(song.albumId)?.artistId?.let {
+                        get(it)
+                    }
+                artist?.apply { increasePlaybackCount(id) }
             }
         }
     }
@@ -862,7 +861,7 @@ class PlayerService : Service() {
         }
 
         serviceScope.launch(Dispatchers.Main) {
-            onEqualizerStateChanged?.invoke(equalizer?.enabled ?: false)
+            onEqualizerStateChanged?.invoke(equalizer?.enabled == true)
         }
     }
 

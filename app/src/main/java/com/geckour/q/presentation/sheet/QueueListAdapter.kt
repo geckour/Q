@@ -21,9 +21,7 @@ import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.swapped
 import com.geckour.q.util.toDomainModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class QueueListAdapter(private val viewModel: MainViewModel) :
@@ -47,7 +45,8 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
         else emptyList()
 
     internal fun setNowPlayingPosition(index: Int?, items: List<Song>? = null) {
-        submitList((items ?: currentList).mapIndexed { i, song -> song.copy(nowPlaying = i == index) })
+        submitList(
+            (items ?: currentList).mapIndexed { i, song -> song.copy(nowPlaying = i == index) })
     }
 
     internal fun move(from: Int, to: Int) {
@@ -76,22 +75,20 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
                 when (it.itemId) {
                     R.id.menu_transition_to_artist -> {
                         viewModel.viewModelScope.launch {
-                            viewModel.selectedArtist.value = withContext((Dispatchers.IO)) {
-                                binding.data?.artist?.let {
-                                    DB.getInstance(binding.root.context).artistDao()
-                                        .getAllByTitle(it)
-                                        .firstOrNull()?.toDomainModel()
-                                }
+                            viewModel.selectedArtist.value = binding.data?.artist?.let {
+                                DB.getInstance(binding.root.context).artistDao()
+                                    .getAllByTitle(it)
+                                    .firstOrNull()
+                                    ?.toDomainModel()
                             }
                         }
                     }
                     R.id.menu_transition_to_album -> {
                         viewModel.viewModelScope.launch {
-                            viewModel.selectedAlbum.value = withContext(Dispatchers.IO) {
-                                binding.data?.albumId?.let {
-                                    DB.getInstance(binding.root.context).albumDao().get(it)
-                                        ?.toDomainModel()
-                                }
+                            viewModel.selectedAlbum.value = binding.data?.albumId?.let {
+                                DB.getInstance(binding.root.context).albumDao()
+                                    .get(it)
+                                    ?.toDomainModel()
                             }
                         }
                     }
@@ -128,17 +125,16 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
             val song = currentList[adapterPosition]
             binding.data = song
             binding.duration.text = song.durationString
-            viewModel.viewModelScope.launch(Dispatchers.IO) {
+            viewModel.viewModelScope.launch {
                 try {
                     val uriString = DB.getInstance(binding.root.context)
                         .getArtworkUriStringFromId(song.albumId)
                         .orDefaultForModel
-                    withContext(Dispatchers.Main) {
-                        Glide.with(binding.thumb)
-                            .load(uriString)
-                            .applyDefaultSettings()
-                            .into(binding.thumb)
-                    }
+
+                    Glide.with(binding.thumb)
+                        .load(uriString)
+                        .applyDefaultSettings()
+                        .into(binding.thumb)
                 } catch (t: Throwable) {
                     Timber.e(t)
                 }

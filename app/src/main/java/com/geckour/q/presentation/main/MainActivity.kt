@@ -21,7 +21,6 @@ import androidx.fragment.app.commit
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivityMainBinding
-import com.geckour.q.databinding.DialogShuffleMenuBinding
 import com.geckour.q.databinding.DialogSleepBinding
 import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.domain.model.Song
@@ -40,7 +39,6 @@ import com.geckour.q.presentation.sheet.BottomSheetViewModel
 import com.geckour.q.service.MediaRetrieveService
 import com.geckour.q.service.SleepTimerService
 import com.geckour.q.util.CrashlyticsBundledActivity
-import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.ducking
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
@@ -51,13 +49,10 @@ import com.geckour.q.util.toNightModeInt
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.analytics.FirebaseAnalytics
-import permissions.dispatcher.NeedsPermission
-import permissions.dispatcher.OnPermissionDenied
-import permissions.dispatcher.RuntimePermissions
+import permissions.dispatcher.ktx.constructPermissionsRequest
 import timber.log.Timber
 import java.io.File
 
-@RuntimePermissions
 class MainActivity : CrashlyticsBundledActivity() {
 
     enum class RequestCode(val code: Int) {
@@ -139,7 +134,7 @@ class MainActivity : CrashlyticsBundledActivity() {
                         )
                     })
 
-                retrieveMediaWithPermissionCheck()
+                retrieveMedia(false)
                 null
             }
             R.id.nav_pay -> PaymentFragment.newInstance()
@@ -157,6 +152,16 @@ class MainActivity : CrashlyticsBundledActivity() {
         true
     }
 
+    private fun retrieveMedia(onlyAdded: Boolean) {
+        constructPermissionsRequest(
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            onPermissionDenied = ::onReadExternalStorageDenied
+        ) {
+            startService(MediaRetrieveService.getIntent(this, false, onlyAdded))
+        }.launch()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -172,7 +177,8 @@ class MainActivity : CrashlyticsBundledActivity() {
         setupDrawer()
 
         if (savedInstanceState == null) {
-            viewModel.checkDBIsEmpty { retrieveMediaWithPermissionCheck() }
+            viewModel.checkDBIsEmpty { retrieveMedia(false) }
+            retrieveMedia(true)
 
             val navId = PreferenceManager.getDefaultSharedPreferences(this).preferScreen.value.navId
             onNavigationItemSelected(binding.navigationView.menu.findItem(navId))
@@ -232,14 +238,6 @@ class MainActivity : CrashlyticsBundledActivity() {
         }
     }
 
-    override fun onRequestPermissionsResult(
-        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
-    ) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
-        onRequestPermissionsResult(requestCode, grantResults)
-    }
-
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
 
@@ -252,18 +250,8 @@ class MainActivity : CrashlyticsBundledActivity() {
         }
     }
 
-    @NeedsPermission(
-        Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE
-    )
-    internal fun retrieveMedia() {
-        startService(MediaRetrieveService.getIntent(this, false))
-    }
-
-    @OnPermissionDenied(
-        Manifest.permission.READ_EXTERNAL_STORAGE, Manifest.permission.WRITE_EXTERNAL_STORAGE
-    )
-    internal fun onReadExternalStorageDenied() {
-        retrieveMediaWithPermissionCheck()
+    private fun onReadExternalStorageDenied() {
+        retrieveMedia(false)
     }
 
     private fun observeEvents() {
@@ -340,7 +328,7 @@ class MainActivity : CrashlyticsBundledActivity() {
 
         viewModel.songToDelete.observe(this) {
             it ?: return@observe
-            deleteFromDeviceWithPermissionCheck(it)
+            deleteFromDevice(it)
         }
 
         viewModel.searchItems.observe(this) {
@@ -484,21 +472,24 @@ class MainActivity : CrashlyticsBundledActivity() {
         )
     }
 
-    @NeedsPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-    internal fun deleteFromDevice(song: Song) {
-        File(song.sourcePath).apply {
-            if (this.exists()) {
-                viewModel.player.value?.removeQueue(song.id)
-                this.delete()
+    private fun deleteFromDevice(song: Song) {
+        constructPermissionsRequest(
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        ) {
+            File(song.sourcePath).apply {
+                if (this.exists()) {
+                    viewModel.player.value?.removeQueue(song.id)
+                    this.delete()
+                }
             }
-        }
-        contentResolver.delete(
-            MediaStore.Files.getContentUri("external"),
-            "${MediaStore.Files.FileColumns.DATA}=?",
-            arrayOf(song.sourcePath)
-        )
+            contentResolver.delete(
+                MediaStore.Files.getContentUri("external"),
+                "${MediaStore.Files.FileColumns.DATA}=?",
+                arrayOf(song.sourcePath)
+            )
 
-        viewModel.deleteSongFromDB(song)
+            viewModel.deleteSongFromDB(song)
+        }.launch()
     }
 
     internal fun showSleepTimerDialog() {
@@ -534,6 +525,7 @@ class MainActivity : CrashlyticsBundledActivity() {
                 override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
             })
         }
+
         AlertDialog.Builder(this)
             .setCancelable(true)
             .setView(binding.root)

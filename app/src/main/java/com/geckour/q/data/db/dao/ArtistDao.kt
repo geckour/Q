@@ -14,46 +14,46 @@ import com.geckour.q.data.db.model.Artist
 interface ArtistDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insert(artist: Artist): Long
+    suspend fun insert(artist: Artist): Long
 
     @Update
-    fun update(artist: Artist): Int
+    suspend fun update(artist: Artist): Int
 
     @Query("delete from artist where id = :id")
-    fun delete(id: Long): Int
+    suspend fun delete(id: Long): Int
 
     @Query("delete from album where artistId = :artistId")
-    fun deleteAlbumByArtist(artistId: Long)
+    suspend fun deleteAlbumByArtist(artistId: Long)
 
     @Query("delete from track where artistId = :artistId")
-    fun deleteTrackByArtist(artistId: Long)
+    suspend fun deleteTrackByArtist(artistId: Long)
 
     @Query("select * from artist where id = :id")
-    fun get(id: Long): Artist?
+    suspend fun get(id: Long): Artist?
 
     @Query("select * from artist where title = :title")
-    fun getByTitle(title: String): Artist?
+    suspend fun getByTitle(title: String): Artist?
 
     @Query("select * from artist where title = :title")
-    fun getAllByTitle(title: String): List<Artist>
+    suspend fun getAllByTitle(title: String): List<Artist>
 
     @Query("select * from artist where title like :title")
-    fun findAllByTitle(title: String): List<Artist>
+    suspend fun findAllByTitle(title: String): List<Artist>
 
     @Query("select * from artist where id in (select artistId from album group by artistId)")
     fun getAllOrientedAlbumAsync(): LiveData<List<Artist>>
 
     @Query("update artist set playbackCount = (select playbackCount from artist where id = :artistId) + 1 where id = :artistId")
-    fun increasePlaybackCount(artistId: Long)
+    suspend fun increasePlaybackCount(artistId: Long)
 
     @Transaction
-    fun deleteRecursively(context: Context, id: Long) {
+    suspend fun deleteRecursively(context: Context, id: Long) {
         deleteTrackByArtist(id)
         deleteAlbumByArtist(id)
         delete(id)
     }
 
-    fun upsert(artist: Artist): Long {
+    suspend fun upsert(artist: Artist): Long {
         val toInsert = getByTitle(artist.title)?.let {
             artist.copy(
                 id = it.id,

@@ -47,10 +47,8 @@ import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainModel
 import com.google.firebase.analytics.FirebaseAnalytics
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class MainViewModel(application: Application) : AndroidViewModel(application) {
@@ -252,7 +250,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val db = DB.getInstance(getApplication())
                 when (menuItem.itemId) {
                     R.id.menu_transition_to_artist -> {
-                        viewModelScope.launch(Dispatchers.IO) {
+                        viewModelScope.launch {
                             selectedArtist.postValue(
                                 song?.artist?.let {
                                     db.artistDao().getAllByTitle(it).firstOrNull()?.toDomainModel()
@@ -262,7 +260,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         return@setOnMenuItemClickListener true
                     }
                     R.id.menu_transition_to_album -> {
-                        viewModelScope.launch(Dispatchers.IO) {
+                        viewModelScope.launch {
                             selectedAlbum.postValue(
                                 song?.albumId?.let { db.albumDao().get(it)?.toDomainModel() }
                             )
@@ -320,13 +318,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         val db = DB.getInstance(getApplication())
         searchJob.cancel()
-        searchJob = viewModelScope.launch(Dispatchers.IO) {
+        searchJob = viewModelScope.launch {
             val items = mutableListOf<SearchItem>()
 
-            val tracks = db.searchTrackByFuzzyTitle(query).take(3).mapNotNull {
+            val tracks = db.searchTrackByFuzzyTitle(query).take(3).map {
                 SearchItem(
                     it.title,
-                    getSong(db, it) ?: return@mapNotNull null,
+                    getSong(db, it),
                     SearchItem.SearchItemType.TRACK
                 )
             }
@@ -410,19 +408,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     internal fun checkDBIsEmpty(onEmpty: () -> Unit) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             val trackCount = DB.getInstance(this@MainViewModel.getApplication()).trackDao().count()
-            if (trackCount == 0) {
-                withContext(Dispatchers.Main) { onEmpty() }
-            }
+            if (trackCount == 0) onEmpty()
         }
     }
 
     internal fun deleteSongFromDB(song: Song) {
-        viewModelScope.launch(Dispatchers.IO) {
-            withContext(Dispatchers.Main) {
-                player.value?.removeQueue(song.id)
-            }
+        viewModelScope.launch {
+            player.value?.removeQueue(song.id)
 
             DB.getInstance(getApplication())
                 .trackDao()
@@ -434,19 +428,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         actionType: InsertActionType, album: Album, sortByTrackOrder: Boolean
     ) {
         viewModelScope.launch {
-            val songs = withContext(Dispatchers.IO) {
-                DB.getInstance(getApplication()).let { db ->
-                    val sharedPreferences =
-                        PreferenceManager.getDefaultSharedPreferences(getApplication())
-                    loading.postValue(true)
-                    db.trackDao()
-                        .getAllByAlbum(
-                            album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                        )
-                        .mapNotNull { getSong(db, it) }
-                        .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
-                        .apply { loading.postValue(false) }
-                }
+            val songs = DB.getInstance(getApplication()).let { db ->
+                val sharedPreferences =
+                    PreferenceManager.getDefaultSharedPreferences(getApplication())
+                loading.postValue(true)
+                db.trackDao()
+                    .getAllByAlbum(
+                        album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                    )
+                    .map { getSong(db, it) }
+                    .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
+                    .apply { loading.postValue(false) }
             }
 
             onNewQueue(songs, actionType, OrientedClassType.SONG)

@@ -22,9 +22,7 @@ import com.geckour.q.util.getSong
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.getTrackMediaIds
 import com.geckour.q.util.orDefaultForModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class PlaylistListAdapter(private val viewModel: MainViewModel) :
@@ -84,14 +82,12 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
                 return@setOnLongClickListener true
             }
             binding.option.setOnClickListener { getPopupMenu(it).show() }
-            viewModel.viewModelScope.launch(Dispatchers.IO) {
+            viewModel.viewModelScope.launch {
                 try {
-                    withContext(Dispatchers.Main) {
-                        Glide.with(binding.thumb)
-                            .load(playlist.thumb.orDefaultForModel)
-                            .applyDefaultSettings()
-                            .into(binding.thumb)
-                    }
+                    Glide.with(binding.thumb)
+                        .load(playlist.thumb.orDefaultForModel)
+                        .applyDefaultSettings()
+                        .into(binding.thumb)
                 } catch (t: Throwable) {
                     Timber.e(t)
                 }
@@ -129,13 +125,11 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
 
             viewModel.viewModelScope.launch {
                 viewModel.onLoadStateChanged(true)
-                val songs = withContext(Dispatchers.IO) {
-                    playlist.getTrackMediaIds(context)
-                        .sortedBy { it.second }
-                        .mapNotNull {
-                            getSong(DB.getInstance(context), it.first, playlistId = playlist.id)
-                        }
-                }
+                val songs = playlist.getTrackMediaIds(context)
+                    .sortedBy { it.second }
+                    .mapNotNull {
+                        getSong(DB.getInstance(context), it.first, playlistId = playlist.id)
+                    }
                 viewModel.onLoadStateChanged(false)
 
                 onNewQueue(songs, actionType, OrientedClassType.SONG)

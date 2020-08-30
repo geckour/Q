@@ -82,11 +82,10 @@
             tools:text="アーティスト名" />
 
         <View
+            android:id="@+id/tapArea"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> mainViewModel.onEasterTapped(viewModel.song) }"
-            android:onLongClick="@{(view) -> mainViewModel.onEasterLongTapped(viewModel.song, view) }"
             app:layout_constraintBottom_toBottomOf="@id/guide_peek_height"
             app:layout_constraintDimensionRatio="H,1:1"
             app:layout_constraintLeft_toLeftOf="parent"

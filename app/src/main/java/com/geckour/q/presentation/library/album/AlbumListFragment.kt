@@ -32,7 +32,6 @@ import com.geckour.q.util.toggleDayNight
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import com.geckour.q.data.db.model.Album as DBAlbum
 
 class AlbumListFragment : Fragment() {
@@ -129,7 +128,7 @@ class AlbumListFragment : Fragment() {
                 else -> return false
             }
 
-            viewModel.viewModelScope.launch(Dispatchers.IO) {
+            viewModel.viewModelScope.launch {
                 val sortByTrackOrder = item.itemId.let {
                     it != R.id.menu_insert_all_simple_shuffle_next || it != R.id.menu_insert_all_simple_shuffle_last || it != R.id.menu_override_all_simple_shuffle
                 }
@@ -150,7 +149,7 @@ class AlbumListFragment : Fragment() {
                                     )
                                 }
                             }
-                            .mapNotNull { getSong(db, it) }
+                            .map { getSong(db, it) }
                     }
                 }.apply {
                     mainViewModel.onLoadStateChanged(false)
@@ -172,7 +171,7 @@ class AlbumListFragment : Fragment() {
             context?.also { context ->
                 viewModel.viewModelScope.launch {
                     mainViewModel.onLoadStateChanged(true)
-                    val items = withContext(Dispatchers.IO) { fetchAlbums(DB.getInstance(context)) }
+                    val items = fetchAlbums(DB.getInstance(context))
                     mainViewModel.onLoadStateChanged(false)
                     adapter.submitList(items)
                     binding.recyclerView.smoothScrollToPosition(0)
@@ -203,15 +202,14 @@ class AlbumListFragment : Fragment() {
         }
     }
 
-    private fun fetchAlbums(db: DB): List<Album> =
-
+    private suspend fun fetchAlbums(db: DB): List<Album> =
         (artist?.let { db.albumDao().getAllByArtistId(it.id) } ?: db.albumDao()
             .getAll()).getAlbumList(db)
 
     private fun upsertAlbumListIfPossible(db: DB) {
         viewModel.viewModelScope.launch {
             mainViewModel.onLoadStateChanged(true)
-            val items = withContext(Dispatchers.IO) { latestDbAlbumList.getAlbumList(db) }
+            val items = latestDbAlbumList.getAlbumList(db)
             mainViewModel.onLoadStateChanged(false)
             upsertAlbumListIfPossible(items)
         }
@@ -228,11 +226,12 @@ class AlbumListFragment : Fragment() {
         }
     }
 
-    private fun List<DBAlbum>.getAlbumList(db: DB): List<Album> = this@getAlbumList.mapNotNull {
-        val artist = db.artistDao().get(it.artistId)
-        val artistName = artist?.title ?: return@mapNotNull null
-        val artistNameSort = artist.titleSort
-        val totalDuration = db.trackDao().getAllByAlbum(it.id).map { it.duration }.sum()
-        it.toDomainModel(artistName, artistNameSort, totalDuration)
-    }
+    private suspend fun List<DBAlbum>.getAlbumList(db: DB): List<Album> =
+        this@getAlbumList.mapNotNull {
+            val artist = db.artistDao().get(it.artistId)
+            val artistName = artist?.title ?: return@mapNotNull null
+            val artistNameSort = artist.titleSort
+            val totalDuration = db.trackDao().getAllByAlbum(it.id).map { it.duration }.sum()
+            it.toDomainModel(artistName, artistNameSort, totalDuration)
+        }
 }

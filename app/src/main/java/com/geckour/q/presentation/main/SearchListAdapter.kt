@@ -20,12 +20,10 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.orDefaultForModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class SearchListAdapter(private val viewModel: MainViewModel) :
-        RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+    RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val items = mutableListOf<SearchItem>()
 
@@ -46,22 +44,22 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder =
-            when (viewType) {
-                SearchItem.SearchItemType.CATEGORY.ordinal -> {
-                    CategoryViewHolder(
-                            ItemListSearchCategoryBinding.inflate(
-                                    LayoutInflater.from(parent.context), parent, false
-                            )
+        when (viewType) {
+            SearchItem.SearchItemType.CATEGORY.ordinal -> {
+                CategoryViewHolder(
+                    ItemListSearchCategoryBinding.inflate(
+                        LayoutInflater.from(parent.context), parent, false
                     )
-                }
-                else -> {
-                    ItemViewHolder(
-                            ItemListSearchItemBinding.inflate(
-                                    LayoutInflater.from(parent.context), parent, false
-                            )
-                    )
-                }
+                )
             }
+            else -> {
+                ItemViewHolder(
+                    ItemListSearchItemBinding.inflate(
+                        LayoutInflater.from(parent.context), parent, false
+                    )
+                )
+            }
+        }
 
     override fun getItemViewType(position: Int): Int = items[position].type.ordinal
 
@@ -76,7 +74,7 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
     }
 
     class CategoryViewHolder(private val binding: ItemListSearchCategoryBinding) :
-            RecyclerView.ViewHolder(binding.root) {
+        RecyclerView.ViewHolder(binding.root) {
 
         fun onBind(item: SearchItem) {
             binding.title = item.title
@@ -84,27 +82,27 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
     }
 
     inner class ItemViewHolder(private val binding: ItemListSearchItemBinding) :
-            RecyclerView.ViewHolder(binding.root) {
+        RecyclerView.ViewHolder(binding.root) {
 
         private val trackPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener {
                 val song = (binding.data?.data as? Song)
-                        ?: return@setOnMenuItemClickListener true
+                    ?: return@setOnMenuItemClickListener true
                 viewModel.onNewQueue(
-                        listOf(song),
-                        when (it.itemId) {
-                            R.id.menu_insert_all_next -> {
-                                InsertActionType.NEXT
-                            }
-                            R.id.menu_insert_all_last -> {
-                                InsertActionType.LAST
-                            }
-                            R.id.menu_override_all -> {
-                                InsertActionType.OVERRIDE
-                            }
-                            else -> return@setOnMenuItemClickListener true
-                        },
-                        OrientedClassType.SONG
+                    listOf(song),
+                    when (it.itemId) {
+                        R.id.menu_insert_all_next -> {
+                            InsertActionType.NEXT
+                        }
+                        R.id.menu_insert_all_last -> {
+                            InsertActionType.LAST
+                        }
+                        R.id.menu_override_all -> {
+                            InsertActionType.OVERRIDE
+                        }
+                        else -> return@setOnMenuItemClickListener true
+                    },
+                    OrientedClassType.SONG
                 )
 
                 return@setOnMenuItemClickListener true
@@ -115,14 +113,14 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
         fun onBind(item: SearchItem) {
             binding.data = item
             binding.root.setOnClickListener { item.onClick() }
-            viewModel.viewModelScope.launch(Dispatchers.IO) {
+            viewModel.viewModelScope.launch {
                 val db = DB.getInstance(binding.root.context)
                 val artworkUriString = when (item.type) {
                     SearchItem.SearchItemType.ARTIST -> {
                         (item.data as? Artist)?.id?.let {
                             db.albumDao().getAllByArtistId(it)
-                                    .firstOrNull { it.artworkUriString != null }
-                                    ?.artworkUriString
+                                .firstOrNull { it.artworkUriString != null }
+                                ?.artworkUriString
                         }
                     }
                     SearchItem.SearchItemType.ALBUM -> {
@@ -135,12 +133,11 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
                     }
                     else -> null
                 }
-                withContext(Dispatchers.Main) {
-                    Glide.with(binding.thumb)
-                            .load(artworkUriString.orDefaultForModel)
-                            .applyDefaultSettings()
-                            .into(binding.thumb)
-                }
+
+                Glide.with(binding.thumb)
+                    .load(artworkUriString.orDefaultForModel)
+                    .applyDefaultSettings()
+                    .into(binding.thumb)
             }
         }
 

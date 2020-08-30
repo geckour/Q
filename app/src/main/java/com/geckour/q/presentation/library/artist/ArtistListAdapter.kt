@@ -26,9 +26,7 @@ import com.geckour.q.util.getTimeString
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.sortedByTrackOrder
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class ArtistListAdapter(private val viewModel: MainViewModel) :
@@ -103,14 +101,12 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
                 true
             }
             binding.option.setOnClickListener { getPopupMenu(it).show() }
-            viewModel.viewModelScope.launch(Dispatchers.IO) {
+            viewModel.viewModelScope.launch {
                 try {
-                    withContext(Dispatchers.Main) {
-                        Glide.with(binding.thumb)
-                            .load(artist.thumbUriString.orDefaultForModel)
-                            .applyDefaultSettings()
-                            .into(binding.thumb)
-                    }
+                    Glide.with(binding.thumb)
+                        .load(artist.thumbUriString.orDefaultForModel)
+                        .applyDefaultSettings()
+                        .into(binding.thumb)
                 } catch (t: Throwable) {
                     Timber.e(t)
                 }
@@ -137,24 +133,22 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
                 val sortByTrackOrder = id.let {
                     it != R.id.menu_insert_all_simple_shuffle_next || it != R.id.menu_insert_all_simple_shuffle_last || it != R.id.menu_override_all_simple_shuffle
                 }
-                val songs = withContext(Dispatchers.IO) {
-                    DB.getInstance(context).let { db ->
-                        val sharedPreferences =
-                            PreferenceManager.getDefaultSharedPreferences(context)
-                        viewModel.onLoadStateChanged(true)
-                        db.albumDao().getAllByArtistId(artist.id).map {
-                            db.trackDao().getAllByAlbum(
-                                it.id,
-                                BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                            ).mapNotNull { getSong(db, it) }.let {
-                                if (sortByTrackOrder) it.sortedByTrackOrder()
-                                else it
-                            }
-                        }.apply {
-                            viewModel.onLoadStateChanged(false)
-                        }.flatten()
-                    }
+
+                viewModel.onLoadStateChanged(true)
+                val songs = DB.getInstance(context).let { db ->
+                    val sharedPreferences =
+                        PreferenceManager.getDefaultSharedPreferences(context)
+                    db.albumDao().getAllByArtistId(artist.id).map {
+                        db.trackDao().getAllByAlbum(
+                            it.id,
+                            BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                        ).map { getSong(db, it) }.let {
+                            if (sortByTrackOrder) it.sortedByTrackOrder()
+                            else it
+                        }
+                    }.flatten()
                 }
+                viewModel.onLoadStateChanged(false)
 
                 onNewQueue(songs, actionType, OrientedClassType.ALBUM)
             }

@@ -15,54 +15,64 @@ import com.geckour.q.data.db.model.Track
 interface TrackDao {
 
     @Insert
-    fun insert(track: Track): Long
+    suspend fun insert(track: Track): Long
 
     @Update
-    fun update(track: Track): Int
+    suspend fun update(track: Track): Int
 
     @Query("delete from track where id = :id")
-    fun delete(id: Long): Int
+    suspend fun delete(id: Long): Int
 
     @Query("select * from track where id = :id")
-    fun get(id: Long): Track?
+    suspend fun get(id: Long): Track?
 
-    @Query("select * from track where mediaId = :trackId")
-    fun getByMediaId(trackId: Long): Track?
+    @Query("select * from track where mediaId = :mediaId")
+    suspend fun getByMediaId(mediaId: Long): Track?
+
+    @Query("select * from track where mediaId in (:mediaIds)")
+    suspend fun getByMediaIds(mediaIds: List<Long>): List<Track>
 
     @Query("select * from track where ignored != :ignore")
-    fun getAll(ignore: Bool = Bool.UNDEFINED): List<Track>
+    suspend fun getAll(ignore: Bool = Bool.UNDEFINED): List<Track>
+
+    @Query("select mediaId from track where ignored != :ignore")
+    suspend fun getAllMediaIds(ignore: Bool = Bool.UNDEFINED): List<Long>
 
     @Query("select * from track where ignored != :ignore")
     fun getAllAsync(ignore: Bool = Bool.UNDEFINED): LiveData<List<Track>>
 
     @Query("select * from track where title like :title and ignored != :ignore")
-    fun getAllByTitle(title: String, ignore: Bool = Bool.UNDEFINED): List<Track>
+    suspend fun getAllByTitle(title: String, ignore: Bool = Bool.UNDEFINED): List<Track>
 
     @Query("select * from track where albumId = :albumId and ignored != :ignore")
-    fun getAllByAlbum(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
+    suspend fun getAllByAlbum(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
 
     @Query("select * from track where albumId = :albumId and ignored != :ignore order by trackNum")
-    fun getAllByAlbumSorted(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
+    suspend fun getAllByAlbumSorted(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
 
     @Query("select * from track where albumId = :albumId and ignored != :ignore")
-    fun getAllByAlbumAsync(albumId: Long, ignore: Bool = Bool.UNDEFINED): LiveData<List<Track>>
+    fun getAllByAlbumAsync(
+        albumId: Long,
+        ignore: Bool = Bool.UNDEFINED
+    ): LiveData<List<Track>>
 
     @Query("select * from track where artistId = :artistId and ignored != :ignore")
-    fun getAllByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
+    suspend fun getAllByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
 
     @Query("update track set playbackCount = (select playbackCount from track where id = :trackId) + 1 where id = :trackId")
-    fun increasePlaybackCount(trackId: Long)
+    suspend fun increasePlaybackCount(trackId: Long)
 
     @Query("update track set ignored = :ignored where id = :trackId")
-    fun setIgnored(trackId: Long, ignored: Bool)
+    suspend fun setIgnored(trackId: Long, ignored: Bool)
 
     @Query("select count(*) from track")
-    fun count(): Int
+    suspend fun count(): Int
+
+    @Query("select lastModified from track order by lastModified desc limit 1")
+    suspend fun getLatestModifiedEpochTime(): Long
 
     @Transaction
-    fun deleteIncludingRootIfEmpty(context: Context, id: Long) {
-        val track = get(id) ?: return
-
+    suspend fun deleteIncludingRootIfEmpty(context: Context, track: Track) {
         delete(track.id)
 
         if (getAllByAlbum(track.albumId, Bool.UNDEFINED).isEmpty()) {
@@ -70,7 +80,13 @@ interface TrackDao {
         }
     }
 
-    fun upsert(track: Track): Long {
+    suspend fun deleteIncludingRootIfEmpty(context: Context, id: Long) {
+        val track = get(id) ?: return
+
+        deleteIncludingRootIfEmpty(context, track)
+    }
+
+    suspend fun upsert(track: Track): Long {
         val toInsert = getByMediaId(track.mediaId)?.let {
             track.copy(id = it.id, playbackCount = it.playbackCount, ignored = it.ignored)
         } ?: track

@@ -20,5 +20,6 @@
         <attr name="colorShadowBottomSheetCenter" format="color" />
         <attr name="colorButtonNormal" format="color" />
         <attr name="colorDivider" format="color" />
+        <attr name="colorEqualizerScale" format="color" />
     </declare-styleable>
 </resources>

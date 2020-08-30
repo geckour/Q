@@ -3,6 +3,7 @@ package com.geckour.q.util
 import androidx.appcompat.app.AppCompatDelegate
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Artist
+import timber.log.Timber
 import kotlin.math.abs
 import com.geckour.q.data.db.model.Album as DBAlbum
 import com.geckour.q.data.db.model.Artist as DBArtist
@@ -54,3 +55,10 @@ val Boolean.toNightModeInt: Int
 
 val String.hiraganized: String
     get() = this.map { if (it in 'ァ'..'ヶ') it - 0x60 else it }.toString()
+
+fun <T> catchAsNull(block: () -> T): T? = try {
+    block()
+} catch (t: Throwable) {
+    Timber.e(t)
+    null
+}

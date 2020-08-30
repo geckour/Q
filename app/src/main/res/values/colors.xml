@@ -37,6 +37,7 @@
     <color name="colorBackgroundProgressInverse">#30ffffff</color>
 
     <color name="colorEqualizerScale">#20160900</color>
+    <color name="colorEqualizerScaleInverse">#20E3E3E3</color>
 
     <color name="colorDivider">#80f095ad</color>
     <color name="colorDividerInverse">#80a6bbbe</color>

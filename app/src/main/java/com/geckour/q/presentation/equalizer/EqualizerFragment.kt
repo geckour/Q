@@ -18,6 +18,7 @@ import androidx.fragment.app.viewModels
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentEqualizerBinding
+import com.geckour.q.databinding.ItemEqualizerLabelBinding
 import com.geckour.q.databinding.ItemEqualizerSeekBarBinding
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.service.PlayerService
@@ -126,11 +127,13 @@ class EqualizerFragment : Fragment() {
     private fun onEqualizerStateChanged(state: Boolean) {
         errorThrown = sharedPreferences.equalizerEnabled && state.not()
         if (errorThrown) {
-            Toast.makeText(
-                requireContext(),
-                R.string.equalizer_message_error_turn_on,
-                Toast.LENGTH_LONG
-            ).show()
+            context?.let {
+                Toast.makeText(
+                    it,
+                    R.string.equalizer_message_error_turn_on,
+                    Toast.LENGTH_LONG
+                ).show()
+            }
         }
 
         if (viewModel.enabled.value != state) {
@@ -141,6 +144,7 @@ class EqualizerFragment : Fragment() {
 
     private fun inflateSeekBars() {
         binding.seekBarContainer.removeAllViews()
+        binding.labelContainer?.removeAllViews()
 
         sharedPreferences.equalizerParams?.also { params ->
             binding.textScaleBottom.text = getString(
@@ -164,10 +168,6 @@ class EqualizerFragment : Fragment() {
                     layoutInflater, binding.seekBarContainer, false
                 ).apply {
                     seekBar.max = params.levelRange.let { it.second - it.first }
-                    seekBarLabel.text = getString(
-                        R.string.equalizer_seek_bar_label,
-                        (band.centerFreq / 1000f).getReadableString()
-                    )
                     seekBar.progress = if (levels != null) seekBar.calcProgress(params, levels[i])
                     else seekBar.max / 2
                     seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
@@ -191,6 +191,15 @@ class EqualizerFragment : Fragment() {
                         }
                     })
                     binding.seekBarContainer.addView(this.root)
+                }
+                ItemEqualizerLabelBinding.inflate(
+                    layoutInflater, binding.labelContainer, false
+                ).apply {
+                    seekBarLabel.text = getString(
+                        R.string.equalizer_seek_bar_label,
+                        (band.centerFreq / 1000f).getReadableString()
+                    )
+                    binding.labelContainer?.addView(this.root)
                 }
             }
         }

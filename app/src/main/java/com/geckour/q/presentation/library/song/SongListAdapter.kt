@@ -25,9 +25,7 @@ import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class SongListAdapter(
@@ -121,26 +119,22 @@ class SongListAdapter(
                 when (it.itemId) {
                     R.id.menu_transition_to_artist -> {
                         viewModel.viewModelScope.launch {
-                            viewModel.selectedArtist.value = withContext((Dispatchers.IO)) {
-                                binding.data?.artist?.let {
-                                    DB.getInstance(binding.root.context)
-                                        .artistDao()
-                                        .getAllByTitle(it)
-                                        .firstOrNull()
-                                        ?.toDomainModel()
-                                }
+                            viewModel.selectedArtist.value = binding.data?.artist?.let {
+                                DB.getInstance(binding.root.context)
+                                    .artistDao()
+                                    .getAllByTitle(it)
+                                    .firstOrNull()
+                                    ?.toDomainModel()
                             }
                         }
                     }
                     R.id.menu_transition_to_album -> {
                         viewModel.viewModelScope.launch {
-                            viewModel.selectedAlbum.value = withContext(Dispatchers.IO) {
-                                binding.data?.albumId?.let {
-                                    DB.getInstance(binding.root.context)
-                                        .albumDao()
-                                        .get(it)
-                                        ?.toDomainModel()
-                                }
+                            viewModel.selectedAlbum.value = binding.data?.albumId?.let {
+                                DB.getInstance(binding.root.context)
+                                    .albumDao()
+                                    .get(it)
+                                    ?.toDomainModel()
                             }
                         }
                     }
@@ -175,16 +169,15 @@ class SongListAdapter(
             val song = getItem(adapterPosition)
             binding.data = song
             binding.duration.text = song.durationString
-            viewModel.viewModelScope.launch(Dispatchers.IO) {
+            viewModel.viewModelScope.launch {
                 try {
                     val uriString = DB.getInstance(binding.root.context)
                         .getArtworkUriStringFromId(song.albumId).orDefaultForModel
-                    withContext(Dispatchers.Main) {
-                        Glide.with(binding.thumb)
-                            .load(uriString)
-                            .applyDefaultSettings()
-                            .into(binding.thumb)
-                    }
+
+                    Glide.with(binding.thumb)
+                        .load(uriString)
+                        .applyDefaultSettings()
+                        .into(binding.thumb)
                 } catch (t: Throwable) {
                     Timber.e(t)
                 }
@@ -230,7 +223,7 @@ class SongListAdapter(
 
         private fun toggleIgnored() {
             binding.data?.id?.also { trackId ->
-                viewModel.viewModelScope.launch(Dispatchers.IO) {
+                viewModel.viewModelScope.launch {
                     DB.getInstance(binding.root.context).trackDao().apply {
                         val ignored = when (this.get(trackId)?.ignored ?: Bool.FALSE) {
                             Bool.TRUE -> Bool.FALSE
@@ -238,10 +231,8 @@ class SongListAdapter(
                             Bool.UNDEFINED -> Bool.UNDEFINED
                         }.apply { Timber.d("qgeck saved ignored value: $this") }
                         setIgnored(trackId, ignored)
-                        withContext(Dispatchers.Main) {
-                            binding.data =
-                                binding.data?.let { it.copy(ignored = it.ignored?.not()) }
-                        }
+
+                        binding.data = binding.data?.let { it.copy(ignored = it.ignored?.not()) }
                     }
                 }
             }

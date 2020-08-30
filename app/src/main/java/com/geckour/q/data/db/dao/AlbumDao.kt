@@ -15,43 +15,43 @@ import com.geckour.q.data.db.model.Album
 interface AlbumDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insert(album: Album): Long
+    suspend fun insert(album: Album): Long
 
     @Update
-    fun update(album: Album): Int
+    suspend fun update(album: Album): Int
 
     @Query("delete from album where id = :id")
-    fun delete(id: Long): Int
+    suspend fun delete(id: Long): Int
 
     @Query("delete from track where albumId = :albumId")
-    fun deleteTrackByAlbum(albumId: Long): Int
+    suspend fun deleteTrackByAlbum(albumId: Long): Int
 
     @Query("select * from album where id = :id")
-    fun get(id: Long): Album?
+    suspend fun get(id: Long): Album?
 
     @Query("select * from album where title like :title")
-    fun getByTitle(title: String): Album?
+    suspend fun getByTitle(title: String): Album?
 
     @Query("select * from album")
-    fun getAll(): List<Album>
+    suspend fun getAll(): List<Album>
 
     @Query("select * from album")
     fun getAllAsync(): LiveData<List<Album>>
 
     @Query("select * from album where artistId = :id")
-    fun getAllByArtistId(id: Long): List<Album>
+    suspend fun getAllByArtistId(id: Long): List<Album>
 
     @Query("select * from album where artistId = :id")
     fun getAllByArtistIdAsync(id: Long): LiveData<List<Album>>
 
     @Query("select * from album where title like :title")
-    fun getAllByTitle(title: String): List<Album>
+    suspend fun getAllByTitle(title: String): List<Album>
 
     @Query("update album set playbackCount = (select playbackCount from album where id = :albumId) + 1 where id = :albumId")
-    fun increasePlaybackCount(albumId: Long)
+    suspend fun increasePlaybackCount(albumId: Long)
 
     @Transaction
-    fun deleteIncludingRootIfEmpty(context: Context, id: Long) {
+    suspend fun deleteIncludingRootIfEmpty(context: Context, id: Long) {
         val album = get(id) ?: return
 
         delete(album.id)
@@ -62,12 +62,12 @@ interface AlbumDao {
     }
 
     @Transaction
-    fun deleteRecursively(id: Long) {
+    suspend fun deleteRecursively(id: Long) {
         deleteTrackByAlbum(id)
         delete(id)
     }
 
-    fun upsert(album: Album): Long {
+    suspend fun upsert(album: Album): Long {
         val toInsert = getAllByTitle(album.title).firstOrNull()?.let {
             album.copy(id = it.id, totalDuration = it.totalDuration + album.totalDuration)
         } ?: album
