@@ -51,7 +51,9 @@
             android:id="@+id/text_song"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:ellipsize="end"
+            android:ellipsize="marquee"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:singleLine="true"
             android:text="@{viewModel.currentSong.name}"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="12sp"
@@ -61,11 +63,13 @@
             android:id="@+id/text_artist_and_album"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:ellipsize="end"
+            android:ellipsize="marquee"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:singleLine="true"
             android:text="@{viewModel.currentSong == null ? null : String.format(@string/song_item_artist_and_album, viewModel.currentSong.artist, viewModel.currentSong.album)}"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="10sp"
-            tools:text="アーティスト名" />
+            tools:text="アーティスト名アーティスト名アーティスト名 - アルバム名" />
 
         <ImageView
             android:id="@+id/button_controller_left"
@@ -153,6 +157,7 @@
             android:id="@+id/text_time_left"
             android:layout_width="0dp"
             android:layout_height="0dp"
+            android:ellipsize="end"
             android:textAlignment="viewEnd"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="12sp"
@@ -172,6 +177,7 @@
             android:id="@+id/text_time_right"
             android:layout_width="0dp"
             android:layout_height="0dp"
+            android:ellipsize="end"
             android:onClick="@{() -> viewModel.onClickTimeRight()}"
             android:textAlignment="viewStart"
             android:textColor="?attr/colorTextPrimary"

@@ -12,6 +12,7 @@ import android.widget.SeekBar
 import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
@@ -29,6 +30,10 @@ import com.geckour.q.util.shake
 import com.geckour.q.util.showCurrentRemain
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class BottomSheetFragment : Fragment() {
 
@@ -142,6 +147,8 @@ class BottomSheetFragment : Fragment() {
             }
         })
 
+        resetMarquee()
+
         listOf(
             binding.buttonControllerLeft,
             binding.buttonControllerCenter,
@@ -177,7 +184,6 @@ class BottomSheetFragment : Fragment() {
         super.onDestroy()
         mainViewModel.player.value?.apply {
             setOnQueueChangedListener(null)
-            setOnCurrentPositionChangedListener(null)
             setOnPlaybackStateChangeListener(null)
             setOnPlaybackRatioChangedListener(null)
             setOnRepeatModeChangedListener(null)
@@ -188,11 +194,8 @@ class BottomSheetFragment : Fragment() {
     private fun observeEvents() {
         mainViewModel.player.observe(viewLifecycleOwner) { player ->
             player?.apply {
-                setOnQueueChangedListener {
-                    onQueueChanged(it)
-                }
-                setOnCurrentPositionChangedListener { position, songChanged ->
-                    onCurrentQueuePositionChanged(position, songChanged)
+                setOnQueueChangedListener { songs, position, songChanged ->
+                    onQueueChanged(songs, position, songChanged)
                 }
                 setOnPlaybackStateChangeListener { playbackState, playWhenReady ->
                     onPlayingChanged(
@@ -206,7 +209,7 @@ class BottomSheetFragment : Fragment() {
                 }
                 setOnPlaybackRatioChangedListener {
                     viewModel.playbackRatio = it
-                    onPlaybackRatioChanged()
+                    onPlaybackRatioChanged(viewModel.playbackRatio)
                 }
                 setOnRepeatModeChangedListener {
                     onRepeatModeChanged(it)
@@ -268,36 +271,40 @@ class BottomSheetFragment : Fragment() {
         }
     }
 
+    private fun resetMarquee() {
+        viewModel.viewModelScope.launch(Dispatchers.IO) {
+            val views = listOf(binding.textSong, binding.textArtistAndAlbum)
+            views.forEach { withContext(Dispatchers.Main) { it.isSelected = false } }
+            delay(1000)
+            views.forEach { withContext(Dispatchers.Main) { it.isSelected = true } }
+        }
+    }
+
     private fun scrollToCurrent() {
         if (adapter.itemCount > 0) {
             binding.recyclerView.smoothScrollToPosition(viewModel.currentPosition)
         }
     }
 
-    private fun onQueueChanged(queue: List<Song>) {
-        adapter.setItems(queue)
+    @SuppressLint("ClickableViewAccessibility")
+    private fun onQueueChanged(queue: List<Song>, position: Int, songChanged: Boolean) {
+        adapter.setNowPlayingPosition(position, queue)
         viewModel.currentQueue = queue
-
-        val changed = (adapter.getItemIds() == queue.map { it.id }).not()
+        viewModel.onNewPosition(position)
+        binding.viewModel = viewModel
 
         val totalTime = queue.map { it.duration }.sum()
         binding.textTimeTotal.text =
             requireContext().getString(R.string.bottom_sheet_time_total, totalTime.getTimeString())
 
+        val changed = (adapter.getItemIds() == queue.map { it.id }).not()
         if (changed && behavior.state == BottomSheetBehavior.STATE_COLLAPSED) {
             binding.buttonToggleVisibleQueue.shake()
         }
-    }
-
-    @SuppressLint("ClickableViewAccessibility")
-    private fun onCurrentQueuePositionChanged(position: Int, songChanged: Boolean) {
-        adapter.setNowPlayingPosition(position)
-        viewModel.onNewPosition(position)
-        binding.viewModel = viewModel
 
         if (songChanged) {
             viewModel.playbackRatio = 0f
-            onPlaybackRatioChanged()
+            onPlaybackRatioChanged(0f)
         }
 
         val noCurrentSong = viewModel.currentSong == null
@@ -311,6 +318,7 @@ class BottomSheetFragment : Fragment() {
             }
         }
         viewModel.setArtwork(binding.artwork)
+        resetMarquee()
     }
 
     private fun onPlayingChanged(playing: Boolean) {
@@ -320,12 +328,12 @@ class BottomSheetFragment : Fragment() {
         }
     }
 
-    private fun onPlaybackRatioChanged() {
-        binding.seekBar.progress = (binding.seekBar.max * viewModel.playbackRatio).toInt()
+    private fun onPlaybackRatioChanged(playbackRatio: Float) {
+        binding.seekBar.progress = (binding.seekBar.max * playbackRatio).toInt()
 
         val song = viewModel.currentSong ?: return
 
-        val elapsed = (song.duration * viewModel.playbackRatio).toLong()
+        val elapsed = (song.duration * playbackRatio).toLong()
         binding.textTimeLeft.text = elapsed.getTimeString()
         setTimeRightText(song, elapsed)
         val remain = adapter.getItemsAfter(viewModel.currentPosition + 1)

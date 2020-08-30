@@ -3,7 +3,18 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <Transition
         app:constraintSetEnd="@id/motion_end"
-        app:constraintSetStart="@id/motion_start" />
+        app:constraintSetStart="@id/motion_start">
+
+        <KeyFrameSet>
+            <KeyPosition
+                app:framePosition="50"
+                app:keyPositionType="deltaRelative"
+                app:motionTarget="@+id/artwork"
+                app:percentX="0.25"
+                app:percentY="0.25"
+                app:sizePercent="0.25" />
+        </KeyFrameSet>
+    </Transition>
 
     <ConstraintSet android:id="@+id/motion_start">
 
@@ -38,12 +49,7 @@
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toTopOf="@id/text_artist_and_album"
             app:layout_constraintLeft_toLeftOf="@id/text_artist_and_album"
-            app:layout_constraintRight_toRightOf="@id/text_artist_and_album">
-
-            <CustomAttribute
-                app:attributeName="MaxLines"
-                app:customIntegerValue="1" />
-        </Constraint>
+            app:layout_constraintRight_toRightOf="@id/text_artist_and_album" />
 
         <Constraint
             android:id="@+id/text_artist_and_album"
@@ -53,12 +59,7 @@
             android:layout_marginRight="12dp"
             app:layout_constraintBottom_toTopOf="@id/button_controller_center"
             app:layout_constraintLeft_toRightOf="@id/artwork"
-            app:layout_constraintRight_toLeftOf="@id/button_share">
-
-            <CustomAttribute
-                app:attributeName="MaxLines"
-                app:customIntegerValue="1" />
-        </Constraint>
+            app:layout_constraintRight_toLeftOf="@id/button_share" />
 
         <Constraint
             android:id="@+id/button_controller_left"
@@ -89,7 +90,7 @@
             android:id="@+id/button_repeat"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginRight="12dp"
+            android:layout_marginRight="4dp"
             app:layout_constraintBottom_toBottomOf="@id/button_shuffle"
             app:layout_constraintRight_toLeftOf="@id/button_shuffle"
             app:layout_constraintTop_toTopOf="@id/button_shuffle" />
@@ -108,7 +109,7 @@
             android:id="@+id/button_share"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginRight="12dp"
+            android:layout_marginRight="4dp"
             app:layout_constraintRight_toLeftOf="@id/button_toggle_visible_queue"
             app:layout_constraintTop_toTopOf="@id/button_toggle_visible_queue" />
 
@@ -123,9 +124,10 @@
 
         <Constraint
             android:id="@+id/text_time_left"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toBottomOf="@id/seek_bar"
+            app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toLeftOf="@id/seek_bar"
             app:layout_constraintTop_toTopOf="@id/seek_bar" />
 
@@ -141,10 +143,11 @@
 
         <Constraint
             android:id="@+id/text_time_right"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toBottomOf="@id/seek_bar"
             app:layout_constraintLeft_toRightOf="@id/seek_bar"
+            app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="@id/seek_bar" />
 
         <Constraint
@@ -166,18 +169,19 @@
 
         <Constraint
             android:id="@+id/text_time_remain"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginLeft="16dp"
             app:layout_constraintBottom_toBottomOf="@id/button_scroll_to_current"
             app:layout_constraintLeft_toRightOf="@id/text_time_total"
+            app:layout_constraintRight_toLeftOf="@id/button_touch_lock"
             app:layout_constraintTop_toTopOf="@id/button_scroll_to_current" />
 
         <Constraint
             android:id="@+id/button_touch_lock"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginRight="12dp"
+            android:layout_marginRight="4dp"
             app:layout_constraintRight_toLeftOf="@id/button_add_queue_to_playlist"
             app:layout_constraintTop_toBottomOf="@id/guide_peek_height" />
 
@@ -185,7 +189,7 @@
             android:id="@+id/button_add_queue_to_playlist"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginRight="12dp"
+            android:layout_marginRight="4dp"
             app:layout_constraintRight_toLeftOf="@id/button_clear_queue"
             app:layout_constraintTop_toBottomOf="@id/guide_peek_height" />
 
@@ -253,12 +257,7 @@
             android:layout_marginRight="12dp"
             app:layout_constraintBottom_toTopOf="@id/text_artist_and_album"
             app:layout_constraintLeft_toRightOf="@id/artwork"
-            app:layout_constraintRight_toRightOf="parent">
-
-            <CustomAttribute
-                app:attributeName="MaxLines"
-                app:customIntegerValue="2" />
-        </Constraint>
+            app:layout_constraintRight_toRightOf="parent" />
 
         <Constraint
             android:id="@id/text_artist_and_album"
@@ -266,12 +265,7 @@
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toTopOf="@id/button_controller_center"
             app:layout_constraintLeft_toLeftOf="@id/text_song"
-            app:layout_constraintRight_toRightOf="@id/text_song">
-
-            <CustomAttribute
-                app:attributeName="MaxLines"
-                app:customIntegerValue="2" />
-        </Constraint>
+            app:layout_constraintRight_toRightOf="@id/text_song" />
 
         <Constraint
             android:id="@id/button_controller_left"
@@ -302,7 +296,7 @@
             android:id="@id/button_repeat"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginRight="12dp"
+            android:layout_marginRight="4dp"
             app:layout_constraintBottom_toBottomOf="@id/button_shuffle"
             app:layout_constraintRight_toLeftOf="@id/button_shuffle"
             app:layout_constraintTop_toTopOf="@id/button_shuffle" />
@@ -321,7 +315,7 @@
             android:id="@id/button_share"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginRight="12dp"
+            android:layout_marginRight="4dp"
             app:layout_constraintRight_toLeftOf="@id/button_toggle_visible_queue"
             app:layout_constraintTop_toTopOf="@id/button_toggle_visible_queue" />
 
@@ -336,9 +330,10 @@
 
         <Constraint
             android:id="@id/text_time_left"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toBottomOf="@id/seek_bar"
+            app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toLeftOf="@id/seek_bar"
             app:layout_constraintTop_toTopOf="@id/seek_bar" />
 
@@ -354,10 +349,11 @@
 
         <Constraint
             android:id="@id/text_time_right"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toBottomOf="@id/seek_bar"
             app:layout_constraintLeft_toRightOf="@id/seek_bar"
+            app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="@id/seek_bar" />
 
         <Constraint
@@ -380,35 +376,38 @@
 
         <Constraint
             android:id="@id/text_time_remain"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginLeft="16dp"
             app:layout_constraintBottom_toBottomOf="@id/button_scroll_to_current"
             app:layout_constraintLeft_toRightOf="@id/text_time_total"
+            app:layout_constraintRight_toLeftOf="@id/button_touch_lock"
             app:layout_constraintTop_toTopOf="@id/button_scroll_to_current" />
 
         <Constraint
             android:id="@id/button_touch_lock"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginRight="12dp"
+            android:layout_marginRight="4dp"
+            app:layout_constraintBottom_toBottomOf="@id/button_scroll_to_current"
             app:layout_constraintRight_toLeftOf="@id/button_add_queue_to_playlist"
-            app:layout_constraintTop_toTopOf="@id/button_clear_queue" />
+            app:layout_constraintTop_toTopOf="@id/button_scroll_to_current" />
 
         <Constraint
             android:id="@id/button_add_queue_to_playlist"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginRight="12dp"
+            android:layout_marginRight="4dp"
+            app:layout_constraintBottom_toBottomOf="@id/button_scroll_to_current"
             app:layout_constraintRight_toLeftOf="@id/button_clear_queue"
-            app:layout_constraintTop_toTopOf="@id/button_clear_queue" />
+            app:layout_constraintTop_toTopOf="@id/button_scroll_to_current" />
 
         <Constraint
             android:id="@id/button_clear_queue"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginTop="4dp"
             android:layout_marginRight="6dp"
+            app:layout_constraintBottom_toBottomOf="@id/button_scroll_to_current"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="@id/button_scroll_to_current" />
 
