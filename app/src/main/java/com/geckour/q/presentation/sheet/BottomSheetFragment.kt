@@ -141,13 +141,9 @@ class BottomSheetFragment : Fragment() {
             override fun onStartTrackingTouch(seekBar: SeekBar) = Unit
 
             override fun onStopTrackingTouch(seekBar: SeekBar) {
-                mainViewModel.onNewSeekBarProgress(
-                    seekBar.progress.toFloat() / seekBar.max, viewModel.currentSong
-                )
+                mainViewModel.onNewSeekBarProgress(seekBar.progress.toFloat() / seekBar.max)
             }
         })
-
-        resetMarquee()
 
         listOf(
             binding.buttonControllerLeft,
@@ -164,6 +160,8 @@ class BottomSheetFragment : Fragment() {
                 return@setOnTouchListener false
             }
         }
+
+        resetMarquee()
 
         behavior = BottomSheetBehavior.from(
             (requireActivity() as MainActivity).binding.root.findViewById(R.id.bottom_sheet)
@@ -208,8 +206,8 @@ class BottomSheetFragment : Fragment() {
                     )
                 }
                 setOnPlaybackRatioChangedListener {
-                    viewModel.playbackRatio = it
-                    onPlaybackRatioChanged(viewModel.playbackRatio)
+                    viewModel.playbackPosition = it
+                    onPlaybackPositionChanged(viewModel.playbackPosition)
                 }
                 setOnRepeatModeChangedListener {
                     onRepeatModeChanged(it)
@@ -248,14 +246,13 @@ class BottomSheetFragment : Fragment() {
             }
         }
 
-        viewModel.toggleCurrentRemain.observe(viewLifecycleOwner) {
-            if (it != true) return@observe
-            sharedPreferences.showCurrentRemain = sharedPreferences.showCurrentRemain.not()
+        viewModel.showCurrentRemain.observe(viewLifecycleOwner) {
+            it ?: return@observe
+            sharedPreferences.showCurrentRemain = it
             val song = viewModel.currentSong ?: return@observe
             val ratio = binding.seekBar.progress / binding.seekBar.max.toFloat()
             val elapsedTime = (song.duration * ratio).toLong()
             setTimeRightText(song, elapsedTime)
-            viewModel.onCurrentRemainToggled()
         }
 
         viewModel.scrollToCurrent.observe(viewLifecycleOwner) {
@@ -303,8 +300,8 @@ class BottomSheetFragment : Fragment() {
         }
 
         if (songChanged) {
-            viewModel.playbackRatio = 0f
-            onPlaybackRatioChanged(0f)
+            viewModel.playbackPosition = 0
+            onPlaybackPositionChanged(0)
         }
 
         val noCurrentSong = viewModel.currentSong == null
@@ -328,17 +325,17 @@ class BottomSheetFragment : Fragment() {
         }
     }
 
-    private fun onPlaybackRatioChanged(playbackRatio: Float) {
-        binding.seekBar.progress = (binding.seekBar.max * playbackRatio).toInt()
-
+    private fun onPlaybackPositionChanged(playbackPosition: Long) {
         val song = viewModel.currentSong ?: return
 
-        val elapsed = (song.duration * playbackRatio).toLong()
-        binding.textTimeLeft.text = elapsed.getTimeString()
-        setTimeRightText(song, elapsed)
+        val ratio = (playbackPosition.toFloat() / song.duration)
+        binding.seekBar.progress = (binding.seekBar.max * ratio).toInt()
+
+        binding.textTimeLeft.text = playbackPosition.getTimeString()
+        setTimeRightText(song, playbackPosition)
         val remain = adapter.getItemsAfter(viewModel.currentPosition + 1)
             .map { it.duration }
-            .sum() + (song.duration - elapsed)
+            .sum() + (song.duration - playbackPosition)
         binding.textTimeRemain.text =
             getString(R.string.bottom_sheet_time_remain, remain.getTimeString())
     }

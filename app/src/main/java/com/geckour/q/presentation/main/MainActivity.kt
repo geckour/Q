@@ -540,7 +540,7 @@ class MainActivity : CrashlyticsBundledActivity() {
                     SleepTimerService.start(
                         this,
                         it,
-                        bottomSheetViewModel.playbackRatio,
+                        bottomSheetViewModel.playbackPosition,
                         System.currentTimeMillis() + timerValue * 60000,
                         toleranceValue * 60000L
                     )

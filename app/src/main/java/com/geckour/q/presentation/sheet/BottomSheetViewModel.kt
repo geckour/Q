@@ -27,6 +27,7 @@ import com.geckour.q.service.SleepTimerService
 import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.fetchPlaylists
 import com.geckour.q.util.orDefaultForModel
+import com.geckour.q.util.showCurrentRemain
 import com.geckour.q.util.toDomainModel
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.Dispatchers
@@ -40,17 +41,16 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
         internal const val PREF_KEY_SHOW_LOCK_TOUCH_QUEUE = "pref_key_lock_touch_queue"
     }
 
-    var playing = MutableLiveData<Boolean>(false)
+    var playing = MutableLiveData(false)
     internal var sheetState: Int = BottomSheetBehavior.STATE_COLLAPSED
     private val _artworkLongClick = MutableLiveData<Boolean>()
     internal val artworkLongClick: LiveData<Boolean> = _artworkLongClick.distinctUntilChanged()
     internal val toggleSheetState = MutableLiveData<Unit>()
     internal var currentQueue: List<Song> = emptyList()
     internal var currentPosition: Int = -1
-    internal var playbackRatio: Float = 0f
-    private val _toggleCurrentRemain = MutableLiveData<Boolean>()
-    internal val toggleCurrentRemain: LiveData<Boolean> =
-        _toggleCurrentRemain.distinctUntilChanged()
+    internal var playbackPosition: Long = 0
+    private val _showCurrentRemain = MutableLiveData<Boolean>()
+    internal val showCurrentRemain: LiveData<Boolean> = _showCurrentRemain
     private val _scrollToCurrent = MutableLiveData<Boolean>()
     internal val scrollToCurrent: LiveData<Boolean> = _scrollToCurrent.distinctUntilChanged()
     private val _touchLock = MutableLiveData<Boolean>()
@@ -62,8 +62,9 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     private var updateArtworkJob: Job = Job()
 
     init {
-        _touchLock.value = PreferenceManager.getDefaultSharedPreferences(application)
-            .getBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, false)
+        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(application)
+        _touchLock.value = sharedPreferences.getBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, false)
+        _showCurrentRemain.value = sharedPreferences.showCurrentRemain
     }
 
     fun onLongClickArtwork(): Boolean {
@@ -122,7 +123,7 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     fun onClickTimeRight() {
-        _toggleCurrentRemain.value = true
+        _showCurrentRemain.value = _showCurrentRemain.value?.not()
     }
 
     fun onClickShareButton() {
@@ -141,7 +142,11 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
 
     internal fun onNewPosition(position: Int) {
         currentPosition = position
-        SleepTimerService.notifyTrackChanged(getApplication(), currentSong ?: return, playbackRatio)
+        SleepTimerService.notifyTrackChanged(
+            getApplication(),
+            currentSong ?: return,
+            playbackPosition
+        )
     }
 
     internal fun reAttach() {
@@ -187,10 +192,6 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
 
     internal fun onArtworkDialogShown() {
         _artworkLongClick.value = false
-    }
-
-    internal fun onCurrentRemainToggled() {
-        _toggleCurrentRemain.value = false
     }
 
     internal fun onScrollToCurrentInvoked() {

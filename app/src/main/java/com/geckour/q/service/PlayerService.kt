@@ -232,7 +232,7 @@ class PlayerService : Service() {
     private val cachedQueueOrder = mutableListOf<Long>()
     private var onQueueChanged: ((List<Song>, Int, Boolean) -> Unit)? = null
     private var onPlaybackStateChanged: ((Int, Boolean) -> Unit)? = null
-    private var onPlaybackRatioChanged: ((Float) -> Unit)? = null
+    private var onPlaybackPositionChanged: ((Long) -> Unit)? = null
     private var onRepeatModeChanged: ((Int) -> Unit)? = null
     private var onEqualizerStateChanged: ((Boolean) -> Unit)? = null
     private var onDestroyed: (() -> Unit)? = null
@@ -316,7 +316,7 @@ class PlayerService : Service() {
         override val coroutineContext: CoroutineContext get() = job + Dispatchers.IO
     }
     private var notificationUpdateJob: Job = Job()
-    private var notifyPlaybackRatioJob: Job = Job()
+    private var notifyPlaybackPositionJob: Job = Job()
     private var playbackCountIncreaseJob: Job = Job()
     private var seekJob: Job = Job()
 
@@ -408,8 +408,8 @@ class PlayerService : Service() {
         this.onPlaybackStateChanged = listener
     }
 
-    fun setOnPlaybackRatioChangedListener(listener: ((Float) -> Unit)?) {
-        this.onPlaybackRatioChanged = listener
+    fun setOnPlaybackRatioChangedListener(listener: ((Long) -> Unit)?) {
+        this.onPlaybackPositionChanged = listener
     }
 
     fun setOnRepeatModeChangedListener(listener: ((Int) -> Unit)?) {
@@ -532,12 +532,12 @@ class PlayerService : Service() {
     private fun resume() {
         Timber.d("qgeck resume invoked")
 
-        notifyPlaybackRatioJob.cancel()
-        notifyPlaybackRatioJob = serviceScope.launch(Dispatchers.Main) {
+        notifyPlaybackPositionJob.cancel()
+        notifyPlaybackPositionJob = serviceScope.launch(Dispatchers.Main) {
             val song = currentSong ?: return@launch
             while (this.isActive) {
                 withContext(Dispatchers.Main) {
-                    onPlaybackRatioChanged?.invoke(player.contentPosition.toFloat() / song.duration)
+                    onPlaybackPositionChanged?.invoke(player.currentPosition)
                 }
                 delay(100)
             }
@@ -554,7 +554,7 @@ class PlayerService : Service() {
         if (player.playWhenReady) storeState()
 
         player.playWhenReady = false
-        notifyPlaybackRatioJob.cancel()
+        notifyPlaybackPositionJob.cancel()
         getSystemService(AudioManager::class.java)?.apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 val audioFocusRequest = AudioFocusRequest.Builder(
@@ -695,7 +695,7 @@ class PlayerService : Service() {
         player.seekTo(playbackPosition)
         val current = currentSong ?: return
         serviceScope.launch(Dispatchers.Main) {
-            onPlaybackRatioChanged?.invoke(playbackPosition.toFloat() / current.duration)
+            onPlaybackPositionChanged?.invoke(playbackPosition)
         }
     }
 
@@ -904,7 +904,7 @@ class PlayerService : Service() {
         serviceScope.launch(Dispatchers.Main) {
             onQueueChanged?.invoke(queue, currentPosition, false)
             currentSong?.apply {
-                onPlaybackRatioChanged?.invoke(player.currentPosition.toFloat() / this.duration)
+                onPlaybackPositionChanged?.invoke(player.currentPosition)
             }
             onPlaybackStateChanged?.invoke(player.playbackState, player.playWhenReady)
             onRepeatModeChanged?.invoke(player.repeatMode)

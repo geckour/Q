@@ -39,21 +39,21 @@ class SleepTimerService : Service() {
         private const val ACTION_CANCEL = "com.geckour.q.service.sleep_timer.cancel"
 
         private const val KEY_SONG = "key song"
-        private const val KEY_PLAYBACK_RATIO = "key playback ratio"
+        private const val KEY_PLAYBACK_POSITION = "key playback position"
         private const val KEY_EXPIRE_TIME = "key expire time"
         private const val KEY_TOLERANCE = "key tolerance"
 
         fun start(
             context: Context,
             song: Song,
-            playbackRatio: Float,
+            playbackPosition: Long,
             expireTime: Long,
             tolerance: Long
         ) {
             val intent = Intent(context, SleepTimerService::class.java).apply {
                 action = ACTION_START
                 putExtra(KEY_SONG, song)
-                putExtra(KEY_PLAYBACK_RATIO, playbackRatio)
+                putExtra(KEY_PLAYBACK_POSITION, playbackPosition)
                 putExtra(KEY_EXPIRE_TIME, expireTime)
                 putExtra(KEY_TOLERANCE, tolerance)
             }
@@ -64,11 +64,11 @@ class SleepTimerService : Service() {
             }
         }
 
-        fun notifyTrackChanged(context: Context, song: Song, playbackRatio: Float) {
+        fun notifyTrackChanged(context: Context, song: Song, playbackPosition: Long) {
             val intent = Intent(context, SleepTimerService::class.java).apply {
                 action = ACTION_NOTIFY
                 putExtra(KEY_SONG, song)
-                putExtra(KEY_PLAYBACK_RATIO, playbackRatio)
+                putExtra(KEY_PLAYBACK_POSITION, playbackPosition)
             }
             context.startService(intent)
         }
@@ -79,12 +79,12 @@ class SleepTimerService : Service() {
 
     private var expireTime = -1L
     private var tolerance = 0L
-    private var ratio = 0f
+    private var playbackPosition = 0L
     private var song: Song? = null
         set(value) {
             value?.let {
                 endTimeCurrentSong =
-                    System.currentTimeMillis() + (it.duration * (1 - ratio)).toLong()
+                    System.currentTimeMillis() + (it.duration - playbackPosition)
             }
             field = value
         }
@@ -142,7 +142,7 @@ class SleepTimerService : Service() {
             ACTION_START -> {
                 expireTime = intent.getLongExtra(KEY_EXPIRE_TIME, -1)
                 tolerance = intent.getLongExtra(KEY_TOLERANCE, 0)
-                ratio = intent.getFloatExtra(KEY_PLAYBACK_RATIO, 0f)
+                playbackPosition = intent.getLongExtra(KEY_PLAYBACK_POSITION, 0)
                 song = intent.getParcelableExtra(KEY_SONG)
 
                 showNotification(expireTime - System.currentTimeMillis())
@@ -158,7 +158,7 @@ class SleepTimerService : Service() {
                     expire()
                     return START_STICKY
                 }
-                ratio = intent.getFloatExtra(KEY_PLAYBACK_RATIO, 0f)
+                playbackPosition = intent.getLongExtra(KEY_PLAYBACK_POSITION, 0)
                 song = intent.getParcelableExtra(KEY_SONG)
 
                 checkExpiredJob.cancel()

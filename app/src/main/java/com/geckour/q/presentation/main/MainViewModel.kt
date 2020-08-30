@@ -457,9 +457,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         player.value?.play(position)
     }
 
-    internal fun onNewSeekBarProgress(progress: Float, currentSong: Song?) {
+    internal fun onNewSeekBarProgress(progress: Float) {
         player.value?.seek(progress)
-        SleepTimerService.notifyTrackChanged(getApplication(), currentSong ?: return, progress)
     }
 
     internal fun onNewPlaybackButton(playbackButton: PlaybackButton) {
