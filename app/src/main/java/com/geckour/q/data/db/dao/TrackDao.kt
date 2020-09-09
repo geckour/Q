@@ -69,7 +69,7 @@ interface TrackDao {
     suspend fun count(): Int
 
     @Query("select lastModified from track order by lastModified desc limit 1")
-    suspend fun getLatestModifiedEpochTime(): Long
+    suspend fun getLatestModifiedEpochTime(): Long?
 
     @Transaction
     suspend fun deleteIncludingRootIfEmpty(context: Context, track: Track) {

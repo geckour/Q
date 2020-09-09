@@ -108,7 +108,7 @@ class MediaRetrieveService : IntentService(NAME) {
             val onlyAdded = intent?.getBooleanExtra(KEY_ONLY_ADDED, false) == true
             val selection =
                 if (onlyAdded) {
-                    val latest = runBlocking { db.trackDao().getLatestModifiedEpochTime() } / 1000
+                    val latest = runBlocking { db.trackDao().getLatestModifiedEpochTime() ?: 0 } / 1000
                     "$SELECTION AND ${MediaStore.Audio.Media.DATE_MODIFIED} > $latest"
                 } else SELECTION
             applicationContext.contentResolver
