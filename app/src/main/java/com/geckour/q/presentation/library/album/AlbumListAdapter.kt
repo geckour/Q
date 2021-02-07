@@ -10,7 +10,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
-import com.geckour.q.databinding.ItemListAlbumBinding
+import com.geckour.q.databinding.ItemAlbumBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Song
 import com.geckour.q.presentation.main.MainViewModel
@@ -62,7 +62,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
-        ItemListAlbumBinding.inflate(
+        ItemAlbumBinding.inflate(
             LayoutInflater.from(parent.context), parent, false
         )
     )
@@ -72,7 +72,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
     }
 
 
-    inner class ViewHolder(private val binding: ItemListAlbumBinding) :
+    inner class ViewHolder(private val binding: ItemAlbumBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
         private fun getPopupMenu(bindTo: View) = PopupMenu(bindTo.context, bindTo).apply {

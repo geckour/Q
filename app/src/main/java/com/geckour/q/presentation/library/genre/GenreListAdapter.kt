@@ -10,7 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.databinding.ItemListGenreBinding
+import com.geckour.q.databinding.ItemGenreBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Song
 import com.geckour.q.presentation.main.MainViewModel
@@ -48,7 +48,7 @@ class GenreListAdapter(private val viewModel: MainViewModel) :
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
-        ItemListGenreBinding.inflate(
+        ItemGenreBinding.inflate(
             LayoutInflater.from(parent.context), parent, false
         )
     )
@@ -59,7 +59,7 @@ class GenreListAdapter(private val viewModel: MainViewModel) :
         holder.bind()
     }
 
-    inner class ViewHolder(private val binding: ItemListGenreBinding) :
+    inner class ViewHolder(private val binding: ItemGenreBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
         private fun getPopupMenu(bindTo: View) = PopupMenu(bindTo.context, bindTo).apply {

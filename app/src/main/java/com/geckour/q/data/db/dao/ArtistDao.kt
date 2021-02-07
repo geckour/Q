@@ -9,6 +9,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import com.geckour.q.data.db.model.Artist
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ArtistDao {
@@ -41,7 +42,10 @@ interface ArtistDao {
     suspend fun findAllByTitle(title: String): List<Artist>
 
     @Query("select * from artist where id in (select artistId from album group by artistId)")
-    fun getAllOrientedAlbumAsync(): LiveData<List<Artist>>
+    fun getAllOrientedAlbumAsync(): Flow<List<Artist>>
+
+    @Query("select artworkUriString from album where artistId = :artistId and artworkUriString is not null order by playbackCount limit 1")
+    suspend fun getThumbnailUriString(artistId: Long): String
 
     @Query("update artist set playbackCount = (select playbackCount from artist where id = :artistId) + 1 where id = :artistId")
     suspend fun increasePlaybackCount(artistId: Long)

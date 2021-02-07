@@ -3,7 +3,7 @@ package com.geckour.q.presentation.dialog.playlist
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import com.geckour.q.databinding.ItemListSimplePlaylistBinding
+import com.geckour.q.databinding.ItemSimplePlaylistBinding
 import com.geckour.q.domain.model.Playlist
 
 class QueueAddPlaylistListAdapter(
@@ -11,7 +11,7 @@ class QueueAddPlaylistListAdapter(
 ) : RecyclerView.Adapter<QueueAddPlaylistListAdapter.ViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
-            ItemListSimplePlaylistBinding.inflate(
+            ItemSimplePlaylistBinding.inflate(
                     LayoutInflater.from(parent.context), parent, false
             )
     )
@@ -22,7 +22,7 @@ class QueueAddPlaylistListAdapter(
         holder.bind(items[holder.adapterPosition])
     }
 
-    inner class ViewHolder(private val binding: ItemListSimplePlaylistBinding) :
+    inner class ViewHolder(private val binding: ItemSimplePlaylistBinding) :
             RecyclerView.ViewHolder(binding.root) {
 
         fun bind(playlist: Playlist) {

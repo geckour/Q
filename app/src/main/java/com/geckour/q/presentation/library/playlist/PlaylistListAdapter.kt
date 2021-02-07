@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.databinding.ItemListPlaylistBinding
+import com.geckour.q.databinding.ItemPlaylistBinding
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.presentation.main.MainViewModel
@@ -49,7 +49,7 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
-        ItemListPlaylistBinding.inflate(
+        ItemPlaylistBinding.inflate(
             LayoutInflater.from(parent.context), parent, false
         )
     )
@@ -60,7 +60,7 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
         holder.bind()
     }
 
-    inner class ViewHolder(private val binding: ItemListPlaylistBinding) :
+    inner class ViewHolder(private val binding: ItemPlaylistBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
         private fun getPopupMenu(bindTo: View) = PopupMenu(bindTo.context, bindTo).apply {

@@ -8,8 +8,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.databinding.ItemListSearchCategoryBinding
-import com.geckour.q.databinding.ItemListSearchItemBinding
+import com.geckour.q.databinding.ItemSearchCategoryBinding
+import com.geckour.q.databinding.ItemSearchItemBinding
 import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Artist
 import com.geckour.q.domain.model.Genre
@@ -47,14 +47,14 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
         when (viewType) {
             SearchItem.SearchItemType.CATEGORY.ordinal -> {
                 CategoryViewHolder(
-                    ItemListSearchCategoryBinding.inflate(
+                    ItemSearchCategoryBinding.inflate(
                         LayoutInflater.from(parent.context), parent, false
                     )
                 )
             }
             else -> {
                 ItemViewHolder(
-                    ItemListSearchItemBinding.inflate(
+                    ItemSearchItemBinding.inflate(
                         LayoutInflater.from(parent.context), parent, false
                     )
                 )
@@ -73,7 +73,7 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
         }
     }
 
-    class CategoryViewHolder(private val binding: ItemListSearchCategoryBinding) :
+    class CategoryViewHolder(private val binding: ItemSearchCategoryBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
         fun onBind(item: SearchItem) {
@@ -81,7 +81,7 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
         }
     }
 
-    inner class ItemViewHolder(private val binding: ItemListSearchItemBinding) :
+    inner class ItemViewHolder(private val binding: ItemSearchItemBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
         private val trackPopupMenu = PopupMenu(binding.root.context, binding.root).apply {

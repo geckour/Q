@@ -14,7 +14,7 @@ import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Bool
-import com.geckour.q.databinding.ItemListSongBinding
+import com.geckour.q.databinding.ItemSongBinding
 import com.geckour.q.domain.model.Song
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.InsertActionType
@@ -78,7 +78,7 @@ class SongListAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
-        ItemListSongBinding.inflate(
+        ItemSongBinding.inflate(
             LayoutInflater.from(parent.context), parent, false
         )
     )
@@ -87,7 +87,7 @@ class SongListAdapter(
         holder.bind()
     }
 
-    inner class ViewHolder(private val binding: ItemListSongBinding) :
+    inner class ViewHolder(private val binding: ItemSongBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
         private val shortPopupMenu = PopupMenu(binding.root.context, binding.root).apply {

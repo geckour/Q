@@ -41,7 +41,7 @@ class EasterEggFragment : Fragment() {
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         binding = FragmentEasterEggBinding.inflate(inflater, container, false)
 
         return binding.root

@@ -18,8 +18,8 @@ import androidx.fragment.app.viewModels
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentEqualizerBinding
-import com.geckour.q.databinding.ItemEqualizerLabelBinding
-import com.geckour.q.databinding.ItemEqualizerSeekBarBinding
+import com.geckour.q.databinding.LabelEqualizerBinding
+import com.geckour.q.databinding.SeekBarEqualizerBinding
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.service.PlayerService
 import com.geckour.q.util.EqualizerParams
@@ -53,7 +53,7 @@ class EqualizerFragment : Fragment() {
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         binding = FragmentEqualizerBinding.inflate(inflater, container, false)
 
         return binding.root
@@ -164,7 +164,7 @@ class EqualizerFragment : Fragment() {
 
             val levels = sharedPreferences.equalizerSettings?.levels
             params.bands.forEachIndexed { i, band ->
-                ItemEqualizerSeekBarBinding.inflate(
+                SeekBarEqualizerBinding.inflate(
                     layoutInflater, binding.seekBarContainer, false
                 ).apply {
                     seekBar.max = params.levelRange.let { it.second - it.first }
@@ -192,7 +192,7 @@ class EqualizerFragment : Fragment() {
                     })
                     binding.seekBarContainer.addView(this.root)
                 }
-                ItemEqualizerLabelBinding.inflate(
+                LabelEqualizerBinding.inflate(
                     layoutInflater, binding.labelContainer, false
                 ).apply {
                     seekBarLabel.text = getString(

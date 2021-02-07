@@ -12,6 +12,7 @@ import android.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
@@ -27,6 +28,7 @@ import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toggleDayNight
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class ArtistListFragment : Fragment() {
@@ -47,7 +49,7 @@ class ArtistListFragment : Fragment() {
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
-    ): View? {
+    ): View {
         observeEvents()
         binding = FragmentListLibraryBinding.inflate(inflater, container, false)
         return binding.root
@@ -143,8 +145,10 @@ class ArtistListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        viewModel.artistListData.observe(viewLifecycleOwner) {
-            adapter.submitList(it)
+        lifecycleScope.launch {
+            viewModel.artistListData.collectLatest {
+                adapter.submitList(it)
+            }
         }
 
         mainViewModel.scrollToTop.observe(viewLifecycleOwner) {
