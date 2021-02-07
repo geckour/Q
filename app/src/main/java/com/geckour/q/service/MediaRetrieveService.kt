@@ -108,7 +108,8 @@ class MediaRetrieveService : IntentService(NAME) {
             val onlyAdded = intent?.getBooleanExtra(KEY_ONLY_ADDED, false) == true
             val selection =
                 if (onlyAdded) {
-                    val latest = runBlocking { db.trackDao().getLatestModifiedEpochTime() ?: 0 } / 1000
+                    val latest =
+                        runBlocking { db.trackDao().getLatestModifiedEpochTime() ?: 0 } / 1000
                     "$SELECTION AND ${MediaStore.Audio.Media.DATE_MODIFIED} > $latest"
                 } else SELECTION
             applicationContext.contentResolver
@@ -239,7 +240,7 @@ class MediaRetrieveService : IntentService(NAME) {
 
     private fun DB.deleteTracks(mediaIds: List<Long>) = runBlocking {
         trackDao().getByMediaIds(mediaIds).forEach {
-            trackDao().deleteIncludingRootIfEmpty(applicationContext, it)
+            trackDao().deleteIncludingRootIfEmpty(applicationContext, it.track.id)
         }
     }
 
@@ -260,7 +261,7 @@ class MediaRetrieveService : IntentService(NAME) {
 
             val lastModified = file.lastModified()
             trackDao().getByMediaId(trackMediaId)?.let {
-                if (it.lastModified >= lastModified) return@runBlocking it.id
+                if (it.track.lastModified >= lastModified) return@runBlocking it.track.id
             }
 
             val audioFile = AudioFileIO.read(file)
@@ -277,7 +278,7 @@ class MediaRetrieveService : IntentService(NAME) {
             val albumTitleSort =
                 (tag.getAll(FieldKey.ALBUM_SORT).lastOrNull { it.isNotBlank() } ?: albumTitle)
                     ?.hiraganized
-                    ?: cachedAlbum?.titleSort
+                    ?: cachedAlbum?.album?.titleSort
 
             val artistTitle = tag.getAll(FieldKey.ARTIST).lastOrNull { it.isNotBlank() }
             val cachedArtist = artistTitle?.let { artistDao().getAllByTitle(it).firstOrNull() }
@@ -287,10 +288,13 @@ class MediaRetrieveService : IntentService(NAME) {
                     ?: cachedArtist?.titleSort
 
             val albumArtistTitle = tag.getAll(FieldKey.ALBUM_ARTIST).firstOrNull { it.isNotBlank() }
+            val cachedAlbumArtist =
+                albumArtistTitle?.let { artistDao().getAllByTitle(it).firstOrNull() }
             val albumArtistTitleSort =
                 (tag.getAll(FieldKey.ALBUM_ARTIST_SORT).firstOrNull { it.isNotBlank() }
                     ?: albumArtistTitle)
                     ?.hiraganized
+                    ?: cachedAlbumArtist?.titleSort
 
             val duration = header.trackLength.toLong() * 1000
             val trackNum = catchAsNull { tag.getFirst(FieldKey.TRACK).toInt() }
@@ -301,7 +305,7 @@ class MediaRetrieveService : IntentService(NAME) {
                 (tag.getAll(FieldKey.COMPOSER_SORT).lastOrNull { it.isNotBlank() } ?: composerTitle)
                     ?.hiraganized
 
-            val artworkUriString = cachedAlbum?.artworkUriString
+            val artworkUriString = cachedAlbum?.album?.artworkUriString
                 ?: tag.artworkList.lastOrNull()?.let { artwork ->
                     val hex = String(Hex.encodeHex(DigestUtils.md5(artwork.binaryData)))
                     val dirName = "images"
@@ -321,7 +325,8 @@ class MediaRetrieveService : IntentService(NAME) {
                 artistTitle ?: UNKNOWN,
                 artistTitleSort ?: UNKNOWN,
                 0,
-                duration
+                duration,
+                artworkUriString ?: cachedArtist?.artworkUriString
             )
             val artistId = artistDao().upsert(artist)
             val albumArtistId =
@@ -331,7 +336,8 @@ class MediaRetrieveService : IntentService(NAME) {
                         albumArtistTitle,
                         albumArtistTitleSort,
                         0,
-                        duration
+                        duration,
+                        artworkUriString ?: cachedAlbumArtist?.artworkUriString
                     )
                     artistDao().upsert(albumArtist)
                 } else null

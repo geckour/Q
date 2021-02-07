@@ -61,7 +61,8 @@ class SharingActivity : AppCompatActivity() {
             val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this)
 
             lifecycleScope.launch {
-                val sharingText: String = song.getSharingText(this@SharingActivity, song.album)
+                val sharingText: String =
+                    song.getSharingText(this@SharingActivity, song.album.title)
 
                 ShareCompat.IntentBuilder.from(this@SharingActivity)
                     .setChooserTitle(R.string.share_chooser_title).setText(sharingText).also {
@@ -96,7 +97,7 @@ class SharingActivity : AppCompatActivity() {
 fun Song.getSharingText(context: Context, albumName: String?): String =
     context.formatPattern.getSharingText(this, albumName)
 
-fun String.getSharingText(song: Song, albumName: String?): String =
+fun String.getSharingText(song: Song, albumTitle: String?): String =
     this.splitIncludeDelimiter("''", "'", "TI", "AR", "AL", "\\\\n").let { splitList ->
         val escapes = splitList.mapIndexed { i, s -> Pair(i, s) }.filter { it.second == "'" }
             .apply { if (lastIndex < 0) return@let splitList }
@@ -129,9 +130,9 @@ fun String.getSharingText(song: Song, albumName: String?): String =
             else when (it) {
                 "'" -> ""
                 "''" -> "'"
-                "TI" -> song.name ?: UNKNOWN
-                "AR" -> song.artist
-                "AL" -> albumName ?: UNKNOWN
+                "TI" -> song.title
+                "AR" -> song.artist.title
+                "AL" -> albumTitle ?: UNKNOWN
                 "\\n" -> "\n"
                 else -> it
             }

@@ -17,7 +17,6 @@ import androidx.preference.PreferenceManager
 import com.bumptech.glide.Glide
 import com.geckour.q.App
 import com.geckour.q.R
-import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.DialogAddQueuePlaylistBinding
 import com.geckour.q.domain.model.Song
 import com.geckour.q.presentation.dialog.playlist.QueueAddPlaylistListAdapter
@@ -28,7 +27,6 @@ import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.fetchPlaylists
 import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.showCurrentRemain
-import com.geckour.q.util.toDomainModel
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -153,20 +151,12 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
         _touchLock.value = touchLock.value
     }
 
-    internal fun onTransitionToArtist(mainViewModel: MainViewModel) = viewModelScope.launch {
-        mainViewModel.selectedArtist.value = currentSong?.artist?.let {
-            DB.getInstance(getApplication())
-                .artistDao()
-                .getAllByTitle(it)
-                .firstOrNull()
-                ?.toDomainModel()
-        }
+    internal fun onTransitionToArtist(mainViewModel: MainViewModel) {
+        mainViewModel.selectedArtist.value = currentSong?.artist
     }
 
-    internal fun onTransitionToAlbum(mainViewModel: MainViewModel) = viewModelScope.launch {
-        mainViewModel.selectedAlbum.value = currentSong?.albumId?.let {
-            DB.getInstance(getApplication()).albumDao().get(it)?.toDomainModel()
-        }
+    internal fun onTransitionToAlbum(mainViewModel: MainViewModel) {
+        mainViewModel.selectedAlbum.value = currentSong?.album
     }
 
     internal fun setArtwork(imageView: ImageView) {

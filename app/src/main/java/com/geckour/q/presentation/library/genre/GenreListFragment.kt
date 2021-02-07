@@ -2,7 +2,6 @@ package com.geckour.q.presentation.library.genre
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.net.Uri
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.LayoutInflater
@@ -19,14 +18,13 @@ import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.DividerItemDecoration
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.Track
+import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.presentation.main.MainActivity
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.UNKNOWN
-import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.getSong
 import com.geckour.q.util.getThumb
 import com.geckour.q.util.getTrackMediaIds
@@ -170,13 +168,13 @@ class GenreListFragment : Fragment() {
             val list: ArrayList<Genre> = ArrayList()
             while (it.moveToNext()) {
                 val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Genres._ID))
-                val tracks = getTrackMediaIdsByGenreId(context, id).mapNotNull {
+                val joinedTracks = getTrackMediaIdsByGenreId(context, id).mapNotNull {
                     db.trackDao().getByMediaId(it)
                 }
-                val totalDuration = tracks.map { it.duration }.sum()
+                val totalDuration = joinedTracks.map { it.track.duration }.sum()
                 val genre = Genre(
                     id,
-                    tracks.getGenreThumb(context),
+                    joinedTracks.getGenreThumb(context),
                     it.getString(it.getColumnIndex(MediaStore.Audio.Genres.NAME)).let {
                         if (it.isBlank()) UNKNOWN else it
                     },
@@ -189,10 +187,9 @@ class GenreListFragment : Fragment() {
         }
     } ?: emptyList()
 
-    private suspend fun List<Track>.getGenreThumb(context: Context): Bitmap? {
-        val db = DB.getInstance(context)
-        return this.distinctBy { it.albumId }.takeOrFillNull(5).map {
-            it?.let { db.getArtworkUriStringFromId(it.albumId) }
-        }.getThumb(context)
-    }
+    private suspend fun List<JoinedTrack>.getGenreThumb(context: Context): Bitmap? =
+        this.distinctBy { it.album.id }
+            .takeOrFillNull(5)
+            .map { it?.album?.artworkUriString }
+            .getThumb(context)
 }

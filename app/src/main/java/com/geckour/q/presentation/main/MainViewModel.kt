@@ -19,9 +19,9 @@ import androidx.preference.PreferenceManager
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Album
+import com.geckour.q.data.db.model.Artist
 import com.geckour.q.databinding.DialogShuffleMenuBinding
-import com.geckour.q.domain.model.Album
-import com.geckour.q.domain.model.Artist
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.Playlist
@@ -30,7 +30,6 @@ import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.Song
 import com.geckour.q.service.MediaRetrieveService
 import com.geckour.q.service.PlayerService
-import com.geckour.q.service.SleepTimerService
 import com.geckour.q.util.BoolConverter
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -45,7 +44,6 @@ import com.geckour.q.util.searchGenreByFuzzyTitle
 import com.geckour.q.util.searchPlaylistByFuzzyTitle
 import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.sortedByTrackOrder
-import com.geckour.q.util.toDomainModel
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -247,24 +245,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun onEasterLongTapped(song: Song?, anchorView: View): Boolean {
         PopupMenu(getApplication(), anchorView, Gravity.BOTTOM).apply {
             setOnMenuItemClickListener { menuItem ->
-                val db = DB.getInstance(getApplication())
                 when (menuItem.itemId) {
                     R.id.menu_transition_to_artist -> {
-                        viewModelScope.launch {
-                            selectedArtist.postValue(
-                                song?.artist?.let {
-                                    db.artistDao().getAllByTitle(it).firstOrNull()?.toDomainModel()
-                                }
-                            )
-                        }
+                        selectedArtist.value = song?.artist
                         return@setOnMenuItemClickListener true
                     }
                     R.id.menu_transition_to_album -> {
-                        viewModelScope.launch {
-                            selectedAlbum.postValue(
-                                song?.albumId?.let { db.albumDao().get(it)?.toDomainModel() }
-                            )
-                        }
+                        selectedAlbum.value = song?.album
                         return@setOnMenuItemClickListener true
                     }
                 }
@@ -323,8 +310,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             val tracks = db.searchTrackByFuzzyTitle(query).take(3).map {
                 SearchItem(
-                    it.title,
-                    getSong(db, it),
+                    it.album.title,
+                    getSong(it),
                     SearchItem.SearchItemType.TRACK
                 )
             }
@@ -340,7 +327,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             val albums = db.searchAlbumByFuzzyTitle(query).take(3).map {
-                SearchItem(it.title, it.toDomainModel(), SearchItem.SearchItemType.ALBUM)
+                SearchItem(it.album.title, it.album, SearchItem.SearchItemType.ALBUM)
             }
             if (albums.isNotEmpty()) {
                 items.add(
@@ -354,7 +341,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             val artists = db.searchArtistByFuzzyTitle(query).take(3).map {
-                SearchItem(it.title, it.toDomainModel(), SearchItem.SearchItemType.ARTIST)
+                SearchItem(it.title, it, SearchItem.SearchItemType.ARTIST)
             }
             if (artists.isNotEmpty()) {
                 items.add(
@@ -436,7 +423,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     .getAllByAlbum(
                         album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                     )
-                    .map { getSong(db, it) }
+                    .map { getSong(it) }
                     .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                     .apply { loading.postValue(false) }
             }

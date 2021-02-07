@@ -20,11 +20,9 @@ import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.applyDefaultSettings
-import com.geckour.q.util.getArtworkUriStringFromId
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.sortedByTrackOrder
-import com.geckour.q.util.toDomainModel
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -47,7 +45,7 @@ class SongListAdapter(
     fun submitList(list: List<Song>?, sortByTrackOrder: Boolean = true) {
         submitList(
             if (sortByTrackOrder) list?.sortedByTrackOrder()
-            else list?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.nameSort })
+            else list?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.titleSort })
         )
     }
 
@@ -118,25 +116,10 @@ class SongListAdapter(
             setOnMenuItemClickListener {
                 when (it.itemId) {
                     R.id.menu_transition_to_artist -> {
-                        viewModel.viewModelScope.launch {
-                            viewModel.selectedArtist.value = binding.data?.artist?.let {
-                                DB.getInstance(binding.root.context)
-                                    .artistDao()
-                                    .getAllByTitle(it)
-                                    .firstOrNull()
-                                    ?.toDomainModel()
-                            }
-                        }
+                        viewModel.selectedArtist.value = binding.data?.artist
                     }
                     R.id.menu_transition_to_album -> {
-                        viewModel.viewModelScope.launch {
-                            viewModel.selectedAlbum.value = binding.data?.albumId?.let {
-                                DB.getInstance(binding.root.context)
-                                    .albumDao()
-                                    .get(it)
-                                    ?.toDomainModel()
-                            }
-                        }
+                        viewModel.selectedAlbum.value = binding.data?.album
                     }
                     R.id.menu_ignore -> toggleIgnored()
                     R.id.menu_delete_song -> deleteSong(viewModel.selectedSong)
@@ -171,11 +154,8 @@ class SongListAdapter(
             binding.duration.text = song.durationString
             viewModel.viewModelScope.launch {
                 try {
-                    val uriString = DB.getInstance(binding.root.context)
-                        .getArtworkUriStringFromId(song.albumId).orDefaultForModel
-
                     Glide.with(binding.thumb)
-                        .load(uriString)
+                        .load(song.album.artworkUriString.orDefaultForModel)
                         .applyDefaultSettings()
                         .into(binding.thumb)
                 } catch (t: Throwable) {
@@ -225,7 +205,7 @@ class SongListAdapter(
             binding.data?.id?.also { trackId ->
                 viewModel.viewModelScope.launch {
                     DB.getInstance(binding.root.context).trackDao().apply {
-                        val ignored = when (this.get(trackId)?.ignored ?: Bool.FALSE) {
+                        val ignored = when (this.get(trackId)?.track?.ignored ?: Bool.FALSE) {
                             Bool.TRUE -> Bool.FALSE
                             Bool.FALSE -> Bool.TRUE
                             Bool.UNDEFINED -> Bool.UNDEFINED

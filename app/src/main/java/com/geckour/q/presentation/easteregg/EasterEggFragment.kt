@@ -12,10 +12,8 @@ import android.widget.PopupMenu
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.geckour.q.R
-import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentEasterEggBinding
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.InsertActionType
@@ -24,10 +22,8 @@ import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.observe
 import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.setIconTint
-import com.geckour.q.util.toDomainModel
 import com.geckour.q.util.toggleDayNight
 import com.google.firebase.analytics.FirebaseAnalytics
-import kotlinx.coroutines.launch
 
 class EasterEggFragment : Fragment() {
 
@@ -105,21 +101,11 @@ class EasterEggFragment : Fragment() {
                     setOnMenuItemClickListener {
                         return@setOnMenuItemClickListener when (it.itemId) {
                             R.id.menu_transition_to_artist -> {
-                                lifecycleScope.launch {
-                                    mainViewModel.selectedArtist.value =
-                                        DB.getInstance(requireContext()).artistDao()
-                                            .getAllByTitle(song.artist)
-                                            .firstOrNull()?.toDomainModel()
-                                }
+                                mainViewModel.selectedArtist.value = song.artist
                                 true
                             }
                             R.id.menu_transition_to_album -> {
-                                lifecycleScope.launch {
-                                    mainViewModel.selectedAlbum.value =
-                                        DB.getInstance(requireContext()).albumDao()
-                                            .get(song.albumId)
-                                            ?.toDomainModel()
-                                }
+                                mainViewModel.selectedAlbum.value = song.album
                                 true
                             }
                             else -> false

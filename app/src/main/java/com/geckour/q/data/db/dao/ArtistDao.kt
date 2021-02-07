@@ -1,7 +1,6 @@
 package com.geckour.q.data.db.dao
 
 import android.content.Context
-import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -41,7 +40,7 @@ interface ArtistDao {
     @Query("select * from artist where title like :title")
     suspend fun findAllByTitle(title: String): List<Artist>
 
-    @Query("select * from artist where id in (select artistId from album group by artistId)")
+    @Query("select * from artist where id in (select artistId from album group by id) order by titleSort collate nocase")
     fun getAllOrientedAlbumAsync(): Flow<List<Artist>>
 
     @Query("select artworkUriString from album where artistId = :artistId and artworkUriString is not null order by playbackCount limit 1")
@@ -51,10 +50,10 @@ interface ArtistDao {
     suspend fun increasePlaybackCount(artistId: Long)
 
     @Transaction
-    suspend fun deleteRecursively(context: Context, id: Long) {
-        deleteTrackByArtist(id)
-        deleteAlbumByArtist(id)
-        delete(id)
+    suspend fun deleteRecursively(context: Context, artistId: Long) {
+        deleteTrackByArtist(artistId)
+        deleteAlbumByArtist(artistId)
+        delete(artistId)
     }
 
     suspend fun upsert(artist: Artist): Long {

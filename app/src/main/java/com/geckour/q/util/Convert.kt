@@ -1,8 +1,6 @@
 package com.geckour.q.util
 
 import androidx.appcompat.app.AppCompatDelegate
-import com.geckour.q.domain.model.Album
-import com.geckour.q.domain.model.Artist
 import timber.log.Timber
 import kotlin.math.abs
 import com.geckour.q.data.db.model.Album as DBAlbum
@@ -34,20 +32,6 @@ fun Float.getReadableString(digitToKeep: Int = 3): String {
         returnValue.format(suffix)
     }
 }
-
-fun DBArtist.toDomainModel(): Artist = Artist(id, title, titleSort, null, totalDuration)
-
-fun DBAlbum.toDomainModel(
-    artistName: String? = null, artistNameSort: String? = null, totalDuration: Long = 0
-): Album = Album(
-    id,
-    title,
-    titleSort,
-    artistName ?: UNKNOWN,
-    artistNameSort ?: UNKNOWN,
-    artworkUriString,
-    totalDuration
-)
 
 val Boolean.toNightModeInt: Int
     get() = if (this) AppCompatDelegate.MODE_NIGHT_YES

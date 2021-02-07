@@ -8,7 +8,9 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Bool
+import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.Track
 
 @Dao
@@ -24,40 +26,40 @@ interface TrackDao {
     suspend fun delete(id: Long): Int
 
     @Query("select * from track where id = :id")
-    suspend fun get(id: Long): Track?
+    suspend fun get(id: Long): JoinedTrack?
 
     @Query("select * from track where mediaId = :mediaId")
-    suspend fun getByMediaId(mediaId: Long): Track?
+    suspend fun getByMediaId(mediaId: Long): JoinedTrack?
 
     @Query("select * from track where mediaId in (:mediaIds)")
-    suspend fun getByMediaIds(mediaIds: List<Long>): List<Track>
+    suspend fun getByMediaIds(mediaIds: List<Long>): List<JoinedTrack>
 
     @Query("select * from track where ignored != :ignore")
-    suspend fun getAll(ignore: Bool = Bool.UNDEFINED): List<Track>
+    suspend fun getAll(ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
     @Query("select mediaId from track where ignored != :ignore")
     suspend fun getAllMediaIds(ignore: Bool = Bool.UNDEFINED): List<Long>
 
     @Query("select * from track where ignored != :ignore")
-    fun getAllAsync(ignore: Bool = Bool.UNDEFINED): LiveData<List<Track>>
+    fun getAllAsync(ignore: Bool = Bool.UNDEFINED): LiveData<List<JoinedTrack>>
 
     @Query("select * from track where title like :title and ignored != :ignore")
-    suspend fun getAllByTitle(title: String, ignore: Bool = Bool.UNDEFINED): List<Track>
+    suspend fun getAllByTitle(title: String, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
     @Query("select * from track where albumId = :albumId and ignored != :ignore")
-    suspend fun getAllByAlbum(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
+    suspend fun getAllByAlbum(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
     @Query("select * from track where albumId = :albumId and ignored != :ignore order by trackNum")
-    suspend fun getAllByAlbumSorted(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
+    suspend fun getAllByAlbumSorted(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
     @Query("select * from track where albumId = :albumId and ignored != :ignore")
     fun getAllByAlbumAsync(
         albumId: Long,
         ignore: Bool = Bool.UNDEFINED
-    ): LiveData<List<Track>>
+    ): LiveData<List<JoinedTrack>>
 
     @Query("select * from track where artistId = :artistId and ignored != :ignore")
-    suspend fun getAllByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<Track>
+    suspend fun getAllByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
     @Query("update track set playbackCount = (select playbackCount from track where id = :trackId) + 1 where id = :trackId")
     suspend fun increasePlaybackCount(trackId: Long)
@@ -72,23 +74,24 @@ interface TrackDao {
     suspend fun getLatestModifiedEpochTime(): Long?
 
     @Transaction
-    suspend fun deleteIncludingRootIfEmpty(context: Context, track: Track) {
-        delete(track.id)
+    suspend fun deleteIncludingRootIfEmpty(context: Context, trackId: Long) {
+        delete(trackId)
 
-        if (getAllByAlbum(track.albumId, Bool.UNDEFINED).isEmpty()) {
-            DB.getInstance(context).albumDao().deleteIncludingRootIfEmpty(context, track.albumId)
+        get(trackId)?.let {
+            if (getAllByAlbum(it.track.albumId, Bool.UNDEFINED).isEmpty()) {
+                DB.getInstance(context).albumDao()
+                    .deleteIncludingRootIfEmpty(context, it.track.albumId)
+            }
         }
-    }
-
-    suspend fun deleteIncludingRootIfEmpty(context: Context, id: Long) {
-        val track = get(id) ?: return
-
-        deleteIncludingRootIfEmpty(context, track)
     }
 
     suspend fun upsert(track: Track): Long {
         val toInsert = getByMediaId(track.mediaId)?.let {
-            track.copy(id = it.id, playbackCount = it.playbackCount, ignored = it.ignored)
+            track.copy(
+                id = it.track.id,
+                playbackCount = it.track.playbackCount,
+                ignored = it.track.ignored
+            )
         } ?: track
 
         return insert(toInsert)

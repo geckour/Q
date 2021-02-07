@@ -54,7 +54,7 @@
             android:ellipsize="marquee"
             android:marqueeRepeatLimit="marquee_forever"
             android:singleLine="true"
-            android:text="@{viewModel.currentSong.name}"
+            android:text="@{viewModel.currentSong.title}"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="12sp"
             tools:text="曲タイトル" />
@@ -66,7 +66,7 @@
             android:ellipsize="marquee"
             android:marqueeRepeatLimit="marquee_forever"
             android:singleLine="true"
-            android:text="@{viewModel.currentSong == null ? null : String.format(@string/song_item_artist_and_album, viewModel.currentSong.artist, viewModel.currentSong.album)}"
+            android:text="@{viewModel.currentSong == null ? null : String.format(@string/song_item_artist_and_album, viewModel.currentSong.artist.title, viewModel.currentSong.album.title)}"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="10sp"
             tools:text="アーティスト名アーティスト名アーティスト名 - アルバム名" />

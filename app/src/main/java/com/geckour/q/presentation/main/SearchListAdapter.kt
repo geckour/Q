@@ -8,10 +8,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Album
+import com.geckour.q.data.db.model.Artist
 import com.geckour.q.databinding.ItemSearchCategoryBinding
 import com.geckour.q.databinding.ItemSearchItemBinding
-import com.geckour.q.domain.model.Album
-import com.geckour.q.domain.model.Artist
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.SearchItem
@@ -118,18 +118,16 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
                 val artworkUriString = when (item.type) {
                     SearchItem.SearchItemType.ARTIST -> {
                         (item.data as? Artist)?.id?.let {
-                            db.albumDao().getAllByArtistId(it)
-                                .firstOrNull { it.artworkUriString != null }
-                                ?.artworkUriString
+                            db.albumDao().getAllByArtist(it)
+                                .mapNotNull { it.album.artworkUriString }
+                                .firstOrNull()
                         }
                     }
                     SearchItem.SearchItemType.ALBUM -> {
-                        (item.data as? Album)?.thumbUriString
+                        (item.data as? Album)?.artworkUriString
                     }
                     SearchItem.SearchItemType.TRACK -> {
-                        (item.data as? Song)?.albumId?.let {
-                            db.albumDao().get(it)?.artworkUriString
-                        }
+                        (item.data as? Song)?.album?.artworkUriString
                     }
                     else -> null
                 }

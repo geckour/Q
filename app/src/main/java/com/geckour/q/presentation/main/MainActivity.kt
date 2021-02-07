@@ -412,7 +412,7 @@ class MainActivity : AppCompatActivity() {
                             supportFragmentManager.beginTransaction().replace(
                                 R.id.content_main, AlbumListFragment.newInstance(
                                     artist
-                                ), artist.name
+                                ), artist.title
                             ).addToBackStack(
                                 null
                             ).commit()
@@ -423,7 +423,7 @@ class MainActivity : AppCompatActivity() {
                             supportFragmentManager.beginTransaction().replace(
                                 R.id.content_main, SongListFragment.newInstance(
                                     album
-                                ), album.name
+                                ), album.title
                             ).addToBackStack(
                                 null
                             ).commit()

@@ -1,6 +1,8 @@
 package com.geckour.q.domain.model
 
 import android.os.Parcelable
+import com.geckour.q.data.db.model.Album
+import com.geckour.q.data.db.model.Artist
 import com.geckour.q.util.getTimeString
 import kotlinx.android.parcel.Parcelize
 
@@ -8,13 +10,10 @@ import kotlinx.android.parcel.Parcelize
 data class Song(
     val id: Long,
     val mediaId: Long,
-    val albumId: Long,
-    val name: String,
-    val nameSort: String,
-    val artist: String,
-    val artistSort: String,
-    val album: String,
-    val albumSort: String,
+    val album: Album,
+    val title: String,
+    val titleSort: String,
+    val artist: Artist,
     val composer: String,
     val composerSort: String,
     val thumbUriString: String?,

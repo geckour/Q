@@ -705,7 +705,7 @@ class PlayerService : Service() {
         val shuffled = when (actionType) {
             ShuffleActionType.SHUFFLE_SIMPLE -> queue.map { it.id }.shuffled()
             ShuffleActionType.SHUFFLE_ALBUM_ORIENTED -> {
-                queue.groupBy { it.albumId }
+                queue.groupBy { it.album.id }
                     .map { it.value }
                     .shuffled()
                     .flatten()
@@ -816,14 +816,8 @@ class PlayerService : Service() {
         currentSong?.let { song ->
             val db = DB.getInstance(this@PlayerService)
             db.trackDao().increasePlaybackCount(song.id)
-            db.albumDao().increasePlaybackCount(song.albumId)
-            db.artistDao().apply {
-                val artist = getAllByTitle(song.artist).firstOrNull() ?: db.albumDao()
-                    .get(song.albumId)?.artistId?.let {
-                        get(it)
-                    }
-                artist?.apply { increasePlaybackCount(id) }
-            }
+            db.albumDao().increasePlaybackCount(song.album.id)
+            db.artistDao().increasePlaybackCount(song.artist.id)
         }
     }
 

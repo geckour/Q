@@ -10,8 +10,8 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
+import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.databinding.ItemAlbumBinding
-import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Song
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.InsertActionType
@@ -23,28 +23,28 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 
 class AlbumListAdapter(private val viewModel: MainViewModel) :
-    ListAdapter<Album, AlbumListAdapter.ViewHolder>(diffCallback) {
+    ListAdapter<JoinedAlbum, AlbumListAdapter.ViewHolder>(diffCallback) {
 
     companion object {
 
-        val diffCallback = object : DiffUtil.ItemCallback<Album>() {
+        val diffCallback = object : DiffUtil.ItemCallback<JoinedAlbum>() {
 
-            override fun areItemsTheSame(oldItem: Album, newItem: Album): Boolean =
-                oldItem.id == newItem.id
+            override fun areItemsTheSame(oldItem: JoinedAlbum, newItem: JoinedAlbum): Boolean =
+                oldItem.album.id == newItem.album.id
 
-            override fun areContentsTheSame(oldItem: Album, newItem: Album): Boolean =
+            override fun areContentsTheSame(oldItem: JoinedAlbum, newItem: JoinedAlbum): Boolean =
                 oldItem == newItem
         }
     }
 
-    override fun submitList(list: List<Album>?) {
+    override fun submitList(list: List<JoinedAlbum>?) {
         super.submitList(
-            list?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.nameSort })
+            list?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.album.titleSort })
         )
     }
 
     private fun removeItem(albumId: Long) {
-        submitList(currentList.dropWhile { it.id == albumId })
+        submitList(currentList.dropWhile { it.album.id == albumId })
     }
 
     internal fun onAlbumDeleted(albumId: Long) {
@@ -83,10 +83,10 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
         }
 
         fun bind() {
-            val album = getItem(adapterPosition)
-            binding.data = album
-            binding.duration.text = album.totalDuration.getTimeString()
-            binding.root.setOnClickListener { viewModel.onRequestNavigate(album) }
+            val joinedAlbum = getItem(adapterPosition)
+            binding.data = joinedAlbum
+            binding.duration.text = joinedAlbum.album.totalDuration.getTimeString()
+            binding.root.setOnClickListener { viewModel.onRequestNavigate(joinedAlbum.album) }
             binding.root.setOnLongClickListener {
                 getPopupMenu(it).show()
                 true
@@ -95,7 +95,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
             viewModel.viewModelScope.launch {
                 try {
                     Glide.with(binding.thumb)
-                        .load(album.thumbUriString.orDefaultForModel)
+                        .load(joinedAlbum.album.artworkUriString.orDefaultForModel)
                         .applyDefaultSettings()
                         .into(binding.thumb)
                 } catch (t: Throwable) {
@@ -104,8 +104,8 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
             }
         }
 
-        private fun onOptionSelected(id: Int, album: Album?): Boolean {
-            if (album == null) return false
+        private fun onOptionSelected(id: Int, joinedAlbum: JoinedAlbum?): Boolean {
+            if (joinedAlbum == null) return false
 
             val actionType = when (id) {
                 R.id.menu_insert_all_next -> InsertActionType.NEXT
@@ -123,7 +123,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
                 R.id.menu_override_all_simple_shuffle
             )
 
-            viewModel.onSongMenuAction(actionType, album, sortByTrackOrder)
+            viewModel.onSongMenuAction(actionType, joinedAlbum.album, sortByTrackOrder)
 
             return true
         }

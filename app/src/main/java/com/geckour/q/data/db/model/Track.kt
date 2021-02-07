@@ -1,7 +1,9 @@
 package com.geckour.q.data.db.model
 
+import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.Relation
 
 @Entity
 data class Track(
@@ -21,6 +23,13 @@ data class Track(
     var discNum: Int?,
     var playbackCount: Long,
     var ignored: Bool = Bool.FALSE
+)
+
+data class JoinedTrack(
+    @Embedded val track: Track,
+    @Relation(parentColumn = "albumId", entityColumn = "id") var album: Album,
+    @Relation(parentColumn = "artistId", entityColumn = "id") var artist: Artist,
+    @Relation(parentColumn = "albumArtistId", entityColumn = "id") var albumArtist: Artist?,
 )
 
 enum class Bool {

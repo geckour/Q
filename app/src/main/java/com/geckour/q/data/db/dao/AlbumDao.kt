@@ -1,7 +1,6 @@
 package com.geckour.q.data.db.dao
 
 import android.content.Context
-import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -10,6 +9,9 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
+import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.JoinedAlbum
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AlbumDao {
@@ -27,49 +29,46 @@ interface AlbumDao {
     suspend fun deleteTrackByAlbum(albumId: Long): Int
 
     @Query("select * from album where id = :id")
-    suspend fun get(id: Long): Album?
+    suspend fun get(id: Long): JoinedAlbum?
 
     @Query("select * from album where title like :title")
-    suspend fun getByTitle(title: String): Album?
+    suspend fun getByTitle(title: String): JoinedAlbum?
 
     @Query("select * from album")
-    suspend fun getAll(): List<Album>
+    suspend fun getAll(): List<JoinedAlbum>
 
     @Query("select * from album")
-    fun getAllAsync(): LiveData<List<Album>>
+    fun getAllAsync(): Flow<List<JoinedAlbum>>
 
-    @Query("select * from album where artistId = :id")
-    suspend fun getAllByArtistId(id: Long): List<Album>
+    @Query("select * from album where artistId = :artistId")
+    suspend fun getAllByArtist(artistId: Long): List<JoinedAlbum>
 
-    @Query("select * from album where artistId = :id")
-    fun getAllByArtistIdAsync(id: Long): LiveData<List<Album>>
+    @Query("select * from album where artistId = :artistId")
+    fun getAllByArtistAsync(artistId: Long): Flow<List<JoinedAlbum>>
 
     @Query("select * from album where title like :title")
-    suspend fun getAllByTitle(title: String): List<Album>
+    suspend fun getAllByTitle(title: String): List<JoinedAlbum>
 
     @Query("update album set playbackCount = (select playbackCount from album where id = :albumId) + 1 where id = :albumId")
     suspend fun increasePlaybackCount(albumId: Long)
 
     @Transaction
-    suspend fun deleteIncludingRootIfEmpty(context: Context, id: Long) {
-        val album = get(id) ?: return
+    suspend fun deleteIncludingRootIfEmpty(context: Context, albumId: Long) {
+        delete(albumId)
 
-        delete(album.id)
-
-        if (getAllByArtistId(album.artistId).isEmpty()) {
-            DB.getInstance(context).artistDao().delete(album.artistId)
+        get(albumId)?.let {
+            if (getAllByArtist(it.album.artistId).isEmpty()) {
+                DB.getInstance(context).artistDao().delete(it.album.artistId)
+            }
         }
-    }
-
-    @Transaction
-    suspend fun deleteRecursively(id: Long) {
-        deleteTrackByAlbum(id)
-        delete(id)
     }
 
     suspend fun upsert(album: Album): Long {
         val toInsert = getAllByTitle(album.title).firstOrNull()?.let {
-            album.copy(id = it.id, totalDuration = it.totalDuration + album.totalDuration)
+            album.copy(
+                id = it.album.id,
+                totalDuration = it.album.totalDuration + album.totalDuration
+            )
         } ?: album
 
         return insert(toInsert)

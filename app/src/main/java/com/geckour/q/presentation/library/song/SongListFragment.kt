@@ -15,16 +15,16 @@ import androidx.fragment.app.viewModels
 import androidx.lifecycle.viewModelScope
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.Track
+import com.geckour.q.data.db.model.Album
+import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.databinding.FragmentListLibraryBinding
-import com.geckour.q.domain.model.Album
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.presentation.main.MainActivity
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.getSongListFromTrackList
+import com.geckour.q.util.getSong
 import com.geckour.q.util.getSongListFromTrackMediaId
 import com.geckour.q.util.getSongListFromTrackMediaIdWithTrackNum
 import com.geckour.q.util.getTrackMediaIds
@@ -198,7 +198,7 @@ class SongListFragment : Fragment() {
                 db.trackDao().getAllAsync().observe(this@SongListFragment) { dbTrackList ->
                     if (dbTrackList == null) return@observe
 
-                    upsertSongListIfPossible(db, dbTrackList, false)
+                    upsertSongListIfPossible(dbTrackList, false)
                 }
             }
         }
@@ -212,7 +212,7 @@ class SongListFragment : Fragment() {
                     .observe(this@SongListFragment) { dbTrackList ->
                         if (dbTrackList == null) return@observe
 
-                        upsertSongListIfPossible(db, dbTrackList)
+                        upsertSongListIfPossible(dbTrackList)
                     }
             }
         }
@@ -249,14 +249,14 @@ class SongListFragment : Fragment() {
     }
 
     private fun upsertSongListIfPossible(
-        db: DB, dbTrackList: List<Track>, sortByTrackOrder: Boolean = true
+        dbTrackList: List<JoinedTrack>, sortByTrackOrder: Boolean = true
     ) {
         if (chatteringCancelFlag.not()) {
             chatteringCancelFlag = true
             viewModel.viewModelScope.launch {
                 delay(500)
                 mainViewModel.onLoadStateChanged(true)
-                val items = getSongListFromTrackList(db, dbTrackList)
+                val items = dbTrackList.map { getSong(it) }
                 adapter.submitList(items, sortByTrackOrder)
                 mainViewModel.onLoadStateChanged(false)
                 chatteringCancelFlag = false

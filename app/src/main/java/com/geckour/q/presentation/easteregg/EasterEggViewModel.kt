@@ -19,10 +19,11 @@ class EasterEggViewModel(application: Application) : AndroidViewModel(applicatio
     }
 
     private suspend fun pickupSong() {
-        val db = DB.getInstance(getApplication())
         val seed = Calendar.getInstance(TimeZone.getDefault())
             .let { it.get(Calendar.YEAR) * 1000L + it.get(Calendar.DAY_OF_YEAR) }
-        val track = db.trackDao().getAll().let { it[Random(seed).nextInt(it.size)] }
-        song.value = getSong(db, track)
+        val track = DB.getInstance(getApplication()).trackDao()
+            .getAll()
+            .let { it[Random(seed).nextInt(it.size)] }
+        song.value = getSong(track)
     }
 }

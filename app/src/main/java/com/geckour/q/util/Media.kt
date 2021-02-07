@@ -22,10 +22,10 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Bool
-import com.geckour.q.data.db.model.Track
+import com.geckour.q.data.db.model.JoinedAlbum
+import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
@@ -70,8 +70,8 @@ data class QueueInfo(
     val metadata: QueueMetadata, val queue: List<Song>
 )
 
-suspend fun getSongListFromTrackList(db: DB, dbTrackList: List<Track>): List<Song> =
-    dbTrackList.map { getSong(db, it) }
+fun getSongListFromTrackList(dbTrackList: List<JoinedTrack>): List<Song> =
+    dbTrackList.map { getSong(it) }
 
 suspend fun getSongListFromTrackMediaId(
     db: DB, dbTrackIdList: List<Long>, genreId: Long? = null, playlistId: Long? = null
@@ -93,40 +93,32 @@ suspend fun getSong(
     playlistId: Long? = null,
     trackNum: Int? = null
 ): Song? = db.trackDao().getByMediaId(trackMediaId)?.let {
-    getSong(db, it, genreId, playlistId, trackNum = trackNum)
+    getSong(it, genreId, playlistId, trackNum = trackNum)
 }
 
-suspend fun getSong(
-    db: DB,
-    track: Track,
+fun getSong(
+    joinedTrack: JoinedTrack,
     genreId: Long? = null,
     playlistId: Long? = null,
     trackNum: Int? = null
 ): Song {
-    val artist = db.artistDao().get(track.artistId)
-    val album = db.albumDao().get(track.albumId)
-    val artwork = db.albumDao().get(track.albumId)?.artworkUriString
-
     return Song(
-        track.id,
-        track.mediaId,
-        track.albumId,
-        track.title,
-        track.titleSort,
-        artist?.title ?: UNKNOWN,
-        artist?.titleSort ?: UNKNOWN,
-        album?.title ?: UNKNOWN,
-        album?.titleSort ?: UNKNOWN,
-        track.composer,
-        track.composerSort,
-        artwork,
-        track.duration,
-        trackNum ?: track.trackNum,
-        track.discNum,
+        joinedTrack.track.id,
+        joinedTrack.track.mediaId,
+        joinedTrack.album,
+        joinedTrack.track.title,
+        joinedTrack.track.titleSort,
+        joinedTrack.artist,
+        joinedTrack.track.composer,
+        joinedTrack.track.composerSort,
+        joinedTrack.album.artworkUriString,
+        joinedTrack.track.duration,
+        trackNum ?: joinedTrack.track.trackNum,
+        joinedTrack.track.discNum,
         genreId,
         playlistId,
-        track.sourcePath,
-        BoolConverter().toBoolean(track.ignored)
+        joinedTrack.track.sourcePath,
+        BoolConverter().toBoolean(joinedTrack.track.ignored)
     )
 }
 
@@ -144,7 +136,7 @@ suspend fun fetchPlaylists(context: Context): List<Playlist> = context.contentRe
         val tracks = getTrackMediaIdByPlaylistId(context, id).mapNotNull {
             db.trackDao().getByMediaId(it.first)
         }
-        val totalDuration = tracks.map { it.duration }.sum()
+        val totalDuration = tracks.map { it.track.duration }.sum()
         val name = it.getString(it.getColumnIndex(MediaStore.Audio.Playlists.NAME)).let {
             if (it.isBlank()) UNKNOWN else it
         }
@@ -163,19 +155,18 @@ suspend fun fetchPlaylists(context: Context): List<Playlist> = context.contentRe
     return@use list.toList().sortedBy { it.name }
 } ?: emptyList()
 
-private suspend fun List<Track>.getPlaylistThumb(context: Context): Bitmap? =
-    this@getPlaylistThumb.takeOrFillNull(10).map { track ->
-        track ?: return@map null
-        DB.getInstance(context).getArtworkUriStringFromId(track.albumId)
+private suspend fun List<JoinedTrack>.getPlaylistThumb(context: Context): Bitmap? =
+    this@getPlaylistThumb.takeOrFillNull(10).map { joinedTrack ->
+        joinedTrack?.album?.artworkUriString
     }.getThumb(context)
 
 suspend fun DB.searchArtistByFuzzyTitle(title: String): List<Artist> =
     this@searchArtistByFuzzyTitle.artistDao().findAllByTitle("%${title.escapeSql}%")
 
-suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<Album> =
+suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<JoinedAlbum> =
     this@searchAlbumByFuzzyTitle.albumDao().getAllByTitle("%${title.escapeSql}%")
 
-suspend fun DB.searchTrackByFuzzyTitle(title: String): List<Track> =
+suspend fun DB.searchTrackByFuzzyTitle(title: String): List<JoinedTrack> =
     this@searchTrackByFuzzyTitle.trackDao().getAllByTitle("%${title.escapeSql}%", Bool.UNDEFINED)
 
 fun Context.searchPlaylistByFuzzyTitle(title: String): List<Playlist> = contentResolver.query(
@@ -311,9 +302,9 @@ fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> = wh
         }.flatten()
     }
     OrientedClassType.ALBUM -> {
-        val albumIds = this.map { it.albumId }.distinct().shuffled()
+        val albumIds = this.map { it.album.id }.distinct().shuffled()
         albumIds.map { id ->
-            this.filter { it.albumId == id }
+            this.filter { it.album.id == id }
         }.flatten()
     }
     OrientedClassType.SONG -> {
@@ -334,13 +325,13 @@ fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> = wh
 }
 
 suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat {
-    val uriString = DB.getInstance(context).getArtworkUriStringFromId(albumId)
+    val uriString = album.artworkUriString
 
     return MediaMetadataCompat.Builder()
         .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaId.toString())
-        .putString(MediaMetadataCompat.METADATA_KEY_TITLE, name)
-        .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist)
-        .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album)
+        .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
+        .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist.title)
+        .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album.title)
         .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, uriString)
         .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer)
         .apply {
@@ -375,10 +366,7 @@ suspend fun getPlayerNotification(
         withContext(Dispatchers.IO) {
             Glide.with(context)
                 .asDrawable()
-                .load(
-                    DB.getInstance(context)
-                        .getArtworkUriStringFromId(song.albumId).orDefaultForModel
-                )
+                .load(song.album.artworkUriString.orDefaultForModel)
                 .applyDefaultSettings()
                 .submit()
                 .get()
@@ -392,9 +380,9 @@ suspend fun getPlayerNotification(
     return context.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER)
         .setSmallIcon(R.drawable.ic_notification_player)
         .setLargeIcon(artwork)
-        .setContentTitle(song.name)
-        .setContentText(song.artist)
-        .setSubText(song.album)
+        .setContentTitle(song.title)
+        .setContentText(song.artist.title)
+        .setSubText(song.album.title)
         .setOngoing(playing)
         .setStyle(
             androidx.media.app.NotificationCompat.MediaStyle()

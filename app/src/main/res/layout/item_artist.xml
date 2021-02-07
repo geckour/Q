@@ -7,7 +7,7 @@
 
         <variable
             name="data"
-            type="com.geckour.q.domain.model.Artist" />
+            type="com.geckour.q.data.db.model.Artist" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -35,7 +35,7 @@
             android:layout_marginEnd="12dp"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="@{data.name}"
+            android:text="@{data.title}"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="20sp"
             app:layout_constraintBottom_toBottomOf="@id/thumb"

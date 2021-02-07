@@ -13,8 +13,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Artist
 import com.geckour.q.databinding.ItemArtistBinding
-import com.geckour.q.domain.model.Artist
 import com.geckour.q.domain.model.Song
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.BoolConverter
@@ -42,12 +42,6 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
             override fun areContentsTheSame(oldItem: Artist, newItem: Artist): Boolean =
                 oldItem == newItem
         }
-    }
-
-    override fun submitList(list: List<Artist>?) {
-        super.submitList(
-            list?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.nameSort })
-        )
     }
 
     internal fun onArtistDeleted(artistId: Long) {
@@ -104,7 +98,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
             viewModel.viewModelScope.launch {
                 try {
                     Glide.with(binding.thumb)
-                        .load(artist.thumbUriString.orDefaultForModel)
+                        .load(artist.artworkUriString.orDefaultForModel)
                         .applyDefaultSettings()
                         .into(binding.thumb)
                 } catch (t: Throwable) {
@@ -138,11 +132,11 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
                 val songs = DB.getInstance(context).let { db ->
                     val sharedPreferences =
                         PreferenceManager.getDefaultSharedPreferences(context)
-                    db.albumDao().getAllByArtistId(artist.id).map {
+                    db.albumDao().getAllByArtist(artist.id).map {
                         db.trackDao().getAllByAlbum(
-                            it.id,
+                            it.album.id,
                             BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                        ).map { getSong(db, it) }.let {
+                        ).map { getSong(it) }.let {
                             if (sortByTrackOrder) it.sortedByTrackOrder()
                             else it
                         }

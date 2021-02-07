@@ -27,7 +27,6 @@ import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toggleDayNight
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -122,17 +121,17 @@ class ArtistListFragment : Fragment() {
                 mainViewModel.onLoadStateChanged(true)
                 val db = DB.getInstance(context)
                 val songs = adapter.currentList.flatMap {
-                    db.albumDao().getAllByArtistId(it.id).flatMap {
+                    db.albumDao().getAllByArtist(it.id).flatMap {
                         if (sortByTrackOrder) {
                             db.trackDao().getAllByAlbumSorted(
-                                it.id,
+                                it.album.id,
                                 BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                            ).map { getSong(db, it) }
+                            ).map { getSong(it) }
                         } else {
                             db.trackDao().getAllByAlbum(
-                                it.id,
+                                it.album.id,
                                 BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                            ).map { getSong(db, it) }
+                            ).map { getSong(it) }
                         }
                     }
                 }
@@ -146,7 +145,7 @@ class ArtistListFragment : Fragment() {
 
     private fun observeEvents() {
         lifecycleScope.launch {
-            viewModel.artistListData.collectLatest {
+            viewModel.artistListFlow.collectLatest {
                 adapter.submitList(it)
             }
         }

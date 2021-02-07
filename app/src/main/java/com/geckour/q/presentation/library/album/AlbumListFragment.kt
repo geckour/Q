@@ -12,13 +12,13 @@ import android.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Artist
 import com.geckour.q.databinding.FragmentListLibraryBinding
-import com.geckour.q.domain.model.Album
-import com.geckour.q.domain.model.Artist
 import com.geckour.q.presentation.main.MainActivity
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.BoolConverter
@@ -27,12 +27,9 @@ import com.geckour.q.util.getSong
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
-import com.geckour.q.util.toDomainModel
 import com.geckour.q.util.toggleDayNight
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import com.geckour.q.data.db.model.Album as DBAlbum
 
 class AlbumListFragment : Fragment() {
 
@@ -47,7 +44,9 @@ class AlbumListFragment : Fragment() {
         }
     }
 
-    private val viewModel: AlbumListViewModel by viewModels()
+    private val viewModel: AlbumListViewModel by viewModels(
+        factoryProducer = { AlbumListViewModel.Factory(requireActivity().application, artist) }
+    )
     private val mainViewModel: MainViewModel by activityViewModels()
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: AlbumListAdapter by lazy { AlbumListAdapter(mainViewModel) }
@@ -55,9 +54,6 @@ class AlbumListFragment : Fragment() {
     private val sharedPreferences: SharedPreferences by lazy {
         PreferenceManager.getDefaultSharedPreferences(requireContext())
     }
-
-    private var latestDbAlbumList: List<DBAlbum> = emptyList()
-    private var chatteringCancelFlag: Boolean = false
 
     private var artist: Artist? = null
 
@@ -133,23 +129,23 @@ class AlbumListFragment : Fragment() {
                     it != R.id.menu_insert_all_simple_shuffle_next || it != R.id.menu_insert_all_simple_shuffle_last || it != R.id.menu_override_all_simple_shuffle
                 }
                 mainViewModel.onLoadStateChanged(true)
-                val songs = adapter.currentList.map { album ->
+                val songs = adapter.currentList.map { joinedAlbum ->
                     DB.getInstance(context).let { db ->
                         db.trackDao()
                             .let {
                                 if (sortByTrackOrder) {
                                     it.getAllByAlbumSorted(
-                                        album.id,
+                                        joinedAlbum.album.id,
                                         BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                                     )
                                 } else {
                                     it.getAllByAlbum(
-                                        album.id,
+                                        joinedAlbum.album.id,
                                         BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                                     )
                                 }
                             }
-                            .map { getSong(db, it) }
+                            .map { getSong(it) }
                     }
                 }.apply {
                     mainViewModel.onLoadStateChanged(false)
@@ -167,18 +163,6 @@ class AlbumListFragment : Fragment() {
             binding.recyclerView.smoothScrollToPosition(0)
         }
 
-        mainViewModel.forceLoad.observe(viewLifecycleOwner) {
-            context?.also { context ->
-                viewModel.viewModelScope.launch {
-                    mainViewModel.onLoadStateChanged(true)
-                    val items = fetchAlbums(DB.getInstance(context))
-                    mainViewModel.onLoadStateChanged(false)
-                    adapter.submitList(items)
-                    binding.recyclerView.smoothScrollToPosition(0)
-                }
-            }
-        }
-
         viewModel.albumIdDeleted.observe(viewLifecycleOwner) {
             if (it == null) return@observe
             adapter.onAlbumDeleted(it)
@@ -186,52 +170,10 @@ class AlbumListFragment : Fragment() {
     }
 
     private fun observeAlbums() {
-        context?.apply {
-            DB.getInstance(this).also { db ->
-                (artist?.let {
-                    db.albumDao().getAllByArtistIdAsync(it.id)
-                } ?: db.albumDao().getAllAsync()).observe(this@AlbumListFragment) { dbAlbumList ->
-                    if (dbAlbumList == null) return@observe
-
-                    mainViewModel.onLoadStateChanged(true)
-                    latestDbAlbumList = dbAlbumList
-                    upsertAlbumListIfPossible(db)
-                    mainViewModel.onLoadStateChanged(false)
-                }
+        lifecycleScope.launch {
+            viewModel.albumListFlow.collectLatest {
+                adapter.submitList(it)
             }
         }
     }
-
-    private suspend fun fetchAlbums(db: DB): List<Album> =
-        (artist?.let { db.albumDao().getAllByArtistId(it.id) } ?: db.albumDao()
-            .getAll()).getAlbumList(db)
-
-    private fun upsertAlbumListIfPossible(db: DB) {
-        viewModel.viewModelScope.launch {
-            mainViewModel.onLoadStateChanged(true)
-            val items = latestDbAlbumList.getAlbumList(db)
-            mainViewModel.onLoadStateChanged(false)
-            upsertAlbumListIfPossible(items)
-        }
-    }
-
-    private fun upsertAlbumListIfPossible(items: List<Album>) {
-        if (chatteringCancelFlag.not()) {
-            chatteringCancelFlag = true
-            viewModel.viewModelScope.launch {
-                delay(500)
-                adapter.submitList(items)
-                chatteringCancelFlag = false
-            }
-        }
-    }
-
-    private suspend fun List<DBAlbum>.getAlbumList(db: DB): List<Album> =
-        this@getAlbumList.mapNotNull {
-            val artist = db.artistDao().get(it.artistId)
-            val artistName = artist?.title ?: return@mapNotNull null
-            val artistNameSort = artist.titleSort
-            val totalDuration = db.trackDao().getAllByAlbum(it.id).map { it.duration }.sum()
-            it.toDomainModel(artistName, artistNameSort, totalDuration)
-        }
 }

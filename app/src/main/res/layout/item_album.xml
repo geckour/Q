@@ -7,7 +7,7 @@
 
         <variable
             name="data"
-            type="com.geckour.q.domain.model.Album" />
+            type="com.geckour.q.data.db.model.JoinedAlbum" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -37,7 +37,7 @@
             android:layout_marginStart="12dp"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="@{data.name}"
+            android:text="@{data.album.title}"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="20sp"
             app:layout_constraintBottom_toTopOf="@id/text_artist_and_album"
@@ -56,7 +56,7 @@
             android:layout_marginTop="2dp"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="@{data.artist}"
+            android:text="@{data.artist.title}"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="16sp"
             app:layout_constraintBottom_toBottomOf="@id/thumb"

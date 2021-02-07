@@ -4,24 +4,18 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
-import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
-import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemSongBinding
 import com.geckour.q.domain.model.Song
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.applyDefaultSettings
-import com.geckour.q.util.getArtworkUriStringFromId
-import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.swapped
-import com.geckour.q.util.toDomainModel
-import kotlinx.coroutines.launch
 import timber.log.Timber
 
 class QueueListAdapter(private val viewModel: MainViewModel) :
@@ -74,23 +68,10 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
             setOnMenuItemClickListener {
                 when (it.itemId) {
                     R.id.menu_transition_to_artist -> {
-                        viewModel.viewModelScope.launch {
-                            viewModel.selectedArtist.value = binding.data?.artist?.let {
-                                DB.getInstance(binding.root.context).artistDao()
-                                    .getAllByTitle(it)
-                                    .firstOrNull()
-                                    ?.toDomainModel()
-                            }
-                        }
+                        viewModel.selectedArtist.value = binding.data?.artist
                     }
                     R.id.menu_transition_to_album -> {
-                        viewModel.viewModelScope.launch {
-                            viewModel.selectedAlbum.value = binding.data?.albumId?.let {
-                                DB.getInstance(binding.root.context).albumDao()
-                                    .get(it)
-                                    ?.toDomainModel()
-                            }
-                        }
+                        viewModel.selectedAlbum.value = binding.data?.album
                     }
                     R.id.menu_insert_all_next, R.id.menu_insert_all_last, R.id.menu_override_all -> {
                         viewModel.selectedSong?.apply {
@@ -125,19 +106,13 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
             val song = currentList[adapterPosition]
             binding.data = song
             binding.duration.text = song.durationString
-            viewModel.viewModelScope.launch {
-                try {
-                    val uriString = DB.getInstance(binding.root.context)
-                        .getArtworkUriStringFromId(song.albumId)
-                        .orDefaultForModel
-
-                    Glide.with(binding.thumb)
-                        .load(uriString)
-                        .applyDefaultSettings()
-                        .into(binding.thumb)
-                } catch (t: Throwable) {
-                    Timber.e(t)
-                }
+            try {
+                Glide.with(binding.thumb)
+                    .load(song.album.artworkUriString)
+                    .applyDefaultSettings()
+                    .into(binding.thumb)
+            } catch (t: Throwable) {
+                Timber.e(t)
             }
 
             binding.option.apply {
