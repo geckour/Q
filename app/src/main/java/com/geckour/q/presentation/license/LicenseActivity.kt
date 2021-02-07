@@ -6,18 +6,18 @@ import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
+import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivityLicenseBinding
 import com.geckour.q.domain.model.LicenseItem
-import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toNightModeInt
 import com.geckour.q.util.toggleDayNight
 
-class LicenseActivity : CrashlyticsBundledActivity() {
+class LicenseActivity : AppCompatActivity() {
 
     companion object {
         fun createIntent(context: Context): Intent = Intent(context, LicenseActivity::class.java)

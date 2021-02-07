@@ -6,20 +6,19 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ShareCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.domain.model.Song
-import com.geckour.q.setCrashlytics
-import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.bundleArtwork
 import com.geckour.q.util.formatPattern
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-class SharingActivity : CrashlyticsBundledActivity() {
+class SharingActivity : AppCompatActivity() {
 
     enum class IntentRequestCode(val code: Int) {
         SHARE(666)
@@ -45,8 +44,6 @@ class SharingActivity : CrashlyticsBundledActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        setCrashlytics()
 
         onNewIntent(intent)
         finish()

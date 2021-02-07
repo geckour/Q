@@ -5,11 +5,8 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import androidx.annotation.RequiresApi
-import androidx.appcompat.app.AppCompatActivity
-import com.crashlytics.android.Crashlytics
 import com.facebook.stetho.Stetho
 import com.geckour.q.util.QNotificationChannel
-import io.fabric.sdk.android.Fabric
 import timber.log.Timber
 
 class App : Application() {
@@ -64,8 +61,4 @@ class App : Application() {
             createNotificationChannel(channelSleepTimer)
         }
     }
-}
-
-fun AppCompatActivity.setCrashlytics() {
-    if (BuildConfig.DEBUG.not()) Fabric.with(this, Crashlytics())
 }

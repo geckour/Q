@@ -43,42 +43,42 @@
 
                 <include
                     android:id="@+id/category_general"
-                    layout="@layout/item_list_setting_category"
+                    layout="@layout/item_setting_category"
                     android:title="@{@string/setting_category_title_general}" />
 
                 <include
                     android:id="@+id/item_choose_screen"
-                    layout="@layout/item_list_setting_item" />
+                    layout="@layout/item_setting_item" />
 
                 <include
                     android:id="@+id/item_artwork_on_lock_screen"
-                    layout="@layout/item_list_setting_item" />
+                    layout="@layout/item_setting_item" />
 
                 <include
                     android:id="@+id/item_ducking"
-                    layout="@layout/item_list_setting_item" />
+                    layout="@layout/item_setting_item" />
 
                 <include
                     android:id="@+id/category_share"
-                    layout="@layout/item_list_setting_category"
+                    layout="@layout/item_setting_category"
                     android:title="@{@string/setting_category_title_share}" />
 
                 <include
                     android:id="@+id/item_format_pattern"
-                    layout="@layout/item_list_setting_item" />
+                    layout="@layout/item_setting_item" />
 
                 <include
                     android:id="@+id/item_bundle_artwork"
-                    layout="@layout/item_list_setting_item" />
+                    layout="@layout/item_setting_item" />
 
                 <include
                     android:id="@+id/category_misc"
-                    layout="@layout/item_list_setting_category"
+                    layout="@layout/item_setting_category"
                     android:title="@{@string/setting_category_title_misc}" />
 
                 <include
                     android:id="@+id/item_license"
-                    layout="@layout/item_list_setting_item" />
+                    layout="@layout/item_setting_item" />
             </LinearLayout>
         </ScrollView>
     </androidx.constraintlayout.widget.ConstraintLayout>

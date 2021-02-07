@@ -15,6 +15,7 @@ import android.widget.SeekBar
 import androidx.activity.viewModels
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.commit
@@ -38,7 +39,6 @@ import com.geckour.q.presentation.sheet.BottomSheetFragment
 import com.geckour.q.presentation.sheet.BottomSheetViewModel
 import com.geckour.q.service.MediaRetrieveService
 import com.geckour.q.service.SleepTimerService
-import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.ducking
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
@@ -53,7 +53,7 @@ import permissions.dispatcher.ktx.constructPermissionsRequest
 import timber.log.Timber
 import java.io.File
 
-class MainActivity : CrashlyticsBundledActivity() {
+class MainActivity : AppCompatActivity() {
 
     enum class RequestCode(val code: Int) {
         RESULT_SETTING(333)

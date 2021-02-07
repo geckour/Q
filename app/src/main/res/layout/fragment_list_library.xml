@@ -19,7 +19,7 @@
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="parent"
-            tools:listitem="@layout/item_list_artist" />
+            tools:listitem="@layout/item_artist" />
 
         <androidx.constraintlayout.widget.Guideline
             android:id="@+id/guide_peek_height"

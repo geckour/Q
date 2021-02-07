@@ -14,6 +14,7 @@ import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.TextView
 import androidx.activity.viewModels
+import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
@@ -21,7 +22,6 @@ import com.geckour.q.databinding.ActivitySettingBinding
 import com.geckour.q.databinding.DialogEditTextBinding
 import com.geckour.q.databinding.DialogSpinnerBinding
 import com.geckour.q.presentation.license.LicenseActivity
-import com.geckour.q.util.CrashlyticsBundledActivity
 import com.geckour.q.util.Pref
 import com.geckour.q.util.bundleArtwork
 import com.geckour.q.util.ducking
@@ -35,7 +35,7 @@ import com.geckour.q.util.showArtworkOnLockScreen
 import com.geckour.q.util.toNightModeInt
 import com.geckour.q.util.toggleDayNight
 
-class SettingActivity : CrashlyticsBundledActivity() {
+class SettingActivity : AppCompatActivity() {
 
     companion object {
         fun createIntent(context: Context): Intent = Intent(context, SettingActivity::class.java)

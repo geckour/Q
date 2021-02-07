@@ -20,6 +20,6 @@
             android:elevation="4dp"
             android:orientation="vertical"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            tools:listitem="@layout/item_list_search_item" />
+            tools:listitem="@layout/item_search_item" />
     </FrameLayout>
 </layout>
