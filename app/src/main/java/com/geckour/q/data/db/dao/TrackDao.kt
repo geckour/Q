@@ -1,14 +1,12 @@
 package com.geckour.q.data.db.dao
 
 import android.content.Context
-import androidx.lifecycle.LiveData
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.Track
@@ -58,9 +56,6 @@ interface TrackDao {
         albumId: Long,
         ignore: Bool = Bool.UNDEFINED
     ): Flow<List<JoinedTrack>>
-
-    @Query("select * from track where artistId = :artistId and ignored != :ignore")
-    suspend fun getAllByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
     @Query("update track set playbackCount = (select playbackCount from track where id = :trackId) + 1 where id = :trackId")
     suspend fun increasePlaybackCount(trackId: Long)
