@@ -117,13 +117,13 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
                 else -> return false
             }
 
-            val sortByTrackOrder = id !in listOf(
+            val shuffle = id !in listOf(
                 R.id.menu_insert_all_simple_shuffle_next,
                 R.id.menu_insert_all_simple_shuffle_last,
                 R.id.menu_override_all_simple_shuffle
             )
 
-            viewModel.onSongMenuAction(actionType, joinedAlbum.album, sortByTrackOrder)
+            viewModel.onSongMenuAction(actionType, joinedAlbum.album, shuffle)
 
             return true
         }

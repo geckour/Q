@@ -23,10 +23,10 @@ import com.geckour.q.presentation.main.MainActivity
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.BoolConverter
 import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.getSong
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
+import com.geckour.q.util.toSong
 import com.geckour.q.util.toggleDayNight
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -45,7 +45,12 @@ class AlbumListFragment : Fragment() {
     }
 
     private val viewModel: AlbumListViewModel by viewModels(
-        factoryProducer = { AlbumListViewModel.Factory(requireActivity().application, artist) }
+        factoryProducer = {
+            AlbumListViewModel.Factory(
+                requireActivity().application,
+                arguments?.getParcelable(ARGS_KEY_ARTIST)
+            )
+        }
     )
     private val mainViewModel: MainViewModel by activityViewModels()
     private lateinit var binding: FragmentListLibraryBinding
@@ -54,8 +59,6 @@ class AlbumListFragment : Fragment() {
     private val sharedPreferences: SharedPreferences by lazy {
         PreferenceManager.getDefaultSharedPreferences(requireContext())
     }
-
-    private var artist: Artist? = null
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -70,8 +73,6 @@ class AlbumListFragment : Fragment() {
 
         setHasOptionsMenu(true)
         binding.recyclerView.adapter = adapter
-
-        artist = arguments?.getParcelable(ARGS_KEY_ARTIST)
         if (adapter.itemCount == 0) observeAlbums()
     }
 
@@ -145,7 +146,7 @@ class AlbumListFragment : Fragment() {
                                     )
                                 }
                             }
-                            .map { getSong(it) }
+                            .map { it.toSong() }
                     }
                 }.apply {
                     mainViewModel.onLoadStateChanged(false)

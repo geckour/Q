@@ -44,6 +44,7 @@ import com.geckour.q.util.searchGenreByFuzzyTitle
 import com.geckour.q.util.searchPlaylistByFuzzyTitle
 import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.sortedByTrackOrder
+import com.geckour.q.util.toSong
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -311,7 +312,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val tracks = db.searchTrackByFuzzyTitle(query).take(3).map {
                 SearchItem(
                     it.album.title,
-                    getSong(it),
+                    it.toSong(),
                     SearchItem.SearchItemType.TRACK
                 )
             }
@@ -423,7 +424,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     .getAllByAlbum(
                         album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                     )
-                    .map { getSong(it) }
+                    .map { it.toSong() }
                     .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                     .apply { loading.postValue(false) }
             }

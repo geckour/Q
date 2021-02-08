@@ -12,6 +12,7 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.Track
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TrackDao {
@@ -40,8 +41,8 @@ interface TrackDao {
     @Query("select mediaId from track where ignored != :ignore")
     suspend fun getAllMediaIds(ignore: Bool = Bool.UNDEFINED): List<Long>
 
-    @Query("select * from track where ignored != :ignore")
-    fun getAllAsync(ignore: Bool = Bool.UNDEFINED): LiveData<List<JoinedTrack>>
+    @Query("select * from track where ignored != :ignore order by titleSort collate nocase")
+    fun getAllAsync(ignore: Bool = Bool.UNDEFINED): Flow<List<JoinedTrack>>
 
     @Query("select * from track where title like :title and ignored != :ignore")
     suspend fun getAllByTitle(title: String, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
@@ -52,11 +53,11 @@ interface TrackDao {
     @Query("select * from track where albumId = :albumId and ignored != :ignore order by trackNum")
     suspend fun getAllByAlbumSorted(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
-    @Query("select * from track where albumId = :albumId and ignored != :ignore")
-    fun getAllByAlbumAsync(
+    @Query("select * from track where albumId = :albumId and ignored != :ignore order by trackNum")
+    fun getAllByAlbumAsyncSorted(
         albumId: Long,
         ignore: Bool = Bool.UNDEFINED
-    ): LiveData<List<JoinedTrack>>
+    ): Flow<List<JoinedTrack>>
 
     @Query("select * from track where artistId = :artistId and ignored != :ignore")
     suspend fun getAllByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>

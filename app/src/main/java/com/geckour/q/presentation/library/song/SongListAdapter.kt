@@ -42,13 +42,6 @@ class SongListAdapter(
         }
     }
 
-    fun submitList(list: List<Song>?, sortByTrackOrder: Boolean = true) {
-        submitList(
-            if (sortByTrackOrder) list?.sortedByTrackOrder()
-            else list?.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.titleSort })
-        )
-    }
-
     private fun removeItem(songId: Long) {
         submitList(currentList.dropLastWhile { it.id == songId })
     }

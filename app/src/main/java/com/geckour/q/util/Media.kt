@@ -70,9 +70,6 @@ data class QueueInfo(
     val metadata: QueueMetadata, val queue: List<Song>
 )
 
-fun getSongListFromTrackList(dbTrackList: List<JoinedTrack>): List<Song> =
-    dbTrackList.map { getSong(it) }
-
 suspend fun getSongListFromTrackMediaId(
     db: DB, dbTrackIdList: List<Long>, genreId: Long? = null, playlistId: Long? = null
 ): List<Song> = dbTrackIdList.mapNotNull { getSong(db, it, genreId, playlistId) }
@@ -92,33 +89,32 @@ suspend fun getSong(
     genreId: Long? = null,
     playlistId: Long? = null,
     trackNum: Int? = null
-): Song? = db.trackDao().getByMediaId(trackMediaId)?.let {
-    getSong(it, genreId, playlistId, trackNum = trackNum)
-}
+): Song? = db.trackDao()
+    .getByMediaId(trackMediaId)
+    ?.toSong(genreId, playlistId, trackNum = trackNum)
 
-fun getSong(
-    joinedTrack: JoinedTrack,
+fun JoinedTrack.toSong(
     genreId: Long? = null,
     playlistId: Long? = null,
     trackNum: Int? = null
 ): Song {
     return Song(
-        joinedTrack.track.id,
-        joinedTrack.track.mediaId,
-        joinedTrack.album,
-        joinedTrack.track.title,
-        joinedTrack.track.titleSort,
-        joinedTrack.artist,
-        joinedTrack.track.composer,
-        joinedTrack.track.composerSort,
-        joinedTrack.album.artworkUriString,
-        joinedTrack.track.duration,
-        trackNum ?: joinedTrack.track.trackNum,
-        joinedTrack.track.discNum,
+        track.id,
+        track.mediaId,
+        album,
+        track.title,
+        track.titleSort,
+        artist,
+        track.composer,
+        track.composerSort,
+        album.artworkUriString,
+        track.duration,
+        trackNum ?: track.trackNum,
+        track.discNum,
         genreId,
         playlistId,
-        joinedTrack.track.sourcePath,
-        BoolConverter().toBoolean(joinedTrack.track.ignored)
+        track.sourcePath,
+        BoolConverter().toBoolean(track.ignored)
     )
 }
 
@@ -288,11 +284,18 @@ fun getTrackMediaIdByPlaylistId(context: Context, playlistId: Long): List<Pair<L
 fun Song.getMediaSource(mediaSourceFactory: ProgressiveMediaSource.Factory): MediaSource =
     mediaSourceFactory.createMediaSource(Uri.fromFile(File(sourcePath)))
 
-fun List<Song>.sortedByTrackOrder(): List<Song> = this.asSequence()
-    .groupBy { it.discNum }
-    .map { it.key to it.value.sortedBy { it.trackNum } }
-    .sortedBy { it.first }
-    .flatMap { it.second }
+fun List<Song>.sortedByTrackOrder(): List<Song> =
+    this.groupBy { it.artist.id }
+        .map {
+            it.key to it.value.groupBy { it.album.id }
+                .map {
+                    it.value
+                        .groupBy { it.discNum }
+                        .flatMap { it.value.sortedBy { it.trackNum } }
+                }
+                .flatten()
+        }
+        .flatMap { it.second }
 
 fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> = when (classType) {
     OrientedClassType.ARTIST -> {

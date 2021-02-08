@@ -13,19 +13,17 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.presentation.main.MainActivity
 import com.geckour.q.presentation.main.MainViewModel
-import com.geckour.q.util.BoolConverter
 import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.getSong
-import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
+import com.geckour.q.util.sortedByTrackOrder
+import com.geckour.q.util.toSong
 import com.geckour.q.util.toggleDayNight
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -111,7 +109,7 @@ class ArtistListFragment : Fragment() {
                 else -> return false
             }
 
-            viewModel.viewModelScope.launch {
+            lifecycleScope.launch {
                 val sortByTrackOrder = item.itemId !in listOf(
                     R.id.menu_insert_all_simple_shuffle_next,
                     R.id.menu_insert_all_simple_shuffle_last,
@@ -119,22 +117,11 @@ class ArtistListFragment : Fragment() {
                 )
 
                 mainViewModel.onLoadStateChanged(true)
-                val db = DB.getInstance(context)
-                val songs = adapter.currentList.flatMap {
-                    db.albumDao().getAllByArtist(it.id).flatMap {
-                        if (sortByTrackOrder) {
-                            db.trackDao().getAllByAlbumSorted(
-                                it.album.id,
-                                BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                            ).map { getSong(it) }
-                        } else {
-                            db.trackDao().getAllByAlbum(
-                                it.album.id,
-                                BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                            ).map { getSong(it) }
-                        }
-                    }
-                }
+                val songs = DB.getInstance(context)
+                    .trackDao()
+                    .getAll()
+                    .map { it.toSong() }
+                    .apply { if (sortByTrackOrder) sortedByTrackOrder() }
 
                 adapter.onNewQueue(songs, actionType)
             }

@@ -12,11 +12,10 @@ import android.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.lifecycleScope
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
-import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
@@ -24,14 +23,14 @@ import com.geckour.q.presentation.main.MainActivity
 import com.geckour.q.presentation.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.getSong
 import com.geckour.q.util.getSongListFromTrackMediaId
 import com.geckour.q.util.getSongListFromTrackMediaIdWithTrackNum
 import com.geckour.q.util.getTrackMediaIds
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
+import com.geckour.q.util.toSong
 import com.geckour.q.util.toggleDayNight
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 class SongListFragment : Fragment() {
@@ -186,81 +185,54 @@ class SongListFragment : Fragment() {
 
         when {
             album != null -> observeSongsWithAlbum(album)
-            genre != null -> fetchSongsWithGenre(genre)
-            playlist != null -> fetchSongsWithPlaylist(playlist)
+            genre != null -> loadSongsWithGenre(genre)
+            playlist != null -> loadSongsWithPlaylist(playlist)
             else -> observeAllSongs()
         }
     }
 
     private fun observeAllSongs() {
-        context?.apply {
-            DB.getInstance(this).also { db ->
-                db.trackDao().getAllAsync().observe(this@SongListFragment) { dbTrackList ->
-                    if (dbTrackList == null) return@observe
-
-                    upsertSongListIfPossible(dbTrackList, false)
+        lifecycleScope.launch {
+            DB.getInstance(requireContext()).trackDao().getAllAsync()
+                .collectLatest { joinedTracks ->
+                    adapter.submitList(joinedTracks.map { it.toSong() })
                 }
-            }
         }
     }
 
     private fun observeSongsWithAlbum(album: Album) {
-        context?.also {
-            DB.getInstance(it).also { db ->
-                db.trackDao()
-                    .getAllByAlbumAsync(album.id)
-                    .observe(this@SongListFragment) { dbTrackList ->
-                        if (dbTrackList == null) return@observe
-
-                        upsertSongListIfPossible(dbTrackList)
-                    }
-            }
+        lifecycleScope.launch {
+            DB.getInstance(requireContext()).trackDao()
+                .getAllByAlbumAsyncSorted(album.id)
+                .collectLatest { joinedTracks ->
+                    adapter.submitList(joinedTracks.map { it.toSong() })
+                }
         }
     }
 
-    private fun fetchSongsWithGenre(genre: Genre) {
-        context?.also {
-            viewModel.viewModelScope.launch {
-                mainViewModel.onLoadStateChanged(true)
-                adapter.submitList(
-                    getSongListFromTrackMediaId(
-                        DB.getInstance(it), genre.getTrackMediaIds(it), genreId = genre.id
-                    ), false
+    private fun loadSongsWithGenre(genre: Genre) {
+        lifecycleScope.launch {
+            adapter.submitList(
+                getSongListFromTrackMediaId(
+                    DB.getInstance(requireContext()),
+                    genre.getTrackMediaIds(requireContext()),
+                    genreId = genre.id
                 )
-                mainViewModel.onLoadStateChanged(false)
-                binding.recyclerView.smoothScrollToPosition(0)
-            }
+            )
+            binding.recyclerView.smoothScrollToPosition(0)
         }
     }
 
-    private fun fetchSongsWithPlaylist(playlist: Playlist) {
-        context?.also {
-            viewModel.viewModelScope.launch {
-                mainViewModel.onLoadStateChanged(true)
-                adapter.submitList(
-                    getSongListFromTrackMediaIdWithTrackNum(
-                        DB.getInstance(it), playlist.getTrackMediaIds(it), playlistId = playlist.id
-                    )
+    private fun loadSongsWithPlaylist(playlist: Playlist) {
+        lifecycleScope.launch {
+            adapter.submitList(
+                getSongListFromTrackMediaIdWithTrackNum(
+                    DB.getInstance(requireContext()),
+                    playlist.getTrackMediaIds(requireContext()),
+                    playlistId = playlist.id
                 )
-                mainViewModel.onLoadStateChanged(false)
-                binding.recyclerView.smoothScrollToPosition(0)
-            }
-        }
-    }
-
-    private fun upsertSongListIfPossible(
-        dbTrackList: List<JoinedTrack>, sortByTrackOrder: Boolean = true
-    ) {
-        if (chatteringCancelFlag.not()) {
-            chatteringCancelFlag = true
-            viewModel.viewModelScope.launch {
-                delay(500)
-                mainViewModel.onLoadStateChanged(true)
-                val items = dbTrackList.map { getSong(it) }
-                adapter.submitList(items, sortByTrackOrder)
-                mainViewModel.onLoadStateChanged(false)
-                chatteringCancelFlag = false
-            }
+            )
+            binding.recyclerView.smoothScrollToPosition(0)
         }
     }
 }
