@@ -384,7 +384,7 @@ class MainActivity : AppCompatActivity() {
                         retrieveDropboxMedia(path)
                     }
                 ).apply { dropboxChooserDialog = this }
-            }).show(it)
+            }).show(it.first, it.second)
         }
 
         paymentViewModel.saveSuccess.observe(this) {

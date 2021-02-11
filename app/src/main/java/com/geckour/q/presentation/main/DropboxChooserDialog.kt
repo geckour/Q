@@ -54,9 +54,10 @@ class DropboxChooserDialog(
         }
         .create()
 
-    fun show(items: List<FolderMetadata>) {
+    fun show(currentDirTitle: String, items: List<FolderMetadata>) {
         if (dialog.isShowing.not()) dialog.show()
 
+        binding.currentDir.text = currentDirTitle
         adapter.submitList(items.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }))
     }
 

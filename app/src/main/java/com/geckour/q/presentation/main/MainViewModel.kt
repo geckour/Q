@@ -82,7 +82,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     internal val scrollToTop = MutableLiveData<Unit>()
     internal val forceLoad = MutableLiveData<Unit>()
 
-    internal val dropboxItemList = MutableLiveData<List<FolderMetadata>>()
+    internal val dropboxItemList = MutableLiveData<Pair<String, List<FolderMetadata>>>()
 
     private var currentOrientedClassType: OrientedClassType? = null
 
@@ -495,7 +495,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
                 result = client.files().listFolderContinue(result.cursor)
             }
-            dropboxItemList.postValue(result.entries.filterIsInstance<FolderMetadata>())
+            val currentDirTitle = (dropboxMetadata?.name ?: "Root")
+            dropboxItemList.postValue(
+                currentDirTitle to result.entries.filterIsInstance<FolderMetadata>()
+            )
         }
 
     inner class SearchQueryListener(private val searchView: SearchView) :
