@@ -24,6 +24,7 @@
     <string name="notification_channel_description_sleep_timer">Notification for sleep timer</string>
     <string name="notification_title_retriever">Retrieving media</string>
     <string name="notification_text_retriever">%1$d / %2$d | Syncing library…</string>
+    <string name="notification_text_retriever_dropbox">%d | Syncing library…</string>
     <string name="notification_title_media_add">Adding media</string>
     <string name="notification_text_media_add">Adding %s…</string>
     <string name="notification_title_sleep_timer">Sleep timer</string>
@@ -38,6 +39,7 @@
     <string name="syncing">Syncing library…</string>
     <string name="loading">Loading items…</string>
     <string name="progress_sync" translatable="false">%1$d / %2$d</string>
+    <string name="progress_sync_dropbox" translatable="false">%d…</string>
     <string name="button_cancel_sync">Cancel</string>
 
 
@@ -55,9 +57,11 @@
     <string name="nav_song">Songs</string>
     <string name="nav_genre">Genres</string>
     <string name="nav_playlist">Playlist</string>
+    <string name="nav_dropbox">Dropbox</string>
     <string name="nav_setting">Settings</string>
     <string name="nav_equalizer">Equalizer</string>
     <string name="nav_sync">Sync library</string>
+    <string name="nav_dropbox_sync">Sync with Dropbox</string>
     <string name="nav_pay">Donate</string>
     <string name="nav_fortune">Fortune</string>
 
@@ -134,6 +138,9 @@
     <string name="dialog_desc_sleep_timer">Set timer length and the tolerance</string>
     <string name="dialog_text_sleep_timer_time">Pause %d min later</string>
     <string name="dialog_text_sleep_timer_tolerance">Tolerance: %d min</string>
+
+    <string name="dialog_title_dropbox_choose_folder">Select folder</string>
+    <string name="dialog_desc_dropbox_choose_folder">Select root folder of retrieving media</string>
 
 
     <string name="payment_desc">Available donation with Kyash</string>

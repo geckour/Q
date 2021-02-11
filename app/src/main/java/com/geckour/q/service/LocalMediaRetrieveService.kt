@@ -44,14 +44,11 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 
-class MediaRetrieveService : IntentService(NAME) {
+class LocalMediaRetrieveService : IntentService(NAME) {
 
     companion object {
-        private const val NAME = "MediaRetrieveService"
-        private const val NOTIFICATION_ID_RETRIEVE = 300
+        private const val NAME = "LocalMediaRetrieveService"
 
-        private const val ACTION_CANCEL = "com.geckour.q.service.retrieve.cancel"
-        private const val KEY_CLEAR = "key_clear"
         private const val KEY_ONLY_ADDED = "key_only_added"
 
         private val projection = arrayOf(
@@ -62,7 +59,7 @@ class MediaRetrieveService : IntentService(NAME) {
         private const val ORDER = "${MediaStore.Audio.Media.TITLE} ASC"
 
         fun getIntent(context: Context, clear: Boolean, onlyAdded: Boolean): Intent =
-            Intent(context, MediaRetrieveService::class.java).apply {
+            Intent(context, LocalMediaRetrieveService::class.java).apply {
                 putExtra(KEY_CLEAR, clear)
                 putExtra(KEY_ONLY_ADDED, onlyAdded)
             }
@@ -244,7 +241,11 @@ class MediaRetrieveService : IntentService(NAME) {
         }
     }
 
-    private fun DB.storeMediaInfo(context: Context, trackPath: String, trackMediaId: Long): Long =
+    private fun DB.storeMediaInfo(
+        context: Context,
+        trackPath: String,
+        trackMediaId: Long
+    ): Long =
         runBlocking {
             val uri =
                 ContentUris.withAppendedId(
@@ -297,8 +298,13 @@ class MediaRetrieveService : IntentService(NAME) {
                     ?: cachedAlbumArtist?.titleSort
 
             val duration = header.trackLength.toLong() * 1000
-            val trackNum = catchAsNull { tag.getFirst(FieldKey.TRACK).toInt() }
-            val discNum = catchAsNull { tag.getFirst(FieldKey.DISC_NO).toInt() }
+            val pastSongDuration = trackDao().getDurationWithMediaId(trackMediaId) ?: 0
+            val trackNum = catchAsNull {
+                tag.getFirst(FieldKey.TRACK).let { if (it.isNullOrBlank()) null else it }?.toInt()
+            }
+            val discNum = catchAsNull {
+                tag.getFirst(FieldKey.DISC_NO).let { if (it.isNullOrBlank()) null else it }?.toInt()
+            }
 
             val composerTitle = tag.getAll(FieldKey.COMPOSER).lastOrNull { it.isNotBlank() }
             val composerTitleSort =
@@ -328,7 +334,7 @@ class MediaRetrieveService : IntentService(NAME) {
                 duration,
                 artworkUriString ?: cachedArtist?.artworkUriString
             )
-            val artistId = artistDao().upsert(artist)
+            val artistId = artistDao().upsert(artist, pastSongDuration)
             val albumArtistId =
                 if (albumArtistTitle != null && albumArtistTitleSort != null) {
                     val albumArtist = Artist(
@@ -339,7 +345,7 @@ class MediaRetrieveService : IntentService(NAME) {
                         duration,
                         artworkUriString ?: cachedAlbumArtist?.artworkUriString
                     )
-                    artistDao().upsert(albumArtist)
+                    artistDao().upsert(albumArtist, pastSongDuration)
                 } else null
 
             val album = Album(
@@ -352,7 +358,7 @@ class MediaRetrieveService : IntentService(NAME) {
                 0,
                 duration
             )
-            val albumId = albumDao().upsert(album)
+            val albumId = albumDao().upsert(album, pastSongDuration)
 
             val track = Track(
                 0,
@@ -372,6 +378,6 @@ class MediaRetrieveService : IntentService(NAME) {
                 0
             )
 
-            return@runBlocking trackDao().upsert(track)
+            return@runBlocking trackDao().upsert(track, pastSongDuration)
         }
 }

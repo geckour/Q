@@ -20,6 +20,8 @@ import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.commit
 import androidx.preference.PreferenceManager
+import com.dropbox.core.android.Auth
+import com.geckour.q.BuildConfig
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogSleepBinding
@@ -37,8 +39,10 @@ import com.geckour.q.presentation.pay.PaymentViewModel
 import com.geckour.q.presentation.setting.SettingActivity
 import com.geckour.q.presentation.sheet.BottomSheetFragment
 import com.geckour.q.presentation.sheet.BottomSheetViewModel
-import com.geckour.q.service.MediaRetrieveService
+import com.geckour.q.service.DropboxMediaRetrieveService
+import com.geckour.q.service.LocalMediaRetrieveService
 import com.geckour.q.service.SleepTimerService
+import com.geckour.q.util.dropboxToken
 import com.geckour.q.util.ducking
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.observe
@@ -106,7 +110,8 @@ class MainActivity : AppCompatActivity() {
                     viewModel.syncing = true
                     setLockingIndicator()
                     binding.indicatorLocking.progressSync.text =
-                        getString(R.string.progress_sync, this.first, this.second)
+                        if (this.second < 0) getString(R.string.progress_sync_dropbox, this.first)
+                        else getString(R.string.progress_sync, this.first, this.second)
                 }
             }
         }
@@ -137,6 +142,16 @@ class MainActivity : AppCompatActivity() {
                 retrieveMedia(false)
                 null
             }
+            R.id.nav_dropbox_sync -> {
+                val token = sharedPreferences.dropboxToken
+                if (token.isBlank()) {
+                    viewModel.isDropboxAuthOngoing = true
+                    Auth.startOAuth2Authentication(this, BuildConfig.DROPBOX_APP_KEY)
+                } else {
+                    viewModel.showDropboxFolderChooser(token)
+                }
+                null
+            }
             R.id.nav_pay -> PaymentFragment.newInstance()
             else -> null
         }?.let {
@@ -152,13 +167,25 @@ class MainActivity : AppCompatActivity() {
         true
     }
 
+    private var dropboxChooserDialog: DropboxChooserDialog? = null
+
     private fun retrieveMedia(onlyAdded: Boolean) {
         constructPermissionsRequest(
             Manifest.permission.READ_EXTERNAL_STORAGE,
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
             onPermissionDenied = ::onReadExternalStorageDenied
         ) {
-            startService(MediaRetrieveService.getIntent(this, false, onlyAdded))
+            startService(LocalMediaRetrieveService.getIntent(this, false, onlyAdded))
+        }.launch()
+    }
+
+    private fun retrieveDropboxMedia(rootPath: String) {
+        constructPermissionsRequest(
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE,
+            onPermissionDenied = ::onReadExternalStorageDenied
+        ) {
+            startService(DropboxMediaRetrieveService.getIntent(this, rootPath, false))
         }.launch()
     }
 
@@ -200,6 +227,11 @@ class MainActivity : AppCompatActivity() {
         paused = false
 
         tryTransaction()
+
+        if (viewModel.isDropboxAuthOngoing) {
+            viewModel.isDropboxAuthOngoing = false
+            onAuthDropboxCompleted()
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -338,6 +370,21 @@ class MainActivity : AppCompatActivity() {
             } else binding.contentSearch.root.visibility = View.VISIBLE
 
             searchListAdapter.replaceItems(it)
+        }
+
+        viewModel.dropboxItemList.observe(this) {
+            it ?: return@observe
+            (dropboxChooserDialog ?: run {
+                DropboxChooserDialog(
+                    this@MainActivity,
+                    onClickItem = { metadata ->
+                        viewModel.showDropboxFolderChooser(sharedPreferences.dropboxToken, metadata)
+                    },
+                    onChoose = { path ->
+                        retrieveDropboxMedia(path)
+                    }
+                ).apply { dropboxChooserDialog = this }
+            }).show(it)
         }
 
         paymentViewModel.saveSuccess.observe(this) {
@@ -549,5 +596,9 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton(R.string.dialog_ng) { dialog, _ -> dialog.dismiss() }
             .show()
+    }
+
+    private fun onAuthDropboxCompleted() {
+        viewModel.storeDropboxApiToken()
     }
 }

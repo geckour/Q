@@ -9,6 +9,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
@@ -73,6 +74,18 @@ sealed class Pref<T>(protected val key: String) : ReadWriteProperty<SharedPrefer
                     "PLAYLIST", Content.Screen.Data(R.string.nav_playlist, R.id.nav_playlist)
                 )
             )
+        }
+    }
+
+    class PrefAny<T>(key: String, private val defaultValue: T): Pref<T>(key) {
+        override fun getValue(thisRef: SharedPreferences, property: KProperty<*>): T =
+            thisRef.getString(key, null)?.let {
+                val type = object : TypeToken<T>() {}.type
+                Gson().fromJson<T>(it, type)
+            } ?: defaultValue
+
+        override fun setValue(thisRef: SharedPreferences, property: KProperty<*>, value: T) {
+            thisRef.edit().putString(key, Gson().toJson(value)).apply()
         }
     }
 }
@@ -142,6 +155,8 @@ var SharedPreferences.sleepTimerTime by Pref.PrefInt("key_time_sleep-timer", 0)
 var SharedPreferences.sleepTimerTolerance by Pref.PrefInt("key_tolerance_sleep-timer", 0)
 
 var SharedPreferences.showCurrentRemain by Pref.PrefBoolean("pref_key_show_current_remain", false)
+
+var SharedPreferences.dropboxToken by Pref.PrefAny("key_dropbox_token", "")
 
 fun SharedPreferences.setEqualizerLevel(bandNum: Int, level: Int) {
     equalizerSettings?.apply {

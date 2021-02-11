@@ -24,11 +24,11 @@ abstract class DB : RoomDatabase() {
         private var instance: DB? = null
 
         fun getInstance(context: Context): DB =
-                instance ?: synchronized(this) {
-                    Room.databaseBuilder(context, DB::class.java, DB_NAME).build().apply {
-                        instance = this
-                    }
+            instance ?: synchronized(this) {
+                Room.databaseBuilder(context, DB::class.java, DB_NAME).build().apply {
+                    instance = this
                 }
+            }
     }
 
     abstract fun trackDao(): TrackDao

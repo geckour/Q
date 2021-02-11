@@ -9,7 +9,6 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
-import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.JoinedAlbum
 import kotlinx.coroutines.flow.Flow
 
@@ -33,9 +32,6 @@ interface AlbumDao {
 
     @Query("select * from album where title like :title")
     suspend fun getByTitle(title: String): JoinedAlbum?
-
-    @Query("select * from album")
-    suspend fun getAll(): List<JoinedAlbum>
 
     @Query("select * from album")
     fun getAllAsync(): Flow<List<JoinedAlbum>>
@@ -63,11 +59,13 @@ interface AlbumDao {
         }
     }
 
-    suspend fun upsert(album: Album): Long {
-        val toInsert = getAllByTitle(album.title).firstOrNull()?.let {
+    suspend fun upsert(album: Album, pastSongDuration: Long = 0): Long {
+        val toInsert = getByTitle(album.title)?.let {
+            val duration = it.album.totalDuration - pastSongDuration + album.totalDuration
             album.copy(
                 id = it.album.id,
-                totalDuration = it.album.totalDuration + album.totalDuration
+                totalDuration = duration,
+                artworkUriString = album.artworkUriString ?: it.album.artworkUriString
             )
         } ?: album
 

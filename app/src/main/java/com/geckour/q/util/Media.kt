@@ -51,7 +51,7 @@ enum class ShuffleActionType {
 }
 
 enum class OrientedClassType {
-    ARTIST, ALBUM, SONG, GENRE, PLAYLIST
+    ARTIST, ALBUM, SONG, GENRE, PLAYLIST, DROPBOX
 }
 
 enum class PlayerControlCommand {
@@ -163,7 +163,7 @@ suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<JoinedAlbum> =
     this@searchAlbumByFuzzyTitle.albumDao().getAllByTitle("%${title.escapeSql}%")
 
 suspend fun DB.searchTrackByFuzzyTitle(title: String): List<JoinedTrack> =
-    this@searchTrackByFuzzyTitle.trackDao().getAllByTitle("%${title.escapeSql}%", Bool.UNDEFINED)
+    this@searchTrackByFuzzyTitle.trackDao().getAllByTitle("%${title.escapeSql}%")
 
 fun Context.searchPlaylistByFuzzyTitle(title: String): List<Playlist> = contentResolver.query(
     MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
@@ -282,7 +282,10 @@ fun getTrackMediaIdByPlaylistId(context: Context, playlistId: Long): List<Pair<L
     } ?: emptyList()
 
 fun Song.getMediaSource(mediaSourceFactory: ProgressiveMediaSource.Factory): MediaSource =
-    mediaSourceFactory.createMediaSource(Uri.fromFile(File(sourcePath)))
+    mediaSourceFactory.createMediaSource(
+        if (mediaId < 0) Uri.parse(sourcePath)
+        else Uri.fromFile(File(sourcePath))
+    )
 
 fun List<Song>.sortedByTrackOrder(): List<Song> =
     this.groupBy { it.artist.id }
@@ -325,6 +328,7 @@ fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> = wh
             this.filter { it.playlistId == id }
         }.flatten()
     }
+    else -> emptyList()
 }
 
 suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat {

@@ -189,9 +189,8 @@ class PlayerService : Service() {
     private val player: SimpleExoPlayer by lazy {
         ducking = sharedPreferences.ducking
         val trackSelector = DefaultTrackSelector(this)
-        val renderersFactory = DefaultRenderersFactory(this).apply {
-            setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
-        }
+        val renderersFactory = DefaultRenderersFactory(this)
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
         SimpleExoPlayer.Builder(this, renderersFactory)
             .setTrackSelector(trackSelector)
             .build()
@@ -327,7 +326,7 @@ class PlayerService : Service() {
         PreferenceManager.getDefaultSharedPreferences(this)
     }
 
-    override fun onBind(intent: Intent?): IBinder? = binder
+    override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         onPlayerControlAction(intent)
@@ -534,7 +533,6 @@ class PlayerService : Service() {
 
         notifyPlaybackPositionJob.cancel()
         notifyPlaybackPositionJob = serviceScope.launch(Dispatchers.Main) {
-            val song = currentSong ?: return@launch
             while (this.isActive) {
                 withContext(Dispatchers.Main) {
                     onPlaybackPositionChanged?.invoke(player.currentPosition)
@@ -577,7 +575,7 @@ class PlayerService : Service() {
 
     fun stop() {
         pause()
-        seekToHead()
+        forcePosition(0)
     }
 
     fun clear(keepCurrentIfPlaying: Boolean = false) {
@@ -779,10 +777,6 @@ class PlayerService : Service() {
 
     private fun sendMediaButtonDownEvent(keyCode: Int) {
         mediaSession.controller?.dispatchMediaButtonEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
-    }
-
-    private fun sendMediaButtonUpEvent(keyCode: Int) {
-        mediaSession.controller?.dispatchMediaButtonEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
     }
 
     private fun onSettingAction(intent: Intent) {
