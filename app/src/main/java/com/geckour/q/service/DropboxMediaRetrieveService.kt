@@ -106,6 +106,12 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
             val rootPath = requireNotNull(intent.getStringExtra(KEY_ROOT_PATH))
             Timber.d("qgeck rootPath: $rootPath")
 
+            sendBroadcast(MainActivity.createProgressIntent(0 to -1))
+            startForeground(
+                NOTIFICATION_ID_RETRIEVE,
+                getNotification(0)
+            )
+
             retrieveAudioFilePaths(
                 db,
                 rootPath,
@@ -226,7 +232,8 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
         url: String
     ): Long =
         runBlocking {
-            val metadataRetriever = MediaMetadataRetriever().apply { setDataSource(url) }
+            val metadataRetriever = MediaMetadataRetriever()
+                .apply { setDataSource(url, emptyMap()) }
 
             val trackTitle =
                 metadataRetriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_TITLE)
