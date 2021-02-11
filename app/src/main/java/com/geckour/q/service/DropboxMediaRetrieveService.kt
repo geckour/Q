@@ -134,7 +134,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
         client: DbxClientV2,
         seed: Long,
         bitmap: Bitmap
-    ): List<FileMetadata> {
+    ) {
         var fileAndFolders = client.files().listFolder(root)
         while (true) {
             if (fileAndFolders.hasMore.not()) break
@@ -142,7 +142,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
             fileAndFolders = client.files().listFolderContinue(fileAndFolders.cursor)
         }
 
-        return fileAndFolders.entries.flatMap {
+        fileAndFolders.entries.asSequence().forEach {
             when (it) {
                 is FolderMetadata -> {
                     retrieveAudioFilePaths(
@@ -166,15 +166,12 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
                             val url = (existingUrl ?: client.sharing()
                                 .createSharedLinkWithSettings(it.pathLower)
                                 .url).replace("://www", "://dl")
-                            db.storeMediaInfo(
-                                it,
-                                url
-                            )
+                            db.storeMediaInfo(it, url)
                         }.onSuccess {
                             filesCount++
                         }.onFailure {
                             Timber.e(it)
-                            return@flatMap emptyList()
+                            return@forEach
                         }
 
                         sendBroadcast(MainActivity.createProgressIntent(filesCount to -1))
@@ -182,10 +179,8 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
                             NOTIFICATION_ID_RETRIEVE,
                             getNotification(filesCount)
                         )
-                        listOf(it)
-                    } else emptyList()
+                    }
                 }
-                else -> emptyList()
             }
         }
     }

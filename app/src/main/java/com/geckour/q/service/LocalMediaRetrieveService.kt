@@ -247,11 +247,10 @@ class LocalMediaRetrieveService : IntentService(NAME) {
         trackMediaId: Long
     ): Long =
         runBlocking {
-            val uri =
-                ContentUris.withAppendedId(
-                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                    trackMediaId
-                )
+            val uri = ContentUris.withAppendedId(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                trackMediaId
+            )
 
             val file = File(trackPath)
             if (file.exists().not()) {
