@@ -30,12 +30,9 @@ import com.geckour.q.util.QNotificationChannel
 import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.dropboxToken
 import com.geckour.q.util.getNotificationBuilder
+import com.geckour.q.util.storeArtwork
 import kotlinx.coroutines.runBlocking
-import org.apache.commons.codec.binary.Hex
-import org.apache.commons.codec.digest.DigestUtils
 import timber.log.Timber
-import java.io.File
-import java.io.FileOutputStream
 
 class DropboxMediaRetrieveService : IntentService(NAME) {
 
@@ -113,6 +110,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
             )
 
             retrieveAudioFilePaths(
+                this,
                 db,
                 rootPath,
                 DbxClientV2(dbxRequestConfig, token),
@@ -135,6 +133,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
     }
 
     private fun retrieveAudioFilePaths(
+        context: Context,
         db: DB,
         root: String,
         client: DbxClientV2,
@@ -152,6 +151,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
             when (it) {
                 is FolderMetadata -> {
                     retrieveAudioFilePaths(
+                        context,
                         db,
                         it.pathLower,
                         client,
@@ -172,7 +172,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
                             val url = (existingUrl ?: client.sharing()
                                 .createSharedLinkWithSettings(it.pathLower)
                                 .url).replace("://www", "://dl")
-                            db.storeMediaInfo(it, url)
+                            db.storeMediaInfo(context, it, url)
                         }.onSuccess {
                             filesCount++
                         }.onFailure {
@@ -228,6 +228,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
             .build()
 
     private fun DB.storeMediaInfo(
+        context: Context,
         dropboxMetadata: FileMetadata,
         url: String
     ): Long =
@@ -249,19 +250,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
                     .toLong()
             val pastSongDuration =
                 trackDao().getDurationWithTitles(trackTitle, albumTitle, artistTitle) ?: 0
-            val artworkUriString = metadataRetriever.embeddedPicture?.let { bytes ->
-                val hex = String(Hex.encodeHex(DigestUtils.md5(bytes)))
-                val dirName = "images"
-                val dir = File(externalMediaDirs[0], dirName)
-                if (dir.exists().not()) dir.mkdir()
-                val imgFile = File(dir, hex)
-                FileOutputStream(imgFile).use {
-                    it.write(bytes)
-                    it.flush()
-                }
-
-                imgFile.path
-            }
+            val artworkUriString = metadataRetriever.embeddedPicture?.storeArtwork(context)
             val artistId = artistDao().upsert(
                 Artist(
                     0,

@@ -331,7 +331,7 @@ class PlayerService : Service() {
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         onPlayerControlAction(intent)
         onSettingAction(intent)
-        return START_STICKY
+        return START_STICKY_COMPATIBILITY
     }
 
     override fun onCreate() {

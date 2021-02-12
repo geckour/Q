@@ -31,14 +31,12 @@ import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.catchAsNull
 import com.geckour.q.util.getNotificationBuilder
 import com.geckour.q.util.hiraganized
+import com.geckour.q.util.storeArtwork
 import kotlinx.coroutines.runBlocking
-import org.apache.commons.codec.binary.Hex
-import org.apache.commons.codec.digest.DigestUtils
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import timber.log.Timber
 import java.io.File
-import java.io.FileOutputStream
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -311,19 +309,7 @@ class LocalMediaRetrieveService : IntentService(NAME) {
                     ?.hiraganized
 
             val artworkUriString = cachedAlbum?.album?.artworkUriString
-                ?: tag.artworkList.lastOrNull()?.let { artwork ->
-                    val hex = String(Hex.encodeHex(DigestUtils.md5(artwork.binaryData)))
-                    val dirName = "images"
-                    val dir = File(context.externalMediaDirs[0], dirName)
-                    if (dir.exists().not()) dir.mkdir()
-                    val imgFile = File(dir, hex)
-                    FileOutputStream(imgFile).use {
-                        it.write(artwork.binaryData)
-                        it.flush()
-                    }
-
-                    imgFile.path
-                }
+                ?: tag.artworkList.lastOrNull()?.binaryData?.storeArtwork(context)
 
             val artist = Artist(
                 0,
