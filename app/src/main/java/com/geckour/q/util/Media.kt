@@ -31,7 +31,7 @@ import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
-import com.geckour.q.presentation.LauncherActivity
+import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.service.PlayerService
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource

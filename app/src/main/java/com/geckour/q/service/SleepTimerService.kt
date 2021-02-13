@@ -11,7 +11,7 @@ import androidx.core.app.NotificationCompat
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.domain.model.Song
-import com.geckour.q.presentation.LauncherActivity
+import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.util.PlayerControlCommand
 import com.geckour.q.util.QNotificationChannel
 import com.geckour.q.util.getCommandIntent

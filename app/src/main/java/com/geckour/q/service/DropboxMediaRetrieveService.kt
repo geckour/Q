@@ -22,8 +22,8 @@ import com.geckour.q.App
 import com.geckour.q.BuildConfig
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.presentation.LauncherActivity
-import com.geckour.q.presentation.main.MainActivity
+import com.geckour.q.ui.LauncherActivity
+import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.util.QNotificationChannel
 import com.geckour.q.util.dropboxToken
 import com.geckour.q.util.getExtension
@@ -211,7 +211,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
             is FileMetadata -> {
                 if (name.isAudioFilePath) {
                     runCatching {
-                        storeMediaInfo(context, client, this@storeMediaInfo)
+                        storeMediaInfo(context, db, client, this@storeMediaInfo)
                     }.onSuccess {
                         filesCount++
                     }.onFailure { t ->
@@ -236,6 +236,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
 
     private fun storeMediaInfo(
         context: Context,
+        db: DB,
         client: DbxClientV2,
         dropboxMetadata: FileMetadata
     ): Long =
@@ -251,12 +252,10 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
                 .createSharedLinkWithSettings(dropboxMetadata.pathLower)
                 .url).replace("://www", "://dl")
 
-            client.saveTempAudioFile(context, dropboxMetadata.pathLower)
-                .storeMediaInfo(
-                    context,
-                    url,
-                    null,
-                    dropboxMetadata.serverModified.time
-                )
+            db.trackDao().getBySourcePath(url)?.track?.let {
+                if (it.lastModified >= dropboxMetadata.serverModified.time) it.id
+                else null
+            } ?: client.saveTempAudioFile(context, dropboxMetadata.pathLower)
+                .storeMediaInfo(context, url, null, dropboxMetadata.serverModified.time)
         }
 }

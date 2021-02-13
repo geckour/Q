@@ -28,6 +28,9 @@ interface TrackDao {
     @Query("select * from track where id = :id")
     suspend fun get(id: Long): JoinedTrack?
 
+    @Query("select * from track where sourcePath = :sourcePath")
+    suspend fun getBySourcePath(sourcePath: String): JoinedTrack?
+
     @Query("select * from track where title = :title and albumId = :albumId and artistId = :artistId")
     suspend fun getByTitles(title: String, albumId: Long, artistId: Long): JoinedTrack?
 

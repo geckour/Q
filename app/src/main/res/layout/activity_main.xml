@@ -8,7 +8,7 @@
 
         <variable
             name="viewModel"
-            type="com.geckour.q.presentation.main.MainViewModel" />
+            type="com.geckour.q.ui.main.MainViewModel" />
     </data>
 
     <androidx.drawerlayout.widget.DrawerLayout
