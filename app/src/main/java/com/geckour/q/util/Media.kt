@@ -33,7 +33,11 @@ import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.jaudiotagger.audio.AudioFileIO
+import org.jaudiotagger.tag.FieldKey
+import org.jaudiotagger.tag.images.ArtworkFactory
 import timber.log.Timber
+import java.io.ByteArrayOutputStream
 import java.io.File
 import kotlin.math.min
 
@@ -475,5 +479,80 @@ private fun Drawable.bitmap(minimumSideLength: Int = 1000, supportAlpha: Boolean
         })
     }
 }
+
+private suspend fun updateMetadata(
+    context: Context,
+    db: DB,
+    trackMediaId: Long,
+    newTrackName: String? = null,
+    newAlbumName: String? = null,
+    newArtistName: String? = null,
+    newComposerName: String? = null,
+    newArtwork: Bitmap? = null
+) = withContext(Dispatchers.IO) {
+    val joinedTrack = db.trackDao().getByMediaId(trackMediaId) ?: return@withContext
+    val audioFile = AudioFileIO.read(File(joinedTrack.track.sourcePath)) ?: return@withContext
+    when {
+        newArtistName != null -> {
+            db.artistDao().get(joinedTrack.track.artistId)?.let { artist ->
+                db.albumDao().getAllByArtist(joinedTrack.artist.id)
+                    .flatMap { db.trackDao().getAllByAlbum(it.album.id) }
+                    .mapNotNull { AudioFileIO.read(File(it.track.sourcePath)) }
+                    .forEach { audioFile ->
+                        audioFile.tag.apply {
+                            setField(FieldKey.ARTIST, newArtistName)
+                            newAlbumName?.let { setField(FieldKey.ALBUM, it) }
+                            newTrackName?.let { setField(FieldKey.TITLE, it) }
+                        }
+
+                        AudioFileIO.write(audioFile)
+                    }
+                db.artistDao().update(artist.copy(title = newArtistName))
+            }
+        }
+        newAlbumName != null || newArtwork != null -> {
+            db.albumDao().get(joinedTrack.album.id)?.let { joinedAlbum ->
+                val artworkUriString = newArtwork?.toByteArray()?.storeArtwork(context)
+                val artwork = artworkUriString?.let {
+                    ArtworkFactory.createArtworkFromFile(File(it))
+                }
+                db.trackDao().getAllByAlbum(joinedTrack.album.id)
+                    .mapNotNull { AudioFileIO.read(File(it.track.sourcePath)) }
+                    .forEach { audioFile ->
+                        audioFile.tag.apply {
+                            newAlbumName?.let { setField(FieldKey.ALBUM, it) }
+                            artwork?.let { setField(it) }
+                            newTrackName?.let { setField(FieldKey.TITLE, it) }
+                        }
+
+                        AudioFileIO.write(audioFile)
+                    }
+                db.albumDao().update(
+                    joinedAlbum.album.copy(
+                        title = newAlbumName ?: joinedAlbum.album.title,
+                        artworkUriString = artworkUriString
+                            ?: joinedAlbum.album.artworkUriString
+                    )
+                )
+            }
+        }
+        else -> {
+            newTrackName?.let { audioFile.tag.setField(FieldKey.TITLE, it) }
+            newComposerName?.let { audioFile.tag.setField(FieldKey.COMPOSER, it) }
+
+            db.trackDao().update(
+                joinedTrack.track.copy(
+                    title = newTrackName ?: joinedTrack.track.title,
+                    composer = newComposerName ?: joinedTrack.track.composer
+                )
+            )
+        }
+    }
+    AudioFileIO.write(audioFile)
+}
+
+private fun Bitmap.toByteArray(): ByteArray =
+    ByteArrayOutputStream().apply { compress(Bitmap.CompressFormat.PNG, 100, this) }
+        .toByteArray()
 
 private val String.escapeSql: String get() = replace("'", "''")
