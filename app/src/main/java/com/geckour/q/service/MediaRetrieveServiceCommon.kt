@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
+import org.jaudiotagger.tag.Tag
 import java.io.File
 
 internal const val NOTIFICATION_ID_RETRIEVE = 300
@@ -29,7 +30,7 @@ internal suspend fun File.storeMediaInfo(
     val db = DB.getInstance(context)
 
     val audioFile = AudioFileIO.read(this@storeMediaInfo)
-    val tag = audioFile.tag
+    val tag = audioFile.tag ?: throw IllegalArgumentException("No media metadata found.")
     val header = audioFile.audioHeader
 
     val title = tag.getAll(FieldKey.TITLE).lastOrNull { it.isNotBlank() }
