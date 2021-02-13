@@ -21,20 +21,11 @@ import android.provider.MediaStore
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.Album
-import com.geckour.q.data.db.model.Artist
-import com.geckour.q.data.db.model.Track
 import com.geckour.q.presentation.LauncherActivity
 import com.geckour.q.presentation.main.MainActivity
 import com.geckour.q.util.QNotificationChannel
-import com.geckour.q.util.UNKNOWN
-import com.geckour.q.util.catchAsNull
 import com.geckour.q.util.getNotificationBuilder
-import com.geckour.q.util.hiraganized
-import com.geckour.q.util.storeArtwork
 import kotlinx.coroutines.runBlocking
-import org.jaudiotagger.audio.AudioFileIO
-import org.jaudiotagger.tag.FieldKey
 import timber.log.Timber
 import java.io.File
 import kotlin.math.PI
@@ -262,107 +253,6 @@ class LocalMediaRetrieveService : IntentService(NAME) {
                 if (it.track.lastModified >= lastModified) return@runBlocking it.track.id
             }
 
-            val audioFile = AudioFileIO.read(file)
-            val tag = audioFile.tag
-            val header = audioFile.audioHeader
-
-            val title = tag.getAll(FieldKey.TITLE).lastOrNull { it.isNotBlank() }
-            val titleSort =
-                (tag.getAll(FieldKey.TITLE_SORT).lastOrNull { it.isNotBlank() }
-                    ?: title)?.hiraganized
-
-            val albumTitle = tag.getAll(FieldKey.ALBUM).lastOrNull { it.isNotBlank() }
-            val cachedAlbum = albumTitle?.let { albumDao().getAllByTitle(it).firstOrNull() }
-            val albumTitleSort =
-                (tag.getAll(FieldKey.ALBUM_SORT).lastOrNull { it.isNotBlank() } ?: albumTitle)
-                    ?.hiraganized
-                    ?: cachedAlbum?.album?.titleSort
-
-            val artistTitle = tag.getAll(FieldKey.ARTIST).lastOrNull { it.isNotBlank() }
-            val cachedArtist = artistTitle?.let { artistDao().getAllByTitle(it).firstOrNull() }
-            val artistTitleSort =
-                (tag.getAll(FieldKey.ARTIST_SORT).lastOrNull { it.isNotBlank() } ?: artistTitle)
-                    ?.hiraganized
-                    ?: cachedArtist?.titleSort
-
-            val albumArtistTitle = tag.getAll(FieldKey.ALBUM_ARTIST).firstOrNull { it.isNotBlank() }
-            val cachedAlbumArtist =
-                albumArtistTitle?.let { artistDao().getAllByTitle(it).firstOrNull() }
-            val albumArtistTitleSort =
-                (tag.getAll(FieldKey.ALBUM_ARTIST_SORT).firstOrNull { it.isNotBlank() }
-                    ?: albumArtistTitle)
-                    ?.hiraganized
-                    ?: cachedAlbumArtist?.titleSort
-
-            val duration = header.trackLength.toLong() * 1000
-            val pastSongDuration = trackDao().getDurationWithMediaId(trackMediaId) ?: 0
-            val trackNum = catchAsNull {
-                tag.getFirst(FieldKey.TRACK).let { if (it.isNullOrBlank()) null else it }?.toInt()
-            }
-            val discNum = catchAsNull {
-                tag.getFirst(FieldKey.DISC_NO).let { if (it.isNullOrBlank()) null else it }?.toInt()
-            }
-
-            val composerTitle = tag.getAll(FieldKey.COMPOSER).lastOrNull { it.isNotBlank() }
-            val composerTitleSort =
-                (tag.getAll(FieldKey.COMPOSER_SORT).lastOrNull { it.isNotBlank() } ?: composerTitle)
-                    ?.hiraganized
-
-            val artworkUriString = cachedAlbum?.album?.artworkUriString
-                ?: tag.artworkList.lastOrNull()?.binaryData?.storeArtwork(context)
-
-            val artist = Artist(
-                0,
-                artistTitle ?: UNKNOWN,
-                artistTitleSort ?: UNKNOWN,
-                0,
-                duration,
-                artworkUriString ?: cachedArtist?.artworkUriString
-            )
-            val artistId = artistDao().upsert(artist, pastSongDuration)
-            val albumArtistId =
-                if (albumArtistTitle != null && albumArtistTitleSort != null) {
-                    val albumArtist = Artist(
-                        0,
-                        albumArtistTitle,
-                        albumArtistTitleSort,
-                        0,
-                        duration,
-                        artworkUriString ?: cachedAlbumArtist?.artworkUriString
-                    )
-                    artistDao().upsert(albumArtist, pastSongDuration)
-                } else null
-
-            val album = Album(
-                0,
-                albumArtistId ?: artistId,
-                albumTitle ?: UNKNOWN,
-                albumTitleSort ?: UNKNOWN,
-                artworkUriString,
-                albumArtistId != null,
-                0,
-                duration
-            )
-            val albumId = albumDao().upsert(album, pastSongDuration)
-
-            val track = Track(
-                0,
-                lastModified,
-                albumId,
-                artistId,
-                albumArtistId,
-                trackMediaId,
-                trackPath,
-                title ?: UNKNOWN,
-                titleSort ?: UNKNOWN,
-                composerTitle ?: UNKNOWN,
-                composerTitleSort ?: UNKNOWN,
-                duration,
-                trackNum,
-                discNum,
-                0
-            )
-
-            return@runBlocking trackDao().upsert(track, pastSongDuration)
+            file.storeMediaInfo(context, trackPath, trackMediaId, lastModified)
         }
 }

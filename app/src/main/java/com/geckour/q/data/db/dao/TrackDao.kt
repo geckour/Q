@@ -88,31 +88,16 @@ interface TrackDao {
         }
     }
 
-    suspend fun upsert(track: Track, durationToAdd: Long): Long {
-        val toInsert = getByMediaId(track.mediaId)?.let {
-            val duration = when {
-                durationToAdd > 0 -> it.track.duration + durationToAdd
-                track.duration > 0 -> track.duration
-                else -> it.track.duration
-            }
-            track.copy(
-                id = it.track.id,
-                playbackCount = it.track.playbackCount,
-                ignored = it.track.ignored,
-                duration = duration
-            )
-        } ?: track
-
-        return insert(toInsert)
-    }
-
-    suspend fun upsertDropboxTrack(
+    suspend fun upsert(
         track: Track,
         albumId: Long,
         artistId: Long,
         pastSongDuration: Long
     ): Long {
-        val toInsert = getByTitles(track.title, albumId, artistId)?.let {
+        val existedTrack =
+            if (track.mediaId < 0) getByTitles(track.title, albumId, artistId)
+            else getByMediaId(track.mediaId)
+        val toInsert = existedTrack?.let {
             val duration = it.track.duration - pastSongDuration + track.duration
             track.copy(
                 id = it.track.id,
