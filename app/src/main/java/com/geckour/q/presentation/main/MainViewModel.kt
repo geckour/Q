@@ -16,7 +16,13 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
+import com.dropbox.core.DbxRequestConfig
+import com.dropbox.core.android.Auth
+import com.dropbox.core.v2.DbxClientV2
+import com.dropbox.core.v2.files.FolderMetadata
+import com.dropbox.core.v2.files.Metadata
 import com.geckour.q.App
+import com.geckour.q.BuildConfig
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
@@ -28,7 +34,7 @@ import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.SearchCategory
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.Song
-import com.geckour.q.service.MediaRetrieveService
+import com.geckour.q.service.LocalMediaRetrieveService
 import com.geckour.q.service.PlayerService
 import com.geckour.q.util.BoolConverter
 import com.geckour.q.util.InsertActionType
@@ -36,7 +42,7 @@ import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.QueueInfo
 import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.ShuffleActionType
-import com.geckour.q.util.getSong
+import com.geckour.q.util.dropboxToken
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.searchAlbumByFuzzyTitle
 import com.geckour.q.util.searchArtistByFuzzyTitle
@@ -46,6 +52,7 @@ import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toSong
 import com.google.firebase.analytics.FirebaseAnalytics
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -56,6 +63,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private var isBoundService = false
 
+    internal var isDropboxAuthOngoing = false
+
     internal val currentFragmentId = MutableLiveData<Int>()
     internal var selectedSong: Song? = null
     internal val selectedAlbum = MutableLiveData<Album>()
@@ -63,7 +72,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     internal val selectedGenre = MutableLiveData<Genre>()
     internal val selectedPlaylist = MutableLiveData<Playlist>()
 
-    internal val toRemovePlayOrderOfPlaylist = MutableLiveData<Int>()
+    internal val playOrderToRemoveFromPlaylist = MutableLiveData<Int>()
     internal val songToDelete = MutableLiveData<Song>()
 
     internal val deletedSongId = MutableLiveData<Long>()
@@ -72,6 +81,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     internal val scrollToTop = MutableLiveData<Unit>()
     internal val forceLoad = MutableLiveData<Unit>()
+
+    internal val dropboxItemList = MutableLiveData<Pair<String, List<FolderMetadata>>>()
 
     private var currentOrientedClassType: OrientedClassType? = null
 
@@ -111,6 +122,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
+
+    private val dbxRequestConfig =
+        DbxRequestConfig.newBuilder("qp/${BuildConfig.VERSION_NAME}").build()
 
     init {
         bindPlayer()
@@ -165,11 +179,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onRequestRemoveSongFromPlaylist(playOrder: Int) {
-        toRemovePlayOrderOfPlaylist.value = playOrder
+        playOrderToRemoveFromPlaylist.value = playOrder
     }
 
     fun onCancelSync(context: Context) {
-        MediaRetrieveService.cancel(context)
+        LocalMediaRetrieveService.cancel(context)
     }
 
     fun onToolbarClick() {
@@ -465,6 +479,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             )
         )
     }
+
+    internal fun storeDropboxApiToken() {
+        val token = Auth.getOAuth2Token() ?: return
+        PreferenceManager.getDefaultSharedPreferences(getApplication()).dropboxToken = token
+        showDropboxFolderChooser(token)
+    }
+
+    internal fun showDropboxFolderChooser(token: String, dropboxMetadata: Metadata? = null) =
+        viewModelScope.launch(Dispatchers.IO) {
+            val client = DbxClientV2(dbxRequestConfig, token)
+            var result = client.files().listFolder(dropboxMetadata?.pathLower.orEmpty())
+            while (true) {
+                if (result.hasMore.not()) break
+
+                result = client.files().listFolderContinue(result.cursor)
+            }
+            val currentDirTitle = (dropboxMetadata?.name ?: "Root")
+            dropboxItemList.postValue(
+                currentDirTitle to result.entries.filterIsInstance<FolderMetadata>()
+            )
+        }
 
     inner class SearchQueryListener(private val searchView: SearchView) :
         SearchView.OnQueryTextListener {

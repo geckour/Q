@@ -3,6 +3,7 @@ package com.geckour.q.data.db.dao
 import android.content.Context
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
@@ -15,7 +16,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface TrackDao {
 
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(track: Track): Long
 
     @Update
@@ -27,23 +28,29 @@ interface TrackDao {
     @Query("select * from track where id = :id")
     suspend fun get(id: Long): JoinedTrack?
 
+    @Query("select * from track where title = :title and albumId = :albumId and artistId = :artistId")
+    suspend fun getByTitles(title: String, albumId: Long, artistId: Long): JoinedTrack?
+
     @Query("select * from track where mediaId = :mediaId")
     suspend fun getByMediaId(mediaId: Long): JoinedTrack?
 
     @Query("select * from track where mediaId in (:mediaIds)")
     suspend fun getByMediaIds(mediaIds: List<Long>): List<JoinedTrack>
 
+    @Query("select duration from track where mediaId = :mediaId")
+    suspend fun getDurationWithMediaId(mediaId: Long): Long?
+
     @Query("select * from track where ignored != :ignore")
     suspend fun getAll(ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
-    @Query("select mediaId from track where ignored != :ignore")
-    suspend fun getAllMediaIds(ignore: Bool = Bool.UNDEFINED): List<Long>
+    @Query("select mediaId from track")
+    suspend fun getAllMediaIds(): List<Long>
 
     @Query("select * from track where ignored != :ignore order by titleSort collate nocase")
     fun getAllAsync(ignore: Bool = Bool.UNDEFINED): Flow<List<JoinedTrack>>
 
-    @Query("select * from track where title like :title and ignored != :ignore")
-    suspend fun getAllByTitle(title: String, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
+    @Query("select * from track where title like :title")
+    suspend fun getAllByTitle(title: String): List<JoinedTrack>
 
     @Query("select * from track where albumId = :albumId and ignored != :ignore")
     suspend fun getAllByAlbum(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
@@ -81,15 +88,35 @@ interface TrackDao {
         }
     }
 
-    suspend fun upsert(track: Track): Long {
-        val toInsert = getByMediaId(track.mediaId)?.let {
+    suspend fun upsert(
+        track: Track,
+        albumId: Long,
+        artistId: Long,
+        pastSongDuration: Long
+    ): Long {
+        val existedTrack =
+            if (track.mediaId < 0) getByTitles(track.title, albumId, artistId)
+            else getByMediaId(track.mediaId)
+        val toInsert = existedTrack?.let {
+            val duration = it.track.duration - pastSongDuration + track.duration
             track.copy(
                 id = it.track.id,
                 playbackCount = it.track.playbackCount,
-                ignored = it.track.ignored
+                ignored = it.track.ignored,
+                duration = duration
             )
         } ?: track
 
         return insert(toInsert)
     }
+
+    suspend fun getDurationWithTitles(
+        title: String,
+        albumTitle: String,
+        artistTitle: String
+    ): Long? =
+        getAllByTitle(title)
+            .firstOrNull { it.album.title == albumTitle && it.artist.title == artistTitle }
+            ?.track
+            ?.duration
 }

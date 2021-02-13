@@ -148,7 +148,7 @@ class SongListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        mainViewModel.toRemovePlayOrderOfPlaylist.observe(viewLifecycleOwner) {
+        mainViewModel.playOrderToRemoveFromPlaylist.observe(viewLifecycleOwner) {
             it ?: return@observe
 
             val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST) ?: return@observe

@@ -15,7 +15,6 @@ import android.provider.MediaStore
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import androidx.core.app.NotificationCompat
-import androidx.preference.PreferenceManager
 import com.bumptech.glide.Glide
 import com.bumptech.glide.RequestBuilder
 import com.bumptech.glide.load.engine.DiskCacheStrategy
@@ -23,7 +22,6 @@ import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
-import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.domain.model.Genre
@@ -51,7 +49,7 @@ enum class ShuffleActionType {
 }
 
 enum class OrientedClassType {
-    ARTIST, ALBUM, SONG, GENRE, PLAYLIST
+    ARTIST, ALBUM, SONG, GENRE, PLAYLIST, DROPBOX
 }
 
 enum class PlayerControlCommand {
@@ -163,7 +161,7 @@ suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<JoinedAlbum> =
     this@searchAlbumByFuzzyTitle.albumDao().getAllByTitle("%${title.escapeSql}%")
 
 suspend fun DB.searchTrackByFuzzyTitle(title: String): List<JoinedTrack> =
-    this@searchTrackByFuzzyTitle.trackDao().getAllByTitle("%${title.escapeSql}%", Bool.UNDEFINED)
+    this@searchTrackByFuzzyTitle.trackDao().getAllByTitle("%${title.escapeSql}%")
 
 fun Context.searchPlaylistByFuzzyTitle(title: String): List<Playlist> = contentResolver.query(
     MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
@@ -282,7 +280,10 @@ fun getTrackMediaIdByPlaylistId(context: Context, playlistId: Long): List<Pair<L
     } ?: emptyList()
 
 fun Song.getMediaSource(mediaSourceFactory: ProgressiveMediaSource.Factory): MediaSource =
-    mediaSourceFactory.createMediaSource(Uri.fromFile(File(sourcePath)))
+    mediaSourceFactory.createMediaSource(
+        if (mediaId < 0) Uri.parse(sourcePath)
+        else Uri.fromFile(File(sourcePath))
+    )
 
 fun List<Song>.sortedByTrackOrder(): List<Song> =
     this.groupBy { it.artist.id }
@@ -325,6 +326,7 @@ fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> = wh
             this.filter { it.playlistId == id }
         }.flatten()
     }
+    else -> emptyList()
 }
 
 suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat {
@@ -335,23 +337,19 @@ suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat {
         .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
         .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist.title)
         .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album.title)
-        .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, uriString)
         .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer)
         .apply {
-            if (uriString != null && PreferenceManager.getDefaultSharedPreferences(context).showArtworkOnLockScreen) {
-                val bitmap = try {
-                    withContext(Dispatchers.IO) {
+            uriString?.let {
+                val bitmap = withContext(Dispatchers.IO) {
+                    catchAsNull {
                         Glide.with(context)
                             .asDrawable()
-                            .load(uriString)
+                            .load(it)
                             .applyDefaultSettings()
                             .submit()
                             .get()
                             .bitmap()
                     }
-                } catch (t: Throwable) {
-                    Timber.e(t)
-                    null
                 }
                 putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
             }

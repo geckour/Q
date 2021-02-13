@@ -6,6 +6,7 @@
         android:name="google_analytics_adid_collection_enabled"
         android:value="false" />
 
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -44,9 +45,22 @@
             android:noHistory="true"
             android:theme="@android:style/Theme.NoDisplay" />
 
+        <activity android:name="com.dropbox.core.android.AuthActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="${dropboxAppKey}" />
+            </intent-filter>
+        </activity>
+
         <service android:name=".service.PlayerService" />
 
-        <service android:name=".service.MediaRetrieveService" />
+        <service android:name=".service.LocalMediaRetrieveService" />
+
+        <service android:name=".service.DropboxMediaRetrieveService" />
 
         <service android:name=".service.SleepTimerService" />
 

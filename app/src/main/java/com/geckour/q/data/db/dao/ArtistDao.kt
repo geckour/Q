@@ -56,12 +56,14 @@ interface ArtistDao {
         delete(artistId)
     }
 
-    suspend fun upsert(artist: Artist): Long {
+    suspend fun upsert(artist: Artist, pastSongDuration: Long = 0): Long {
         val toInsert = getByTitle(artist.title)?.let {
+            val duration = it.totalDuration - pastSongDuration + artist.totalDuration
             artist.copy(
                 id = it.id,
                 playbackCount = it.playbackCount,
-                totalDuration = it.totalDuration + artist.totalDuration
+                totalDuration = duration,
+                artworkUriString = artist.artworkUriString ?: it.artworkUriString
             )
         } ?: artist
 

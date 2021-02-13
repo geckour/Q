@@ -7,29 +7,29 @@ import androidx.room.Relation
 
 @Entity
 data class Track(
-    @PrimaryKey(autoGenerate = true) var id: Long,
-    var lastModified: Long,
-    var albumId: Long,
-    var artistId: Long,
-    var albumArtistId: Long?,
-    var mediaId: Long,
-    var sourcePath: String,
-    var title: String,
-    var titleSort: String,
-    var composer: String,
-    var composerSort: String,
-    var duration: Long,
-    var trackNum: Int?,
-    var discNum: Int?,
-    var playbackCount: Long,
-    var ignored: Bool = Bool.FALSE
+    @PrimaryKey(autoGenerate = true) val id: Long,
+    val lastModified: Long,
+    val albumId: Long,
+    val artistId: Long,
+    val albumArtistId: Long?,
+    val mediaId: Long,
+    val sourcePath: String,
+    val title: String,
+    val titleSort: String,
+    val composer: String,
+    val composerSort: String,
+    val duration: Long,
+    val trackNum: Int?,
+    val discNum: Int?,
+    val playbackCount: Long,
+    val ignored: Bool = Bool.FALSE
 )
 
 data class JoinedTrack(
     @Embedded val track: Track,
-    @Relation(parentColumn = "albumId", entityColumn = "id") var album: Album,
-    @Relation(parentColumn = "artistId", entityColumn = "id") var artist: Artist,
-    @Relation(parentColumn = "albumArtistId", entityColumn = "id") var albumArtist: Artist?,
+    @Relation(parentColumn = "albumId", entityColumn = "id") val album: Album,
+    @Relation(parentColumn = "artistId", entityColumn = "id") val artist: Artist,
+    @Relation(parentColumn = "albumArtistId", entityColumn = "id") val albumArtist: Artist?,
 )
 
 enum class Bool {

@@ -49,6 +49,11 @@
                     android:id="@+id/nav_sync"
                     android:icon="@drawable/ic_sync"
                     android:title="@string/nav_sync" />
+                <item
+                    android:checkable="false"
+                    android:id="@+id/nav_dropbox_sync"
+                    android:icon="@drawable/ic_dropbox"
+                    android:title="@string/nav_dropbox_sync" />
             </group>
         </menu>
     </item>

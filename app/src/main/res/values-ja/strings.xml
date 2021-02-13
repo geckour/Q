@@ -19,6 +19,7 @@
     <string name="notification_channel_description_sleep_timer">おやすみタイマーの通知</string>
     <string name="notification_title_retriever">メディアを探索中</string>
     <string name="notification_text_retriever">%1$d / %2$d | ライブラリを同期しています…</string>
+    <string name="notification_text_retriever_dropbox">%d | ライブラリを同期しています…</string>
     <string name="notification_title_media_add">メディアを追加中</string>
     <string name="notification_text_media_add">%s を追加しています…</string>
     <string name="notification_title_sleep_timer">おやすみタイマー</string>
@@ -47,9 +48,11 @@
     <string name="nav_song">曲</string>
     <string name="nav_genre">ジャンル</string>
     <string name="nav_playlist">プレイリスト</string>
+    <string name="nav_dropbox">Dropbox</string>
     <string name="nav_setting">設定</string>
     <string name="nav_equalizer">イコライザ</string>
     <string name="nav_sync">ライブラリを同期</string>
+    <string name="nav_dropbox_sync">Dropboxと同期</string>
     <string name="nav_pay">投げ銭</string>
     <string name="nav_fortune">おみQじ</string>
 
@@ -126,6 +129,9 @@
     <string name="dialog_desc_sleep_timer">タイマーの長さと許容差を設定</string>
     <string name="dialog_text_sleep_timer_time">%d分後に再生停止</string>
     <string name="dialog_text_sleep_timer_tolerance">許容差: %d分</string>
+
+    <string name="dialog_title_dropbox_choose_folder">フォルダを選択</string>
+    <string name="dialog_desc_dropbox_choose_folder">メディアを探索するルートフォルダを選択</string>
 
 
     <string name="payment_desc">Kyashを利用した投げ銭を受け付けています</string>
