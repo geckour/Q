@@ -15,10 +15,14 @@ import android.provider.MediaStore
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import androidx.core.app.NotificationCompat
+import androidx.preference.PreferenceManager
 import com.bumptech.glide.Glide
 import com.bumptech.glide.RequestBuilder
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.dropbox.core.DbxRequestConfig
+import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.App
+import com.geckour.q.BuildConfig
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
@@ -39,6 +43,7 @@ import org.jaudiotagger.tag.images.ArtworkFactory
 import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileOutputStream
 import kotlin.math.min
 
 
@@ -480,65 +485,89 @@ private fun Drawable.bitmap(minimumSideLength: Int = 1000, supportAlpha: Boolean
     }
 }
 
-private suspend fun updateMetadata(
+fun DbxClientV2.saveTempAudioFile(context: Context, pathLower: String): File {
+    val dirName = "audio"
+    val fileName = "temp_audio.${pathLower.getExtension()}"
+    val dir = File(context.cacheDir, dirName)
+    val file = File(dir, fileName)
+
+    if (file.exists()) file.delete()
+    if (dir.exists().not()) dir.mkdir()
+
+    FileOutputStream(file).use { files().download(pathLower).download(it) }
+
+    return file
+}
+
+suspend fun updateMetadata(
     context: Context,
     db: DB,
-    trackMediaId: Long,
+    joinedTrack: JoinedTrack,
     newTrackName: String? = null,
     newAlbumName: String? = null,
     newArtistName: String? = null,
     newComposerName: String? = null,
     newArtwork: Bitmap? = null
 ) = withContext(Dispatchers.IO) {
-    val joinedTrack = db.trackDao().getByMediaId(trackMediaId) ?: return@withContext
-    val audioFile = AudioFileIO.read(File(joinedTrack.track.sourcePath)) ?: return@withContext
+    val client = DbxClientV2(
+        DbxRequestConfig.newBuilder("qp/${BuildConfig.VERSION_NAME}").build(),
+        PreferenceManager.getDefaultSharedPreferences(context).dropboxToken
+    )
+    val file =
+        if (joinedTrack.track.sourcePath.startsWith("http")) null
+        else File(joinedTrack.track.sourcePath)
+    val audioFile = file?.let { AudioFileIO.read(it) }
     when {
         newArtistName != null -> {
-            db.artistDao().get(joinedTrack.track.artistId)?.let { artist ->
-                db.albumDao().getAllByArtist(joinedTrack.artist.id)
-                    .flatMap { db.trackDao().getAllByAlbum(it.album.id) }
-                    .mapNotNull { AudioFileIO.read(File(it.track.sourcePath)) }
-                    .forEach { audioFile ->
-                        audioFile.tag.apply {
-                            setField(FieldKey.ARTIST, newArtistName)
-                            newAlbumName?.let { setField(FieldKey.ALBUM, it) }
-                            newTrackName?.let { setField(FieldKey.TITLE, it) }
-                        }
-
-                        AudioFileIO.write(audioFile)
+            val artworkUriString = newArtwork?.toByteArray()?.storeArtwork(context)
+            val artwork = artworkUriString?.let { ArtworkFactory.createArtworkFromFile(File(it)) }
+            db.trackDao().getAllByArtist(joinedTrack.artist.id)
+                .map {
+                    if (it.track.sourcePath.startsWith("http")) null
+                    else AudioFileIO.read(File(it.track.sourcePath))
+                }
+                .forEach { existingAudioFile ->
+                    existingAudioFile?.tag?.apply {
+                        setField(FieldKey.ARTIST, newArtistName)
+                        newAlbumName?.let { setField(FieldKey.ALBUM, it) }
+                        artwork?.let { setField(it) }
+                        newTrackName?.let { setField(FieldKey.TITLE, it) }
                     }
-                db.artistDao().update(artist.copy(title = newArtistName))
-            }
+
+                    existingAudioFile?.let { AudioFileIO.write(it) }
+                }
+            db.artistDao().update(joinedTrack.artist.copy(title = newArtistName))
         }
         newAlbumName != null || newArtwork != null -> {
-            db.albumDao().get(joinedTrack.album.id)?.let { joinedAlbum ->
-                val artworkUriString = newArtwork?.toByteArray()?.storeArtwork(context)
-                val artwork = artworkUriString?.let {
-                    ArtworkFactory.createArtworkFromFile(File(it))
+            val artworkUriString = newArtwork?.toByteArray()?.storeArtwork(context)
+            val artwork = artworkUriString?.let { ArtworkFactory.createArtworkFromFile(File(it)) }
+            db.trackDao().getAllByAlbum(joinedTrack.album.id)
+                .map {
+                    if (it.track.sourcePath.startsWith("http")) null
+                    else AudioFileIO.read(File(it.track.sourcePath))
                 }
-                db.trackDao().getAllByAlbum(joinedTrack.album.id)
-                    .mapNotNull { AudioFileIO.read(File(it.track.sourcePath)) }
-                    .forEach { audioFile ->
-                        audioFile.tag.apply {
-                            newAlbumName?.let { setField(FieldKey.ALBUM, it) }
-                            artwork?.let { setField(it) }
-                            newTrackName?.let { setField(FieldKey.TITLE, it) }
-                        }
-
-                        AudioFileIO.write(audioFile)
+                .forEach { existingAudioFile ->
+                    existingAudioFile?.tag?.apply {
+                        newAlbumName?.let { setField(FieldKey.ALBUM, it) }
+                        artwork?.let { setField(it) }
+                        newTrackName?.let { setField(FieldKey.TITLE, it) }
                     }
-                db.albumDao().update(
-                    joinedAlbum.album.copy(
-                        title = newAlbumName ?: joinedAlbum.album.title,
-                        artworkUriString = artworkUriString
-                            ?: joinedAlbum.album.artworkUriString
-                    )
+
+                    existingAudioFile?.let { AudioFileIO.write(it) }
+                }
+            db.albumDao().update(
+                joinedTrack.album.copy(
+                    title = newAlbumName ?: joinedTrack.album.title,
+                    artworkUriString = artworkUriString
+                        ?: joinedTrack.album.artworkUriString
                 )
-            }
+            )
         }
         else -> {
-            newTrackName?.let { audioFile.tag.setField(FieldKey.TITLE, it) }
-            newComposerName?.let { audioFile.tag.setField(FieldKey.COMPOSER, it) }
+            audioFile?.tag?.apply {
+                newTrackName?.let { setField(FieldKey.TITLE, it) }
+                newComposerName?.let { setField(FieldKey.COMPOSER, it) }
+            }
 
             db.trackDao().update(
                 joinedTrack.track.copy(
@@ -548,7 +577,7 @@ private suspend fun updateMetadata(
             )
         }
     }
-    AudioFileIO.write(audioFile)
+    audioFile?.let { AudioFileIO.write(it) }
 }
 
 private fun Bitmap.toByteArray(): ByteArray =

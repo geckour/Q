@@ -28,10 +28,9 @@ import com.geckour.q.util.QNotificationChannel
 import com.geckour.q.util.dropboxToken
 import com.geckour.q.util.getExtension
 import com.geckour.q.util.getNotificationBuilder
+import com.geckour.q.util.saveTempAudioFile
 import kotlinx.coroutines.runBlocking
 import timber.log.Timber
-import java.io.File
-import java.io.FileOutputStream
 
 class DropboxMediaRetrieveService : IntentService(NAME) {
 
@@ -252,17 +251,12 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
                 .createSharedLinkWithSettings(dropboxMetadata.pathLower)
                 .url).replace("://www", "://dl")
 
-            val dirName = "audio"
-            val fileName = "temp_audio.${dropboxMetadata.pathLower.getExtension()}"
-            val dir = File(context.cacheDir, dirName)
-            val file = File(dir, fileName)
-
-            if (file.exists()) file.delete()
-            if (dir.exists().not()) dir.mkdir()
-
-            FileOutputStream(file).use {
-                client.files().download(dropboxMetadata.pathLower).download(it)
-                file.storeMediaInfo(context, url, null, dropboxMetadata.serverModified.time)
-            }
+            client.saveTempAudioFile(context, dropboxMetadata.pathLower)
+                .storeMediaInfo(
+                    context,
+                    url,
+                    null,
+                    dropboxMetadata.serverModified.time
+                )
         }
 }
