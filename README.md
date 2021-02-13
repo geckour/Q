@@ -8,9 +8,9 @@ The Android app for playing music oriented to queue.
 - Play music in your device with queue
 - Using BottomSheetBehavior with MotionLayout
 - Sort queue by D&D
-- Create playlist / add to exist playlit from queue
-- Artist / album / genre / playlist based shuffle
-- Search song / album / artist / playlist / genre in library
+- Create playlist/Add to exist playlist from queue
+- Artist/album/genre/playlist based shuffle
+- Search song/album/artist/playlist/genre in library
 - Set equalizer
 - Change app color theme
 - Contains an easter egg
@@ -18,7 +18,7 @@ The Android app for playing music oriented to queue.
 ## Lisence
     GNU GENERAL PUBLIC LICENSE Version 3
 
-    Copyright 2018 geckour
+    Copyright 2021 geckour
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
