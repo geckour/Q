@@ -31,8 +31,8 @@ import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.Song
-import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.service.PlayerService
+import com.geckour.q.ui.LauncherActivity
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import kotlinx.coroutines.Dispatchers
@@ -295,17 +295,15 @@ fun Song.getMediaSource(mediaSourceFactory: ProgressiveMediaSource.Factory): Med
     )
 
 fun List<Song>.sortedByTrackOrder(): List<Song> =
-    this.groupBy { it.artist.id }
+    this.groupBy { it.album }
         .map {
-            it.key to it.value.groupBy { it.album.id }
-                .map {
-                    it.value
-                        .groupBy { it.discNum }
-                        .flatMap { it.value.sortedBy { it.trackNum } }
-                }
-                .flatten()
+            it.key to it.value.groupBy { it.discNum }
+                .map { it.key to it.value.sortedBy { it.trackNum } }
+                .sortedBy { it.first }
+                .flatMap { it.second }
         }
-        .flatMap { it.second }
+        .groupBy { it.first.artistId }
+        .flatMap { it.value.flatMap { it.second } }
 
 fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> = when (classType) {
     OrientedClassType.ARTIST -> {

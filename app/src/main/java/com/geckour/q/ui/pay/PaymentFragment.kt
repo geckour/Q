@@ -1,10 +1,6 @@
 package com.geckour.q.ui.pay
 
-import android.content.ContentValues
-import android.graphics.Bitmap
-import android.graphics.drawable.BitmapDrawable
 import android.os.Bundle
-import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
@@ -18,7 +14,6 @@ import com.geckour.q.R
 import com.geckour.q.databinding.FragmentPaymentBinding
 import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
-import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toggleDayNight
 

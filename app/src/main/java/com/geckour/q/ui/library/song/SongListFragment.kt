@@ -27,6 +27,7 @@ import com.geckour.q.util.getSongListFromTrackMediaIdWithTrackNum
 import com.geckour.q.util.getTrackMediaIds
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
+import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toSong
 import com.geckour.q.util.toggleDayNight
 import kotlinx.coroutines.flow.collectLatest
@@ -200,9 +201,9 @@ class SongListFragment : Fragment() {
     private fun observeSongsWithAlbum(album: Album) {
         lifecycleScope.launch {
             DB.getInstance(requireContext()).trackDao()
-                .getAllByAlbumAsyncSorted(album.id)
+                .getAllByAlbumAsync(album.id)
                 .collectLatest { joinedTracks ->
-                    adapter.submitList(joinedTracks.map { it.toSong() })
+                    adapter.submitList(joinedTracks.map { it.toSong() }.sortedByTrackOrder())
                 }
         }
     }

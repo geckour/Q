@@ -22,7 +22,6 @@ import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.orDefaultForModel
-import com.geckour.q.util.sortedByTrackOrder
 import kotlinx.coroutines.launch
 import timber.log.Timber
 

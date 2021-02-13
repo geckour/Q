@@ -6,7 +6,6 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.Song
-import com.geckour.q.util.getSong
 import com.geckour.q.util.toSong
 import kotlinx.coroutines.launch
 import java.util.*
