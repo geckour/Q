@@ -17,6 +17,7 @@ import com.dropbox.core.RateLimitException
 import com.dropbox.core.v2.DbxClientV2
 import com.dropbox.core.v2.files.FileMetadata
 import com.dropbox.core.v2.files.FolderMetadata
+import com.dropbox.core.v2.files.Metadata
 import com.geckour.q.App
 import com.geckour.q.BuildConfig
 import com.geckour.q.R
@@ -147,41 +148,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
             }
 
             fileAndFolders.entries.asSequence().forEach {
-                when (it) {
-                    is FolderMetadata -> {
-                        retrieveAudioFilePaths(
-                            context,
-                            db,
-                            it.pathLower,
-                            client,
-                            seed,
-                            bitmap
-                        )
-                    }
-                    is FileMetadata -> {
-                        if (it.name.isAudioFilePath) {
-                            runCatching {
-                                storeMediaInfo(context, client, it)
-                            }.onSuccess {
-                                filesCount++
-                            }.onFailure { t ->
-                                if (t is RateLimitException) {
-                                    Thread.sleep(t.backoffMillis)
-                                    storeMediaInfo(context, client, it)
-                                } else {
-                                    Timber.e(t)
-                                    return@forEach
-                                }
-                            }
-
-                            sendBroadcast(MainActivity.createProgressIntent(filesCount to -1))
-                            startForeground(
-                                NOTIFICATION_ID_RETRIEVE,
-                                getNotification(filesCount)
-                            )
-                        }
-                    }
-                }
+                it.storeMediaInfo(context, db, client, seed, bitmap)
             }
         } catch (e: RateLimitException) {
             Thread.sleep(e.backoffMillis)
@@ -223,6 +190,50 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
                 )
             )
             .build()
+
+    private fun Metadata.storeMediaInfo(
+        context: Context,
+        db: DB,
+        client: DbxClientV2,
+        seed: Long,
+        bitmap: Bitmap
+    ) {
+        when (this) {
+            is FolderMetadata -> {
+                retrieveAudioFilePaths(
+                    context,
+                    db,
+                    pathLower,
+                    client,
+                    seed,
+                    bitmap
+                )
+            }
+            is FileMetadata -> {
+                if (name.isAudioFilePath) {
+                    runCatching {
+                        storeMediaInfo(context, client, this@storeMediaInfo)
+                    }.onSuccess {
+                        filesCount++
+                    }.onFailure { t ->
+                        if (t is RateLimitException) {
+                            Thread.sleep(t.backoffMillis)
+                            this.storeMediaInfo(context, db, client, seed, bitmap)
+                        } else {
+                            Timber.e(t)
+                            return
+                        }
+                    }
+
+                    sendBroadcast(MainActivity.createProgressIntent(filesCount to -1))
+                    startForeground(
+                        NOTIFICATION_ID_RETRIEVE,
+                        getNotification(filesCount)
+                    )
+                }
+            }
+        }
+    }
 
     private fun storeMediaInfo(
         context: Context,
