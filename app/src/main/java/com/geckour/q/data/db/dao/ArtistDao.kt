@@ -9,8 +9,6 @@ import androidx.room.Transaction
 import androidx.room.Update
 import com.geckour.q.data.db.model.Artist
 import kotlinx.coroutines.flow.Flow
-import timber.log.Timber
-import kotlin.math.max
 
 @Dao
 interface ArtistDao {
