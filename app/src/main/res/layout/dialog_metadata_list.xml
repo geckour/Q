@@ -13,7 +13,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:padding="8dp"
-            android:textColor="?attr/colorAccent"
+            android:textColor="?attr/colorButtonNormal"
             android:textSize="14sp"
             android:textStyle="bold"
             tools:text="現在のフォルダ" />
