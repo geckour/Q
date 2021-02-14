@@ -291,7 +291,7 @@ class MainActivity : AppCompatActivity() {
             player ?: return@observe
 
             player.setOnDestroyedListener {
-                viewModel.onDestroyedPlayer()
+                viewModel.onPlayerDestroyed()
             }
 
             player.publishStatus()

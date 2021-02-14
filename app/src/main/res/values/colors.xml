@@ -35,6 +35,7 @@
     <color name="colorBackgroundSearchInverse">#202020</color>
     <color name="colorBackgroundProgress">#30000000</color>
     <color name="colorBackgroundProgressInverse">#30ffffff</color>
+    <color name="colorBackgroundInstantPlayer">#80000000</color>
 
     <color name="colorEqualizerScale">#20160900</color>
     <color name="colorEqualizerScaleInverse">#20E3E3E3</color>

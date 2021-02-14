@@ -114,8 +114,8 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:onClick="@{() -> mainViewModel.onClickRepeatButton()}"
             android:padding="6dp"
-            android:tint="?attr/colorAccent"
             android:visibility="gone"
+            app:tint="?attr/colorAccent"
             tools:src="@drawable/ic_repeat_off"
             tools:tint="@color/colorAccent"
             tools:visibility="visible" />
@@ -151,7 +151,7 @@
             android:onClick="@{() -> viewModel.onClickQueueButton()}"
             android:padding="6dp"
             android:src="@drawable/ic_queue"
-            android:tint="?attr/colorAccent" />
+            app:tint="?attr/colorAccent" />
 
         <TextView
             android:id="@+id/text_time_left"

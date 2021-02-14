@@ -34,8 +34,4 @@
         <item name="colorDivider">@color/colorDividerInverse</item>
         <item name="colorEqualizerScale">@color/colorEqualizerScaleInverse</item>
     </style>
-
-    <style name="SearchStyle" parent="AppTheme">
-        <item name="android:colorBackground">?attr/colorBackgroundSearch</item>
-    </style>
 </resources>

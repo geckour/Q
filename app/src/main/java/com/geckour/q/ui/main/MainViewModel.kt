@@ -104,21 +104,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         override fun onServiceDisconnected(name: ComponentName?) {
             if (name == ComponentName(getApplication(), PlayerService::class.java)) {
-                onDestroyedPlayer()
+                onPlayerDestroyed()
             }
         }
 
         override fun onBindingDied(name: ComponentName?) {
             super.onBindingDied(name)
             if (name == ComponentName(getApplication(), PlayerService::class.java)) {
-                onDestroyedPlayer()
+                onPlayerDestroyed()
             }
         }
 
         override fun onNullBinding(name: ComponentName?) {
             super.onNullBinding(name)
             if (name == ComponentName(getApplication(), PlayerService::class.java)) {
-                onDestroyedPlayer()
+                onPlayerDestroyed()
             }
         }
     }
@@ -131,9 +131,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
-        super.onCleared()
-
         unbindPlayer()
+
+        super.onCleared()
     }
 
     fun onRequestNavigate(artist: Artist) {
@@ -291,17 +291,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun unbindPlayer() {
+        val app = getApplication<App>()
         try {
-            getApplication<App>().startService(PlayerService.createIntent(getApplication()))
+            app.startService(PlayerService.createIntent(getApplication()))
         } catch (t: Throwable) {
             Timber.e(t)
         }
-        if (isBoundService) {
-            getApplication<App>().unbindService(serviceConnection)
-        }
+        if (isBoundService) app.unbindService(serviceConnection)
     }
 
-    internal fun onDestroyedPlayer() {
+    internal fun onPlayerDestroyed() {
         isBoundService = false
         player.value = null
     }
