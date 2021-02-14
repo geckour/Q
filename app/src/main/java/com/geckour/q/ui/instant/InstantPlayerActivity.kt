@@ -22,6 +22,7 @@ class InstantPlayerActivity : AppCompatActivity() {
         binding = DataBindingUtil.setContentView(this, R.layout.activity_instant_player)
 
         binding.root.setOnClickListener { finish() }
+        binding.container.setOnTouchListener { _, _ -> true }
         binding.actionLeft.setOnClickListener {
             viewModel.onPlaybackButtonPressed(PlaybackButton.PREV)
         }

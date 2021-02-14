@@ -134,6 +134,7 @@ class BottomSheetFragment : Fragment() {
         binding.recyclerView.adapter = adapter
         itemTouchHelper.attachToRecyclerView(binding.recyclerView)
 
+        binding.sheet.setOnTouchListener { _, _ -> true }
         binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) =
                 Unit

@@ -19,11 +19,11 @@
         android:paddingHorizontal="40dp">
 
         <androidx.cardview.widget.CardView
+            android:id="@+id/container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_gravity="center"
-            android:clickable="true"
-            android:focusable="false">
+            app:cardCornerRadius="8dp">
 
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:layout_width="match_parent"
