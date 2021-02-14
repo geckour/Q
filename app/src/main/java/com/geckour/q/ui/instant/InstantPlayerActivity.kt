@@ -1,6 +1,7 @@
 package com.geckour.q.ui.instant
 
 import android.os.Bundle
+import android.view.MotionEvent
 import android.widget.SeekBar
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -23,14 +24,40 @@ class InstantPlayerActivity : AppCompatActivity() {
 
         binding.root.setOnClickListener { finish() }
         binding.container.setOnTouchListener { _, _ -> true }
-        binding.actionLeft.setOnClickListener {
-            viewModel.onPlaybackButtonPressed(PlaybackButton.PREV)
+        binding.actionLeft.apply {
+            setOnClickListener {
+                viewModel.onPlaybackButtonPressed(PlaybackButton.PREV)
+            }
+            setOnLongClickListener {
+                viewModel.onPlaybackButtonPressed(PlaybackButton.REWIND)
+                true
+            }
         }
         binding.actionPlayPause.setOnClickListener {
             viewModel.onPlaybackButtonPressed(PlaybackButton.PLAY)
         }
-        binding.actionRight.setOnClickListener {
-            viewModel.onPlaybackButtonPressed(PlaybackButton.NEXT)
+        binding.actionRight.apply {
+            setOnClickListener {
+                viewModel.onPlaybackButtonPressed(PlaybackButton.NEXT)
+            }
+            setOnLongClickListener {
+                viewModel.onPlaybackButtonPressed(PlaybackButton.FF)
+                true
+            }
+        }
+        listOf(
+            binding.actionLeft,
+            binding.actionRight
+        ).forEach {
+            it.setOnTouchListener { _, event ->
+                when (event.action) {
+                    MotionEvent.ACTION_UP -> {
+                        viewModel.onPlaybackButtonPressed(PlaybackButton.UNDEFINED)
+                    }
+                }
+
+                return@setOnTouchListener false
+            }
         }
         binding.seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar, progress: Int, fromUser: Boolean) =

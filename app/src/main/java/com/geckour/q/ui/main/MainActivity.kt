@@ -7,8 +7,10 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.Bundle
 import android.provider.MediaStore
+import android.view.GestureDetector
 import android.view.LayoutInflater
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.SeekBar
@@ -16,6 +18,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.GravityCompat
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.commit
@@ -27,6 +30,9 @@ import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogSleepBinding
 import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.domain.model.Song
+import com.geckour.q.service.DropboxMediaRetrieveService
+import com.geckour.q.service.LocalMediaRetrieveService
+import com.geckour.q.service.SleepTimerService
 import com.geckour.q.ui.easteregg.EasterEggFragment
 import com.geckour.q.ui.equalizer.EqualizerFragment
 import com.geckour.q.ui.library.album.AlbumListFragment
@@ -39,9 +45,6 @@ import com.geckour.q.ui.pay.PaymentViewModel
 import com.geckour.q.ui.setting.SettingActivity
 import com.geckour.q.ui.sheet.BottomSheetFragment
 import com.geckour.q.ui.sheet.BottomSheetViewModel
-import com.geckour.q.service.DropboxMediaRetrieveService
-import com.geckour.q.service.LocalMediaRetrieveService
-import com.geckour.q.service.SleepTimerService
 import com.geckour.q.util.dropboxToken
 import com.geckour.q.util.ducking
 import com.geckour.q.util.isNightMode
@@ -56,6 +59,7 @@ import com.google.firebase.analytics.FirebaseAnalytics
 import permissions.dispatcher.ktx.constructPermissionsRequest
 import timber.log.Timber
 import java.io.File
+import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
 
@@ -88,6 +92,8 @@ class MainActivity : AppCompatActivity() {
 
     internal lateinit var binding: ActivityMainBinding
     private val sharedPreferences by lazy { PreferenceManager.getDefaultSharedPreferences(this) }
+
+    private lateinit var gestureDetector: GestureDetector
 
     private lateinit var drawerToggle: ActionBarDrawerToggle
 
@@ -197,6 +203,25 @@ class MainActivity : AppCompatActivity() {
         binding.viewModel = viewModel
         binding.contentSearch.recyclerView.adapter = searchListAdapter
 
+        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
+
+            override fun onFling(
+                e1: MotionEvent?,
+                e2: MotionEvent?,
+                velocityX: Float,
+                velocityY: Float
+            ): Boolean {
+                Timber.d("qgeck velocity x: ${abs(velocityX)}, velocity y: ${abs(velocityY)}")
+                return if (abs(velocityX) > abs(velocityY)) {
+                    binding.drawerLayout.apply {
+                        if (velocityX > 0) openDrawer(GravityCompat.START)
+                        else closeDrawer(GravityCompat.START)
+                    }
+                    true
+                } else false
+            }
+        })
+
         observeEvents()
         registerReceiver(syncingProgressReceiver, IntentFilter(ACTION_SYNCING))
 
@@ -232,6 +257,10 @@ class MainActivity : AppCompatActivity() {
             viewModel.isDropboxAuthOngoing = false
             onAuthDropboxCompleted()
         }
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+        return if (gestureDetector.onTouchEvent(ev)) true else super.dispatchTouchEvent(ev)
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
