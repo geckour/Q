@@ -31,6 +31,7 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.io.File
 
@@ -135,11 +136,11 @@ class InstantPlayerService : Service() {
 
         progressJob = GlobalScope.launch(Dispatchers.IO) {
             while (true) {
-                progress.postValue(
-                    if (player.contentDuration > 0) {
+                withContext(Dispatchers.Main) {
+                    progress.value = if (player.contentDuration > 0) {
                         player.currentPosition to player.contentDuration
                     } else 0L to 0L
-                )
+                }
                 delay(100)
             }
         }

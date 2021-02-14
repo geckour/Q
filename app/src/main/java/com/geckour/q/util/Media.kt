@@ -40,9 +40,12 @@ import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import org.jaudiotagger.tag.images.ArtworkFactory
 import timber.log.Timber
+import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
+import java.net.URLConnection
 import kotlin.math.min
 
 
@@ -521,6 +524,24 @@ fun DbxClientV2.saveTempAudioFile(context: Context, pathLower: String): File {
     if (dir.exists().not()) dir.mkdir()
 
     FileOutputStream(file).use { files().download(pathLower).download(it) }
+
+    return file
+}
+
+fun InputStream.saveTempAudioFile(context: Context): File {
+    val ext = URLConnection.guessContentTypeFromStream(this)
+        ?.replace(Regex(".+/(.+)"), ".$1")
+        ?: ""
+
+    val dirName = "audio"
+    val fileName = "temp_audio$ext"
+    val dir = File(context.cacheDir, dirName)
+    val file = File(dir, fileName)
+
+    if (file.exists()) file.delete()
+    if (dir.exists().not()) dir.mkdir()
+
+    FileOutputStream(file).use { it.write(this.readBytes()) }
 
     return file
 }

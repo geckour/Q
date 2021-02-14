@@ -31,11 +31,11 @@
                 android:padding="12dp">
 
                 <ImageView
-                    android:src="@mipmap/ic_app"
-                    app:layout_constraintTop_toTopOf="parent"
-                    app:layout_constraintStart_toStartOf="parent"
                     android:layout_width="24dp"
-                    android:layout_height="24dp" />
+                    android:layout_height="24dp"
+                    android:src="@mipmap/ic_app"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
 
                 <ImageView
                     android:id="@+id/action_left"
@@ -47,7 +47,7 @@
                     android:src="@drawable/ic_backward"
                     app:layout_constraintEnd_toStartOf="@id/action_play_pause"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:tint="@color/colorPrimaryDark" />
+                    app:tint="?attr/colorButtonNormal" />
 
                 <ImageView
                     android:id="@+id/action_play_pause"
@@ -59,7 +59,7 @@
                     app:layout_constraintEnd_toEndOf="parent"
                     app:layout_constraintStart_toStartOf="parent"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:tint="@color/colorPrimaryDark"
+                    app:tint="?attr/colorButtonNormal"
                     tools:src="@drawable/ic_play" />
 
                 <ImageView
@@ -72,7 +72,7 @@
                     android:src="@drawable/ic_forward"
                     app:layout_constraintLeft_toRightOf="@id/action_play_pause"
                     app:layout_constraintTop_toTopOf="parent"
-                    app:tint="@color/colorPrimaryDark" />
+                    app:tint="?attr/colorButtonNormal" />
 
                 <TextView
                     android:id="@+id/time_left"

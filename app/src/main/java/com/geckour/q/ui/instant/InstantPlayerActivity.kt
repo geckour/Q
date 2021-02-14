@@ -9,6 +9,7 @@ import com.geckour.q.R
 import com.geckour.q.databinding.ActivityInstantPlayerBinding
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.util.getTimeString
+import com.geckour.q.util.saveTempAudioFile
 
 class InstantPlayerActivity : AppCompatActivity() {
 
@@ -44,8 +45,13 @@ class InstantPlayerActivity : AppCompatActivity() {
         viewModel.player.observe(this) { player ->
             player ?: return@observe
 
-            intent?.data?.path?.let {
-                player.submit(it)
+            intent?.data?.let { uri ->
+                val path = if (uri.scheme == "content") {
+                    contentResolver.openInputStream(uri)
+                        ?.use { it.saveTempAudioFile(this) }
+                        ?.path
+                } else uri.path
+                player.submit(path ?: return@let)
                 viewModel.onPlaybackButtonPressed(PlaybackButton.PLAY)
             }
 
