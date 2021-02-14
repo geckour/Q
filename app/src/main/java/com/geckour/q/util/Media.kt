@@ -2,6 +2,7 @@ package com.geckour.q.util
 
 import android.app.Notification
 import android.app.PendingIntent
+import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
@@ -14,15 +15,13 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
+import android.webkit.MimeTypeMap
 import androidx.core.app.NotificationCompat
-import androidx.preference.PreferenceManager
 import com.bumptech.glide.Glide
 import com.bumptech.glide.RequestBuilder
 import com.bumptech.glide.load.engine.DiskCacheStrategy
-import com.dropbox.core.DbxRequestConfig
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.App
-import com.geckour.q.BuildConfig
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
@@ -337,7 +336,7 @@ fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> = wh
 }
 
 suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat {
-    val uriString = album.artworkUriString
+    val uriStringForShare = getTempArtworkUriString(context)
 
     return MediaMetadataCompat.Builder()
         .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaId.toString())
@@ -345,8 +344,9 @@ suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat {
         .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist.title)
         .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album.title)
         .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer)
+        .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, uriStringForShare)
         .apply {
-            uriString?.let {
+            album.artworkUriString?.let {
                 val bitmap = withContext(Dispatchers.IO) {
                     catchAsNull {
                         Glide.with(context)
@@ -364,6 +364,34 @@ suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat {
         .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
         .build()
 }
+
+fun Song.getTempArtworkUriString(context: Context): String? =
+    album.artworkUriString?.let { uriString ->
+        val ext = MimeTypeMap.getFileExtensionFromUrl(uriString)
+        File(uriString).inputStream().use { inputStream ->
+            val uri = context.contentResolver.insert(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                ContentValues().apply {
+                    put(MediaStore.Images.Media.TITLE, "Q_temporary-artwork.$ext")
+                    put(MediaStore.Images.Media.DISPLAY_NAME, "Temporary artwork image for Q")
+                    put(
+                        MediaStore.Images.Media.DESCRIPTION,
+                        "Temporary stored artwork to set on Notification"
+                    )
+                    put(
+                        MediaStore.Images.Media.MIME_TYPE,
+                        MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+                    )
+                    put(MediaStore.Images.Media.DATE_ADDED, System.currentTimeMillis() / 1000)
+                }) ?: return null
+
+            context.contentResolver.openOutputStream(uri)?.use {
+                it.write(inputStream.readBytes())
+            }
+
+            return@use uri.toString()
+        }
+    }
 
 suspend fun getPlayerNotification(
     context: Context,
@@ -497,7 +525,7 @@ fun DbxClientV2.saveTempAudioFile(context: Context, pathLower: String): File {
     return file
 }
 
-suspend fun updateMetadata(
+suspend fun updateFileMetadata(
     context: Context,
     db: DB,
     joinedTrack: JoinedTrack,
@@ -507,12 +535,8 @@ suspend fun updateMetadata(
     newComposerName: String? = null,
     newArtwork: Bitmap? = null
 ) = withContext(Dispatchers.IO) {
-    val client = DbxClientV2(
-        DbxRequestConfig.newBuilder("qp/${BuildConfig.VERSION_NAME}").build(),
-        PreferenceManager.getDefaultSharedPreferences(context).dropboxToken
-    )
     val file =
-        if (joinedTrack.track.sourcePath.startsWith("http")) null
+        if (joinedTrack.track.sourcePath.startsWith("http")) null // Only the metadata that on the database will be updated in else block
         else File(joinedTrack.track.sourcePath)
     val audioFile = file?.let { AudioFileIO.read(it) }
     when {

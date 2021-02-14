@@ -11,10 +11,7 @@ apply plugin: 'com.google.firebase.crashlytics'
 android {
     def keyNameDropBoxAppKey = "DROPBOX_APP_KEY"
     def keyNameDropBoxAppSecret = "DROPBOX_APP_SECRET"
-    applicationVariants.all {
-        it.buildConfigField "String", keyNameDropBoxAppKey, getQuotedKey(keyNameDropBoxAppKey)
-        it.buildConfigField "String", keyNameDropBoxAppSecret, getQuotedKey(keyNameDropBoxAppSecret)
-    }
+
     compileSdkVersion 29
     defaultConfig {
         applicationId "com.geckour.q"
@@ -22,7 +19,17 @@ android {
         versionCode 4
         versionName "1.2.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
-        manifestPlaceholders = [dropboxAppKey: "db-" + getKey(keyNameDropBoxAppKey)]
+
+        buildConfigField "String", keyNameDropBoxAppKey, getQuotedKey(keyNameDropBoxAppKey)
+        buildConfigField "String", keyNameDropBoxAppSecret, getQuotedKey(keyNameDropBoxAppSecret)
+
+        def filesAuthorityValue = applicationId + ".files"
+        buildConfigField "String", "FILES_AUTHORITY", "\"${filesAuthorityValue}\""
+
+        manifestPlaceholders = [
+                dropboxAppKey : "db-" + getKey(keyNameDropBoxAppKey),
+                filesAuthority: filesAuthorityValue
+        ]
     }
     sourceSets.main {
         jniLibs.srcDir 'src/main/libs'
