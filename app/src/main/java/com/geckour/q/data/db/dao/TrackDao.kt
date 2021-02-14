@@ -84,12 +84,21 @@ interface TrackDao {
 
     @Transaction
     suspend fun deleteIncludingRootIfEmpty(context: Context, trackId: Long) {
-        delete(trackId)
-
         get(trackId)?.let {
+            delete(trackId)
+
+            val db = DB.getInstance(context)
             if (getAllByAlbum(it.track.albumId, Bool.UNDEFINED).isEmpty()) {
-                DB.getInstance(context).albumDao()
-                    .deleteIncludingRootIfEmpty(context, it.track.albumId)
+                db.albumDao().deleteIncludingRootIfEmpty(context, it.track.albumId)
+            } else {
+                db.albumDao()
+                    .update(
+                        it.album.copy(totalDuration = it.album.totalDuration - it.track.duration)
+                    )
+                db.artistDao()
+                    .update(
+                        it.artist.copy(totalDuration = it.artist.totalDuration - it.track.duration)
+                    )
             }
         }
     }
