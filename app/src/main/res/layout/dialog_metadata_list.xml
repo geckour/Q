@@ -4,26 +4,26 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <LinearLayout
-        android:orientation="vertical"
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        android:orientation="vertical">
 
         <TextView
             android:id="@+id/currentDir"
             android:layout_width="match_parent"
-            android:textStyle="bold"
-            tools:text="現在のフォルダ"
+            android:layout_height="wrap_content"
             android:padding="8dp"
-            android:textColor="?attr/colorTextPrimary"
+            android:textColor="?attr/colorAccent"
             android:textSize="14sp"
-            android:layout_height="wrap_content" />
+            android:textStyle="bold"
+            tools:text="現在のフォルダ" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recycler_view"
             android:layout_width="match_parent"
             android:layout_height="300dp"
-            android:scrollbars="vertical"
             android:scrollbarThumbVertical="?attr/colorAccent"
+            android:scrollbars="vertical"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
             tools:listitem="@layout/item_list_metadata" />
     </LinearLayout>
