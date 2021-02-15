@@ -2,6 +2,7 @@ package com.geckour.q.util
 
 import android.app.Notification
 import android.app.PendingIntent
+import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
@@ -40,7 +41,6 @@ import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import org.jaudiotagger.tag.images.ArtworkFactory
 import timber.log.Timber
-import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -338,16 +338,15 @@ fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> = wh
     else -> emptyList()
 }
 
-suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat {
-    val uriStringForShare = getTempArtworkUriString(context)
-
-    return MediaMetadataCompat.Builder()
+suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat =
+    MediaMetadataCompat.Builder()
         .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaId.toString())
+        .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, sourcePath)
         .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
         .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist.title)
         .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album.title)
         .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer)
-        .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, uriStringForShare)
+        .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, getTempArtworkUriString(context))
         .apply {
             album.artworkUriString?.let {
                 val bitmap = withContext(Dispatchers.IO) {
@@ -366,31 +365,45 @@ suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat {
         }
         .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
         .build()
-}
 
 fun Song.getTempArtworkUriString(context: Context): String? =
     album.artworkUriString?.let { uriString ->
         val ext = MimeTypeMap.getFileExtensionFromUrl(uriString)
         File(uriString).inputStream().use { inputStream ->
-            val uri = context.contentResolver.insert(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                ContentValues().apply {
-                    put(MediaStore.Images.Media.TITLE, "Q_temporary-artwork.$ext")
-                    put(MediaStore.Images.Media.DISPLAY_NAME, "Temporary artwork image for Q")
-                    put(
-                        MediaStore.Images.Media.DESCRIPTION,
-                        "Temporary stored artwork to set on Notification"
-                    )
-                    put(
-                        MediaStore.Images.Media.MIME_TYPE,
-                        MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
-                    )
-                    put(MediaStore.Images.Media.DATE_ADDED, System.currentTimeMillis() / 1000)
-                }) ?: return null
-
-            context.contentResolver.openOutputStream(uri)?.use {
-                it.write(inputStream.readBytes())
+            val title = "Q_temporary_artwork"
+            val contentValues = ContentValues().apply {
+                put(MediaStore.Images.Media.TITLE, title)
+                put(MediaStore.Images.Media.DISPLAY_NAME, title)
+                put(
+                    MediaStore.Images.Media.DESCRIPTION,
+                    "Temporary stored artwork to set on Notification"
+                )
+                put(
+                    MediaStore.Images.Media.MIME_TYPE,
+                    MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+                )
+                put(MediaStore.Images.Media.DATE_ADDED, System.currentTimeMillis() / 1000)
             }
+            val uri = context.contentResolver.query(
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                null,
+                "${MediaStore.Images.Media.TITLE} = '$title'",
+                null,
+                null
+            )?.use {
+                if (it.moveToFirst()) {
+                    ContentUris.withAppendedId(
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        it.getLong(it.getColumnIndex(MediaStore.Images.Media._ID))
+                    )
+                } else null
+            } ?: context.contentResolver
+                .insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+            ?: return null
+
+            context.contentResolver
+                .openOutputStream(uri)
+                ?.use { it.write(inputStream.readBytes()) }
 
             return@use uri.toString()
         }

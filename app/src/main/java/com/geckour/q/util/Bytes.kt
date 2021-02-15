@@ -18,7 +18,7 @@ fun ByteArray.storeArtwork(context: Context): String? = catchAsNull {
         ?.replace(Regex(".+/(.+)"), ".$1")
         ?: ""
     val dirName = "images"
-    val dir = File(context.externalMediaDirs[0], dirName)
+    val dir = File(context.dataDir, dirName)
     if (dir.exists().not()) dir.mkdir()
     val imgFile = File(dir, "$hex$ext")
     FileOutputStream(imgFile).use {

@@ -905,7 +905,6 @@ class PlayerService : Service() {
 
     private fun showNotification() = serviceScope.launch(Dispatchers.Main) {
         val song = currentSong ?: return@launch
-
         mediaSession.setMetadata(song.getMediaMetadata(this@PlayerService))
         mediaSession.isActive = true
         getPlayerNotification(this@PlayerService, mediaSession.sessionToken, song, playing).show()
