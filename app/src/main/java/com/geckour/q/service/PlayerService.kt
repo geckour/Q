@@ -640,10 +640,12 @@ class PlayerService : Service() {
             seekJob.cancel()
             seekJob = serviceScope.launch {
                 while (true) {
-                    val seekTo = (player.currentPosition + 1000).let {
-                        if (it > song.duration) song.duration else it
+                    withContext(Dispatchers.Main) {
+                        val seekTo = (player.currentPosition + 1000).let {
+                            if (it > song.duration) song.duration else it
+                        }
+                        seek(seekTo)
                     }
-                    seek(seekTo)
                     delay(100)
                 }
             }
@@ -655,10 +657,12 @@ class PlayerService : Service() {
             seekJob.cancel()
             seekJob = serviceScope.launch {
                 while (true) {
-                    val seekTo = (player.currentPosition - 1000).let {
-                        if (it < 0) 0 else it
+                    withContext(Dispatchers.Main) {
+                        val seekTo = (player.currentPosition - 1000).let {
+                            if (it < 0) 0 else it
+                        }
+                        seek(seekTo)
                     }
-                    seek(seekTo)
                     delay(100)
                 }
             }
@@ -802,8 +806,10 @@ class PlayerService : Service() {
         player.repeatMode = repeatMode
     }
 
-    private fun forcePosition(position: Int) {
-        player.seekToDefaultPosition(position)
+    private fun forcePosition(windowIndex: Int) {
+        val index = player.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
+        player.seekToDefaultPosition(index + windowIndex)
+        seek(0)
     }
 
     private fun increasePlaybackCount() = serviceScope.launch(Dispatchers.Main) {
