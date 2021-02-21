@@ -243,6 +243,17 @@ class PlayerService : Service() {
     }
 
     lateinit var mediaSession: MediaSessionCompat
+    private val playbackStateCompat = PlaybackStateCompat.Builder()
+        .setActions(
+            PlaybackStateCompat.ACTION_PLAY or
+                    PlaybackStateCompat.ACTION_PAUSE or
+                    PlaybackStateCompat.ACTION_PLAY_PAUSE or
+                    PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
+                    PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
+                    PlaybackStateCompat.ACTION_FAST_FORWARD or
+                    PlaybackStateCompat.ACTION_REWIND or
+                    PlaybackStateCompat.ACTION_SEEK_TO
+        )
     private val currentIndex
         get() = when (player.currentWindowIndex) {
             -1 -> if (source.size > 0) 0 else -1
@@ -383,18 +394,6 @@ class PlayerService : Service() {
         job = Job()
 
         mediaSession = MediaSessionCompat(this, TAG).apply {
-            setPlaybackState(
-                PlaybackStateCompat.Builder().setActions(
-                    PlaybackStateCompat.ACTION_PLAY or
-                            PlaybackStateCompat.ACTION_PAUSE or
-                            PlaybackStateCompat.ACTION_PLAY_PAUSE or
-                            PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
-                            PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
-                            PlaybackStateCompat.ACTION_FAST_FORWARD or
-                            PlaybackStateCompat.ACTION_REWIND or
-                            PlaybackStateCompat.ACTION_SEEK_TO
-                ).build()
-            )
             setFlags(
                 MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
                         MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
@@ -993,6 +992,13 @@ class PlayerService : Service() {
 
     private fun showNotification() = serviceScope.launch(Dispatchers.Main) {
         val song = currentSong ?: return@launch
+        mediaSession.setPlaybackState(
+            playbackStateCompat.setState(
+                player.playbackState.toPlaybackStateCompat,
+                player.currentPosition,
+                player.playbackParameters.speed
+            ).build()
+        )
         mediaSession.setMetadata(song.getMediaMetadata(this@PlayerService))
         mediaSession.isActive = true
         getPlayerNotification(
@@ -1020,4 +1026,15 @@ class PlayerService : Service() {
         stopForeground(true)
         getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID_PLAYER)
     }
+
+    private val Int.toPlaybackStateCompat
+        get() = when (this) {
+            Player.STATE_BUFFERING -> PlaybackStateCompat.STATE_BUFFERING
+            Player.STATE_READY -> {
+                if (player.playWhenReady) PlaybackStateCompat.STATE_PLAYING
+                else PlaybackStateCompat.STATE_PAUSED
+            }
+            Player.STATE_ENDED -> PlaybackStateCompat.STATE_STOPPED
+            else -> PlaybackState.STATE_NONE
+        }
 }
