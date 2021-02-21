@@ -25,6 +25,7 @@ data class Song(
     val sourcePath: String,
     val dropboxPath: String?,
     val dropboxExpiredAt: Long?,
+    val artworkUriString: String?,
     val ignored: Boolean?,
     val nowPlaying: Boolean = false
 ) : Parcelable, MediaItem {

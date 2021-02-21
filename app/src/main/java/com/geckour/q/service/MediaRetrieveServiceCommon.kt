@@ -82,8 +82,8 @@ internal suspend fun File.storeMediaInfo(
         (tag.getAll(FieldKey.COMPOSER_SORT).lastOrNull { it.isNotBlank() } ?: composerTitle)
             ?.hiraganized
 
-    val artworkUriString = cachedAlbum?.album?.artworkUriString
-        ?: tag.artworkList.lastOrNull()?.binaryData?.storeArtwork(context)
+    val artworkUriString = tag.artworkList.lastOrNull()?.binaryData?.storeArtwork(context)
+        ?: cachedAlbum?.album?.artworkUriString
 
     val artist = Artist(
         id = 0,
@@ -136,6 +136,7 @@ internal suspend fun File.storeMediaInfo(
         duration = duration,
         trackNum = trackNum,
         discNum = discNum,
+        artworkUriString = artworkUriString,
         playbackCount = 0
     )
 

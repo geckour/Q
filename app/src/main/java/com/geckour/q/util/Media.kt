@@ -127,6 +127,7 @@ fun JoinedTrack.toSong(
         track.sourcePath,
         track.dropboxPath,
         track.dropboxExpiredAt,
+        track.artworkUriString,
         BoolConverter().toBoolean(track.ignored)
     )
 }
@@ -563,7 +564,7 @@ fun InputStream.saveTempAudioFile(context: Context): File {
     return file
 }
 
-suspend fun updateFileMetadata(
+suspend fun Song.updateFileMetadata(
     context: Context,
     db: DB,
     joinedTrack: JoinedTrack,
@@ -574,13 +575,13 @@ suspend fun updateFileMetadata(
     newArtwork: Bitmap? = null
 ) = withContext(Dispatchers.IO) {
     val file =
-        if (joinedTrack.track.sourcePath.startsWith("http")) null // Only the metadata that on the database will be updated in else block
-        else File(joinedTrack.track.sourcePath)
+        if (sourcePath.startsWith("http")) null // Only the metadata that on the database will be updated in else block
+        else File(sourcePath)
     val audioFile = file?.let { AudioFileIO.read(it) }
+    val artworkUriString = newArtwork?.toByteArray()?.storeArtwork(context)
+    val artwork = artworkUriString?.let { ArtworkFactory.createArtworkFromFile(File(it)) }
     when {
         newArtistName != null -> {
-            val artworkUriString = newArtwork?.toByteArray()?.storeArtwork(context)
-            val artwork = artworkUriString?.let { ArtworkFactory.createArtworkFromFile(File(it)) }
             db.trackDao().getAllByArtist(joinedTrack.artist.id)
                 .map {
                     if (it.track.sourcePath.startsWith("http")) null
@@ -599,8 +600,6 @@ suspend fun updateFileMetadata(
             db.artistDao().update(joinedTrack.artist.copy(title = newArtistName))
         }
         newAlbumName != null || newArtwork != null -> {
-            val artworkUriString = newArtwork?.toByteArray()?.storeArtwork(context)
-            val artwork = artworkUriString?.let { ArtworkFactory.createArtworkFromFile(File(it)) }
             db.trackDao().getAllByAlbum(joinedTrack.album.id)
                 .map {
                     if (it.track.sourcePath.startsWith("http")) null

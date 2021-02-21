@@ -147,7 +147,7 @@ class SongListAdapter(
             viewModel.viewModelScope.launch {
                 try {
                     Glide.with(binding.thumb)
-                        .load(song.album.artworkUriString.orDefaultForModel)
+                        .load(song.artworkUriString.orDefaultForModel)
                         .applyDefaultSettings()
                         .into(binding.thumb)
                 } catch (t: Throwable) {

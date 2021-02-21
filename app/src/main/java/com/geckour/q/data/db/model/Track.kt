@@ -24,6 +24,7 @@ data class Track(
     val trackNum: Int?,
     val discNum: Int?,
     val playbackCount: Long,
+    val artworkUriString: String?,
     val ignored: Bool = Bool.FALSE
 )
 
