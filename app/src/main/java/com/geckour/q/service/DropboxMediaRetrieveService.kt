@@ -92,7 +92,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
             val rootPath = requireNotNull(intent.getStringExtra(KEY_ROOT_PATH))
             Timber.d("qgeck rootPath: $rootPath")
 
-            sendBroadcast(MainActivity.createProgressIntent(0 to -1))
+            sendBroadcast(MainActivity.createProgressIntent(0))
             startForeground(
                 NOTIFICATION_ID_RETRIEVE,
                 getNotification(0)
@@ -188,38 +188,45 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
         seed: Long,
         bitmap: Bitmap
     ) {
-        when (this) {
-            is FolderMetadata -> {
-                retrieveAudioFilePaths(
-                    context,
-                    db,
-                    pathLower,
-                    client,
-                    seed,
-                    bitmap
-                )
-            }
-            is FileMetadata -> {
-                if (name.isAudioFilePath) {
-                    runCatching {
-                        storeMediaInfo(context, db, client, this@storeMediaInfo)
-                    }.onSuccess {
-                        filesCount++
-                    }.onFailure { t ->
-                        if (t is RateLimitException) {
-                            Thread.sleep(t.backoffMillis)
-                            this.storeMediaInfo(context, db, client, seed, bitmap)
-                        } else {
-                            Timber.e(t)
-                            return
-                        }
-                    }
-
-                    sendBroadcast(MainActivity.createProgressIntent(filesCount to -1))
-                    startForeground(
-                        NOTIFICATION_ID_RETRIEVE,
-                        getNotification(filesCount)
+        if (expired.not()) {
+            when (this) {
+                is FolderMetadata -> {
+                    retrieveAudioFilePaths(
+                        context,
+                        db,
+                        pathLower,
+                        client,
+                        seed,
+                        bitmap
                     )
+                }
+                is FileMetadata -> {
+                    if (name.isAudioFilePath) {
+                        runCatching {
+                            storeMediaInfo(context, db, client, this@storeMediaInfo)
+                        }.onSuccess {
+                            filesCount++
+                        }.onFailure { t ->
+                            if (t is RateLimitException) {
+                                Thread.sleep(t.backoffMillis)
+                                this.storeMediaInfo(context, db, client, seed, bitmap)
+                            } else {
+                                Timber.e(t)
+                                return
+                            }
+                        }
+
+                        sendBroadcast(
+                            MainActivity.createProgressIntent(
+                                filesCount,
+                                progressPath = this.pathDisplay
+                            )
+                        )
+                        startForeground(
+                            NOTIFICATION_ID_RETRIEVE,
+                            getNotification(filesCount)
+                        )
+                    }
                 }
             }
         }

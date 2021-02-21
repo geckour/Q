@@ -70,14 +70,22 @@ class MainActivity : AppCompatActivity() {
     companion object {
 
         private const val ACTION_SYNCING = "action_syncing"
-        private const val EXTRA_SYNCING_PROGRESS = "extra_syncing_progress"
+        private const val EXTRA_SYNCING_PROGRESS_NUMERATOR = "extra_syncing_progress_numerator"
+        private const val EXTRA_SYNCING_PROGRESS_DENOMINATOR = "extra_syncing_progress_denominator"
+        private const val EXTRA_SYNCING_PROGRESS_PATH = "extra_syncing_progress_path"
         private const val EXTRA_SYNCING_COMPLETE = "extra_syncing_complete"
         private const val STATE_KEY_REQUESTED_TRANSACTION = "state_key_requested_transaction"
 
         fun createIntent(context: Context): Intent = Intent(context, MainActivity::class.java)
 
-        fun createProgressIntent(progress: Pair<Int, Int>) = Intent(ACTION_SYNCING).apply {
-            putExtra(EXTRA_SYNCING_PROGRESS, progress)
+        fun createProgressIntent(
+            progressNumerator: Int,
+            progressDenominator: Int? = null,
+            progressPath: String? = null
+        ) = Intent(ACTION_SYNCING).apply {
+            putExtra(EXTRA_SYNCING_PROGRESS_NUMERATOR, progressNumerator)
+            putExtra(EXTRA_SYNCING_PROGRESS_DENOMINATOR, progressDenominator)
+            putExtra(EXTRA_SYNCING_PROGRESS_PATH, progressPath)
         }
 
         fun createSyncCompleteIntent(complete: Boolean) = Intent(ACTION_SYNCING).apply {
@@ -104,20 +112,25 @@ class MainActivity : AppCompatActivity() {
 
     private val syncingProgressReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            intent?.apply {
-                extras?.getBoolean(EXTRA_SYNCING_COMPLETE, false)?.apply {
-                    if (this) {
+            intent?.extras?.let { extras ->
+                extras.getBoolean(EXTRA_SYNCING_COMPLETE, false)?.let {
+                    if (it) {
                         viewModel.syncing = false
                         setLockingIndicator()
                         viewModel.forceLoad.postValue(Unit)
                     }
                 }
-                (extras?.get(EXTRA_SYNCING_PROGRESS) as? Pair<Int, Int>)?.apply {
+                extras.getInt(EXTRA_SYNCING_PROGRESS_NUMERATOR, -1).let progress@{ numerator ->
+                    if (numerator < 0) return@progress
+
+                    val denominator = extras.getInt(EXTRA_SYNCING_PROGRESS_DENOMINATOR, -1)
+                    val path = extras.getString(EXTRA_SYNCING_PROGRESS_PATH)
                     viewModel.syncing = true
                     setLockingIndicator()
                     binding.indicatorLocking.progressSync.text =
-                        if (this.second < 0) getString(R.string.progress_sync_dropbox, this.first)
-                        else getString(R.string.progress_sync, this.first, this.second)
+                        if (denominator < 0) getString(R.string.progress_sync_dropbox, numerator)
+                        else getString(R.string.progress_sync, numerator, denominator)
+                    binding.indicatorLocking.progressPath.text = path
                 }
             }
         }

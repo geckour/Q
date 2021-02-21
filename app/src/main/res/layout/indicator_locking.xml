@@ -35,8 +35,8 @@
             android:layout_marginTop="4dp"
             android:textColor="?attr/colorTextSecondary"
             android:textSize="14sp"
-            app:layout_constraintLeft_toLeftOf="@id/progress_bar"
-            app:layout_constraintRight_toRightOf="@id/progress_bar"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/progress_bar"
             tools:text="Syncing library…" />
 
@@ -47,10 +47,25 @@
             android:layout_marginTop="4dp"
             android:textColor="?attr/colorTextSecondary"
             android:textSize="12sp"
-            app:layout_constraintLeft_toLeftOf="@id/progress_bar"
-            app:layout_constraintRight_toRightOf="@id/progress_bar"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/desc_locking"
             tools:text="133 / 2504" />
+
+        <TextView
+            android:id="@+id/progress_path"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:ellipsize="start"
+            android:maxLines="2"
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/progress_sync"
+            app:layout_constraintWidth_percent="0.7"
+            tools:text="/path/to/src/src/src/src/src/src/src/src/src/src/src/src/src/src/src/src/src/src" />
 
         <Button
             android:id="@+id/button_cancel_sync"
@@ -62,8 +77,8 @@
             android:text="@string/button_cancel_sync"
             android:textColor="@android:color/white"
             app:layout_constraintBottom_toTopOf="@id/guide_peek_height"
-            app:layout_constraintLeft_toLeftOf="@id/progress_bar"
-            app:layout_constraintRight_toRightOf="@id/progress_bar" />
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
 
         <androidx.constraintlayout.widget.Guideline
             android:id="@+id/guide_peek_height"

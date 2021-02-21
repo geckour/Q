@@ -85,7 +85,6 @@ class LocalMediaRetrieveService : IntentService(NAME) {
         ) {
             val bitmap = Bitmap.createBitmap(1000, 1000, Bitmap.Config.ARGB_8888)
             val seed = System.currentTimeMillis()
-            startForeground(NOTIFICATION_ID_RETRIEVE, getNotification(0 to 0, seed, bitmap))
             Timber.d("qgeck media retrieve service started")
             val db = DB.getInstance(applicationContext)
             if (intent?.getBooleanExtra(KEY_CLEAR, false) == true) {
@@ -106,9 +105,14 @@ class LocalMediaRetrieveService : IntentService(NAME) {
                     null,
                     ORDER
                 )?.use { cursor ->
+                    startForeground(
+                        NOTIFICATION_ID_RETRIEVE,
+                        getNotification(0, cursor.count, seed, bitmap)
+                    )
                     val newTrackMediaIds = mutableListOf<Long>()
                     while (expired.not() && cursor.moveToNext()) {
-                        val progress = cursor.position to cursor.count
+                        val numerator = cursor.position
+                        val denominator = cursor.count
                         val trackPath = cursor.getString(
                             cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
                         )
@@ -120,10 +124,16 @@ class LocalMediaRetrieveService : IntentService(NAME) {
                         }.onSuccess {
                             newTrackMediaIds.add(trackMediaId)
                         }.onFailure { Timber.e(it) }
-                        sendBroadcast(MainActivity.createProgressIntent(progress))
+                        sendBroadcast(
+                            MainActivity.createProgressIntent(
+                                numerator,
+                                denominator,
+                                trackPath
+                            )
+                        )
                         startForeground(
                             NOTIFICATION_ID_RETRIEVE,
-                            getNotification(progress, seed, bitmap)
+                            getNotification(numerator, denominator, seed, bitmap)
                         )
                     }
 
@@ -148,7 +158,8 @@ class LocalMediaRetrieveService : IntentService(NAME) {
     }
 
     private fun getNotification(
-        progress: Pair<Int, Int>,
+        progressNumerator: Int,
+        progressDenominator: Int,
         seed: Long,
         bitmap: Bitmap
     ): Notification = getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER)
@@ -171,22 +182,24 @@ class LocalMediaRetrieveService : IntentService(NAME) {
                 PendingIntent.FLAG_UPDATE_CURRENT
             )
         )
-        .setLargeIcon(bitmap.drawProgressIcon(progress, seed))
+        .setLargeIcon(bitmap.drawProgressIcon(progressNumerator, progressDenominator, seed))
         .setContentTitle(getString(R.string.notification_title_retriever))
         .setContentText(
             getString(
                 R.string.notification_text_retriever,
-                progress.first,
-                progress.second
+                progressNumerator,
+                progressDenominator
             )
         )
         .build()
 
-    private fun Bitmap.drawProgressIcon(progress: Pair<Int, Int>, seed: Long): Bitmap {
-        if (progress.second < 0) return this
-
+    private fun Bitmap.drawProgressIcon(
+        progressNumerator: Int,
+        progressDenominator: Int,
+        seed: Long
+    ): Bitmap {
         val maxTileNumber = 24
-        val progressRatio = progress.first.toFloat() / progress.second
+        val progressRatio = progressNumerator.toFloat() / progressDenominator
         val tileNumber = (maxTileNumber * progressRatio).toInt()
         val canvas = Canvas(this)
         val paint = Paint().apply {
