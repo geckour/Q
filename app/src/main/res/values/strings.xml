@@ -24,7 +24,9 @@
     <string name="notification_channel_description_sleep_timer">Notification for sleep timer</string>
     <string name="notification_title_retriever">Retrieving media</string>
     <string name="notification_text_retriever">%1$d / %2$d | Syncing library…</string>
-    <string name="notification_text_retriever_dropbox">%d | Syncing library…</string>
+    <string name="notification_text_retriever_with_path">%1$d / %2$d | Syncing library…\n%3$s</string>
+    <string name="notification_text_retriever_dropbox">%1$d | Syncing library…</string>
+    <string name="notification_text_retriever_dropbox_with_path">%1$d | Syncing library…%2$s</string>
     <string name="notification_title_media_add">Adding media</string>
     <string name="notification_text_media_add">Adding %s…</string>
     <string name="notification_title_sleep_timer">Sleep timer</string>

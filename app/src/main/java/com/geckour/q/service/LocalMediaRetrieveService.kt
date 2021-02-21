@@ -107,7 +107,7 @@ class LocalMediaRetrieveService : IntentService(NAME) {
                 )?.use { cursor ->
                     startForeground(
                         NOTIFICATION_ID_RETRIEVE,
-                        getNotification(0, cursor.count, seed, bitmap)
+                        getNotification(null, 0, cursor.count, seed, bitmap)
                     )
                     val newTrackMediaIds = mutableListOf<Long>()
                     while (expired.not() && cursor.moveToNext()) {
@@ -133,7 +133,7 @@ class LocalMediaRetrieveService : IntentService(NAME) {
                         )
                         startForeground(
                             NOTIFICATION_ID_RETRIEVE,
-                            getNotification(numerator, denominator, seed, bitmap)
+                            getNotification(trackPath, numerator, denominator, seed, bitmap)
                         )
                     }
 
@@ -158,6 +158,7 @@ class LocalMediaRetrieveService : IntentService(NAME) {
     }
 
     private fun getNotification(
+        trackPath: String?,
         progressNumerator: Int,
         progressDenominator: Int,
         seed: Long,
@@ -185,7 +186,14 @@ class LocalMediaRetrieveService : IntentService(NAME) {
         .setLargeIcon(bitmap.drawProgressIcon(progressNumerator, progressDenominator, seed))
         .setContentTitle(getString(R.string.notification_title_retriever))
         .setContentText(
-            getString(
+            trackPath?.let {
+                getString(
+                    R.string.notification_text_retriever_with_path,
+                    progressNumerator,
+                    progressDenominator,
+                    it
+                )
+            } ?: getString(
                 R.string.notification_text_retriever,
                 progressNumerator,
                 progressDenominator

@@ -82,7 +82,6 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
         ) {
             val bitmap = Bitmap.createBitmap(1000, 1000, Bitmap.Config.ARGB_8888)
             val seed = System.currentTimeMillis()
-            startForeground(NOTIFICATION_ID_RETRIEVE, getNotification(0))
             Timber.d("qgeck Dropbox media retrieve service started")
             val db = DB.getInstance(applicationContext)
             if (intent.getBooleanExtra(KEY_CLEAR, false)) {
@@ -93,10 +92,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
             Timber.d("qgeck rootPath: $rootPath")
 
             sendBroadcast(MainActivity.createProgressIntent(0))
-            startForeground(
-                NOTIFICATION_ID_RETRIEVE,
-                getNotification(0)
-            )
+            startForeground(NOTIFICATION_ID_RETRIEVE, getNotification(null, 0))
 
             retrieveAudioFilePaths(
                 this,
@@ -151,7 +147,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
             .getMimeTypeFromExtension(this.getExtension())
             ?.contains("audio") == true
 
-    private fun getNotification(progress: Int): Notification =
+    private fun getNotification(path: String?, progress: Int): Notification =
         getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER)
             .setSmallIcon(R.drawable.ic_notification_sync)
             .setOngoing(true)
@@ -174,10 +170,13 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
             )
             .setContentTitle(getString(R.string.notification_title_retriever))
             .setContentText(
-                getString(
-                    R.string.notification_text_retriever_dropbox,
-                    progress
-                )
+                path?.let {
+                    getString(
+                        R.string.notification_text_retriever_dropbox_with_path,
+                        progress,
+                        it
+                    )
+                } ?: getString(R.string.notification_text_retriever_dropbox, progress)
             )
             .build()
 
@@ -224,7 +223,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
                         )
                         startForeground(
                             NOTIFICATION_ID_RETRIEVE,
-                            getNotification(filesCount)
+                            getNotification(this.pathDisplay, filesCount)
                         )
                     }
                 }
