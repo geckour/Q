@@ -14,6 +14,8 @@ data class Track(
     val albumArtistId: Long?,
     val mediaId: Long,
     val sourcePath: String,
+    val dropboxPath: String?,
+    val dropboxExpiredAt: Long?,
     val title: String,
     val titleSort: String,
     val composer: String,

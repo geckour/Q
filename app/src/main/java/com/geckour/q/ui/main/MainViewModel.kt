@@ -16,13 +16,10 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
-import com.dropbox.core.DbxRequestConfig
 import com.dropbox.core.android.Auth
-import com.dropbox.core.v2.DbxClientV2
 import com.dropbox.core.v2.files.FolderMetadata
 import com.dropbox.core.v2.files.Metadata
 import com.geckour.q.App
-import com.geckour.q.BuildConfig
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
@@ -44,6 +41,7 @@ import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.dropboxToken
 import com.geckour.q.util.ignoringEnabled
+import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.searchAlbumByFuzzyTitle
 import com.geckour.q.util.searchArtistByFuzzyTitle
 import com.geckour.q.util.searchGenreByFuzzyTitle
@@ -122,9 +120,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
     }
-
-    private val dbxRequestConfig =
-        DbxRequestConfig.newBuilder("qp/${BuildConfig.VERSION_NAME}").build()
 
     init {
         bindPlayer()
@@ -482,12 +477,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     internal fun storeDropboxApiToken() {
         val token = Auth.getOAuth2Token() ?: return
         PreferenceManager.getDefaultSharedPreferences(getApplication()).dropboxToken = token
-        showDropboxFolderChooser(token)
+        showDropboxFolderChooser()
     }
 
-    internal fun showDropboxFolderChooser(token: String, dropboxMetadata: Metadata? = null) =
+    internal fun showDropboxFolderChooser(dropboxMetadata: Metadata? = null) =
         viewModelScope.launch(Dispatchers.IO) {
-            val client = DbxClientV2(dbxRequestConfig, token)
+            val client = getApplication<App>().obtainDbxClient()
             var result = client.files().listFolder(dropboxMetadata?.pathLower.orEmpty())
             while (true) {
                 if (result.hasMore.not()) break

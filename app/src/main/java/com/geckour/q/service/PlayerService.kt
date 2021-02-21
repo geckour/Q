@@ -20,6 +20,7 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.view.KeyEvent
 import androidx.preference.PreferenceManager
+import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.Song
@@ -40,8 +41,11 @@ import com.geckour.q.util.getMediaMetadata
 import com.geckour.q.util.getMediaSource
 import com.geckour.q.util.getPlayerNotification
 import com.geckour.q.util.move
+import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.shuffleByClassType
+import com.geckour.q.util.verifyWithDropbox
 import com.google.android.exoplayer2.DefaultRenderersFactory
+import com.google.android.exoplayer2.ExoPlaybackException
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.exoplayer2.Timeline
@@ -55,6 +59,7 @@ import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
 import com.google.android.exoplayer2.util.EventLogger
 import com.google.android.exoplayer2.util.Util
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -210,7 +215,7 @@ class PlayerService : Service() {
     }
 
     lateinit var mediaSession: MediaSessionCompat
-    private val currentPosition
+    private val currentIndex
         get() = when (player.currentWindowIndex) {
             -1 -> if (source.size > 0) 0 else -1
             else -> player.currentWindowIndex
@@ -218,7 +223,7 @@ class PlayerService : Service() {
     private var lastSong: Song? = null
     private val currentSong: Song?
         get() {
-            val song = queue.getOrNull(currentPosition)
+            val song = queue.getOrNull(currentIndex)
             lastSong = song
             return song
         }
@@ -244,7 +249,7 @@ class PlayerService : Service() {
         override fun onTracksChanged(
             trackGroups: TrackGroupArray, trackSelections: TrackSelectionArray
         ) {
-            onQueueChanged?.invoke(queue, currentPosition, songChanged)
+            onQueueChanged?.invoke(queue, currentIndex, songChanged)
             notificationUpdateJob.cancel()
             notificationUpdateJob = showNotification()
             playbackCountIncreaseJob = increasePlaybackCount()
@@ -259,7 +264,7 @@ class PlayerService : Service() {
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = Unit
 
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
-            onQueueChanged?.invoke(queue, currentPosition, songChanged)
+            onQueueChanged?.invoke(queue, currentIndex, songChanged)
             if (source.size < 1) {
                 destroyNotification()
             }
@@ -276,7 +281,7 @@ class PlayerService : Service() {
                     .build()
             )
 
-            if (currentPosition == source.size - 1 &&
+            if (currentIndex == source.size - 1 &&
                 playbackState == Player.STATE_ENDED
                 && player.repeatMode == Player.REPEAT_MODE_OFF
             ) stop()
@@ -286,6 +291,21 @@ class PlayerService : Service() {
                 notificationUpdateJob = showNotification()
             }
             onPlaybackStateChanged?.invoke(playbackState, playWhenReady)
+        }
+
+        override fun onPlayerError(error: ExoPlaybackException) {
+            super.onPlayerError(error)
+
+            Timber.e(error)
+            FirebaseCrashlytics.getInstance().recordException(error)
+
+            if (error.message?.contains("410") == true) {
+                (queue.getOrNull(requestedPositionCache) ?: currentSong)?.let { song ->
+                    serviceScope.launch {
+                        replace(song.verifyWithDropbox(this@PlayerService, dropboxClient))
+                    }
+                }
+            }
         }
     }
 
@@ -325,6 +345,10 @@ class PlayerService : Service() {
     private val sharedPreferences: SharedPreferences by lazy {
         PreferenceManager.getDefaultSharedPreferences(this)
     }
+
+    private lateinit var dropboxClient: DbxClientV2
+
+    private var requestedPositionCache = -1
 
     override fun onBind(intent: Intent?): IBinder = binder
 
@@ -366,10 +390,14 @@ class PlayerService : Service() {
             )
         )
 
+        player.prepare(source)
+
         registerReceiver(headsetStateReceiver, IntentFilter().apply {
             addAction(SOURCE_ACTION_WIRED_STATE)
             addAction(SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE)
         })
+
+        dropboxClient = obtainDbxClient()
 
         restoreState()
     }
@@ -423,11 +451,14 @@ class PlayerService : Service() {
         this.onDestroyed = listener
     }
 
-    fun submitQueue(queueInfo: QueueInfo, force: Boolean = false) {
-        val needPrepare = source.size == 0
+    fun submitQueue(
+        queueInfo: QueueInfo,
+        playerState: PlayerState? = null,
+        force: Boolean = false
+    ) {
         when (queueInfo.metadata.actionType) {
             InsertActionType.NEXT -> {
-                val position = if (source.size < 1) 0 else currentPosition + 1
+                val position = if (source.size < 1) 0 else currentIndex + 1
 
                 this.queue.addAll(position, queueInfo.queue)
                 source.addMediaSources(position,
@@ -440,7 +471,7 @@ class PlayerService : Service() {
             }
             InsertActionType.OVERRIDE -> override(queueInfo.queue, force)
             InsertActionType.SHUFFLE_NEXT -> {
-                val position = if (source.size < 1) 0 else currentPosition + 1
+                val position = if (source.size < 1) 0 else currentIndex + 1
                 val shuffled = queueInfo.queue.shuffleByClassType(queueInfo.metadata.classType)
 
                 this.queue.addAll(position, shuffled)
@@ -460,7 +491,7 @@ class PlayerService : Service() {
                 override(shuffled, force)
             }
             InsertActionType.SHUFFLE_SIMPLE_NEXT -> {
-                val position = if (source.size < 1) 0 else currentPosition + 1
+                val position = if (source.size < 1) 0 else currentIndex + 1
                 val shuffled = queueInfo.queue.shuffled()
 
                 this.queue.addAll(position, shuffled)
@@ -482,7 +513,14 @@ class PlayerService : Service() {
         }
 
         storeState()
-        if (needPrepare) player.prepare(source)
+
+        serviceScope.launch {
+            val with = queue.mapNotNull { song ->
+                val new = song.verifyWithDropbox(this@PlayerService, dropboxClient)
+                if (song.sourcePath != new.sourcePath) new else null
+            }
+            replace(with, playerState)
+        }
     }
 
     fun swapQueuePosition(from: Int, to: Int) {
@@ -525,7 +563,8 @@ class PlayerService : Service() {
     }
 
     fun play(position: Int) {
-        if (currentPosition != position) forcePosition(position)
+        requestedPositionCache = position
+        if (currentIndex != position) forceIndex(position)
     }
 
     private fun resume() {
@@ -575,7 +614,7 @@ class PlayerService : Service() {
 
     fun stop() {
         pause()
-        forcePosition(0)
+        forceIndex(0)
     }
 
     fun clear(keepCurrentIfPlaying: Boolean = false) {
@@ -583,7 +622,7 @@ class PlayerService : Service() {
             if (keepCurrentIfPlaying &&
                 player.playbackState == Player.STATE_READY &&
                 player.playWhenReady
-            ) currentPosition
+            ) currentIndex
             else source.size
         clear(before)
     }
@@ -614,16 +653,42 @@ class PlayerService : Service() {
     fun override(queue: List<Song>, force: Boolean = false) {
         clear(force.not())
         source.addMediaSources(queue.map { it.getMediaSource(mediaSourceFactory) })
-        if (this.queue.isEmpty()) player.prepare(source)
         this.queue.addAll(queue)
     }
+
+    private suspend fun replace(with: Song) {
+        replace(listOf(with))
+    }
+
+    private suspend fun replace(with: List<Song>, playerState: PlayerState? = null) =
+        withContext(Dispatchers.Main) {
+            if (with.isEmpty()) return@withContext
+
+            pause()
+            if (playerState == null) storeState()
+
+            with.forEach { withSong ->
+                queue.mapIndexed { index, song -> index to song }
+                    .filter { (_, song) -> song.id == withSong.id }
+                    .forEach {
+                        val index = it.first
+
+                        removeQueue(index)
+                        source.addMediaSource(index, withSong.getMediaSource(mediaSourceFactory))
+                        queue.add(index, withSong)
+                    }
+            }
+
+            player.prepare(source)
+            playerState?.set() ?: restoreState()
+        }
 
     fun next() {
         if (player.repeatMode != Player.REPEAT_MODE_OFF) seekToTail()
         else {
             if (player.currentWindowIndex < source.size - 1) {
                 val index = player.currentWindowIndex + 1
-                player.seekToDefaultPosition(index)
+                forceIndex(index)
             } else stop()
         }
     }
@@ -683,7 +748,7 @@ class PlayerService : Service() {
 
     fun headOrPrev() {
         val current = currentSong ?: return
-        if (currentPosition > 0 && player.contentPosition < current.duration / 100) prev()
+        if (currentIndex > 0 && player.contentPosition < current.duration / 100) prev()
         else seekToHead()
     }
 
@@ -695,7 +760,6 @@ class PlayerService : Service() {
 
     fun seek(playbackPosition: Long) {
         player.seekTo(playbackPosition)
-        val current = currentSong ?: return
         serviceScope.launch(Dispatchers.Main) {
             onPlaybackPositionChanged?.invoke(playbackPosition)
         }
@@ -800,16 +864,17 @@ class PlayerService : Service() {
         val insertQueue = QueueInfo(
             QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.SONG), queue
         )
-        submitQueue(insertQueue, true)
-        forcePosition(currentPosition)
+        submitQueue(insertQueue, this, true)
+        forceIndex(currentIndex)
         seek(progress)
         player.repeatMode = repeatMode
     }
 
-    private fun forcePosition(windowIndex: Int) {
+    private fun forceIndex(windowIndex: Int) {
         val index = player.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
         player.seekToDefaultPosition(index + windowIndex)
         seek(0)
+        requestedPositionCache = -1
     }
 
     private fun increasePlaybackCount() = serviceScope.launch(Dispatchers.Main) {
@@ -826,10 +891,10 @@ class PlayerService : Service() {
             if (equalizer == null) {
                 try {
                     equalizer = Equalizer(0, audioSessionId).apply {
-                        val params = EqualizerParams(bandLevelRange.let {
-                            it.first().toInt() to it.last().toInt()
-                        }, (0 until numberOfBands).map {
-                            val short = it.toShort()
+                        val params = EqualizerParams(bandLevelRange.let { range ->
+                            range.first().toInt() to range.last().toInt()
+                        }, (0 until numberOfBands).map { index ->
+                            val short = index.toShort()
                             EqualizerParams.Band(
                                 getBandFreqRange(short).let { it.first() to it.last() },
                                 getCenterFreq(short)
@@ -879,7 +944,7 @@ class PlayerService : Service() {
         val state = PlayerState(
             player.playWhenReady,
             queue,
-            currentPosition,
+            currentIndex,
             player.currentPosition,
             player.repeatMode
         )
@@ -896,7 +961,7 @@ class PlayerService : Service() {
 
     fun publishStatus() {
         serviceScope.launch(Dispatchers.Main) {
-            onQueueChanged?.invoke(queue, currentPosition, false)
+            onQueueChanged?.invoke(queue, currentIndex, false)
             currentSong?.apply {
                 onPlaybackPositionChanged?.invoke(player.currentPosition)
             }

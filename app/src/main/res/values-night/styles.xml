@@ -33,5 +33,6 @@
         <item name="colorButtonNormal">@color/colorStrong</item>
         <item name="colorDivider">@color/colorDividerInverse</item>
         <item name="colorEqualizerScale">@color/colorEqualizerScaleInverse</item>
+        <item name="colorCoverInactive">@color/colorCoverInactiveInverse</item>
     </style>
 </resources>

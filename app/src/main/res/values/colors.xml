@@ -24,6 +24,8 @@
     <color name="colorOptionInverse">#c0f5f3f1</color>
     <color name="colorWeakAccent">#50f095ad</color>
     <color name="colorWeakAccentInverse">#50a6bbbe</color>
+    <color name="colorCoverInactive">#a0ffffff</color>
+    <color name="colorCoverInactiveInverse">#a0202020</color>
 
     <color name="colorBackground">#ffffff</color>
     <color name="colorBackgroundInverse">#202020</color>

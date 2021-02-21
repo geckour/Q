@@ -253,6 +253,6 @@ class LocalMediaRetrieveService : IntentService(NAME) {
                 if (it.track.lastModified >= lastModified) return@runBlocking it.track.id
             }
 
-            file.storeMediaInfo(context, trackPath, trackMediaId, lastModified)
+            file.storeMediaInfo(context, trackPath, trackMediaId, null, null, lastModified)
         }
 }

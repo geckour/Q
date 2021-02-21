@@ -6,6 +6,7 @@ import android.content.SharedPreferences
 import androidx.annotation.IdRes
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.edit
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.google.gson.Gson
@@ -21,7 +22,7 @@ sealed class Pref<T>(protected val key: String) : ReadWriteProperty<SharedPrefer
             thisRef.getBoolean(key, defaultValue)
 
         override fun setValue(thisRef: SharedPreferences, property: KProperty<*>, value: Boolean) {
-            thisRef.edit().putBoolean(key, value).apply()
+            thisRef.edit(true) { putBoolean(key, value) }
         }
     }
 
@@ -31,7 +32,7 @@ sealed class Pref<T>(protected val key: String) : ReadWriteProperty<SharedPrefer
             thisRef.getInt(key, defaultValue)
 
         override fun setValue(thisRef: SharedPreferences, property: KProperty<*>, value: Int) {
-            thisRef.edit().putInt(key, value).apply()
+            thisRef.edit(true) { putInt(key, value) }
         }
     }
 
@@ -57,9 +58,9 @@ sealed class Pref<T>(protected val key: String) : ReadWriteProperty<SharedPrefer
 
         override fun setValue(thisRef: SharedPreferences, property: KProperty<*>, value: T) {
             when (defaultValue) {
-                is Content.Screen -> thisRef.edit().putInt(
-                    key, screens.indexOf<Content.Screen>(value as Content.Screen)
-                ).apply()
+                is Content.Screen -> thisRef.edit(true) {
+                    putInt(key, screens.indexOf<Content.Screen>(value as Content.Screen))
+                }
                 else -> throw IllegalStateException()
             }
         }
@@ -85,7 +86,9 @@ sealed class Pref<T>(protected val key: String) : ReadWriteProperty<SharedPrefer
             } ?: defaultValue
 
         override fun setValue(thisRef: SharedPreferences, property: KProperty<*>, value: T) {
-            thisRef.edit().putString(key, Gson().toJson(value)).apply()
+            thisRef.edit(true) {
+                putString(key, Gson().toJson(value))
+            }
         }
     }
 }

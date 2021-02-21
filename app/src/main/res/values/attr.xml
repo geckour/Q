@@ -21,5 +21,6 @@
         <attr name="colorButtonNormal" format="color" />
         <attr name="colorDivider" format="color" />
         <attr name="colorEqualizerScale" format="color" />
+        <attr name="colorCoverInactive" format="color" />
     </declare-styleable>
 </resources>

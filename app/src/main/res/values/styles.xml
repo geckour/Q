@@ -34,6 +34,7 @@
         <item name="colorButtonNormal">@color/colorPrimary</item>
         <item name="colorDivider">@color/colorDivider</item>
         <item name="colorEqualizerScale">@color/colorEqualizerScale</item>
+        <item name="colorCoverInactive">@color/colorCoverInactive</item>
     </style>
 
     <style name="SearchStyle" parent="AppTheme">

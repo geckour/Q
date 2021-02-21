@@ -11,23 +11,21 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.webkit.MimeTypeMap
-import androidx.preference.PreferenceManager
-import com.dropbox.core.DbxRequestConfig
 import com.dropbox.core.RateLimitException
 import com.dropbox.core.v2.DbxClientV2
 import com.dropbox.core.v2.files.FileMetadata
 import com.dropbox.core.v2.files.FolderMetadata
 import com.dropbox.core.v2.files.Metadata
 import com.geckour.q.App
-import com.geckour.q.BuildConfig
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.ui.main.MainActivity
+import com.geckour.q.util.DROPBOX_EXPIRES_IN
 import com.geckour.q.util.QNotificationChannel
-import com.geckour.q.util.dropboxToken
 import com.geckour.q.util.getExtension
 import com.geckour.q.util.getNotificationBuilder
+import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.saveTempAudioFile
 import kotlinx.coroutines.runBlocking
 import timber.log.Timber
@@ -68,19 +66,12 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
 
     private var expired = false
 
-    private val dbxRequestConfig =
-        DbxRequestConfig.newBuilder("qp/${BuildConfig.VERSION_NAME}").build()
-
-    private lateinit var token: String
-
     private var filesCount = 0
 
     override fun onCreate() {
         super.onCreate()
 
         registerReceiver(receiver, IntentFilter(ACTION_CANCEL))
-
-        token = PreferenceManager.getDefaultSharedPreferences(this).dropboxToken
     }
 
     override fun onHandleIntent(intent: Intent?) {
@@ -111,7 +102,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
                 this,
                 db,
                 rootPath,
-                DbxClientV2(dbxRequestConfig, token),
+                obtainDbxClient(),
                 seed,
                 bitmap
             )
@@ -241,21 +232,20 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
         dropboxMetadata: FileMetadata
     ): Long =
         runBlocking {
-            val existingUrl = client.sharing()
-                .listSharedLinksBuilder()
-                .withPath(dropboxMetadata.pathLower)
-                .start()
-                .links
-                .maxByOrNull { it.expires?.time ?: 0 }
-                ?.url
-            val url = (existingUrl ?: client.sharing()
-                .createSharedLinkWithSettings(dropboxMetadata.pathLower)
-                .url).replace("://www", "://dl")
+            val currentTime = System.currentTimeMillis()
+            val url = client.files().getTemporaryLink(dropboxMetadata.pathLower).link
 
             db.trackDao().getBySourcePath(url)?.track?.let {
                 if (it.lastModified >= dropboxMetadata.serverModified.time) it.id
                 else null
             } ?: client.saveTempAudioFile(context, dropboxMetadata.pathLower)
-                .storeMediaInfo(context, url, null, dropboxMetadata.serverModified.time)
+                .storeMediaInfo(
+                    context,
+                    url,
+                    null,
+                    dropboxMetadata.pathLower,
+                    currentTime + DROPBOX_EXPIRES_IN,
+                    dropboxMetadata.serverModified.time
+                )
         }
 }

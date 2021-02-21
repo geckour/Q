@@ -51,6 +51,8 @@ import kotlin.math.min
 
 const val UNKNOWN: String = "UNKNOWN"
 
+const val DROPBOX_EXPIRES_IN = 14400000L
+
 enum class InsertActionType {
     NEXT, LAST, OVERRIDE, SHUFFLE_NEXT, SHUFFLE_LAST, SHUFFLE_OVERRIDE, SHUFFLE_SIMPLE_NEXT, SHUFFLE_SIMPLE_LAST, SHUFFLE_SIMPLE_OVERRIDE
 }
@@ -60,7 +62,7 @@ enum class ShuffleActionType {
 }
 
 enum class OrientedClassType {
-    ARTIST, ALBUM, SONG, GENRE, PLAYLIST, DROPBOX
+    ARTIST, ALBUM, SONG, GENRE, PLAYLIST
 }
 
 enum class PlayerControlCommand {
@@ -123,6 +125,8 @@ fun JoinedTrack.toSong(
         genreId,
         playlistId,
         track.sourcePath,
+        track.dropboxPath,
+        track.dropboxExpiredAt,
         BoolConverter().toBoolean(track.ignored)
     )
 }
@@ -635,6 +639,41 @@ suspend fun updateFileMetadata(
     }
     audioFile?.let { AudioFileIO.write(it) }
 }
+
+/**
+ * @return First value of `Pair` is the old (passed) sourcePath.
+ */
+suspend fun Song.verifyWithDropbox(
+    context: Context,
+    client: DbxClientV2,
+    force: Boolean = false
+): Song =
+    withContext(Dispatchers.IO) {
+        dropboxPath ?: return@withContext this@verifyWithDropbox
+
+        if (force || ((dropboxExpiredAt ?: 0) <= System.currentTimeMillis())) {
+            val currentTime = System.currentTimeMillis()
+            val url = client.files().getTemporaryLink(dropboxPath).link
+            val expiredAt = currentTime + DROPBOX_EXPIRES_IN
+
+            val trackDao = DB.getInstance(context).trackDao()
+            trackDao.get(id)?.let { joinedTrack ->
+                trackDao.update(
+                    joinedTrack.track.copy(
+                        sourcePath = url,
+                        dropboxExpiredAt = expiredAt
+                    )
+                )
+            }
+
+            return@withContext copy(
+                sourcePath = url,
+                dropboxExpiredAt = expiredAt
+            )
+        }
+
+        return@withContext this@verifyWithDropbox
+    }
 
 private fun Bitmap.toByteArray(): ByteArray =
     ByteArrayOutputStream().apply { compress(Bitmap.CompressFormat.PNG, 100, this) }

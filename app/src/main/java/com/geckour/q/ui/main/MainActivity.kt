@@ -154,7 +154,7 @@ class MainActivity : AppCompatActivity() {
                     viewModel.isDropboxAuthOngoing = true
                     Auth.startOAuth2Authentication(this, BuildConfig.DROPBOX_APP_KEY)
                 } else {
-                    viewModel.showDropboxFolderChooser(token)
+                    viewModel.showDropboxFolderChooser()
                 }
                 null
             }
@@ -211,7 +211,6 @@ class MainActivity : AppCompatActivity() {
                 velocityX: Float,
                 velocityY: Float
             ): Boolean {
-                Timber.d("qgeck velocity x: ${abs(velocityX)}, velocity y: ${abs(velocityY)}")
                 return if (abs(velocityX) > abs(velocityY)) {
                     binding.drawerLayout.apply {
                         if (velocityX > 0) openDrawer(GravityCompat.START)
@@ -407,7 +406,7 @@ class MainActivity : AppCompatActivity() {
                 DropboxChooserDialog(
                     this@MainActivity,
                     onClickItem = { metadata ->
-                        viewModel.showDropboxFolderChooser(sharedPreferences.dropboxToken, metadata)
+                        viewModel.showDropboxFolderChooser(metadata)
                     },
                     onChoose = { path ->
                         retrieveDropboxMedia(path)

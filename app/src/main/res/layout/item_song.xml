@@ -17,8 +17,8 @@
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        app:backgroundAttr="@{data.nowPlaying ? R.attr.colorWeakAccent : R.attr.colorTransparent}"
-        android:foreground="?android:attr/selectableItemBackground">
+        android:background="?android:attr/selectableItemBackground"
+        app:foregroundAttr="@{data.nowPlaying ? R.attr.colorWeakAccent : R.attr.colorTransparent}">
 
         <ImageView
             android:layout_width="0dp"
@@ -26,21 +26,22 @@
             android:padding="2dp"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_spectrum"
-            android:tint="?attr/colorAccent"
             android:visibility="@{data.nowPlaying ? View.VISIBLE : View.GONE}"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/thumb"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toTopOf="parent" />
+            app:layout_constraintTop_toTopOf="parent"
+            app:tint="?attr/colorAccent" />
 
         <ImageView
             android:id="@+id/thumb"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:layout_marginBottom="8dp"
             android:layout_marginStart="16dp"
             android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
             android:scaleType="fitCenter"
+            app:foregroundAttr="@{data.ignored ? R.attr.colorCoverInactive : R.attr.colorTransparent}"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
@@ -50,37 +51,37 @@
             android:id="@+id/text_song"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="2dp"
-            android:layout_marginEnd="12dp"
             android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:layout_marginBottom="2dp"
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@{data.title}"
-            android:textColor="?attr/colorTextPrimary"
             android:textSize="16sp"
             app:layout_constraintBottom_toTopOf="@id/text_artist_and_album"
             app:layout_constraintEnd_toStartOf="@id/barrier_right"
             app:layout_constraintStart_toEndOf="@id/thumb"
             app:layout_constraintTop_toTopOf="@id/thumb"
             app:layout_constraintVertical_chainStyle="packed"
+            app:textColorAttr="@{data.ignored ? R.attr.colorInactive : R.attr.colorTextPrimary}"
             tools:text="曲タイトル" />
 
         <TextView
             android:id="@+id/text_artist_and_album"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="12dp"
             android:layout_marginStart="12dp"
             android:layout_marginTop="2dp"
+            android:layout_marginEnd="12dp"
             android:ellipsize="end"
             android:maxLines="1"
             android:text="@{String.format(@string/song_item_artist_and_album, data.artist.title, data.album.title)}"
-            android:textColor="?attr/colorTextPrimary"
             android:textSize="12sp"
             app:layout_constraintBottom_toBottomOf="@id/thumb"
             app:layout_constraintEnd_toStartOf="@id/barrier_right"
             app:layout_constraintStart_toEndOf="@id/thumb"
             app:layout_constraintTop_toBottomOf="@id/text_song"
+            app:textColorAttr="@{data.ignored ? R.attr.colorInactive : R.attr.colorTextPrimary}"
             tools:text="アーティスト名" />
 
         <androidx.constraintlayout.widget.Barrier
@@ -99,6 +100,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/option"
+            app:textColorAttr="@{data.ignored ? R.attr.colorInactive : R.attr.colorTextPrimary}"
             tools:text="03:52" />
 
         <ImageView
@@ -109,11 +111,11 @@
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:padding="6dp"
             android:src="@drawable/ic_remove"
-            android:tint="?attr/colorButtonNormal"
             android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent"
+            app:tint="?attr/colorButtonNormal"
             tools:visibility="visible" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

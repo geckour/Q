@@ -13,7 +13,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
-import org.jaudiotagger.tag.Tag
 import java.io.File
 
 internal const val NOTIFICATION_ID_RETRIEVE = 300
@@ -25,6 +24,8 @@ internal suspend fun File.storeMediaInfo(
     context: Context,
     trackPath: String,
     trackMediaId: Long?,
+    dropboxPath: String?,
+    dropboxExpiredAt: Long?,
     lastModified: Long
 ): Long = withContext(Dispatchers.IO) {
     val db = DB.getInstance(context)
@@ -85,55 +86,57 @@ internal suspend fun File.storeMediaInfo(
         ?: tag.artworkList.lastOrNull()?.binaryData?.storeArtwork(context)
 
     val artist = Artist(
-        0,
-        artistTitle ?: UNKNOWN,
-        artistTitleSort ?: UNKNOWN,
-        0,
-        duration,
-        artworkUriString ?: cachedArtist?.artworkUriString
+        id = 0,
+        title = artistTitle ?: UNKNOWN,
+        titleSort = artistTitleSort ?: UNKNOWN,
+        playbackCount = 0,
+        totalDuration = duration,
+        artworkUriString = artworkUriString ?: cachedArtist?.artworkUriString
     )
     val artistId = db.artistDao().upsert(artist, pastSongDuration)
     val albumArtistId =
         if (albumArtistTitle != null && albumArtistTitleSort != null) {
             val albumArtist = Artist(
-                0,
-                albumArtistTitle,
-                albumArtistTitleSort,
-                0,
-                duration,
-                artworkUriString ?: cachedAlbumArtist?.artworkUriString
+                id = 0,
+                title = albumArtistTitle,
+                titleSort = albumArtistTitleSort,
+                playbackCount = 0,
+                totalDuration = duration,
+                artworkUriString = artworkUriString ?: cachedAlbumArtist?.artworkUriString
             )
             db.artistDao().upsert(albumArtist, pastSongDuration)
         } else null
 
     val album = Album(
-        0,
-        albumArtistId ?: artistId,
-        albumTitle ?: UNKNOWN,
-        albumTitleSort ?: UNKNOWN,
-        artworkUriString,
-        albumArtistId != null,
-        0,
-        duration
+        id = 0,
+        artistId = albumArtistId ?: artistId,
+        title = albumTitle ?: UNKNOWN,
+        titleSort = albumTitleSort ?: UNKNOWN,
+        artworkUriString = artworkUriString,
+        hasAlbumArtist = albumArtistId != null,
+        playbackCount = 0,
+        totalDuration = duration
     )
     val albumId = db.albumDao().upsert(album, pastSongDuration)
 
     val track = Track(
-        0,
-        lastModified,
-        albumId,
-        artistId,
-        albumArtistId,
-        trackMediaId ?: -1,
-        trackPath,
-        title ?: UNKNOWN,
-        titleSort ?: UNKNOWN,
-        composerTitle ?: UNKNOWN,
-        composerTitleSort ?: UNKNOWN,
-        duration,
-        trackNum,
-        discNum,
-        0
+        id = 0,
+        lastModified = lastModified,
+        albumId = albumId,
+        artistId = artistId,
+        albumArtistId = albumArtistId,
+        mediaId = trackMediaId ?: -1,
+        sourcePath = trackPath,
+        dropboxPath = dropboxPath,
+        dropboxExpiredAt = dropboxExpiredAt,
+        title = title ?: UNKNOWN,
+        titleSort = titleSort ?: UNKNOWN,
+        composer = composerTitle ?: UNKNOWN,
+        composerSort = composerTitleSort ?: UNKNOWN,
+        duration = duration,
+        trackNum = trackNum,
+        discNum = discNum,
+        playbackCount = 0
     )
 
     return@withContext db.trackDao().upsert(track, albumId, artistId, pastSongDuration)

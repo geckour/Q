@@ -313,6 +313,7 @@ class BottomSheetFragment : Fragment() {
                 textTimeRight.text = null
                 textTimeTotal.text = null
                 textTimeRemain.text = null
+                seekBar.progress = 0
             }
         }
         viewModel.setArtwork(binding.artwork)
