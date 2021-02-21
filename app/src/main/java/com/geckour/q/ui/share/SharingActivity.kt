@@ -11,7 +11,7 @@ import androidx.core.app.ShareCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
-import com.geckour.q.domain.model.Song
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.bundleArtwork
 import com.geckour.q.util.formatPattern
@@ -28,9 +28,9 @@ class SharingActivity : AppCompatActivity() {
         private const val ARGS_KEY_SONG = "args_key_song"
         private const val ARGS_KEY_REQUIRE_UNLOCK = "args_key_require_unlock"
 
-        fun getIntent(context: Context, song: Song, requireUnlock: Boolean = false): Intent =
+        fun getIntent(context: Context, domainTrack: DomainTrack, requireUnlock: Boolean = false): Intent =
             Intent(context, SharingActivity::class.java).apply {
-                putExtra(ARGS_KEY_SONG, song)
+                putExtra(ARGS_KEY_SONG, domainTrack)
                 putExtra(ARGS_KEY_REQUIRE_UNLOCK, requireUnlock)
             }
     }
@@ -49,7 +49,7 @@ class SharingActivity : AppCompatActivity() {
         finish()
     }
 
-    private fun startShare(song: Song, requireUnlock: Boolean) {
+    private fun startShare(domainTrack: DomainTrack, requireUnlock: Boolean) {
         val keyguardManager = try {
             getSystemService(KeyguardManager::class.java)
         } catch (t: Throwable) {
@@ -62,12 +62,12 @@ class SharingActivity : AppCompatActivity() {
 
             lifecycleScope.launch {
                 val sharingText: String =
-                    song.getSharingText(this@SharingActivity, song.album.title)
+                    domainTrack.getSharingText(this@SharingActivity, domainTrack.album.title)
 
                 ShareCompat.IntentBuilder.from(this@SharingActivity)
                     .setChooserTitle(R.string.share_chooser_title).setText(sharingText).also {
-                        if (sharedPreferences.bundleArtwork && song.thumbUriString != null) {
-                            it.setStream(Uri.parse(song.thumbUriString)).setType("image/*")
+                        if (sharedPreferences.bundleArtwork && domainTrack.thumbUriString != null) {
+                            it.setStream(Uri.parse(domainTrack.thumbUriString)).setType("image/*")
                         } else it.setType("text/plain")
                     }.createChooserIntent().apply {
                         PendingIntent.getActivity(
@@ -91,13 +91,13 @@ class SharingActivity : AppCompatActivity() {
         else default
     }
 
-    private fun Intent.getSong(): Song? = getParcelableExtra(ARGS_KEY_SONG)
+    private fun Intent.getSong(): DomainTrack? = getParcelableExtra(ARGS_KEY_SONG)
 }
 
-fun Song.getSharingText(context: Context, albumName: String?): String =
+fun DomainTrack.getSharingText(context: Context, albumName: String?): String =
     context.formatPattern.getSharingText(this, albumName)
 
-fun String.getSharingText(song: Song, albumTitle: String?): String =
+fun String.getSharingText(domainTrack: DomainTrack, albumTitle: String?): String =
     this.splitIncludeDelimiter("''", "'", "TI", "AR", "AL", "\\\\n").let { splitList ->
         val escapes = splitList.mapIndexed { i, s -> Pair(i, s) }.filter { it.second == "'" }
             .apply { if (lastIndex < 0) return@let splitList }
@@ -130,8 +130,8 @@ fun String.getSharingText(song: Song, albumTitle: String?): String =
             else when (it) {
                 "'" -> ""
                 "''" -> "'"
-                "TI" -> song.title
-                "AR" -> song.artist.title
+                "TI" -> domainTrack.title
+                "AR" -> domainTrack.artist.title
                 "AL" -> albumTitle ?: UNKNOWN
                 "\\n" -> "\n"
                 else -> it

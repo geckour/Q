@@ -23,7 +23,7 @@ import androidx.preference.PreferenceManager
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.PlayerState
-import com.geckour.q.domain.model.Song
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.util.EqualizerParams
 import com.geckour.q.util.EqualizerSettings
 import com.geckour.q.util.InsertActionType
@@ -226,7 +226,7 @@ class PlayerService : Service() {
                         FirebaseCrashlytics.getInstance().recordException(error)
 
                         if ((error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode == 410) {
-                            (queue.getOrNull(requestedPositionCache) ?: currentSong)?.let { song ->
+                            (queue.getOrNull(requestedPositionCache) ?: currentDomainTrack)?.let { song ->
                                 serviceScope.launch {
                                     replace(
                                         song.verifyWithDropbox(
@@ -259,20 +259,20 @@ class PlayerService : Service() {
             -1 -> if (source.size > 0) 0 else -1
             else -> player.currentWindowIndex
         }
-    private var lastSong: Song? = null
-    private val currentSong: Song?
+    private var lastDomainTrack: DomainTrack? = null
+    private val currentDomainTrack: DomainTrack?
         get() {
             val song = queue.getOrNull(currentIndex)
-            lastSong = song
+            lastDomainTrack = song
             return song
         }
-    private val songChanged get() = lastSong?.id?.let { it != currentSong?.id } ?: true
+    private val songChanged get() = lastDomainTrack?.id?.let { it != currentDomainTrack?.id } ?: true
 
     private var equalizer: Equalizer? = null
 
-    private val queue = mutableListOf<Song>()
+    private val queue = mutableListOf<DomainTrack>()
     private val cachedQueueOrder = mutableListOf<Long>()
-    private var onQueueChanged: ((List<Song>, Int, Boolean) -> Unit)? = null
+    private var onQueueChanged: ((List<DomainTrack>, Int, Boolean) -> Unit)? = null
     private var onPlaybackStateChanged: ((Int, Boolean) -> Unit)? = null
     private var onPlaybackPositionChanged: ((Long) -> Unit)? = null
     private var onRepeatModeChanged: ((Int) -> Unit)? = null
@@ -444,7 +444,7 @@ class PlayerService : Service() {
         mediaSession.controller?.dispatchMediaButtonEvent(event)
     }
 
-    fun setOnQueueChangedListener(listener: ((songs: List<Song>, position: Int, songChanged: Boolean) -> Unit)?) {
+    fun setOnQueueChangedListener(listener: ((domainTracks: List<DomainTrack>, position: Int, songChanged: Boolean) -> Unit)?) {
         this.onQueueChanged = listener
     }
 
@@ -669,17 +669,17 @@ class PlayerService : Service() {
         storeState()
     }
 
-    fun override(queue: List<Song>, force: Boolean = false) {
+    fun override(queue: List<DomainTrack>, force: Boolean = false) {
         clear(force.not())
         source.addMediaSources(queue.map { it.getMediaSource(mediaSourceFactory) })
         this.queue.addAll(queue)
     }
 
-    private suspend fun replace(with: Song) {
+    private suspend fun replace(with: DomainTrack) {
         replace(listOf(with))
     }
 
-    private suspend fun replace(with: List<Song>, playerState: PlayerState? = null) =
+    private suspend fun replace(with: List<DomainTrack>, playerState: PlayerState? = null) =
         withContext(Dispatchers.Main) {
             if (with.isEmpty()) return@withContext
 
@@ -716,7 +716,7 @@ class PlayerService : Service() {
     }
 
     fun fastForward() {
-        val song = currentSong
+        val song = currentDomainTrack
         if (song != null) {
             seekJob.cancel()
             seekJob = serviceScope.launch {
@@ -734,7 +734,7 @@ class PlayerService : Service() {
     }
 
     fun rewind() {
-        if (currentSong != null) {
+        if (currentDomainTrack != null) {
             seekJob.cancel()
             seekJob = serviceScope.launch {
                 while (true) {
@@ -759,18 +759,18 @@ class PlayerService : Service() {
     }
 
     private fun seekToTail() {
-        currentSong?.duration?.apply { seek(this) }
+        currentDomainTrack?.duration?.apply { seek(this) }
     }
 
     fun headOrPrev() {
-        val current = currentSong ?: return
+        val current = currentDomainTrack ?: return
         if (currentIndex > 0 && player.contentPosition < current.duration / 100) prev()
         else seekToHead()
     }
 
     fun seek(ratio: Float) {
         if (ratio !in 0f..1f) return
-        val current = currentSong ?: return
+        val current = currentDomainTrack ?: return
         seek((current.duration * ratio).toLong())
     }
 
@@ -894,7 +894,7 @@ class PlayerService : Service() {
     }
 
     private fun increasePlaybackCount() = serviceScope.launch(Dispatchers.Main) {
-        currentSong?.let { song ->
+        currentDomainTrack?.let { song ->
             val db = DB.getInstance(this@PlayerService)
             db.trackDao().increasePlaybackCount(song.id)
             db.albumDao().increasePlaybackCount(song.album.id)
@@ -978,7 +978,7 @@ class PlayerService : Service() {
     fun publishStatus() {
         serviceScope.launch(Dispatchers.Main) {
             onQueueChanged?.invoke(queue, currentIndex, false)
-            currentSong?.apply {
+            currentDomainTrack?.apply {
                 onPlaybackPositionChanged?.invoke(player.currentPosition)
             }
             onPlaybackStateChanged?.invoke(player.playbackState, player.playWhenReady)
@@ -991,7 +991,7 @@ class PlayerService : Service() {
     }
 
     private fun showNotification() = serviceScope.launch(Dispatchers.Main) {
-        val song = currentSong ?: return@launch
+        val song = currentDomainTrack ?: return@launch
         mediaSession.setPlaybackState(
             playbackStateCompat.setState(
                 player.playbackState.toPlaybackStateCompat,

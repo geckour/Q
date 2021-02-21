@@ -19,7 +19,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentSheetBottomBinding
 import com.geckour.q.domain.model.PlaybackButton
-import com.geckour.q.domain.model.Song
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.ui.sheet.BottomSheetViewModel.Companion.PREF_KEY_SHOW_LOCK_TOUCH_QUEUE
@@ -250,7 +250,7 @@ class BottomSheetFragment : Fragment() {
         viewModel.showCurrentRemain.observe(viewLifecycleOwner) {
             it ?: return@observe
             sharedPreferences.showCurrentRemain = it
-            val song = viewModel.currentSong ?: return@observe
+            val song = viewModel.currentDomainTrack ?: return@observe
             val ratio = binding.seekBar.progress / binding.seekBar.max.toFloat()
             val elapsedTime = (song.duration * ratio).toLong()
             setTimeRightText(song, elapsedTime)
@@ -285,7 +285,7 @@ class BottomSheetFragment : Fragment() {
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun onQueueChanged(queue: List<Song>, position: Int, songChanged: Boolean) {
+    private fun onQueueChanged(queue: List<DomainTrack>, position: Int, songChanged: Boolean) {
         adapter.setNowPlayingPosition(position, queue)
         viewModel.currentQueue = queue
         viewModel.onNewPosition(position)
@@ -305,7 +305,7 @@ class BottomSheetFragment : Fragment() {
             onPlaybackPositionChanged(0)
         }
 
-        val noCurrentSong = viewModel.currentSong == null
+        val noCurrentSong = viewModel.currentDomainTrack == null
         binding.seekBar.setOnTouchListener { _, _ -> noCurrentSong }
         if (noCurrentSong) {
             with(binding) {
@@ -328,7 +328,7 @@ class BottomSheetFragment : Fragment() {
     }
 
     private fun onPlaybackPositionChanged(playbackPosition: Long) {
-        val song = viewModel.currentSong ?: return
+        val song = viewModel.currentDomainTrack ?: return
 
         val ratio = (playbackPosition.toFloat() / song.duration)
         binding.seekBar.progress = (binding.seekBar.max * ratio).toInt()
@@ -342,10 +342,10 @@ class BottomSheetFragment : Fragment() {
             getString(R.string.bottom_sheet_time_remain, remain.getTimeString())
     }
 
-    private fun setTimeRightText(song: Song, elapsedTime: Long) {
+    private fun setTimeRightText(domainTrack: DomainTrack, elapsedTime: Long) {
         binding.textTimeRight.text =
-            if (sharedPreferences.showCurrentRemain) "-${(song.duration - elapsedTime).getTimeString()}"
-            else song.durationString
+            if (sharedPreferences.showCurrentRemain) "-${(domainTrack.duration - elapsedTime).getTimeString()}"
+            else domainTrack.durationString
     }
 
     private fun onRepeatModeChanged(mode: Int) {

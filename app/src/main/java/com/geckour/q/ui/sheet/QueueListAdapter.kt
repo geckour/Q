@@ -10,7 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.databinding.ItemSongBinding
-import com.geckour.q.domain.model.Song
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -19,26 +19,26 @@ import com.geckour.q.util.swapped
 import timber.log.Timber
 
 class QueueListAdapter(private val viewModel: MainViewModel) :
-    ListAdapter<Song, QueueListAdapter.ViewHolder>(diffUtil) {
+    ListAdapter<DomainTrack, QueueListAdapter.ViewHolder>(diffUtil) {
 
     companion object {
-        private val diffUtil = object : DiffUtil.ItemCallback<Song>() {
+        private val diffUtil = object : DiffUtil.ItemCallback<DomainTrack>() {
 
-            override fun areItemsTheSame(oldItem: Song, newItem: Song): Boolean =
+            override fun areItemsTheSame(oldItem: DomainTrack, newItem: DomainTrack): Boolean =
                 oldItem.id == newItem.id
 
-            override fun areContentsTheSame(oldItem: Song, newItem: Song): Boolean =
+            override fun areContentsTheSame(oldItem: DomainTrack, newItem: DomainTrack): Boolean =
                 oldItem == newItem
         }
     }
 
     internal fun getItemIds(): List<Long> = currentList.map { it.id }
 
-    internal fun getItemsAfter(start: Int): List<Song> =
+    internal fun getItemsAfter(start: Int): List<DomainTrack> =
         if (start in currentList.indices) currentList.subList(start, currentList.size)
         else emptyList()
 
-    internal fun setNowPlayingPosition(index: Int?, items: List<Song>? = null) {
+    internal fun setNowPlayingPosition(index: Int?, items: List<DomainTrack>? = null) {
         submitList(
             (items ?: currentList).mapIndexed { i, song -> song.copy(nowPlaying = i == index) })
     }
@@ -74,7 +74,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
                         viewModel.selectedAlbum.value = binding.data?.album
                     }
                     R.id.menu_insert_all_next, R.id.menu_insert_all_last, R.id.menu_override_all -> {
-                        viewModel.selectedSong?.apply {
+                        viewModel.selectedDomainTrack?.apply {
                             viewModel.onNewQueue(
                                 listOf(this), when (it.itemId) {
                                     R.id.menu_insert_all_next -> {
@@ -124,13 +124,13 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
             binding.root.setOnLongClickListener { onSongLongTapped(song) }
         }
 
-        private fun onSongSelected(song: Song, position: Int) {
-            viewModel.onRequestNavigate(song)
+        private fun onSongSelected(domainTrack: DomainTrack, position: Int) {
+            viewModel.onRequestNavigate(domainTrack)
             viewModel.onChangeRequestedPositionInQueue(position)
         }
 
-        private fun onSongLongTapped(song: Song): Boolean {
-            viewModel.onRequestNavigate(song)
+        private fun onSongLongTapped(domainTrack: DomainTrack): Boolean {
+            viewModel.onRequestNavigate(domainTrack)
             popupMenu.apply {
                 show()
             }
@@ -138,9 +138,9 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
             return true
         }
 
-        private fun deleteSong(song: Song?) {
-            song ?: return
-            viewModel.onRequestDeleteSong(song)
+        private fun deleteSong(domainTrack: DomainTrack?) {
+            domainTrack ?: return
+            viewModel.onRequestDeleteSong(domainTrack)
         }
 
         fun dismissPopupMenu() {

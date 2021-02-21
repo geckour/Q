@@ -18,7 +18,7 @@ import com.bumptech.glide.Glide
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.databinding.DialogAddQueuePlaylistBinding
-import com.geckour.q.domain.model.Song
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.ui.share.SharingActivity
@@ -44,7 +44,7 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     private val _artworkLongClick = MutableLiveData<Boolean>()
     internal val artworkLongClick: LiveData<Boolean> = _artworkLongClick.distinctUntilChanged()
     internal val toggleSheetState = MutableLiveData<Unit>()
-    internal var currentQueue: List<Song> = emptyList()
+    internal var currentQueue: List<DomainTrack> = emptyList()
     internal var currentPosition: Int = -1
     internal var playbackPosition: Long = 0
     private val _showCurrentRemain = MutableLiveData<Boolean>()
@@ -55,7 +55,7 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     val touchLock: LiveData<Boolean> = _touchLock.distinctUntilChanged()
     val isQueueNotEmpty: Boolean get() = currentQueue.isEmpty().not()
 
-    val currentSong: Song? get() = currentQueue.getOrNull(currentPosition)
+    val currentDomainTrack: DomainTrack? get() = currentQueue.getOrNull(currentPosition)
 
     private var updateArtworkJob: Job = Job()
 
@@ -126,7 +126,7 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
 
     fun onClickShareButton() {
         getApplication<Application>().startActivity(
-            SharingActivity.getIntent(getApplication(), currentSong ?: return)
+            SharingActivity.getIntent(getApplication(), currentDomainTrack ?: return)
         )
     }
 
@@ -142,7 +142,7 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
         currentPosition = position
         SleepTimerService.notifyTrackChanged(
             getApplication(),
-            currentSong ?: return,
+            currentDomainTrack ?: return,
             playbackPosition
         )
     }
@@ -152,17 +152,17 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     internal fun onTransitionToArtist(mainViewModel: MainViewModel) {
-        mainViewModel.selectedArtist.value = currentSong?.artist
+        mainViewModel.selectedArtist.value = currentDomainTrack?.artist
     }
 
     internal fun onTransitionToAlbum(mainViewModel: MainViewModel) {
-        mainViewModel.selectedAlbum.value = currentSong?.album
+        mainViewModel.selectedAlbum.value = currentDomainTrack?.album
     }
 
     internal fun setArtwork(imageView: ImageView) {
         updateArtworkJob.cancel()
         updateArtworkJob = viewModelScope.launch {
-            val drawable = when (val song = currentSong) {
+            val drawable = when (val song = currentDomainTrack) {
                 null -> null
                 else -> {
                     withContext(Dispatchers.IO) {

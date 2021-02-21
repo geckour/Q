@@ -15,7 +15,7 @@ import com.geckour.q.databinding.ItemSearchItemBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.SearchItem
-import com.geckour.q.domain.model.Song
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.applyDefaultSettings
@@ -86,7 +86,7 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
 
         private val trackPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener {
-                val song = (binding.data?.data as? Song)
+                val song = (binding.data?.data as? DomainTrack)
                     ?: return@setOnMenuItemClickListener true
                 viewModel.onNewQueue(
                     listOf(song),
@@ -127,7 +127,7 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
                         (item.data as? Album)?.artworkUriString
                     }
                     SearchItem.SearchItemType.TRACK -> {
-                        (item.data as? Song)?.album?.artworkUriString
+                        (item.data as? DomainTrack)?.album?.artworkUriString
                     }
                     else -> null
                 }

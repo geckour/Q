@@ -12,7 +12,7 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemGenreBinding
 import com.geckour.q.domain.model.Genre
-import com.geckour.q.domain.model.Song
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -38,12 +38,12 @@ class GenreListAdapter(private val viewModel: MainViewModel) :
     internal fun getItems(): List<Genre> = items
 
     internal fun onNewQueue(
-        songs: List<Song>,
+        domainTracks: List<DomainTrack>,
         actionType: InsertActionType,
         classType: OrientedClassType = OrientedClassType.GENRE
     ) {
         viewModel.viewModelScope.launch {
-            viewModel.onNewQueue(songs, actionType, classType)
+            viewModel.onNewQueue(domainTracks, actionType, classType)
         }
     }
 

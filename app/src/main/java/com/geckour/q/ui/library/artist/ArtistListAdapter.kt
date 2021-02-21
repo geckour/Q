@@ -15,7 +15,7 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.databinding.ItemArtistBinding
-import com.geckour.q.domain.model.Song
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.BoolConverter
 import com.geckour.q.util.InsertActionType
@@ -53,12 +53,12 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
     }
 
     internal fun onNewQueue(
-        songs: List<Song>,
+        domainTracks: List<DomainTrack>,
         actionType: InsertActionType,
         classType: OrientedClassType = OrientedClassType.ARTIST
     ) {
         viewModel.viewModelScope.launch {
-            viewModel.onNewQueue(songs, actionType, classType)
+            viewModel.onNewQueue(domainTracks, actionType, classType)
         }
     }
 

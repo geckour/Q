@@ -10,7 +10,7 @@ import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.geckour.q.App
 import com.geckour.q.R
-import com.geckour.q.domain.model.Song
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.util.PlayerControlCommand
 import com.geckour.q.util.QNotificationChannel
@@ -45,14 +45,14 @@ class SleepTimerService : Service() {
 
         fun start(
             context: Context,
-            song: Song,
+            domainTrack: DomainTrack,
             playbackPosition: Long,
             expireTime: Long,
             tolerance: Long
         ) {
             val intent = Intent(context, SleepTimerService::class.java).apply {
                 action = ACTION_START
-                putExtra(KEY_SONG, song)
+                putExtra(KEY_SONG, domainTrack)
                 putExtra(KEY_PLAYBACK_POSITION, playbackPosition)
                 putExtra(KEY_EXPIRE_TIME, expireTime)
                 putExtra(KEY_TOLERANCE, tolerance)
@@ -64,10 +64,10 @@ class SleepTimerService : Service() {
             }
         }
 
-        fun notifyTrackChanged(context: Context, song: Song, playbackPosition: Long) {
+        fun notifyTrackChanged(context: Context, domainTrack: DomainTrack, playbackPosition: Long) {
             val intent = Intent(context, SleepTimerService::class.java).apply {
                 action = ACTION_NOTIFY
-                putExtra(KEY_SONG, song)
+                putExtra(KEY_SONG, domainTrack)
                 putExtra(KEY_PLAYBACK_POSITION, playbackPosition)
             }
             context.startService(intent)
@@ -80,7 +80,7 @@ class SleepTimerService : Service() {
     private var expireTime = -1L
     private var tolerance = 0L
     private var playbackPosition = 0L
-    private var song: Song? = null
+    private var domainTrack: DomainTrack? = null
         set(value) {
             value?.let {
                 endTimeCurrentSong =
@@ -143,7 +143,7 @@ class SleepTimerService : Service() {
                 expireTime = intent.getLongExtra(KEY_EXPIRE_TIME, -1)
                 tolerance = intent.getLongExtra(KEY_TOLERANCE, 0)
                 playbackPosition = intent.getLongExtra(KEY_PLAYBACK_POSITION, 0)
-                song = intent.getParcelableExtra(KEY_SONG)
+                domainTrack = intent.getParcelableExtra(KEY_SONG)
 
                 showNotification(expireTime - System.currentTimeMillis())
                 checkExpiredJob.cancel()
@@ -159,7 +159,7 @@ class SleepTimerService : Service() {
                     return START_STICKY
                 }
                 playbackPosition = intent.getLongExtra(KEY_PLAYBACK_POSITION, 0)
-                song = intent.getParcelableExtra(KEY_SONG)
+                domainTrack = intent.getParcelableExtra(KEY_SONG)
 
                 checkExpiredJob.cancel()
                 checkExpiredJob = checkExpired()
@@ -171,7 +171,7 @@ class SleepTimerService : Service() {
     }
 
     private fun checkExpired() = GlobalScope.launch {
-        song?.let {
+        domainTrack?.let {
             while (isActive) {
                 if (expireTime > -1) {
                     val now = System.currentTimeMillis()

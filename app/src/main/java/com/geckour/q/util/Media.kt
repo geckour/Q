@@ -30,7 +30,7 @@ import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
-import com.geckour.q.domain.model.Song
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.LauncherActivity
 import com.google.android.exoplayer2.source.MediaSource
@@ -78,19 +78,19 @@ data class QueueMetadata(
 )
 
 data class QueueInfo(
-    val metadata: QueueMetadata, val queue: List<Song>
+    val metadata: QueueMetadata, val queue: List<DomainTrack>
 )
 
 suspend fun getSongListFromTrackMediaId(
     db: DB, dbTrackIdList: List<Long>, genreId: Long? = null, playlistId: Long? = null
-): List<Song> = dbTrackIdList.mapNotNull { getSong(db, it, genreId, playlistId) }
+): List<DomainTrack> = dbTrackIdList.mapNotNull { getSong(db, it, genreId, playlistId) }
 
 suspend fun getSongListFromTrackMediaIdWithTrackNum(
     db: DB,
     dbTrackMediaIdWithTrackNumList: List<Pair<Long, Int>>,
     genreId: Long? = null,
     playlistId: Long? = null
-): List<Song> = dbTrackMediaIdWithTrackNumList.mapNotNull {
+): List<DomainTrack> = dbTrackMediaIdWithTrackNumList.mapNotNull {
     getSong(db, it.first, genreId, playlistId, trackNum = it.second)
 }
 
@@ -100,7 +100,7 @@ suspend fun getSong(
     genreId: Long? = null,
     playlistId: Long? = null,
     trackNum: Int? = null
-): Song? = db.trackDao()
+): DomainTrack? = db.trackDao()
     .getByMediaId(trackMediaId)
     ?.toSong(genreId, playlistId, trackNum = trackNum)
 
@@ -108,8 +108,8 @@ fun JoinedTrack.toSong(
     genreId: Long? = null,
     playlistId: Long? = null,
     trackNum: Int? = null
-): Song {
-    return Song(
+): DomainTrack {
+    return DomainTrack(
         track.id,
         track.mediaId,
         album,
@@ -295,13 +295,13 @@ fun getTrackMediaIdByPlaylistId(context: Context, playlistId: Long): List<Pair<L
         return@use trackMediaIdList
     } ?: emptyList()
 
-fun Song.getMediaSource(mediaSourceFactory: ProgressiveMediaSource.Factory): MediaSource =
+fun DomainTrack.getMediaSource(mediaSourceFactory: ProgressiveMediaSource.Factory): MediaSource =
     mediaSourceFactory.createMediaSource(
         if (mediaId < 0) Uri.parse(sourcePath)
         else Uri.fromFile(File(sourcePath))
     )
 
-fun List<Song>.sortedByTrackOrder(): List<Song> =
+fun List<DomainTrack>.sortedByTrackOrder(): List<DomainTrack> =
     this.groupBy { it.album }
         .map {
             it.key to it.value.groupBy { it.discNum }
@@ -312,7 +312,7 @@ fun List<Song>.sortedByTrackOrder(): List<Song> =
         .groupBy { it.first.artistId }
         .flatMap { it.value.flatMap { it.second } }
 
-fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> = when (classType) {
+fun List<DomainTrack>.shuffleByClassType(classType: OrientedClassType): List<DomainTrack> = when (classType) {
     OrientedClassType.ARTIST -> {
         val artists = this.map { it.artist }.distinct().shuffled()
         artists.map { artist ->
@@ -343,7 +343,7 @@ fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> = wh
     else -> emptyList()
 }
 
-suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat =
+suspend fun DomainTrack.getMediaMetadata(context: Context): MediaMetadataCompat =
     MediaMetadataCompat.Builder()
         .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaId.toString())
         .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, sourcePath)
@@ -371,7 +371,7 @@ suspend fun Song.getMediaMetadata(context: Context): MediaMetadataCompat =
         .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
         .build()
 
-fun Song.getTempArtworkUriString(context: Context): String? =
+fun DomainTrack.getTempArtworkUriString(context: Context): String? =
     album.artworkUriString?.let { uriString ->
         val ext = MimeTypeMap.getFileExtensionFromUrl(uriString)
         File(uriString).inputStream().use { inputStream ->
@@ -417,13 +417,13 @@ fun Song.getTempArtworkUriString(context: Context): String? =
 suspend fun getPlayerNotification(
     context: Context,
     sessionToken: MediaSessionCompat.Token,
-    song: Song, playing: Boolean
+    domainTrack: DomainTrack, playing: Boolean
 ): Notification {
     val artwork = try {
         withContext(Dispatchers.IO) {
             Glide.with(context)
                 .asDrawable()
-                .load(song.album.artworkUriString.orDefaultForModel)
+                .load(domainTrack.album.artworkUriString.orDefaultForModel)
                 .applyDefaultSettings()
                 .submit()
                 .get()
@@ -437,9 +437,9 @@ suspend fun getPlayerNotification(
     return context.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER)
         .setSmallIcon(R.drawable.ic_notification_player)
         .setLargeIcon(artwork)
-        .setContentTitle(song.title)
-        .setContentText(song.artist.title)
-        .setSubText(song.album.title)
+        .setContentTitle(domainTrack.title)
+        .setContentText(domainTrack.artist.title)
+        .setSubText(domainTrack.album.title)
         .setOngoing(playing)
         .setStyle(
             androidx.media.app.NotificationCompat.MediaStyle()
@@ -564,7 +564,7 @@ fun InputStream.saveTempAudioFile(context: Context): File {
     return file
 }
 
-suspend fun Song.updateFileMetadata(
+suspend fun DomainTrack.updateFileMetadata(
     context: Context,
     db: DB,
     joinedTrack: JoinedTrack,
@@ -642,11 +642,11 @@ suspend fun Song.updateFileMetadata(
 /**
  * @return First value of `Pair` is the old (passed) sourcePath.
  */
-suspend fun Song.verifyWithDropbox(
+suspend fun DomainTrack.verifyWithDropbox(
     context: Context,
     client: DbxClientV2,
     force: Boolean = false
-): Song =
+): DomainTrack =
     withContext(Dispatchers.IO) {
         dropboxPath ?: return@withContext this@verifyWithDropbox
 

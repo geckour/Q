@@ -7,7 +7,7 @@ import com.geckour.q.util.getTimeString
 import kotlinx.android.parcel.Parcelize
 
 @Parcelize
-data class Song(
+data class DomainTrack(
     val id: Long,
     val mediaId: Long,
     val album: Album,

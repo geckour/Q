@@ -12,7 +12,7 @@ import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.databinding.ItemAlbumBinding
-import com.geckour.q.domain.model.Song
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -52,12 +52,12 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
     }
 
     internal fun onNewQueue(
-        songs: List<Song>,
+        domainTracks: List<DomainTrack>,
         actionType: InsertActionType,
         classType: OrientedClassType = OrientedClassType.ALBUM
     ) {
         viewModel.viewModelScope.launch {
-            viewModel.onNewQueue(songs, actionType, classType)
+            viewModel.onNewQueue(domainTracks, actionType, classType)
         }
     }
 

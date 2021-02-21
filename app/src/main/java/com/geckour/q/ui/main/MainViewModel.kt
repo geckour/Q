@@ -30,7 +30,7 @@ import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.SearchCategory
 import com.geckour.q.domain.model.SearchItem
-import com.geckour.q.domain.model.Song
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.service.LocalMediaRetrieveService
 import com.geckour.q.service.PlayerService
 import com.geckour.q.util.BoolConverter
@@ -64,14 +64,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     internal var isDropboxAuthOngoing = false
 
     internal val currentFragmentId = MutableLiveData<Int>()
-    internal var selectedSong: Song? = null
+    internal var selectedDomainTrack: DomainTrack? = null
     internal val selectedAlbum = MutableLiveData<Album>()
     internal val selectedArtist = MutableLiveData<Artist>()
     internal val selectedGenre = MutableLiveData<Genre>()
     internal val selectedPlaylist = MutableLiveData<Playlist>()
 
     internal val playOrderToRemoveFromPlaylist = MutableLiveData<Int>()
-    internal val songToDelete = MutableLiveData<Song>()
+    internal val songToDelete = MutableLiveData<DomainTrack>()
 
     internal val deletedSongId = MutableLiveData<Long>()
 
@@ -143,9 +143,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         currentOrientedClassType = OrientedClassType.ALBUM
     }
 
-    fun onRequestNavigate(song: Song) {
+    fun onRequestNavigate(domainTrack: DomainTrack) {
         clearSelections()
-        selectedSong = song
+        selectedDomainTrack = domainTrack
         currentOrientedClassType = OrientedClassType.SONG
     }
 
@@ -161,8 +161,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         currentOrientedClassType = OrientedClassType.PLAYLIST
     }
 
-    fun onNewQueue(songs: List<Song>, actionType: InsertActionType, classType: OrientedClassType) {
-        player.value?.submitQueue(QueueInfo(QueueMetadata(actionType, classType), songs))
+    fun onNewQueue(domainTracks: List<DomainTrack>, actionType: InsertActionType, classType: OrientedClassType) {
+        player.value?.submitQueue(QueueInfo(QueueMetadata(actionType, classType), domainTracks))
     }
 
     fun onQueueSwap(from: Int, to: Int) {
@@ -243,25 +243,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         player.value?.rotateRepeatMode()
     }
 
-    fun onEasterTapped(song: Song?) {
+    fun onEasterTapped(domainTrack: DomainTrack?) {
         FirebaseAnalytics.getInstance(getApplication())
             .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
                 putString(FirebaseAnalytics.Param.ITEM_NAME, "Tapped today's song")
             })
 
-        song?.let { onNewQueue(listOf(it), InsertActionType.NEXT, OrientedClassType.SONG) }
+        domainTrack?.let { onNewQueue(listOf(it), InsertActionType.NEXT, OrientedClassType.SONG) }
     }
 
-    fun onEasterLongTapped(song: Song?, anchorView: View): Boolean {
+    fun onEasterLongTapped(domainTrack: DomainTrack?, anchorView: View): Boolean {
         PopupMenu(getApplication(), anchorView, Gravity.BOTTOM).apply {
             setOnMenuItemClickListener { menuItem ->
                 when (menuItem.itemId) {
                     R.id.menu_transition_to_artist -> {
-                        selectedArtist.value = song?.artist
+                        selectedArtist.value = domainTrack?.artist
                         return@setOnMenuItemClickListener true
                     }
                     R.id.menu_transition_to_album -> {
-                        selectedAlbum.value = song?.album
+                        selectedAlbum.value = domainTrack?.album
                         return@setOnMenuItemClickListener true
                     }
                 }
@@ -398,7 +398,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private fun clearSelections() {
         selectedArtist.value = null
         selectedAlbum.value = null
-        selectedSong = null
+        selectedDomainTrack = null
         selectedGenre.value = null
         selectedPlaylist.value = null
     }
@@ -410,13 +410,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    internal fun deleteSongFromDB(song: Song) {
+    internal fun deleteSongFromDB(domainTrack: DomainTrack) {
         viewModelScope.launch {
-            player.value?.removeQueue(song.id)
+            player.value?.removeQueue(domainTrack.id)
 
             DB.getInstance(getApplication())
                 .trackDao()
-                .deleteIncludingRootIfEmpty(getApplication(), song.id)
+                .deleteIncludingRootIfEmpty(getApplication(), domainTrack.id)
         }
     }
 
@@ -445,8 +445,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         loading.postValue(state)
     }
 
-    internal fun onRequestDeleteSong(song: Song) {
-        songToDelete.postValue(song)
+    internal fun onRequestDeleteSong(domainTrack: DomainTrack) {
+        songToDelete.postValue(domainTrack)
     }
 
     internal fun onChangeRequestedPositionInQueue(position: Int) {

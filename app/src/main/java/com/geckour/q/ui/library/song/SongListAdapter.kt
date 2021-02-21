@@ -15,7 +15,7 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Bool
 import com.geckour.q.databinding.ItemSongBinding
-import com.geckour.q.domain.model.Song
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -27,16 +27,16 @@ import timber.log.Timber
 
 class SongListAdapter(
     private val viewModel: MainViewModel, private val classType: OrientedClassType
-) : ListAdapter<Song, SongListAdapter.ViewHolder>(diffCallback) {
+) : ListAdapter<DomainTrack, SongListAdapter.ViewHolder>(diffCallback) {
 
     companion object {
 
-        val diffCallback = object : DiffUtil.ItemCallback<Song>() {
+        val diffCallback = object : DiffUtil.ItemCallback<DomainTrack>() {
 
-            override fun areItemsTheSame(oldItem: Song, newItem: Song): Boolean =
+            override fun areItemsTheSame(oldItem: DomainTrack, newItem: DomainTrack): Boolean =
                 oldItem.id == newItem.id
 
-            override fun areContentsTheSame(oldItem: Song, newItem: Song): Boolean =
+            override fun areContentsTheSame(oldItem: DomainTrack, newItem: DomainTrack): Boolean =
                 oldItem == newItem
         }
     }
@@ -84,7 +84,7 @@ class SongListAdapter(
             setOnMenuItemClickListener {
                 when (it.itemId) {
                     R.id.menu_insert_all_next, R.id.menu_insert_all_last, R.id.menu_override_all -> {
-                        viewModel.selectedSong?.apply {
+                        viewModel.selectedDomainTrack?.apply {
                             viewModel.onNewQueue(
                                 listOf(this), when (it.itemId) {
                                     R.id.menu_insert_all_next -> InsertActionType.NEXT
@@ -114,9 +114,9 @@ class SongListAdapter(
                         viewModel.selectedAlbum.value = binding.data?.album
                     }
                     R.id.menu_ignore -> toggleIgnored()
-                    R.id.menu_delete_song -> deleteSong(viewModel.selectedSong)
+                    R.id.menu_delete_song -> deleteSong(viewModel.selectedDomainTrack)
                     R.id.menu_insert_all_next, R.id.menu_insert_all_last, R.id.menu_override_all -> {
-                        viewModel.selectedSong?.apply {
+                        viewModel.selectedDomainTrack?.apply {
                             viewModel.onNewQueue(
                                 listOf(this), when (it.itemId) {
                                     R.id.menu_insert_all_next -> {
@@ -164,17 +164,17 @@ class SongListAdapter(
             }
         }
 
-        private fun deleteSong(song: Song?) {
-            song ?: return
-            viewModel.onRequestDeleteSong(song)
+        private fun deleteSong(domainTrack: DomainTrack?) {
+            domainTrack ?: return
+            viewModel.onRequestDeleteSong(domainTrack)
         }
 
         private fun removeFromPlaylist(playOrder: Int) {
             viewModel.onRequestRemoveSongFromPlaylist(playOrder)
         }
 
-        private fun onSongSelected(song: Song) {
-            viewModel.onRequestNavigate(song)
+        private fun onSongSelected(domainTrack: DomainTrack) {
+            viewModel.onRequestNavigate(domainTrack)
             shortPopupMenu.show()
             shortPopupMenu.menu.findItem(R.id.menu_ignore).title = binding.root.context.getString(
                 if (binding.data?.ignored == true) R.string.menu_ignore_to_false
@@ -182,8 +182,8 @@ class SongListAdapter(
             )
         }
 
-        private fun onSongLongTapped(song: Song): Boolean {
-            viewModel.onRequestNavigate(song)
+        private fun onSongLongTapped(domainTrack: DomainTrack): Boolean {
+            viewModel.onRequestNavigate(domainTrack)
             longPopupMenu.show()
             longPopupMenu.menu.findItem(R.id.menu_ignore).title = binding.root.context.getString(
                 if (binding.data?.ignored == true) R.string.menu_ignore_to_false

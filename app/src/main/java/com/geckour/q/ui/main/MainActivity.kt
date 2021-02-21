@@ -29,7 +29,7 @@ import com.geckour.q.R
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogSleepBinding
 import com.geckour.q.domain.model.RequestedTransaction
-import com.geckour.q.domain.model.Song
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.service.DropboxMediaRetrieveService
 import com.geckour.q.service.LocalMediaRetrieveService
 import com.geckour.q.service.SleepTimerService
@@ -560,23 +560,23 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun deleteFromDevice(song: Song) {
+    private fun deleteFromDevice(domainTrack: DomainTrack) {
         constructPermissionsRequest(
             Manifest.permission.WRITE_EXTERNAL_STORAGE
         ) {
-            File(song.sourcePath).apply {
+            File(domainTrack.sourcePath).apply {
                 if (this.exists()) {
-                    viewModel.player.value?.removeQueue(song.id)
+                    viewModel.player.value?.removeQueue(domainTrack.id)
                     this.delete()
                 }
             }
             contentResolver.delete(
                 MediaStore.Files.getContentUri("external"),
                 "${MediaStore.Files.FileColumns.DATA}=?",
-                arrayOf(song.sourcePath)
+                arrayOf(domainTrack.sourcePath)
             )
 
-            viewModel.deleteSongFromDB(song)
+            viewModel.deleteSongFromDB(domainTrack)
         }.launch()
     }
 
@@ -620,7 +620,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle(R.string.dialog_title_sleep_timer)
             .setMessage(R.string.dialog_desc_sleep_timer)
             .setPositiveButton(R.string.dialog_ok) { dialog, _ ->
-                bottomSheetViewModel.currentSong?.let {
+                bottomSheetViewModel.currentDomainTrack?.let {
                     val timerValue = binding.timerValue!!
                     val toleranceValue = binding.toleranceValue!!
                     sharedPreferences.sleepTimerTime = timerValue

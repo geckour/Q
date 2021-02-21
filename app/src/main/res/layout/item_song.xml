@@ -11,7 +11,7 @@
 
         <variable
             name="data"
-            type="com.geckour.q.domain.model.Song" />
+            type="com.geckour.q.domain.model.DomainTrack" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout

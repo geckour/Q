@@ -5,14 +5,14 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.geckour.q.data.db.DB
-import com.geckour.q.domain.model.Song
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.util.toSong
 import kotlinx.coroutines.launch
 import java.util.*
 
 class EasterEggViewModel(application: Application) : AndroidViewModel(application) {
 
-    val song = MutableLiveData<Song>()
+    val song = MutableLiveData<DomainTrack>()
 
     init {
         viewModelScope.launch { pickupSong() }
