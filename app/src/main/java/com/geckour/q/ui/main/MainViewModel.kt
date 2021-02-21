@@ -25,12 +25,12 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.databinding.DialogShuffleMenuBinding
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.SearchCategory
 import com.geckour.q.domain.model.SearchItem
-import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.service.LocalMediaRetrieveService
 import com.geckour.q.service.PlayerService
 import com.geckour.q.util.BoolConverter
@@ -161,8 +161,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         currentOrientedClassType = OrientedClassType.PLAYLIST
     }
 
-    fun onNewQueue(domainTracks: List<DomainTrack>, actionType: InsertActionType, classType: OrientedClassType) {
-        player.value?.submitQueue(QueueInfo(QueueMetadata(actionType, classType), domainTracks))
+    fun onNewQueue(
+        domainTracks: List<DomainTrack>,
+        actionType: InsertActionType,
+        classType: OrientedClassType
+    ) {
+        viewModelScope.launch {
+            player.value?.submitQueue(QueueInfo(QueueMetadata(actionType, classType), domainTracks))
+        }
     }
 
     fun onQueueSwap(from: Int, to: Int) {

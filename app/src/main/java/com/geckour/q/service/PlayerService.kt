@@ -22,8 +22,8 @@ import android.view.KeyEvent
 import androidx.preference.PreferenceManager
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.data.db.DB
-import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.util.EqualizerParams
 import com.geckour.q.util.EqualizerSettings
 import com.geckour.q.util.InsertActionType
@@ -226,7 +226,8 @@ class PlayerService : Service() {
                         FirebaseCrashlytics.getInstance().recordException(error)
 
                         if ((error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode == 410) {
-                            (queue.getOrNull(requestedPositionCache) ?: currentDomainTrack)?.let { song ->
+                            (queue.getOrNull(requestedPositionCache)
+                                ?: currentDomainTrack)?.let { song ->
                                 serviceScope.launch {
                                     replace(
                                         song.verifyWithDropbox(
@@ -266,7 +267,8 @@ class PlayerService : Service() {
             lastDomainTrack = song
             return song
         }
-    private val songChanged get() = lastDomainTrack?.id?.let { it != currentDomainTrack?.id } ?: true
+    private val songChanged
+        get() = lastDomainTrack?.id?.let { it != currentDomainTrack?.id } ?: true
 
     private var equalizer: Equalizer? = null
 
@@ -470,76 +472,68 @@ class PlayerService : Service() {
         this.onDestroyed = listener
     }
 
-    fun submitQueue(
+    suspend fun submitQueue(
         queueInfo: QueueInfo,
-        playerState: PlayerState? = null,
         force: Boolean = false
     ) {
+        val queue = queueInfo.queue.map { it.verifyWithDropbox(this, dropboxClient) }
         when (queueInfo.metadata.actionType) {
             InsertActionType.NEXT -> {
                 val position = if (source.size < 1) 0 else currentIndex + 1
 
-                this.queue.addAll(position, queueInfo.queue)
+                this.queue.addAll(position, queue)
                 source.addMediaSources(position,
-                    queueInfo.queue.map { it.getMediaSource(mediaSourceFactory) })
+                    queue.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.LAST -> {
-                this.queue.addAll(this.queue.size, queueInfo.queue)
+                this.queue.addAll(this.queue.size, queue)
                 source.addMediaSources(source.size,
-                    queueInfo.queue.map { it.getMediaSource(mediaSourceFactory) })
+                    queue.map { it.getMediaSource(mediaSourceFactory) })
             }
-            InsertActionType.OVERRIDE -> override(queueInfo.queue, force)
+            InsertActionType.OVERRIDE -> override(queue, force)
             InsertActionType.SHUFFLE_NEXT -> {
                 val position = if (source.size < 1) 0 else currentIndex + 1
-                val shuffled = queueInfo.queue.shuffleByClassType(queueInfo.metadata.classType)
+                val shuffled = queue.shuffleByClassType(queueInfo.metadata.classType)
 
                 this.queue.addAll(position, shuffled)
                 source.addMediaSources(position,
                     shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_LAST -> {
-                val shuffled = queueInfo.queue.shuffleByClassType(queueInfo.metadata.classType)
+                val shuffled = queue.shuffleByClassType(queueInfo.metadata.classType)
 
                 this.queue.addAll(this.queue.size, shuffled)
                 source.addMediaSources(source.size,
                     shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_OVERRIDE -> {
-                val shuffled = queueInfo.queue.shuffleByClassType(queueInfo.metadata.classType)
+                val shuffled = queue.shuffleByClassType(queueInfo.metadata.classType)
 
                 override(shuffled, force)
             }
             InsertActionType.SHUFFLE_SIMPLE_NEXT -> {
                 val position = if (source.size < 1) 0 else currentIndex + 1
-                val shuffled = queueInfo.queue.shuffled()
+                val shuffled = queue.shuffled()
 
                 this.queue.addAll(position, shuffled)
                 source.addMediaSources(position,
                     shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_SIMPLE_LAST -> {
-                val shuffled = queueInfo.queue.shuffled()
+                val shuffled = queue.shuffled()
 
                 this.queue.addAll(this.queue.size, shuffled)
                 source.addMediaSources(source.size,
                     shuffled.map { it.getMediaSource(mediaSourceFactory) })
             }
             InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
-                val shuffled = queueInfo.queue.shuffled()
+                val shuffled = queue.shuffled()
 
                 override(shuffled, force)
             }
         }
 
         storeState()
-
-        serviceScope.launch {
-            val with = queue.mapNotNull { song ->
-                val new = song.verifyWithDropbox(this@PlayerService, dropboxClient)
-                if (song.sourcePath != new.sourcePath) new else null
-            }
-            replace(with, playerState)
-        }
     }
 
     fun swapQueuePosition(from: Int, to: Int) {
@@ -679,11 +673,9 @@ class PlayerService : Service() {
         replace(listOf(with))
     }
 
-    private suspend fun replace(with: List<DomainTrack>, playerState: PlayerState? = null) =
+    private suspend fun replace(with: List<DomainTrack>) =
         withContext(Dispatchers.Main) {
             if (with.isEmpty()) return@withContext
-
-            if (playerState == null) storeState()
 
             with.forEach { withSong ->
                 queue.mapIndexed { index, song -> index to song }
@@ -877,13 +869,15 @@ class PlayerService : Service() {
     }
 
     private fun PlayerState.set() {
-        val insertQueue = QueueInfo(
+        val queueInfo = QueueInfo(
             QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.SONG), queue
         )
-        submitQueue(insertQueue, this, true)
-        forceIndex(currentIndex)
-        seek(progress)
-        player.repeatMode = repeatMode
+        serviceScope.launch(Dispatchers.Main) {
+            submitQueue(queueInfo, true)
+            forceIndex(currentIndex)
+            seek(progress)
+            player.repeatMode = repeatMode
+        }
     }
 
     private fun forceIndex(windowIndex: Int) {
