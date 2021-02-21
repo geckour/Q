@@ -49,14 +49,17 @@ import com.google.android.exoplayer2.ExoPlaybackException
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.exoplayer2.Timeline
+import com.google.android.exoplayer2.analytics.AnalyticsListener
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.audio.AudioListener
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource
+import com.google.android.exoplayer2.source.MediaSourceEventListener
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.source.TrackGroupArray
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
+import com.google.android.exoplayer2.upstream.HttpDataSource
 import com.google.android.exoplayer2.util.EventLogger
 import com.google.android.exoplayer2.util.Util
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -69,6 +72,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.io.IOException
 import kotlin.coroutines.CoroutineContext
 
 class PlayerService : Service() {
@@ -210,7 +214,31 @@ class PlayerService : Service() {
                 })
                 addListener(eventListener)
                 setAudioAttributes(AudioAttributes.Builder().build(), ducking)
-                addAnalyticsListener(EventLogger(trackSelector))
+                addAnalyticsListener(object : EventLogger(trackSelector) {
+                    override fun onLoadError(
+                        eventTime: AnalyticsListener.EventTime,
+                        loadEventInfo: MediaSourceEventListener.LoadEventInfo,
+                        mediaLoadData: MediaSourceEventListener.MediaLoadData,
+                        error: IOException,
+                        wasCanceled: Boolean
+                    ) {
+                        Timber.e(error)
+                        FirebaseCrashlytics.getInstance().recordException(error)
+
+                        if ((error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode == 410) {
+                            (queue.getOrNull(requestedPositionCache) ?: currentSong)?.let { song ->
+                                serviceScope.launch {
+                                    replace(
+                                        song.verifyWithDropbox(
+                                            this@PlayerService,
+                                            dropboxClient
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                })
             }
     }
 
@@ -228,7 +256,6 @@ class PlayerService : Service() {
             return song
         }
     private val songChanged get() = lastSong?.id?.let { it != currentSong?.id } ?: true
-    private val playing get() = player.playbackState == Player.STATE_READY && player.playWhenReady
 
     private var equalizer: Equalizer? = null
 
@@ -298,14 +325,6 @@ class PlayerService : Service() {
 
             Timber.e(error)
             FirebaseCrashlytics.getInstance().recordException(error)
-
-            if (error.message?.contains("410") == true) {
-                (queue.getOrNull(requestedPositionCache) ?: currentSong)?.let { song ->
-                    serviceScope.launch {
-                        replace(song.verifyWithDropbox(this@PlayerService, dropboxClient))
-                    }
-                }
-            }
         }
     }
 
@@ -386,7 +405,8 @@ class PlayerService : Service() {
 
         mediaSourceFactory = ProgressiveMediaSource.Factory(
             DefaultDataSourceFactory(
-                applicationContext, Util.getUserAgent(applicationContext, packageName)
+                applicationContext,
+                Util.getUserAgent(applicationContext, packageName)
             )
         )
 
@@ -664,12 +684,12 @@ class PlayerService : Service() {
         withContext(Dispatchers.Main) {
             if (with.isEmpty()) return@withContext
 
-            pause()
             if (playerState == null) storeState()
 
             with.forEach { withSong ->
                 queue.mapIndexed { index, song -> index to song }
                     .filter { (_, song) -> song.id == withSong.id }
+                    .apply { Timber.d("qgeck target: $this") }
                     .forEach {
                         val index = it.first
 
@@ -678,9 +698,6 @@ class PlayerService : Service() {
                         queue.add(index, withSong)
                     }
             }
-
-            player.prepare(source)
-            playerState?.set() ?: restoreState()
         }
 
     fun next() {
@@ -978,11 +995,16 @@ class PlayerService : Service() {
         val song = currentSong ?: return@launch
         mediaSession.setMetadata(song.getMediaMetadata(this@PlayerService))
         mediaSession.isActive = true
-        getPlayerNotification(this@PlayerService, mediaSession.sessionToken, song, playing).show()
+        getPlayerNotification(
+            this@PlayerService,
+            mediaSession.sessionToken,
+            song,
+            player.isPlaying
+        ).show()
     }
 
     private fun Notification.show() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && playing) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && player.isPlaying) {
             Timber.d("qgeck starting foreground player service")
             startForeground(NOTIFICATION_ID_PLAYER, this)
         } else {
