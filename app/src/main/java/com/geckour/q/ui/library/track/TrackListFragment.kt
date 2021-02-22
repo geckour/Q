@@ -1,4 +1,4 @@
-package com.geckour.q.ui.library.song
+package com.geckour.q.ui.library.track
 
 import android.os.Bundle
 import android.provider.MediaStore
@@ -33,7 +33,7 @@ import com.geckour.q.util.toggleDayNight
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
-class SongListFragment : Fragment() {
+class TrackListFragment : Fragment() {
 
     companion object {
 
@@ -42,27 +42,27 @@ class SongListFragment : Fragment() {
         private const val ARGS_KEY_GENRE = "args_key_genre"
         private const val ARGS_KEY_PLAYLIST = "args_key_playlist"
 
-        fun newInstance(): SongListFragment = SongListFragment().apply {
+        fun newInstance(): TrackListFragment = TrackListFragment().apply {
             arguments = Bundle().apply {
                 putSerializable(ARGS_KEY_CLASS_TYPE, OrientedClassType.SONG)
             }
         }
 
-        fun newInstance(album: Album): SongListFragment = SongListFragment().apply {
+        fun newInstance(album: Album): TrackListFragment = TrackListFragment().apply {
             arguments = Bundle().apply {
                 putSerializable(ARGS_KEY_CLASS_TYPE, OrientedClassType.ALBUM)
                 putParcelable(ARGS_KEY_ALBUM, album)
             }
         }
 
-        fun newInstance(genre: Genre): SongListFragment = SongListFragment().apply {
+        fun newInstance(genre: Genre): TrackListFragment = TrackListFragment().apply {
             arguments = Bundle().apply {
                 putSerializable(ARGS_KEY_CLASS_TYPE, OrientedClassType.GENRE)
                 putParcelable(ARGS_KEY_GENRE, genre)
             }
         }
 
-        fun newInstance(playlist: Playlist): SongListFragment = SongListFragment().apply {
+        fun newInstance(playlist: Playlist): TrackListFragment = TrackListFragment().apply {
             arguments = Bundle().apply {
                 putSerializable(ARGS_KEY_CLASS_TYPE, OrientedClassType.PLAYLIST)
                 putParcelable(ARGS_KEY_PLAYLIST, playlist)
@@ -72,8 +72,8 @@ class SongListFragment : Fragment() {
 
     private val mainViewModel: MainViewModel by activityViewModels()
     private lateinit var binding: FragmentListLibraryBinding
-    private val adapter: SongListAdapter by lazy {
-        SongListAdapter(
+    private val adapter: TrackListAdapter by lazy {
+        TrackListAdapter(
             mainViewModel,
             arguments?.getSerializable(ARGS_KEY_CLASS_TYPE) as? OrientedClassType
                 ?: OrientedClassType.SONG

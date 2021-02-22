@@ -18,12 +18,12 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentSheetBottomBinding
-import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.PlaybackButton
+import com.geckour.q.service.SleepTimerService
 import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.ui.sheet.BottomSheetViewModel.Companion.PREF_KEY_SHOW_LOCK_TOUCH_QUEUE
-import com.geckour.q.service.SleepTimerService
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.observe
 import com.geckour.q.util.shake
@@ -192,27 +192,27 @@ class BottomSheetFragment : Fragment() {
     @SuppressLint("ClickableViewAccessibility")
     private fun observeEvents() {
         mainViewModel.player.observe(viewLifecycleOwner) { player ->
-            player?.apply {
-                setOnQueueChangedListener { songs, position, songChanged ->
-                    onQueueChanged(songs, position, songChanged)
-                }
-                setOnPlaybackStateChangeListener { playbackState, playWhenReady ->
-                    onPlayingChanged(
-                        when (playbackState) {
-                            Player.STATE_READY -> {
-                                playWhenReady
-                            }
-                            else -> false
+            player ?: return@observe
+
+            player.setOnQueueChangedListener { songs, position, songChanged ->
+                onQueueChanged(songs, position, songChanged)
+            }
+            player.setOnPlaybackStateChangeListener { playbackState, playWhenReady ->
+                onPlayingChanged(
+                    when (playbackState) {
+                        Player.STATE_READY -> {
+                            playWhenReady
                         }
-                    )
-                }
-                setOnPlaybackRatioChangedListener {
-                    viewModel.playbackPosition = it
-                    onPlaybackPositionChanged(viewModel.playbackPosition)
-                }
-                setOnRepeatModeChangedListener {
-                    onRepeatModeChanged(it)
-                }
+                        else -> false
+                    }
+                )
+            }
+            player.setOnPlaybackRatioChangedListener {
+                viewModel.playbackPosition = it
+                onPlaybackPositionChanged(viewModel.playbackPosition)
+            }
+            player.setOnRepeatModeChangedListener {
+                onRepeatModeChanged(it)
             }
         }
 

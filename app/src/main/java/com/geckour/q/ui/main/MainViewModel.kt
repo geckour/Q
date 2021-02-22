@@ -96,7 +96,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             if (name == ComponentName(getApplication(), PlayerService::class.java)) {
                 isBoundService = true
-                player.value = (service as? PlayerService.PlayerBinder)?.service
+
+                val playerService = (service as? PlayerService.PlayerBinder)?.service
+
+                playerService?.setOnLoadStateChangedListener { onLoadStateChanged(it) }
+                playerService?.setOnDestroyedListener { onPlayerDestroyed() }
+                playerService?.publishStatus()
+
+                player.value = playerService
             }
         }
 

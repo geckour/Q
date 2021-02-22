@@ -274,6 +274,7 @@ class PlayerService : Service() {
 
     private val queue = mutableListOf<DomainTrack>()
     private val cachedQueueOrder = mutableListOf<Long>()
+    private var onLoadStateChanged: ((Boolean) -> Unit)? = null
     private var onQueueChanged: ((List<DomainTrack>, Int, Boolean) -> Unit)? = null
     private var onPlaybackStateChanged: ((Int, Boolean) -> Unit)? = null
     private var onPlaybackPositionChanged: ((Long) -> Unit)? = null
@@ -451,6 +452,10 @@ class PlayerService : Service() {
         this.onQueueChanged = listener
     }
 
+    fun setOnLoadStateChangedListener(listener: ((loading: Boolean) -> Unit)?) {
+        this.onLoadStateChanged = listener
+    }
+
     fun setOnPlaybackStateChangeListener(
         listener: ((playbackState: Int, playWhenReady: Boolean) -> Unit)?
     ) {
@@ -477,6 +482,8 @@ class PlayerService : Service() {
         queueInfo: QueueInfo,
         force: Boolean = false
     ) {
+        onLoadStateChanged?.invoke(true)
+
         val queue = queueInfo.queue.map { it.verifyWithDropbox(this, dropboxClient) }
         when (queueInfo.metadata.actionType) {
             InsertActionType.NEXT -> {
@@ -533,6 +540,8 @@ class PlayerService : Service() {
                 override(shuffled, force)
             }
         }
+
+        onLoadStateChanged?.invoke(false)
 
         storeState()
     }

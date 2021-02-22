@@ -1,4 +1,4 @@
-package com.geckour.q.ui.library.song
+package com.geckour.q.ui.library.track
 
 import android.content.Context
 import android.view.LayoutInflater
@@ -25,9 +25,9 @@ import com.geckour.q.util.orDefaultForModel
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-class SongListAdapter(
+class TrackListAdapter(
     private val viewModel: MainViewModel, private val classType: OrientedClassType
-) : ListAdapter<DomainTrack, SongListAdapter.ViewHolder>(diffCallback) {
+) : ListAdapter<DomainTrack, TrackListAdapter.ViewHolder>(diffCallback) {
 
     companion object {
 

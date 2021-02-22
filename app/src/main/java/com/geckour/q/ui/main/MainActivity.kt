@@ -39,7 +39,7 @@ import com.geckour.q.ui.library.album.AlbumListFragment
 import com.geckour.q.ui.library.artist.ArtistListFragment
 import com.geckour.q.ui.library.genre.GenreListFragment
 import com.geckour.q.ui.library.playlist.PlaylistListFragment
-import com.geckour.q.ui.library.song.SongListFragment
+import com.geckour.q.ui.library.track.TrackListFragment
 import com.geckour.q.ui.pay.PaymentFragment
 import com.geckour.q.ui.pay.PaymentViewModel
 import com.geckour.q.ui.setting.SettingActivity
@@ -140,7 +140,7 @@ class MainActivity : AppCompatActivity() {
         when (it.itemId) {
             R.id.nav_artist -> ArtistListFragment.newInstance()
             R.id.nav_album -> AlbumListFragment.newInstance()
-            R.id.nav_song -> SongListFragment.newInstance()
+            R.id.nav_song -> TrackListFragment.newInstance()
             R.id.nav_genre -> GenreListFragment.newInstance()
             R.id.nav_playlist -> PlaylistListFragment.newInstance()
             R.id.nav_setting -> {
@@ -328,16 +328,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun observeEvents() {
-        viewModel.player.observe(this) { player ->
-            player ?: return@observe
-
-            player.setOnDestroyedListener {
-                viewModel.onPlayerDestroyed()
-            }
-
-            player.publishStatus()
-        }
-
         viewModel.currentFragmentId.observe(this) { navId ->
             navId ?: return@observe
             binding.navigationView.setCheckedItem(navId)
@@ -345,7 +335,7 @@ class MainActivity : AppCompatActivity() {
                 when (navId) {
                     R.id.nav_artist -> it is ArtistListFragment
                     R.id.nav_album -> it is AlbumListFragment
-                    R.id.nav_song -> it is SongListFragment
+                    R.id.nav_song -> it is TrackListFragment
                     R.id.nav_genre -> it is GenreListFragment
                     R.id.nav_playlist -> it is PlaylistListFragment
                     else -> false
@@ -509,7 +499,7 @@ class MainActivity : AppCompatActivity() {
                     RequestedTransaction.Tag.ALBUM -> {
                         if (album != null) {
                             supportFragmentManager.beginTransaction().replace(
-                                R.id.content_main, SongListFragment.newInstance(
+                                R.id.content_main, TrackListFragment.newInstance(
                                     album
                                 ), album.title
                             ).addToBackStack(
@@ -520,7 +510,7 @@ class MainActivity : AppCompatActivity() {
                     RequestedTransaction.Tag.GENRE -> {
                         if (genre != null) {
                             supportFragmentManager.beginTransaction().replace(
-                                R.id.content_main, SongListFragment.newInstance(
+                                R.id.content_main, TrackListFragment.newInstance(
                                     genre
                                 ), genre.name
                             ).addToBackStack(
@@ -531,7 +521,7 @@ class MainActivity : AppCompatActivity() {
                     RequestedTransaction.Tag.PLAYLIST -> {
                         if (playlist != null) {
                             supportFragmentManager.beginTransaction().replace(
-                                R.id.content_main, SongListFragment.newInstance(
+                                R.id.content_main, TrackListFragment.newInstance(
                                     playlist
                                 ), playlist.name
                             ).addToBackStack(
