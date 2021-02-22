@@ -23,7 +23,7 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.sortedByTrackOrder
-import com.geckour.q.util.toSong
+import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toggleDayNight
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -120,7 +120,7 @@ class ArtistListFragment : Fragment() {
                 val songs = DB.getInstance(context)
                     .trackDao()
                     .getAll()
-                    .map { it.toSong() }
+                    .map { it.toDomainTrack() }
                     .apply { if (sortByTrackOrder) sortedByTrackOrder() }
 
                 adapter.onNewQueue(songs, actionType)

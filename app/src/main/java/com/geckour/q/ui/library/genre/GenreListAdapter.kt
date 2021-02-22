@@ -17,7 +17,7 @@ import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.applyDefaultSettings
-import com.geckour.q.util.getSong
+import com.geckour.q.util.getDomainTrack
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.getTrackMediaIds
 import com.geckour.q.util.orDefaultForModel
@@ -110,7 +110,7 @@ class GenreListAdapter(private val viewModel: MainViewModel) :
                 viewModel.onLoadStateChanged(true)
                 val songs = genre.getTrackMediaIds(context)
                     .mapNotNull {
-                        getSong(DB.getInstance(context), it, genreId = genre.id)
+                        getDomainTrack(DB.getInstance(context), it, genreId = genre.id)
                     }
                 viewModel.onLoadStateChanged(false)
 

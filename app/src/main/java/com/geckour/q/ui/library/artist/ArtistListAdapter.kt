@@ -25,7 +25,7 @@ import com.geckour.q.util.getTimeString
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.sortedByTrackOrder
-import com.geckour.q.util.toSong
+import com.geckour.q.util.toDomainTrack
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -136,7 +136,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
                         db.trackDao().getAllByAlbum(
                             it.album.id,
                             BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                        ).map { it.toSong() }.let {
+                        ).map { it.toDomainTrack() }.let {
                             if (sortByTrackOrder) it.sortedByTrackOrder()
                             else it
                         }

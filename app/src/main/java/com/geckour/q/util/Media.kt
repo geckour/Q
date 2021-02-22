@@ -83,18 +83,18 @@ data class QueueInfo(
 
 suspend fun getSongListFromTrackMediaId(
     db: DB, dbTrackIdList: List<Long>, genreId: Long? = null, playlistId: Long? = null
-): List<DomainTrack> = dbTrackIdList.mapNotNull { getSong(db, it, genreId, playlistId) }
+): List<DomainTrack> = dbTrackIdList.mapNotNull { getDomainTrack(db, it, genreId, playlistId) }
 
-suspend fun getSongListFromTrackMediaIdWithTrackNum(
+suspend fun getDomainTrackListFromTrackMediaIdWithTrackNum(
     db: DB,
     dbTrackMediaIdWithTrackNumList: List<Pair<Long, Int>>,
     genreId: Long? = null,
     playlistId: Long? = null
 ): List<DomainTrack> = dbTrackMediaIdWithTrackNumList.mapNotNull {
-    getSong(db, it.first, genreId, playlistId, trackNum = it.second)
+    getDomainTrack(db, it.first, genreId, playlistId, trackNum = it.second)
 }
 
-suspend fun getSong(
+suspend fun getDomainTrack(
     db: DB,
     trackMediaId: Long,
     genreId: Long? = null,
@@ -102,9 +102,9 @@ suspend fun getSong(
     trackNum: Int? = null
 ): DomainTrack? = db.trackDao()
     .getByMediaId(trackMediaId)
-    ?.toSong(genreId, playlistId, trackNum = trackNum)
+    ?.toDomainTrack(genreId, playlistId, trackNum = trackNum)
 
-fun JoinedTrack.toSong(
+fun JoinedTrack.toDomainTrack(
     genreId: Long? = null,
     playlistId: Long? = null,
     trackNum: Int? = null

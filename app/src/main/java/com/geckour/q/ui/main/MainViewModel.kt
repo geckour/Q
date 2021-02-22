@@ -48,7 +48,7 @@ import com.geckour.q.util.searchGenreByFuzzyTitle
 import com.geckour.q.util.searchPlaylistByFuzzyTitle
 import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.sortedByTrackOrder
-import com.geckour.q.util.toSong
+import com.geckour.q.util.toDomainTrack
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -325,15 +325,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
             val tracks = db.searchTrackByFuzzyTitle(query).take(3).map {
                 SearchItem(
-                    it.album.title,
-                    it.toSong(),
+                    it.track.title,
+                    it.toDomainTrack(),
                     SearchItem.SearchItemType.TRACK
                 )
             }
             if (tracks.isNotEmpty()) {
                 items.add(
                     SearchItem(
-                        context.getString(R.string.search_category_song),
+                        context.getString(R.string.search_category_track),
                         SearchCategory(),
                         SearchItem.SearchItemType.CATEGORY
                     )
@@ -438,7 +438,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     .getAllByAlbum(
                         album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                     )
-                    .map { it.toSong() }
+                    .map { it.toDomainTrack() }
                     .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                     .apply { loading.postValue(false) }
             }

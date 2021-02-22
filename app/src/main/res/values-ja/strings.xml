@@ -149,7 +149,7 @@
 
     <string name="search_category_artist">アーティスト</string>
     <string name="search_category_album">アルバム</string>
-    <string name="search_category_song">曲</string>
+    <string name="search_category_track">曲</string>
     <string name="search_category_playlist">プレイリスト</string>
     <string name="search_category_genre">ジャンル</string>
 

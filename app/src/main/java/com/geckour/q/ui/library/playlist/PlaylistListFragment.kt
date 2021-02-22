@@ -20,7 +20,7 @@ import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.fetchPlaylists
-import com.geckour.q.util.getSong
+import com.geckour.q.util.getDomainTrack
 import com.geckour.q.util.getTrackMediaIds
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
@@ -120,7 +120,7 @@ class PlaylistListFragment : Fragment() {
                 mainViewModel.onLoadStateChanged(true)
                 val songs = adapter.getItems().map { playlist ->
                     playlist.getTrackMediaIds(context).mapNotNull {
-                        getSong(
+                        getDomainTrack(
                             DB.getInstance(context), it.first, playlistId = playlist.id
                         )
                     }

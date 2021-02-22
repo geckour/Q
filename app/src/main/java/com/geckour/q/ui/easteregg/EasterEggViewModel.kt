@@ -6,7 +6,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.DomainTrack
-import com.geckour.q.util.toSong
+import com.geckour.q.util.toDomainTrack
 import kotlinx.coroutines.launch
 import java.util.*
 
@@ -24,6 +24,6 @@ class EasterEggViewModel(application: Application) : AndroidViewModel(applicatio
         val track = DB.getInstance(getApplication()).trackDao()
             .getAll()
             .let { it[Random(seed).nextInt(it.size)] }
-        song.value = track.toSong()
+        song.value = track.toDomainTrack()
     }
 }

@@ -25,7 +25,7 @@ import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.UNKNOWN
-import com.geckour.q.util.getSong
+import com.geckour.q.util.getDomainTrack
 import com.geckour.q.util.getThumb
 import com.geckour.q.util.getTrackMediaIds
 import com.geckour.q.util.getTrackMediaIdsByGenreId
@@ -128,7 +128,7 @@ class GenreListFragment : Fragment() {
                 mainViewModel.onLoadStateChanged(true)
                 val songs = adapter.getItems().map { genre ->
                     genre.getTrackMediaIds(context).mapNotNull {
-                        getSong(DB.getInstance(context), it, genreId = genre.id)
+                        getDomainTrack(DB.getInstance(context), it, genreId = genre.id)
                     }
                 }.apply {
                     mainViewModel.onLoadStateChanged(false)

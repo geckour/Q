@@ -158,7 +158,7 @@
 
     <string name="search_category_artist">Artist</string>
     <string name="search_category_album">Album</string>
-    <string name="search_category_song">Song</string>
+    <string name="search_category_track">Track</string>
     <string name="search_category_playlist">Playlist</string>
     <string name="search_category_genre">Genre</string>
 

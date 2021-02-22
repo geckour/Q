@@ -23,12 +23,12 @@ import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.getSongListFromTrackMediaId
-import com.geckour.q.util.getSongListFromTrackMediaIdWithTrackNum
+import com.geckour.q.util.getDomainTrackListFromTrackMediaIdWithTrackNum
 import com.geckour.q.util.getTrackMediaIds
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.sortedByTrackOrder
-import com.geckour.q.util.toSong
+import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toggleDayNight
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -193,7 +193,7 @@ class SongListFragment : Fragment() {
         lifecycleScope.launch {
             DB.getInstance(requireContext()).trackDao().getAllAsync()
                 .collectLatest { joinedTracks ->
-                    adapter.submitList(joinedTracks.map { it.toSong() })
+                    adapter.submitList(joinedTracks.map { it.toDomainTrack() })
                 }
         }
     }
@@ -203,7 +203,7 @@ class SongListFragment : Fragment() {
             DB.getInstance(requireContext()).trackDao()
                 .getAllByAlbumAsync(album.id)
                 .collectLatest { joinedTracks ->
-                    adapter.submitList(joinedTracks.map { it.toSong() }.sortedByTrackOrder())
+                    adapter.submitList(joinedTracks.map { it.toDomainTrack() }.sortedByTrackOrder())
                 }
         }
     }
@@ -224,7 +224,7 @@ class SongListFragment : Fragment() {
     private fun loadSongsWithPlaylist(playlist: Playlist) {
         lifecycleScope.launch {
             adapter.submitList(
-                getSongListFromTrackMediaIdWithTrackNum(
+                getDomainTrackListFromTrackMediaIdWithTrackNum(
                     DB.getInstance(requireContext()),
                     playlist.getTrackMediaIds(requireContext()),
                     playlistId = playlist.id

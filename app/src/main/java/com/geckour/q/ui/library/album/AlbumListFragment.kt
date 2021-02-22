@@ -26,7 +26,7 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
-import com.geckour.q.util.toSong
+import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toggleDayNight
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -146,7 +146,7 @@ class AlbumListFragment : Fragment() {
                                     )
                                 }
                             }
-                            .map { it.toSong() }
+                            .map { it.toDomainTrack() }
                     }
                 }.apply {
                     mainViewModel.onLoadStateChanged(false)
