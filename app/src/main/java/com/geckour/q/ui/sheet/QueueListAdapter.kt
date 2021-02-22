@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
-import com.geckour.q.databinding.ItemSongBinding
+import com.geckour.q.databinding.ItemTrackBinding
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
@@ -55,13 +55,13 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
-        ViewHolder(ItemSongBinding.inflate(LayoutInflater.from(parent.context), parent, false))
+        ViewHolder(ItemTrackBinding.inflate(LayoutInflater.from(parent.context), parent, false))
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         holder.bind()
     }
 
-    inner class ViewHolder(private val binding: ItemSongBinding) :
+    inner class ViewHolder(private val binding: ItemTrackBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
         private val popupMenu = PopupMenu(binding.root.context, binding.root).apply {

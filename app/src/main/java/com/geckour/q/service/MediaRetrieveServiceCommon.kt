@@ -34,6 +34,10 @@ internal suspend fun File.storeMediaInfo(
     val tag = audioFile.tag ?: throw IllegalArgumentException("No media metadata found.")
     val header = audioFile.audioHeader
 
+    val codec = header.encodingType
+    val bitrate = header.bitRateAsNumber
+    val sampleRate = header.sampleRateAsNumber
+
     val title = tag.getAll(FieldKey.TITLE).lastOrNull { it.isNotBlank() }
     val titleSort =
         (tag.getAll(FieldKey.TITLE_SORT).lastOrNull { it.isNotBlank() }
@@ -121,11 +125,14 @@ internal suspend fun File.storeMediaInfo(
 
     val track = Track(
         id = 0,
+        mediaId = trackMediaId ?: -1,
+        codec = codec,
+        bitrate = bitrate,
+        sampleRate = sampleRate,
         lastModified = lastModified,
         albumId = albumId,
         artistId = artistId,
         albumArtistId = albumArtistId,
-        mediaId = trackMediaId ?: -1,
         sourcePath = trackPath,
         dropboxPath = dropboxPath,
         dropboxExpiredAt = dropboxExpiredAt,

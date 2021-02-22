@@ -8,11 +8,14 @@ import androidx.room.Relation
 @Entity
 data class Track(
     @PrimaryKey(autoGenerate = true) val id: Long,
+    val mediaId: Long,
     val lastModified: Long,
+    val codec: String,
+    val bitrate: Long,
+    val sampleRate: Int,
     val albumId: Long,
     val artistId: Long,
     val albumArtistId: Long?,
-    val mediaId: Long,
     val sourcePath: String,
     val dropboxPath: String?,
     val dropboxExpiredAt: Long?,

@@ -10,6 +10,9 @@ import kotlinx.android.parcel.Parcelize
 data class DomainTrack(
     val id: Long,
     val mediaId: Long,
+    val codec: String,
+    val bitrate: Long,
+    val sampleRate: Float,
     val album: Album,
     val title: String,
     val titleSort: String,

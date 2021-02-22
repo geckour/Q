@@ -48,7 +48,7 @@
             tools:src="@tools:sample/avatars" />
 
         <TextView
-            android:id="@+id/text_song"
+            android:id="@+id/text_track"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:ellipsize="marquee"
@@ -66,7 +66,7 @@
             android:ellipsize="marquee"
             android:marqueeRepeatLimit="marquee_forever"
             android:singleLine="true"
-            android:text="@{viewModel.currentDomainTrack == null ? null : String.format(@string/song_item_artist_and_album, viewModel.currentDomainTrack.artist.title, viewModel.currentDomainTrack.album.title)}"
+            android:text="@{viewModel.currentDomainTrack == null ? null : @string/song_item_artist_and_album(viewModel.currentDomainTrack.artist.title, viewModel.currentDomainTrack.album.title)}"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="10sp"
             tools:text="アーティスト名アーティスト名アーティスト名 - アルバム名" />
@@ -184,6 +184,17 @@
             android:textSize="12sp"
             tools:text="3:12" />
 
+        <TextView
+            android:id="@+id/file_info"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:ellipsize="end"
+            android:lines="1"
+            android:text="@{viewModel.currentDomainTrack == null ? null : @string/track_file_info(viewModel.currentDomainTrack.codec, viewModel.currentDomainTrack.bitrate, viewModel.currentDomainTrack.sampleRate)}"
+            android:textAlignment="viewEnd"
+            android:textSize="10sp"
+            tools:text="Apple Lossless・1091bps・44.1kHz" />
+
         <ImageView
             android:id="@+id/button_scroll_to_current"
             android:layout_width="0dp"
@@ -253,7 +264,7 @@
             android:scrollbarStyle="outsideOverlay"
             android:scrollbars="vertical"
             app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            tools:listitem="@layout/item_song" />
+            tools:listitem="@layout/item_track" />
 
     </androidx.constraintlayout.motion.widget.MotionLayout>
 </layout>

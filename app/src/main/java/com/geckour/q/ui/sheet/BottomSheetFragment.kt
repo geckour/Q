@@ -271,7 +271,7 @@ class BottomSheetFragment : Fragment() {
 
     private fun resetMarquee() {
         viewModel.viewModelScope.launch(Dispatchers.IO) {
-            val views = listOf(binding.textSong, binding.textArtistAndAlbum)
+            val views = listOf(binding.textTrack, binding.textArtistAndAlbum)
             views.forEach { withContext(Dispatchers.Main) { it.isSelected = false } }
             delay(1000)
             views.forEach { withContext(Dispatchers.Main) { it.isSelected = true } }

@@ -48,7 +48,7 @@
             tools:src="@tools:sample/avatars" />
 
         <TextView
-            android:id="@+id/text_song"
+            android:id="@+id/text_track"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="12dp"
@@ -75,14 +75,27 @@
             android:layout_marginEnd="12dp"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="@{String.format(@string/song_item_artist_and_album, data.artist.title, data.album.title)}"
+            android:text="@{@string/song_item_artist_and_album(data.artist.title, data.album.title)}"
             android:textSize="12sp"
             app:layout_constraintBottom_toBottomOf="@id/thumb"
             app:layout_constraintEnd_toStartOf="@id/barrier_right"
             app:layout_constraintStart_toEndOf="@id/thumb"
-            app:layout_constraintTop_toBottomOf="@id/text_song"
+            app:layout_constraintTop_toBottomOf="@id/text_track"
             app:textColorAttr="@{data.ignored ? R.attr.colorInactive : R.attr.colorTextPrimary}"
             tools:text="アーティスト名" />
+
+        <TextView
+            android:id="@+id/file_info"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="8dp"
+            android:text="@{@string/track_file_info(data.codec, data.bitrate, data.sampleRate)}"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toStartOf="@id/barrier_right"
+            app:layout_constraintTop_toBottomOf="@id/text_artist_and_album"
+            app:textColorAttr="@{data.ignored ? R.attr.colorInactive : R.attr.colorTextPrimary}"
+            tools:text="Apple Lossless・1091bps・44.1kHz" />
 
         <androidx.constraintlayout.widget.Barrier
             android:id="@+id/barrier_right"
@@ -91,23 +104,11 @@
             app:barrierDirection="start"
             app:constraint_referenced_ids="option,duration" />
 
-        <TextView
-            android:id="@+id/duration"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"
-            android:textSize="12sp"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/option"
-            app:textColorAttr="@{data.ignored ? R.attr.colorInactive : R.attr.colorTextPrimary}"
-            tools:text="03:52" />
-
         <ImageView
             android:id="@+id/option"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginEnd="6dp"
+            android:layout_marginEnd="8dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
             android:padding="6dp"
             android:src="@drawable/ic_remove"
@@ -117,5 +118,16 @@
             app:layout_constraintTop_toTopOf="parent"
             app:tint="?attr/colorButtonNormal"
             tools:visibility="visible" />
+
+        <TextView
+            android:id="@+id/duration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingHorizontal="8dp"
+            android:textSize="12sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:textColorAttr="@{data.ignored ? R.attr.colorInactive : R.attr.colorTextPrimary}"
+            tools:text="03:52" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

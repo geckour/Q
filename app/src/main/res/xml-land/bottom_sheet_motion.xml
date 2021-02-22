@@ -36,38 +36,46 @@
             android:id="@+id/artwork"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_marginLeft="16dp"
+            android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
             app:layout_constraintDimensionRatio="W,1:1"
-            app:layout_constraintLeft_toLeftOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
         <Constraint
-            android:id="@+id/text_song"
+            android:id="@+id/text_track"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toTopOf="@id/text_artist_and_album"
-            app:layout_constraintLeft_toLeftOf="@id/text_artist_and_album"
-            app:layout_constraintRight_toRightOf="@id/text_artist_and_album" />
+            app:layout_constraintEnd_toEndOf="@id/text_artist_and_album"
+            app:layout_constraintStart_toStartOf="@id/text_artist_and_album" />
 
         <Constraint
             android:id="@+id/text_artist_and_album"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="12dp"
-            android:layout_marginRight="12dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="8dp"
             app:layout_constraintBottom_toTopOf="@id/button_controller_center"
-            app:layout_constraintLeft_toRightOf="@id/artwork"
-            app:layout_constraintRight_toLeftOf="@id/button_share" />
+            app:layout_constraintEnd_toStartOf="@id/file_info"
+            app:layout_constraintStart_toEndOf="@id/artwork" />
+
+        <Constraint
+            android:id="@+id/file_info"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="12dp"
+            app:layout_constraintBaseline_toBaselineOf="@id/text_artist_and_album"
+            app:layout_constraintEnd_toStartOf="@id/button_share" />
 
         <Constraint
             android:id="@+id/button_controller_left"
             android:layout_width="44dp"
             android:layout_height="44dp"
-            android:layout_marginRight="24dp"
+            android:layout_marginEnd="24dp"
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
-            app:layout_constraintRight_toLeftOf="@id/button_controller_center" />
+            app:layout_constraintEnd_toStartOf="@id/button_controller_center" />
 
         <Constraint
             android:id="@+id/button_controller_center"
@@ -75,24 +83,24 @@
             android:layout_height="44dp"
             android:layout_marginBottom="8dp"
             app:layout_constraintBottom_toTopOf="@id/seek_bar"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toRightOf="parent" />
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
 
         <Constraint
             android:id="@+id/button_controller_right"
             android:layout_width="44dp"
             android:layout_height="44dp"
-            android:layout_marginLeft="24dp"
+            android:layout_marginStart="24dp"
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
-            app:layout_constraintLeft_toRightOf="@id/button_controller_center" />
+            app:layout_constraintStart_toEndOf="@id/button_controller_center" />
 
         <Constraint
             android:id="@+id/button_repeat"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginRight="4dp"
+            android:layout_marginEnd="4dp"
             app:layout_constraintBottom_toBottomOf="@id/button_shuffle"
-            app:layout_constraintRight_toLeftOf="@id/button_shuffle"
+            app:layout_constraintEnd_toStartOf="@id/button_shuffle"
             app:layout_constraintTop_toTopOf="@id/button_shuffle" />
 
         <Constraint
@@ -100,17 +108,17 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:layout_marginTop="4dp"
-            android:layout_marginRight="6dp"
+            android:layout_marginEnd="6dp"
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
-            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="@id/button_controller_center" />
 
         <Constraint
             android:id="@+id/button_share"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginRight="4dp"
-            app:layout_constraintRight_toLeftOf="@id/button_toggle_visible_queue"
+            android:layout_marginEnd="4dp"
+            app:layout_constraintEnd_toStartOf="@id/button_toggle_visible_queue"
             app:layout_constraintTop_toTopOf="@id/button_toggle_visible_queue" />
 
         <Constraint
@@ -118,8 +126,8 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:layout_marginTop="4dp"
-            android:layout_marginRight="6dp"
-            app:layout_constraintRight_toRightOf="parent"
+            android:layout_marginEnd="6dp"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
         <Constraint
@@ -127,8 +135,8 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toBottomOf="@id/seek_bar"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toLeftOf="@id/seek_bar"
+            app:layout_constraintEnd_toStartOf="@id/seek_bar"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="@id/seek_bar" />
 
         <Constraint
@@ -146,58 +154,58 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toBottomOf="@id/seek_bar"
-            app:layout_constraintLeft_toRightOf="@id/seek_bar"
-            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/seek_bar"
             app:layout_constraintTop_toTopOf="@id/seek_bar" />
 
         <Constraint
             android:id="@+id/button_scroll_to_current"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginLeft="6dp"
-            app:layout_constraintLeft_toLeftOf="parent"
+            android:layout_marginStart="6dp"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/guide_peek_height" />
 
         <Constraint
             android:id="@+id/text_time_total"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="8dp"
+            android:layout_marginStart="8dp"
             app:layout_constraintBottom_toBottomOf="@id/button_scroll_to_current"
-            app:layout_constraintLeft_toRightOf="@id/button_scroll_to_current"
+            app:layout_constraintStart_toEndOf="@id/button_scroll_to_current"
             app:layout_constraintTop_toTopOf="@id/button_scroll_to_current" />
 
         <Constraint
             android:id="@+id/text_time_remain"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="16dp"
+            android:layout_marginStart="16dp"
             app:layout_constraintBottom_toBottomOf="@id/button_scroll_to_current"
-            app:layout_constraintLeft_toRightOf="@id/text_time_total"
+            app:layout_constraintStart_toEndOf="@id/text_time_total"
             app:layout_constraintTop_toTopOf="@id/button_scroll_to_current" />
 
         <Constraint
             android:id="@+id/button_touch_lock"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginRight="4dp"
-            app:layout_constraintRight_toLeftOf="@id/button_add_queue_to_playlist"
+            android:layout_marginEnd="4dp"
+            app:layout_constraintEnd_toStartOf="@id/button_add_queue_to_playlist"
             app:layout_constraintTop_toBottomOf="@id/guide_peek_height" />
 
         <Constraint
             android:id="@+id/button_add_queue_to_playlist"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginRight="4dp"
-            app:layout_constraintRight_toLeftOf="@id/button_clear_queue"
+            android:layout_marginEnd="4dp"
+            app:layout_constraintEnd_toStartOf="@id/button_clear_queue"
             app:layout_constraintTop_toBottomOf="@id/guide_peek_height" />
 
         <Constraint
             android:id="@+id/button_clear_queue"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginRight="6dp"
-            app:layout_constraintRight_toRightOf="parent"
+            android:layout_marginEnd="6dp"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/guide_peek_height" />
 
         <Constraint
@@ -215,8 +223,8 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             app:layout_constraintBottom_toBottomOf="@id/recycler_view"
-            app:layout_constraintLeft_toLeftOf="@id/recycler_view"
-            app:layout_constraintRight_toRightOf="@id/recycler_view"
+            app:layout_constraintEnd_toEndOf="@id/recycler_view"
+            app:layout_constraintStart_toStartOf="@id/recycler_view"
             app:layout_constraintTop_toTopOf="@id/recycler_view" />
     </ConstraintSet>
 
@@ -240,64 +248,72 @@
             android:id="@id/artwork"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:layout_marginLeft="16dp"
+            android:layout_marginStart="16dp"
             android:layout_marginTop="16dp"
-            android:layout_marginRight="16dp"
+            android:layout_marginEnd="16dp"
             app:layout_constraintDimensionRatio="H,1:1"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toLeftOf="@id/guide_artwork_end"
+            app:layout_constraintEnd_toStartOf="@id/guide_artwork_end"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
         <Constraint
-            android:id="@id/text_song"
+            android:id="@id/text_track"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="12dp"
-            android:layout_marginRight="12dp"
-            app:layout_constraintLeft_toRightOf="@id/artwork"
-            app:layout_constraintRight_toLeftOf="@id/button_share"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            app:layout_constraintEnd_toStartOf="@id/button_share"
+            app:layout_constraintStart_toEndOf="@id/artwork"
             app:layout_constraintTop_toTopOf="@id/artwork" />
 
         <Constraint
             android:id="@id/text_artist_and_album"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            app:layout_constraintLeft_toLeftOf="@id/text_song"
-            app:layout_constraintRight_toRightOf="@id/text_song"
-            app:layout_constraintTop_toBottomOf="@id/text_song" />
+            app:layout_constraintEnd_toEndOf="@id/text_track"
+            app:layout_constraintStart_toStartOf="@id/text_track"
+            app:layout_constraintTop_toBottomOf="@id/text_track" />
+
+        <Constraint
+            android:id="@+id/file_info"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:layout_constraintEnd_toEndOf="@id/text_track"
+            app:layout_constraintStart_toStartOf="@id/text_track"
+            app:layout_constraintTop_toBottomOf="@id/text_artist_and_album" />
 
         <Constraint
             android:id="@id/button_controller_left"
             android:layout_width="44dp"
             android:layout_height="44dp"
-            android:layout_marginRight="24dp"
+            android:layout_marginEnd="24dp"
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
-            app:layout_constraintRight_toLeftOf="@id/button_controller_center" />
+            app:layout_constraintEnd_toStartOf="@id/button_controller_center" />
 
         <Constraint
             android:id="@id/button_controller_center"
             android:layout_width="44dp"
             android:layout_height="44dp"
             android:layout_marginTop="4dp"
-            app:layout_constraintLeft_toRightOf="@id/guide_artwork_end"
-            app:layout_constraintRight_toLeftOf="@id/button_share"
-            app:layout_constraintTop_toBottomOf="@id/text_artist_and_album" />
+            app:layout_constraintEnd_toStartOf="@id/button_share"
+            app:layout_constraintStart_toEndOf="@id/guide_artwork_end"
+            app:layout_constraintTop_toBottomOf="@id/file_info" />
 
         <Constraint
             android:id="@id/button_controller_right"
             android:layout_width="44dp"
             android:layout_height="44dp"
-            android:layout_marginLeft="24dp"
+            android:layout_marginStart="24dp"
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
-            app:layout_constraintLeft_toRightOf="@id/button_controller_center" />
+            app:layout_constraintStart_toEndOf="@id/button_controller_center" />
 
         <Constraint
             android:id="@id/button_repeat"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginRight="4dp"
+            android:layout_marginEnd="4dp"
             app:layout_constraintBottom_toBottomOf="@id/button_shuffle"
-            app:layout_constraintRight_toLeftOf="@id/button_shuffle"
+            app:layout_constraintEnd_toStartOf="@id/button_shuffle"
             app:layout_constraintTop_toTopOf="@id/button_shuffle" />
 
         <Constraint
@@ -305,16 +321,16 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:layout_marginTop="20dp"
-            android:layout_marginRight="6dp"
-            app:layout_constraintRight_toRightOf="parent"
+            android:layout_marginEnd="6dp"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toBottomOf="@id/button_toggle_visible_queue" />
 
         <Constraint
             android:id="@id/button_share"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginRight="4dp"
-            app:layout_constraintRight_toLeftOf="@id/button_toggle_visible_queue"
+            android:layout_marginEnd="4dp"
+            app:layout_constraintEnd_toStartOf="@id/button_toggle_visible_queue"
             app:layout_constraintTop_toTopOf="@id/button_toggle_visible_queue" />
 
         <Constraint
@@ -322,8 +338,8 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:layout_marginTop="4dp"
-            android:layout_marginRight="6dp"
-            app:layout_constraintRight_toRightOf="parent"
+            android:layout_marginEnd="6dp"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
         <Constraint
@@ -331,19 +347,19 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toBottomOf="@id/seek_bar"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toLeftOf="@id/seek_bar"
+            app:layout_constraintEnd_toStartOf="@id/seek_bar"
+            app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="@id/seek_bar" />
 
         <Constraint
             android:id="@id/seek_bar"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="56dp"
+            android:layout_marginStart="56dp"
             android:layout_marginTop="8dp"
-            android:layout_marginRight="56dp"
-            app:layout_constraintLeft_toRightOf="@id/guide_artwork_end"
-            app:layout_constraintRight_toLeftOf="@id/button_share"
+            android:layout_marginEnd="56dp"
+            app:layout_constraintEnd_toStartOf="@id/button_share"
+            app:layout_constraintStart_toEndOf="@id/guide_artwork_end"
             app:layout_constraintTop_toBottomOf="@id/button_controller_center" />
 
         <Constraint
@@ -351,54 +367,54 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             app:layout_constraintBottom_toBottomOf="@id/seek_bar"
-            app:layout_constraintLeft_toRightOf="@id/seek_bar"
-            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/seek_bar"
             app:layout_constraintTop_toTopOf="@id/seek_bar" />
 
         <Constraint
             android:id="@id/button_scroll_to_current"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginLeft="6dp"
+            android:layout_marginStart="6dp"
             android:layout_marginTop="8dp"
-            app:layout_constraintLeft_toRightOf="@id/guide_artwork_end"
+            app:layout_constraintStart_toEndOf="@id/guide_artwork_end"
             app:layout_constraintTop_toBottomOf="@id/seek_bar" />
 
         <Constraint
             android:id="@id/text_time_total"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="8dp"
+            android:layout_marginStart="8dp"
             app:layout_constraintBottom_toBottomOf="@id/button_scroll_to_current"
-            app:layout_constraintLeft_toRightOf="@id/button_scroll_to_current"
+            app:layout_constraintStart_toEndOf="@id/button_scroll_to_current"
             app:layout_constraintTop_toTopOf="@id/button_scroll_to_current" />
 
         <Constraint
             android:id="@id/text_time_remain"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginLeft="16dp"
+            android:layout_marginStart="16dp"
             app:layout_constraintBottom_toBottomOf="@id/button_scroll_to_current"
-            app:layout_constraintLeft_toRightOf="@id/text_time_total"
-            app:layout_constraintRight_toLeftOf="@id/button_touch_lock"
+            app:layout_constraintEnd_toStartOf="@id/button_touch_lock"
+            app:layout_constraintStart_toEndOf="@id/text_time_total"
             app:layout_constraintTop_toTopOf="@id/button_scroll_to_current" />
 
         <Constraint
             android:id="@id/button_touch_lock"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginRight="4dp"
+            android:layout_marginEnd="4dp"
             app:layout_constraintBottom_toBottomOf="@id/button_scroll_to_current"
-            app:layout_constraintRight_toLeftOf="@id/button_add_queue_to_playlist"
+            app:layout_constraintEnd_toStartOf="@id/button_add_queue_to_playlist"
             app:layout_constraintTop_toTopOf="@id/button_scroll_to_current" />
 
         <Constraint
             android:id="@id/button_add_queue_to_playlist"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:layout_marginRight="4dp"
+            android:layout_marginEnd="4dp"
             app:layout_constraintBottom_toBottomOf="@id/button_scroll_to_current"
-            app:layout_constraintRight_toLeftOf="@id/button_clear_queue"
+            app:layout_constraintEnd_toStartOf="@id/button_clear_queue"
             app:layout_constraintTop_toTopOf="@id/button_scroll_to_current" />
 
         <Constraint
@@ -406,9 +422,9 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:layout_marginTop="4dp"
-            android:layout_marginRight="6dp"
+            android:layout_marginEnd="6dp"
             app:layout_constraintBottom_toBottomOf="@id/button_scroll_to_current"
-            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="@id/button_scroll_to_current" />
 
         <Constraint
@@ -426,8 +442,8 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             app:layout_constraintBottom_toBottomOf="@id/recycler_view"
-            app:layout_constraintLeft_toLeftOf="@id/recycler_view"
-            app:layout_constraintRight_toRightOf="@id/recycler_view"
+            app:layout_constraintEnd_toEndOf="@id/recycler_view"
+            app:layout_constraintStart_toStartOf="@id/recycler_view"
             app:layout_constraintTop_toTopOf="@id/recycler_view" />
     </ConstraintSet>
 </MotionScene>

@@ -112,6 +112,9 @@ fun JoinedTrack.toDomainTrack(
     return DomainTrack(
         track.id,
         track.mediaId,
+        track.codec.toUpperCase(),
+        track.bitrate,
+        track.sampleRate / 1000f,
         album,
         track.title,
         track.titleSort,
