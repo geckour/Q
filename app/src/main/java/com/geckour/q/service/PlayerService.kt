@@ -384,10 +384,11 @@ class PlayerService : Service() {
 
     override fun onBind(intent: Intent?): IBinder = binder
 
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        intent ?: return START_NOT_STICKY
         onPlayerControlAction(intent)
         onSettingAction(intent)
-        return START_STICKY_COMPATIBILITY
+        return START_NOT_STICKY
     }
 
     override fun onCreate() {
