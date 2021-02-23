@@ -18,6 +18,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="?android:attr/selectableItemBackground"
+        android:paddingVertical="4dp"
         app:foregroundAttr="@{data.nowPlaying ? R.attr.colorWeakAccent : R.attr.colorTransparent}">
 
         <ImageView
@@ -91,7 +92,7 @@
             android:layout_marginTop="4dp"
             android:layout_marginEnd="8dp"
             android:text="@{@string/track_file_info(data.codec, data.bitrate, data.sampleRate)}"
-            android:textSize="12sp"
+            android:textSize="10sp"
             app:layout_constraintEnd_toStartOf="@id/barrier_right"
             app:layout_constraintTop_toBottomOf="@id/text_artist_and_album"
             app:textColorAttr="@{data.ignored ? R.attr.colorInactive : R.attr.colorTextPrimary}"
@@ -125,7 +126,7 @@
             android:layout_height="wrap_content"
             android:paddingHorizontal="8dp"
             android:textSize="12sp"
-            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintBaseline_toBaselineOf="@id/file_info"
             app:layout_constraintEnd_toEndOf="parent"
             app:textColorAttr="@{data.ignored ? R.attr.colorInactive : R.attr.colorTextPrimary}"
             tools:text="03:52" />
