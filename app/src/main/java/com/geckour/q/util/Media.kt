@@ -63,7 +63,7 @@ enum class ShuffleActionType {
 }
 
 enum class OrientedClassType {
-    ARTIST, ALBUM, SONG, GENRE, PLAYLIST
+    ARTIST, ALBUM, TRACK, GENRE, PLAYLIST
 }
 
 enum class PlayerControlCommand {
@@ -82,7 +82,7 @@ data class QueueInfo(
     val metadata: QueueMetadata, val queue: List<DomainTrack>
 )
 
-suspend fun getSongListFromTrackMediaId(
+suspend fun getTrackListFromTrackMediaId(
     db: DB, dbTrackIdList: List<Long>, genreId: Long? = null, playlistId: Long? = null
 ): List<DomainTrack> = dbTrackIdList.mapNotNull { getDomainTrack(db, it, genreId, playlistId) }
 
@@ -330,7 +330,7 @@ fun List<DomainTrack>.shuffleByClassType(classType: OrientedClassType): List<Dom
                 this.filter { it.album.id == id }
             }.flatten()
         }
-        OrientedClassType.SONG -> {
+        OrientedClassType.TRACK -> {
             this.shuffled()
         }
         OrientedClassType.GENRE -> {

@@ -255,11 +255,11 @@ class PlayerService : Service() {
     private var lastDomainTrack: DomainTrack? = null
     private val currentDomainTrack: DomainTrack?
         get() {
-            val song = queue.getOrNull(currentIndex)
-            lastDomainTrack = song
-            return song
+            val track = queue.getOrNull(currentIndex)
+            lastDomainTrack = track
+            return track
         }
-    private val songChanged
+    private val trackChanged
         get() = lastDomainTrack?.id?.let { it != currentDomainTrack?.id } ?: true
 
     private var equalizer: Equalizer? = null
@@ -282,7 +282,7 @@ class PlayerService : Service() {
         override fun onTracksChanged(
             trackGroups: TrackGroupArray, trackSelections: TrackSelectionArray
         ) {
-            onQueueChanged?.invoke(queue, currentIndex, songChanged)
+            onQueueChanged?.invoke(queue, currentIndex, trackChanged)
             notificationUpdateJob.cancel()
             notificationUpdateJob = showNotification()
             playbackCountIncreaseJob = increasePlaybackCount()
@@ -297,7 +297,7 @@ class PlayerService : Service() {
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = Unit
 
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
-            onQueueChanged?.invoke(queue, currentIndex, songChanged)
+            onQueueChanged?.invoke(queue, currentIndex, trackChanged)
             if (source.size < 1) {
                 destroyNotification()
             }
@@ -443,7 +443,7 @@ class PlayerService : Service() {
         mediaSession.controller?.dispatchMediaButtonEvent(event)
     }
 
-    fun setOnQueueChangedListener(listener: ((domainTracks: List<DomainTrack>, position: Int, songChanged: Boolean) -> Unit)?) {
+    fun setOnQueueChangedListener(listener: ((domainTracks: List<DomainTrack>, position: Int, trackChanged: Boolean) -> Unit)?) {
         this.onQueueChanged = listener
     }
 
@@ -475,10 +475,10 @@ class PlayerService : Service() {
 
     private fun verifyByCauseIfNeeded(throwable: Throwable) {
         if ((throwable as? HttpDataSource.InvalidResponseCodeException)?.responseCode == 410) {
-            (queue.getOrNull(requestedPositionCache) ?: currentDomainTrack)?.let { song ->
+            (queue.getOrNull(requestedPositionCache) ?: currentDomainTrack)?.let { track ->
                 serviceScope.launch {
                     replace(
-                        song.verifyWithDropbox(
+                        track.verifyWithDropbox(
                             this@PlayerService,
                             dropboxClient
                         )
@@ -697,16 +697,16 @@ class PlayerService : Service() {
         withContext(Dispatchers.Main) {
             if (with.isEmpty()) return@withContext
 
-            with.forEach { withSong ->
-                queue.mapIndexed { index, song -> index to song }
-                    .filter { (_, song) -> song.id == withSong.id }
+            with.forEach { withTrack ->
+                queue.mapIndexed { index, track -> index to track }
+                    .filter { (_, track) -> track.id == withTrack.id }
                     .apply { Timber.d("qgeck target: $this") }
                     .forEach {
                         val index = it.first
 
                         removeQueue(index)
-                        source.addMediaSource(index, withSong.getMediaSource(mediaSourceFactory))
-                        queue.add(index, withSong)
+                        source.addMediaSource(index, withTrack.getMediaSource(mediaSourceFactory))
+                        queue.add(index, withTrack)
                     }
             }
         }
@@ -728,14 +728,14 @@ class PlayerService : Service() {
     }
 
     fun fastForward() {
-        val song = currentDomainTrack
-        if (song != null) {
+        val track = currentDomainTrack
+        if (track != null) {
             seekJob.cancel()
             seekJob = serviceScope.launch {
                 while (true) {
                     withContext(Dispatchers.Main) {
                         val seekTo = (player.currentPosition + 1000).let {
-                            if (it > song.duration) song.duration else it
+                            if (it > track.duration) track.duration else it
                         }
                         seek(seekTo)
                     }
@@ -882,7 +882,7 @@ class PlayerService : Service() {
 
     private fun PlayerState.set() {
         val queueInfo = QueueInfo(
-            QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.SONG), queue
+            QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.TRACK), queue
         )
         serviceScope.launch(Dispatchers.Main) {
             submitQueue(queueInfo, true)
@@ -900,11 +900,11 @@ class PlayerService : Service() {
     }
 
     private fun increasePlaybackCount() = serviceScope.launch(Dispatchers.Main) {
-        currentDomainTrack?.let { song ->
+        currentDomainTrack?.let { track ->
             val db = DB.getInstance(this@PlayerService)
-            db.trackDao().increasePlaybackCount(song.id)
-            db.albumDao().increasePlaybackCount(song.album.id)
-            db.artistDao().increasePlaybackCount(song.artist.id)
+            db.trackDao().increasePlaybackCount(track.id)
+            db.albumDao().increasePlaybackCount(track.album.id)
+            db.artistDao().increasePlaybackCount(track.artist.id)
         }
     }
 

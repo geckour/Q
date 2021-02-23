@@ -25,12 +25,12 @@ class SharingActivity : AppCompatActivity() {
     }
 
     companion object {
-        private const val ARGS_KEY_SONG = "args_key_song"
+        private const val ARGS_KEY_TRACK = "args_key_track"
         private const val ARGS_KEY_REQUIRE_UNLOCK = "args_key_require_unlock"
 
         fun getIntent(context: Context, domainTrack: DomainTrack, requireUnlock: Boolean = false): Intent =
             Intent(context, SharingActivity::class.java).apply {
-                putExtra(ARGS_KEY_SONG, domainTrack)
+                putExtra(ARGS_KEY_TRACK, domainTrack)
                 putExtra(ARGS_KEY_REQUIRE_UNLOCK, requireUnlock)
             }
     }
@@ -39,7 +39,7 @@ class SharingActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         if (intent == null) return
 
-        startShare(intent.getSong() ?: return, intent.requireUnlock())
+        startShare(intent.getTrack() ?: return, intent.requireUnlock())
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -91,7 +91,7 @@ class SharingActivity : AppCompatActivity() {
         else default
     }
 
-    private fun Intent.getSong(): DomainTrack? = getParcelableExtra(ARGS_KEY_SONG)
+    private fun Intent.getTrack(): DomainTrack? = getParcelableExtra(ARGS_KEY_TRACK)
 }
 
 fun DomainTrack.getSharingText(context: Context, albumName: String?): String =

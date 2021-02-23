@@ -15,6 +15,7 @@ import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.applyDefaultSettings
+import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.swapped
 import timber.log.Timber
 
@@ -40,7 +41,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
 
     internal fun setNowPlayingPosition(index: Int?, items: List<DomainTrack>? = null) {
         submitList(
-            (items ?: currentList).mapIndexed { i, song -> song.copy(nowPlaying = i == index) })
+            (items ?: currentList).mapIndexed { i, track -> track.copy(nowPlaying = i == index) })
     }
 
     internal fun move(from: Int, to: Int) {
@@ -87,13 +88,13 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
                                         InsertActionType.OVERRIDE
                                     }
                                     else -> return@setOnMenuItemClickListener false
-                                }, OrientedClassType.SONG
+                                }, OrientedClassType.TRACK
                             )
                         } ?: return@setOnMenuItemClickListener false
                     }
-                    R.id.menu_delete_song -> {
+                    R.id.menu_delete_track -> {
                         remove(adapterPosition)
-                        deleteSong(binding.data)
+                        deleteTrack(binding.data)
                     }
                 }
 
@@ -103,12 +104,12 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
         }
 
         fun bind() {
-            val song = currentList[adapterPosition]
-            binding.data = song
-            binding.duration.text = song.durationString
+            val track = currentList[adapterPosition]
+            binding.data = track
+            binding.duration.text = track.durationString
             try {
                 Glide.with(binding.thumb)
-                    .load(song.album.artworkUriString)
+                    .load(track.album.artworkUriString.orDefaultForModel)
                     .applyDefaultSettings()
                     .into(binding.thumb)
             } catch (t: Throwable) {
@@ -120,16 +121,16 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
                 setOnClickListener { remove(adapterPosition) }
             }
 
-            binding.root.setOnClickListener { onSongSelected(song, adapterPosition) }
-            binding.root.setOnLongClickListener { onSongLongTapped(song) }
+            binding.root.setOnClickListener { onTrackSelected(track, adapterPosition) }
+            binding.root.setOnLongClickListener { onTrackLongTapped(track) }
         }
 
-        private fun onSongSelected(domainTrack: DomainTrack, position: Int) {
+        private fun onTrackSelected(domainTrack: DomainTrack, position: Int) {
             viewModel.onRequestNavigate(domainTrack)
             viewModel.onChangeRequestedPositionInQueue(position)
         }
 
-        private fun onSongLongTapped(domainTrack: DomainTrack): Boolean {
+        private fun onTrackLongTapped(domainTrack: DomainTrack): Boolean {
             viewModel.onRequestNavigate(domainTrack)
             popupMenu.apply {
                 show()
@@ -138,9 +139,9 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
             return true
         }
 
-        private fun deleteSong(domainTrack: DomainTrack?) {
+        private fun deleteTrack(domainTrack: DomainTrack?) {
             domainTrack ?: return
-            viewModel.onRequestDeleteSong(domainTrack)
+            viewModel.deleteTrack(domainTrack)
         }
 
         fun dismissPopupMenu() {

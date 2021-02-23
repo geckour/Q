@@ -48,7 +48,7 @@
 
     <string name="nav_artist">アーティスト</string>
     <string name="nav_album">アルバム</string>
-    <string name="nav_song">曲</string>
+    <string name="nav_track">曲</string>
     <string name="nav_genre">ジャンル</string>
     <string name="nav_playlist">プレイリスト</string>
     <string name="nav_dropbox">Dropbox</string>
@@ -69,7 +69,7 @@
     <string name="menu_ignore_to_false">一括追加時スキップを無効にする</string>
     <string name="menu_ignore_to_true">一括追加時スキップを有効にする</string>
 
-    <string name="menu_delete_song">端末から削除</string>
+    <string name="menu_delete_track">端末から削除</string>
 
     <string name="menu_delete_playlist">プレイリストを削除</string>
 

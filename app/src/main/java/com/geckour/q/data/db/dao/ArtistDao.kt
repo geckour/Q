@@ -56,9 +56,9 @@ interface ArtistDao {
         delete(artistId)
     }
 
-    suspend fun upsert(artist: Artist, pastSongDuration: Long = 0): Long {
+    suspend fun upsert(artist: Artist, pastTrackDuration: Long = 0): Long {
         val toInsert = getByTitle(artist.title)?.let {
-            val duration = it.totalDuration - pastSongDuration + artist.totalDuration
+            val duration = it.totalDuration - pastTrackDuration + artist.totalDuration
             artist.copy(
                 id = it.id,
                 playbackCount = it.playbackCount,

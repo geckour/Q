@@ -117,13 +117,13 @@ class ArtistListFragment : Fragment() {
                 )
 
                 mainViewModel.onLoadStateChanged(true)
-                val songs = DB.getInstance(context)
+                val tracks = DB.getInstance(context)
                     .trackDao()
                     .getAll()
                     .map { it.toDomainTrack() }
                     .apply { if (sortByTrackOrder) sortedByTrackOrder() }
 
-                adapter.onNewQueue(songs, actionType)
+                adapter.onNewQueue(tracks, actionType)
             }
         }
 

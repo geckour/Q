@@ -71,9 +71,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     internal val selectedPlaylist = MutableLiveData<Playlist>()
 
     internal val playOrderToRemoveFromPlaylist = MutableLiveData<Int>()
-    internal val songToDelete = MutableLiveData<DomainTrack>()
-
-    internal val deletedSongId = MutableLiveData<Long>()
+    internal val trackToDelete = MutableLiveData<DomainTrack>()
 
     internal val searchItems = MutableLiveData<List<SearchItem>>()
 
@@ -153,7 +151,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun onRequestNavigate(domainTrack: DomainTrack) {
         clearSelections()
         selectedDomainTrack = domainTrack
-        currentOrientedClassType = OrientedClassType.SONG
+        currentOrientedClassType = OrientedClassType.TRACK
     }
 
     fun onRequestNavigate(genre: Genre) {
@@ -186,7 +184,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         player.value?.removeQueue(index)
     }
 
-    fun onRequestRemoveSongFromPlaylist(playOrder: Int) {
+    fun onRequestRemoveTrackFromPlaylist(playOrder: Int) {
         playOrderToRemoveFromPlaylist.value = playOrder
     }
 
@@ -259,10 +257,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun onEasterTapped(domainTrack: DomainTrack?) {
         FirebaseAnalytics.getInstance(getApplication())
             .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
-                putString(FirebaseAnalytics.Param.ITEM_NAME, "Tapped today's song")
+                putString(FirebaseAnalytics.Param.ITEM_NAME, "Tapped today's track")
             })
 
-        domainTrack?.let { onNewQueue(listOf(it), InsertActionType.NEXT, OrientedClassType.SONG) }
+        domainTrack?.let { onNewQueue(listOf(it), InsertActionType.NEXT, OrientedClassType.TRACK) }
     }
 
     fun onEasterLongTapped(domainTrack: DomainTrack?, anchorView: View): Boolean {
@@ -280,7 +278,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 return@setOnMenuItemClickListener false
             }
-            inflate(R.menu.song_transition)
+            inflate(R.menu.track_transition)
         }.show()
         return true
     }
@@ -423,8 +421,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    internal fun deleteSongFromDB(domainTrack: DomainTrack) {
+    internal fun deleteTrack(domainTrack: DomainTrack) {
         viewModelScope.launch {
+            trackToDelete.value = domainTrack
             player.value?.removeQueue(domainTrack.id)
 
             DB.getInstance(getApplication())
@@ -433,11 +432,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    internal fun onSongMenuAction(
+    internal fun onTrackMenuAction(
         actionType: InsertActionType, album: Album, sortByTrackOrder: Boolean
     ) {
         viewModelScope.launch {
-            val songs = DB.getInstance(getApplication()).let { db ->
+            val tracks = DB.getInstance(getApplication()).let { db ->
                 val sharedPreferences =
                     PreferenceManager.getDefaultSharedPreferences(getApplication())
                 loading.postValue(true)
@@ -450,16 +449,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     .apply { loading.postValue(false) }
             }
 
-            onNewQueue(songs, actionType, OrientedClassType.SONG)
+            onNewQueue(tracks, actionType, OrientedClassType.TRACK)
         }
     }
 
     internal fun onLoadStateChanged(state: Boolean) {
         loading.postValue(state)
-    }
-
-    internal fun onRequestDeleteSong(domainTrack: DomainTrack) {
-        songToDelete.postValue(domainTrack)
     }
 
     internal fun onChangeRequestedPositionInQueue(position: Int) {

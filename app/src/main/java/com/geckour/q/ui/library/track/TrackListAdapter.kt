@@ -41,8 +41,8 @@ class TrackListAdapter(
         }
     }
 
-    private fun removeItem(songId: Long) {
-        submitList(currentList.dropLastWhile { it.id == songId })
+    private fun removeItem(trackId: Long) {
+        submitList(currentList.dropLastWhile { it.id == trackId })
     }
 
     internal fun removeByTrackNum(trackNum: Int) {
@@ -59,11 +59,11 @@ class TrackListAdapter(
             currentList.let {
                 if (sharedPreferences.ignoringEnabled) it.filter { it.ignored != true }
                 else it
-            }, actionType, OrientedClassType.SONG
+            }, actionType, OrientedClassType.TRACK
         )
     }
 
-    internal fun onSongDeleted(id: Long) {
+    internal fun onTrackDeleted(id: Long) {
         removeItem(id)
     }
 
@@ -91,7 +91,7 @@ class TrackListAdapter(
                                     R.id.menu_insert_all_last -> InsertActionType.LAST
                                     R.id.menu_override_all -> InsertActionType.OVERRIDE
                                     else -> return@setOnMenuItemClickListener false
-                                }, OrientedClassType.SONG
+                                }, OrientedClassType.TRACK
                             )
                         } ?: return@setOnMenuItemClickListener false
                     }
@@ -101,12 +101,12 @@ class TrackListAdapter(
 
                 return@setOnMenuItemClickListener true
             }
-            inflate(R.menu.song)
+            inflate(R.menu.track)
         }
 
         private val longPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
-            setOnMenuItemClickListener {
-                when (it.itemId) {
+            setOnMenuItemClickListener { menuItem ->
+                when (menuItem.itemId) {
                     R.id.menu_transition_to_artist -> {
                         viewModel.selectedArtist.value = binding.data?.artist
                     }
@@ -114,11 +114,13 @@ class TrackListAdapter(
                         viewModel.selectedAlbum.value = binding.data?.album
                     }
                     R.id.menu_ignore -> toggleIgnored()
-                    R.id.menu_delete_song -> deleteSong(viewModel.selectedDomainTrack)
+                    R.id.menu_delete_track -> {
+                        viewModel.selectedDomainTrack?.let { viewModel.deleteTrack(it) }
+                    }
                     R.id.menu_insert_all_next, R.id.menu_insert_all_last, R.id.menu_override_all -> {
                         viewModel.selectedDomainTrack?.apply {
                             viewModel.onNewQueue(
-                                listOf(this), when (it.itemId) {
+                                listOf(this), when (menuItem.itemId) {
                                     R.id.menu_insert_all_next -> {
                                         InsertActionType.NEXT
                                     }
@@ -129,7 +131,7 @@ class TrackListAdapter(
                                         InsertActionType.OVERRIDE
                                     }
                                     else -> return@setOnMenuItemClickListener false
-                                }, OrientedClassType.SONG
+                                }, OrientedClassType.TRACK
                             )
                         } ?: return@setOnMenuItemClickListener false
                     }
@@ -137,43 +139,38 @@ class TrackListAdapter(
 
                 return@setOnMenuItemClickListener true
             }
-            inflate(R.menu.song_long)
+            inflate(R.menu.track_long)
         }
 
         fun bind() {
-            val song = getItem(adapterPosition)
-            binding.data = song
-            binding.duration.text = song.durationString
+            val track = getItem(adapterPosition)
+            binding.data = track
+            binding.duration.text = track.durationString
             viewModel.viewModelScope.launch {
                 try {
                     Glide.with(binding.thumb)
-                        .load(song.artworkUriString.orDefaultForModel)
+                        .load(track.artworkUriString.orDefaultForModel)
                         .applyDefaultSettings()
                         .into(binding.thumb)
                 } catch (t: Throwable) {
                     Timber.e(t)
                 }
             }
-            binding.root.setOnClickListener { onSongSelected(song) }
-            binding.root.setOnLongClickListener { onSongLongTapped(song) }
+            binding.root.setOnClickListener { onTrackSelected(track) }
+            binding.root.setOnLongClickListener { onTrackLongTapped(track) }
             if (classType == OrientedClassType.PLAYLIST) {
                 binding.option.visibility = View.VISIBLE
                 binding.option.setOnClickListener {
-                    song.trackNum?.apply { removeFromPlaylist(this) }
+                    track.trackNum?.apply { removeFromPlaylist(this) }
                 }
             }
         }
 
-        private fun deleteSong(domainTrack: DomainTrack?) {
-            domainTrack ?: return
-            viewModel.onRequestDeleteSong(domainTrack)
-        }
-
         private fun removeFromPlaylist(playOrder: Int) {
-            viewModel.onRequestRemoveSongFromPlaylist(playOrder)
+            viewModel.onRequestRemoveTrackFromPlaylist(playOrder)
         }
 
-        private fun onSongSelected(domainTrack: DomainTrack) {
+        private fun onTrackSelected(domainTrack: DomainTrack) {
             viewModel.onRequestNavigate(domainTrack)
             shortPopupMenu.show()
             shortPopupMenu.menu.findItem(R.id.menu_ignore).title = binding.root.context.getString(
@@ -182,7 +179,7 @@ class TrackListAdapter(
             )
         }
 
-        private fun onSongLongTapped(domainTrack: DomainTrack): Boolean {
+        private fun onTrackLongTapped(domainTrack: DomainTrack): Boolean {
             viewModel.onRequestNavigate(domainTrack)
             longPopupMenu.show()
             longPopupMenu.menu.findItem(R.id.menu_ignore).title = binding.root.context.getString(
@@ -201,7 +198,7 @@ class TrackListAdapter(
                             Bool.TRUE -> Bool.FALSE
                             Bool.FALSE -> Bool.TRUE
                             Bool.UNDEFINED -> Bool.UNDEFINED
-                        }.apply { Timber.d("qgeck saved ignored value: $this") }
+                        }
                         setIgnored(trackId, ignored)
 
                         binding.data = binding.data?.let { it.copy(ignored = it.ignored?.not()) }

@@ -140,7 +140,7 @@ class MainActivity : AppCompatActivity() {
         when (it.itemId) {
             R.id.nav_artist -> ArtistListFragment.newInstance()
             R.id.nav_album -> AlbumListFragment.newInstance()
-            R.id.nav_song -> TrackListFragment.newInstance()
+            R.id.nav_track -> TrackListFragment.newInstance()
             R.id.nav_genre -> GenreListFragment.newInstance()
             R.id.nav_playlist -> PlaylistListFragment.newInstance()
             R.id.nav_setting -> {
@@ -335,7 +335,7 @@ class MainActivity : AppCompatActivity() {
                 when (navId) {
                     R.id.nav_artist -> it is ArtistListFragment
                     R.id.nav_album -> it is AlbumListFragment
-                    R.id.nav_song -> it is TrackListFragment
+                    R.id.nav_track -> it is TrackListFragment
                     R.id.nav_genre -> it is GenreListFragment
                     R.id.nav_playlist -> it is PlaylistListFragment
                     else -> false
@@ -344,7 +344,7 @@ class MainActivity : AppCompatActivity() {
                 when (navId) {
                     R.id.nav_artist -> R.string.nav_artist
                     R.id.nav_album -> R.string.nav_album
-                    R.id.nav_song -> R.string.nav_song
+                    R.id.nav_track -> R.string.nav_track
                     R.id.nav_genre -> R.string.nav_genre
                     R.id.nav_playlist -> R.string.nav_playlist
                     R.id.nav_equalizer -> R.string.nav_equalizer
@@ -389,7 +389,7 @@ class MainActivity : AppCompatActivity() {
             tryTransaction()
         }
 
-        viewModel.songToDelete.observe(this) {
+        viewModel.trackToDelete.observe(this) {
             it ?: return@observe
             deleteFromDevice(it)
         }
@@ -551,6 +551,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun deleteFromDevice(domainTrack: DomainTrack) {
+        if (domainTrack.mediaId < 0) return
+
         constructPermissionsRequest(
             Manifest.permission.WRITE_EXTERNAL_STORAGE
         ) {
@@ -565,8 +567,6 @@ class MainActivity : AppCompatActivity() {
                 "${MediaStore.Files.FileColumns.DATA}=?",
                 arrayOf(domainTrack.sourcePath)
             )
-
-            viewModel.deleteSongFromDB(domainTrack)
         }.launch()
     }
 

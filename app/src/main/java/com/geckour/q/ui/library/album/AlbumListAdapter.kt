@@ -79,7 +79,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
             setOnMenuItemClickListener {
                 return@setOnMenuItemClickListener onOptionSelected(it.itemId, binding.data)
             }
-            inflate(R.menu.songs)
+            inflate(R.menu.tracks)
         }
 
         fun bind() {
@@ -123,7 +123,7 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
                 R.id.menu_override_all_simple_shuffle
             )
 
-            viewModel.onSongMenuAction(actionType, joinedAlbum.album, shuffle)
+            viewModel.onTrackMenuAction(actionType, joinedAlbum.album, shuffle)
 
             return true
         }

@@ -26,7 +26,7 @@
         android:title="@string/menu_ignore_to_true"
         app:showAsAction="never" />
     <item
-        android:id="@+id/menu_delete_song"
-        android:title="@string/menu_delete_song"
+        android:id="@+id/menu_delete_track"
+        android:title="@string/menu_delete_track"
         app:showAsAction="never" />
 </menu>

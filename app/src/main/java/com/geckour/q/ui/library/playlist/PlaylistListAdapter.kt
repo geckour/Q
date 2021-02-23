@@ -125,14 +125,14 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
 
             viewModel.viewModelScope.launch {
                 viewModel.onLoadStateChanged(true)
-                val songs = playlist.getTrackMediaIds(context)
+                val tracks = playlist.getTrackMediaIds(context)
                     .sortedBy { it.second }
                     .mapNotNull {
                         getDomainTrack(DB.getInstance(context), it.first, playlistId = playlist.id)
                     }
                 viewModel.onLoadStateChanged(false)
 
-                onNewQueue(songs, actionType, OrientedClassType.SONG)
+                onNewQueue(tracks, actionType, OrientedClassType.TRACK)
             }
 
             return true

@@ -69,7 +69,7 @@ sealed class Pref<T>(protected val key: String) : ReadWriteProperty<SharedPrefer
             internal val screens: List<Content.Screen> = listOf(
                 Content.Screen("ARTIST", Content.Screen.Data(R.string.nav_artist, R.id.nav_artist)),
                 Content.Screen("ALBUM", Content.Screen.Data(R.string.nav_album, R.id.nav_album)),
-                Content.Screen("SONG", Content.Screen.Data(R.string.nav_song, R.id.nav_song)),
+                Content.Screen("TRACK", Content.Screen.Data(R.string.nav_track, R.id.nav_track)),
                 Content.Screen("GENRE", Content.Screen.Data(R.string.nav_genre, R.id.nav_genre)),
                 Content.Screen(
                     "PLAYLIST", Content.Screen.Data(R.string.nav_playlist, R.id.nav_playlist)
@@ -78,7 +78,7 @@ sealed class Pref<T>(protected val key: String) : ReadWriteProperty<SharedPrefer
         }
     }
 
-    class PrefAny<T>(key: String, private val defaultValue: T): Pref<T>(key) {
+    class PrefAny<T>(key: String, private val defaultValue: T) : Pref<T>(key) {
         override fun getValue(thisRef: SharedPreferences, property: KProperty<*>): T =
             thisRef.getString(key, null)?.let {
                 val type = object : TypeToken<T>() {}.type

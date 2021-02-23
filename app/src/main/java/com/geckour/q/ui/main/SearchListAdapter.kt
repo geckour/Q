@@ -86,10 +86,10 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
 
         private val trackPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener {
-                val song = (binding.data?.data as? DomainTrack)
+                val track = (binding.data?.data as? DomainTrack)
                     ?: return@setOnMenuItemClickListener true
                 viewModel.onNewQueue(
-                    listOf(song),
+                    listOf(track),
                     when (it.itemId) {
                         R.id.menu_insert_all_next -> {
                             InsertActionType.NEXT
@@ -102,12 +102,12 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
                         }
                         else -> return@setOnMenuItemClickListener true
                     },
-                    OrientedClassType.SONG
+                    OrientedClassType.TRACK
                 )
 
                 return@setOnMenuItemClickListener true
             }
-            inflate(R.menu.song)
+            inflate(R.menu.track)
         }
 
         fun onBind(item: SearchItem) {

@@ -14,9 +14,9 @@
                     android:icon="@drawable/ic_album"
                     android:title="@string/nav_album" />
                 <item
-                    android:id="@+id/nav_song"
-                    android:icon="@drawable/ic_song"
-                    android:title="@string/nav_song" />
+                    android:id="@+id/nav_track"
+                    android:icon="@drawable/ic_track"
+                    android:title="@string/nav_track" />
                 <item
                     android:id="@+id/nav_genre"
                     android:icon="@drawable/ic_genre"

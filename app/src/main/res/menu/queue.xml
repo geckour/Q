@@ -22,7 +22,7 @@
         android:title="@string/menu_transition_to_album"
         app:showAsAction="never" />
     <item
-        android:id="@+id/menu_delete_song"
-        android:title="@string/menu_delete_song"
+        android:id="@+id/menu_delete_track"
+        android:title="@string/menu_delete_track"
         app:showAsAction="never" />
 </menu>

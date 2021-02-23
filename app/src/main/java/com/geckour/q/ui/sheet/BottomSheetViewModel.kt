@@ -92,7 +92,7 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
                 .setCancelable(true)
                 .create()
             binding.recyclerView.adapter = QueueAddPlaylistListAdapter(playlists) {
-                currentQueue.forEachIndexed { i, song ->
+                currentQueue.forEachIndexed { i, track ->
                     context.contentResolver.insert(MediaStore.Audio.Playlists.Members.getContentUri(
                         "external", it.id
                     ), ContentValues().apply {
@@ -101,7 +101,7 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
                             it.memberCount + 1 + i
                         )
                         put(
-                            MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId
+                            MediaStore.Audio.Playlists.Members.AUDIO_ID, track.mediaId
                         )
                     })
                 }
@@ -162,13 +162,13 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     internal fun setArtwork(imageView: ImageView) {
         updateArtworkJob.cancel()
         updateArtworkJob = viewModelScope.launch {
-            val drawable = when (val song = currentDomainTrack) {
+            val drawable = when (val track = currentDomainTrack) {
                 null -> null
                 else -> {
                     withContext(Dispatchers.IO) {
                         Glide.with(imageView)
                             .asDrawable()
-                            .load(song.thumbUriString.orDefaultForModel)
+                            .load(track.thumbUriString.orDefaultForModel)
                             .applyDefaultSettings()
                             .submit()
                             .get()
@@ -205,12 +205,12 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
             })?.let { ContentUris.parseId(it) } ?: run {
             return
         }
-        currentQueue.forEachIndexed { i, song ->
+        currentQueue.forEachIndexed { i, track ->
             getApplication<App>().contentResolver.insert(MediaStore.Audio.Playlists.Members.getContentUri(
                 "external", playlistId
             ), ContentValues().apply {
                 put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, i + 1)
-                put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
+                put(MediaStore.Audio.Playlists.Members.AUDIO_ID, track.mediaId)
             })
         }
     }

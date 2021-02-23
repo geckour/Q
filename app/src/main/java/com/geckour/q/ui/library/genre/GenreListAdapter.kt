@@ -68,7 +68,7 @@ class GenreListAdapter(private val viewModel: MainViewModel) :
                     bindTo.context, it.itemId, binding.data
                 )
             }
-            inflate(R.menu.songs)
+            inflate(R.menu.tracks)
         }
 
         fun bind() {
@@ -108,13 +108,13 @@ class GenreListAdapter(private val viewModel: MainViewModel) :
 
             viewModel.viewModelScope.launch {
                 viewModel.onLoadStateChanged(true)
-                val songs = genre.getTrackMediaIds(context)
+                val tracks = genre.getTrackMediaIds(context)
                     .mapNotNull {
                         getDomainTrack(DB.getInstance(context), it, genreId = genre.id)
                     }
                 viewModel.onLoadStateChanged(false)
 
-                onNewQueue(songs, actionType, OrientedClassType.SONG)
+                onNewQueue(tracks, actionType, OrientedClassType.TRACK)
             }
 
             return true

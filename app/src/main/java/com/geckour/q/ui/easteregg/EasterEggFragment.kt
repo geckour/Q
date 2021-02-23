@@ -82,17 +82,17 @@ class EasterEggFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        viewModel.song.observe(viewLifecycleOwner) { song ->
-            song ?: return@observe
+        viewModel.track.observe(viewLifecycleOwner) { track ->
+            track ?: return@observe
 
             binding.tapArea?.setOnClickListener {
                 FirebaseAnalytics.getInstance(requireContext())
                     .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
-                        putString(FirebaseAnalytics.Param.ITEM_NAME, "Tapped today's song")
+                        putString(FirebaseAnalytics.Param.ITEM_NAME, "Tapped today's track")
                     })
 
                 mainViewModel.onNewQueue(
-                    listOf(song), InsertActionType.NEXT, OrientedClassType.SONG
+                    listOf(track), InsertActionType.NEXT, OrientedClassType.TRACK
                 )
             }
 
@@ -101,24 +101,24 @@ class EasterEggFragment : Fragment() {
                     setOnMenuItemClickListener {
                         return@setOnMenuItemClickListener when (it.itemId) {
                             R.id.menu_transition_to_artist -> {
-                                mainViewModel.selectedArtist.value = song.artist
+                                mainViewModel.selectedArtist.value = track.artist
                                 true
                             }
                             R.id.menu_transition_to_album -> {
-                                mainViewModel.selectedAlbum.value = song.album
+                                mainViewModel.selectedAlbum.value = track.album
                                 true
                             }
                             else -> false
                         }
                     }
-                    inflate(R.menu.song_transition)
+                    inflate(R.menu.track_transition)
                 }.show()
 
                 return@setOnLongClickListener true
             }
 
             Glide.with(binding.artwork)
-                .load(song.thumbUriString.orDefaultForModel)
+                .load(track.thumbUriString.orDefaultForModel)
                 .applyDefaultSettings()
                 .into(binding.artwork)
         }

@@ -67,9 +67,9 @@ interface AlbumDao {
         }
     }
 
-    suspend fun upsert(album: Album, pastSongDuration: Long = 0): Long {
+    suspend fun upsert(album: Album, pastTrackDuration: Long = 0): Long {
         val toInsert = getByTitle(album.title)?.let {
-            val duration = it.album.totalDuration - pastSongDuration + album.totalDuration
+            val duration = it.album.totalDuration - pastTrackDuration + album.totalDuration
             album.copy(
                 id = it.album.id,
                 totalDuration = duration,

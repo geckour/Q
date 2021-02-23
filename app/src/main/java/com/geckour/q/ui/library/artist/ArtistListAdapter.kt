@@ -129,7 +129,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
                 }
 
                 viewModel.onLoadStateChanged(true)
-                val songs = DB.getInstance(context).let { db ->
+                val tracks = DB.getInstance(context).let { db ->
                     val sharedPreferences =
                         PreferenceManager.getDefaultSharedPreferences(context)
                     db.albumDao().getAllByArtist(artist.id).map {
@@ -144,7 +144,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
                 }
                 viewModel.onLoadStateChanged(false)
 
-                onNewQueue(songs, actionType, OrientedClassType.ALBUM)
+                onNewQueue(tracks, actionType, OrientedClassType.ALBUM)
             }
 
             return true

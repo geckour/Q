@@ -126,7 +126,7 @@ class GenreListFragment : Fragment() {
 
             viewModel.viewModelScope.launch {
                 mainViewModel.onLoadStateChanged(true)
-                val songs = adapter.getItems().map { genre ->
+                val tracks = adapter.getItems().map { genre ->
                     genre.getTrackMediaIds(context).mapNotNull {
                         getDomainTrack(DB.getInstance(context), it, genreId = genre.id)
                     }
@@ -134,7 +134,7 @@ class GenreListFragment : Fragment() {
                     mainViewModel.onLoadStateChanged(false)
                 }.flatten()
 
-                adapter.onNewQueue(songs, actionType)
+                adapter.onNewQueue(tracks, actionType)
             }
         }
 

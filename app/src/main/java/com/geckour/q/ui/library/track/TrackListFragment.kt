@@ -22,8 +22,8 @@ import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.getSongListFromTrackMediaId
 import com.geckour.q.util.getDomainTrackListFromTrackMediaIdWithTrackNum
+import com.geckour.q.util.getTrackListFromTrackMediaId
 import com.geckour.q.util.getTrackMediaIds
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
@@ -44,7 +44,7 @@ class TrackListFragment : Fragment() {
 
         fun newInstance(): TrackListFragment = TrackListFragment().apply {
             arguments = Bundle().apply {
-                putSerializable(ARGS_KEY_CLASS_TYPE, OrientedClassType.SONG)
+                putSerializable(ARGS_KEY_CLASS_TYPE, OrientedClassType.TRACK)
             }
         }
 
@@ -76,7 +76,7 @@ class TrackListFragment : Fragment() {
         TrackListAdapter(
             mainViewModel,
             arguments?.getSerializable(ARGS_KEY_CLASS_TYPE) as? OrientedClassType
-                ?: OrientedClassType.SONG
+                ?: OrientedClassType.TRACK
         )
     }
 
@@ -95,13 +95,13 @@ class TrackListFragment : Fragment() {
 
         binding.recyclerView.adapter = adapter
 
-        if (adapter.itemCount == 0) fetchSongs()
+        if (adapter.itemCount == 0) fetchTracks()
     }
 
     override fun onResume() {
         super.onResume()
 
-        mainViewModel.currentFragmentId.value = R.id.nav_song
+        mainViewModel.currentFragmentId.value = R.id.nav_track
     }
 
     override fun onStop() {
@@ -113,7 +113,7 @@ class TrackListFragment : Fragment() {
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
 
-        inflater.inflate(R.menu.songs_toolbar, menu)
+        inflater.inflate(R.menu.tracks_toolbar, menu)
         (menu.findItem(R.id.menu_search)?.actionView as? SearchView?)
             ?.let {
                 mainViewModel.initSearchQueryListener(it)
@@ -167,29 +167,24 @@ class TrackListFragment : Fragment() {
 
         mainViewModel.forceLoad.observe(viewLifecycleOwner) {
             adapter.clearItems()
-            fetchSongs()
-        }
-
-        mainViewModel.deletedSongId.observe(viewLifecycleOwner) {
-            if (it == null) return@observe
-            adapter.onSongDeleted(it)
+            fetchTracks()
         }
     }
 
-    private fun fetchSongs() {
+    private fun fetchTracks() {
         val album = arguments?.getParcelable<Album>(ARGS_KEY_ALBUM)
         val genre = arguments?.getParcelable<Genre>(ARGS_KEY_GENRE)
         val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST)
 
         when {
-            album != null -> observeSongsWithAlbum(album)
-            genre != null -> loadSongsWithGenre(genre)
-            playlist != null -> loadSongsWithPlaylist(playlist)
-            else -> observeAllSongs()
+            album != null -> observeTrackWithAlbum(album)
+            genre != null -> loadTracksWithGenre(genre)
+            playlist != null -> loadTracksWithPlaylist(playlist)
+            else -> observeAllTracks()
         }
     }
 
-    private fun observeAllSongs() {
+    private fun observeAllTracks() {
         lifecycleScope.launch {
             DB.getInstance(requireContext()).trackDao().getAllAsync()
                 .collectLatest { joinedTracks ->
@@ -198,7 +193,7 @@ class TrackListFragment : Fragment() {
         }
     }
 
-    private fun observeSongsWithAlbum(album: Album) {
+    private fun observeTrackWithAlbum(album: Album) {
         lifecycleScope.launch {
             DB.getInstance(requireContext()).trackDao()
                 .getAllByAlbumAsync(album.id)
@@ -208,10 +203,10 @@ class TrackListFragment : Fragment() {
         }
     }
 
-    private fun loadSongsWithGenre(genre: Genre) {
+    private fun loadTracksWithGenre(genre: Genre) {
         lifecycleScope.launch {
             adapter.submitList(
-                getSongListFromTrackMediaId(
+                getTrackListFromTrackMediaId(
                     DB.getInstance(requireContext()),
                     genre.getTrackMediaIds(requireContext()),
                     genreId = genre.id
@@ -221,7 +216,7 @@ class TrackListFragment : Fragment() {
         }
     }
 
-    private fun loadSongsWithPlaylist(playlist: Playlist) {
+    private fun loadTracksWithPlaylist(playlist: Playlist) {
         lifecycleScope.launch {
             adapter.submitList(
                 getDomainTrackListFromTrackMediaIdWithTrackNum(

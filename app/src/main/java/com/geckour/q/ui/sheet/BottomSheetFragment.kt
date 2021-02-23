@@ -194,8 +194,8 @@ class BottomSheetFragment : Fragment() {
         mainViewModel.player.observe(viewLifecycleOwner) { player ->
             player ?: return@observe
 
-            player.setOnQueueChangedListener { songs, position, songChanged ->
-                onQueueChanged(songs, position, songChanged)
+            player.setOnQueueChangedListener { tracks, position, trackChanged ->
+                onQueueChanged(tracks, position, trackChanged)
             }
             player.setOnPlaybackStateChangeListener { playbackState, playWhenReady ->
                 onPlayingChanged(
@@ -233,7 +233,7 @@ class BottomSheetFragment : Fragment() {
                             else -> false
                         }.apply { behavior.state = BottomSheetBehavior.STATE_COLLAPSED }
                     }
-                    inflate(R.menu.song_transition)
+                    inflate(R.menu.track_transition)
                 }.show()
                 viewModel.onArtworkDialogShown()
             }
@@ -250,10 +250,10 @@ class BottomSheetFragment : Fragment() {
         viewModel.showCurrentRemain.observe(viewLifecycleOwner) {
             it ?: return@observe
             sharedPreferences.showCurrentRemain = it
-            val song = viewModel.currentDomainTrack ?: return@observe
+            val track = viewModel.currentDomainTrack ?: return@observe
             val ratio = binding.seekBar.progress / binding.seekBar.max.toFloat()
-            val elapsedTime = (song.duration * ratio).toLong()
-            setTimeRightText(song, elapsedTime)
+            val elapsedTime = (track.duration * ratio).toLong()
+            setTimeRightText(track, elapsedTime)
         }
 
         viewModel.scrollToCurrent.observe(viewLifecycleOwner) {
@@ -285,7 +285,7 @@ class BottomSheetFragment : Fragment() {
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun onQueueChanged(queue: List<DomainTrack>, position: Int, songChanged: Boolean) {
+    private fun onQueueChanged(queue: List<DomainTrack>, position: Int, trackChanged: Boolean) {
         adapter.setNowPlayingPosition(position, queue)
         viewModel.currentQueue = queue
         viewModel.onNewPosition(position)
@@ -300,14 +300,14 @@ class BottomSheetFragment : Fragment() {
             binding.buttonToggleVisibleQueue.shake()
         }
 
-        if (songChanged) {
+        if (trackChanged) {
             viewModel.playbackPosition = 0
             onPlaybackPositionChanged(0)
         }
 
-        val noCurrentSong = viewModel.currentDomainTrack == null
-        binding.seekBar.setOnTouchListener { _, _ -> noCurrentSong }
-        if (noCurrentSong) {
+        val noCurrentTrack = viewModel.currentDomainTrack == null
+        binding.seekBar.setOnTouchListener { _, _ -> noCurrentTrack }
+        if (noCurrentTrack) {
             with(binding) {
                 textTimeLeft.text = null
                 textTimeRight.text = null
@@ -328,16 +328,16 @@ class BottomSheetFragment : Fragment() {
     }
 
     private fun onPlaybackPositionChanged(playbackPosition: Long) {
-        val song = viewModel.currentDomainTrack ?: return
+        val track = viewModel.currentDomainTrack ?: return
 
-        val ratio = (playbackPosition.toFloat() / song.duration)
+        val ratio = (playbackPosition.toFloat() / track.duration)
         binding.seekBar.progress = (binding.seekBar.max * ratio).toInt()
 
         binding.textTimeLeft.text = playbackPosition.getTimeString()
-        setTimeRightText(song, playbackPosition)
+        setTimeRightText(track, playbackPosition)
         val remain = adapter.getItemsAfter(viewModel.currentPosition + 1)
             .map { it.duration }
-            .sum() + (song.duration - playbackPosition)
+            .sum() + (track.duration - playbackPosition)
         binding.textTimeRemain.text =
             getString(R.string.bottom_sheet_time_remain, remain.getTimeString())
     }

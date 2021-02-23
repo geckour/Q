@@ -130,7 +130,7 @@ class AlbumListFragment : Fragment() {
                     it != R.id.menu_insert_all_simple_shuffle_next || it != R.id.menu_insert_all_simple_shuffle_last || it != R.id.menu_override_all_simple_shuffle
                 }
                 mainViewModel.onLoadStateChanged(true)
-                val songs = adapter.currentList.map { joinedAlbum ->
+                val tracks = adapter.currentList.map { joinedAlbum ->
                     DB.getInstance(context).let { db ->
                         db.trackDao()
                             .let {
@@ -152,7 +152,7 @@ class AlbumListFragment : Fragment() {
                     mainViewModel.onLoadStateChanged(false)
                 }.flatten()
 
-                adapter.onNewQueue(songs, actionType)
+                adapter.onNewQueue(tracks, actionType)
             }
         }
 

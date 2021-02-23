@@ -118,7 +118,7 @@ class PlaylistListFragment : Fragment() {
 
             viewModel.viewModelScope.launch {
                 mainViewModel.onLoadStateChanged(true)
-                val songs = adapter.getItems().map { playlist ->
+                val tracks = adapter.getItems().map { playlist ->
                     playlist.getTrackMediaIds(context).mapNotNull {
                         getDomainTrack(
                             DB.getInstance(context), it.first, playlistId = playlist.id
@@ -127,7 +127,7 @@ class PlaylistListFragment : Fragment() {
                 }.apply {
                     mainViewModel.onLoadStateChanged(false)
                 }.flatten()
-                adapter.onNewQueue(songs, actionType)
+                adapter.onNewQueue(tracks, actionType)
             }
         }
 

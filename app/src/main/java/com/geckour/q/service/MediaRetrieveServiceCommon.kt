@@ -67,7 +67,7 @@ internal suspend fun File.storeMediaInfo(
             ?: cachedAlbumArtist?.titleSort
 
     val duration = header.trackLength.toLong() * 1000
-    val pastSongDuration =
+    val pastTrackDuration =
         trackMediaId?.let { db.trackDao().getDurationWithMediaId(trackMediaId) ?: 0 }
             ?: db.trackDao().getDurationWithTitles(
                 title ?: UNKNOWN,
@@ -97,7 +97,7 @@ internal suspend fun File.storeMediaInfo(
         totalDuration = duration,
         artworkUriString = artworkUriString ?: cachedArtist?.artworkUriString
     )
-    val artistId = db.artistDao().upsert(artist, pastSongDuration)
+    val artistId = db.artistDao().upsert(artist, pastTrackDuration)
     val albumArtistId =
         if (albumArtistTitle != null && albumArtistTitleSort != null) {
             val albumArtist = Artist(
@@ -108,7 +108,7 @@ internal suspend fun File.storeMediaInfo(
                 totalDuration = duration,
                 artworkUriString = artworkUriString ?: cachedAlbumArtist?.artworkUriString
             )
-            db.artistDao().upsert(albumArtist, pastSongDuration)
+            db.artistDao().upsert(albumArtist, pastTrackDuration)
         } else null
 
     val album = Album(
@@ -121,7 +121,7 @@ internal suspend fun File.storeMediaInfo(
         playbackCount = 0,
         totalDuration = duration
     )
-    val albumId = db.albumDao().upsert(album, pastSongDuration)
+    val albumId = db.albumDao().upsert(album, pastTrackDuration)
 
     val track = Track(
         id = 0,
@@ -147,5 +147,5 @@ internal suspend fun File.storeMediaInfo(
         playbackCount = 0
     )
 
-    return@withContext db.trackDao().upsert(track, albumId, artistId, pastSongDuration)
+    return@withContext db.trackDao().upsert(track, albumId, artistId, pastTrackDuration)
 }

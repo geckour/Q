@@ -12,18 +12,18 @@ import java.util.*
 
 class EasterEggViewModel(application: Application) : AndroidViewModel(application) {
 
-    val song = MutableLiveData<DomainTrack>()
+    val track = MutableLiveData<DomainTrack>()
 
     init {
-        viewModelScope.launch { pickupSong() }
+        viewModelScope.launch { pickupTrack() }
     }
 
-    private suspend fun pickupSong() {
+    private suspend fun pickupTrack() {
         val seed = Calendar.getInstance(TimeZone.getDefault())
             .let { it.get(Calendar.YEAR) * 1000L + it.get(Calendar.DAY_OF_YEAR) }
         val track = DB.getInstance(getApplication()).trackDao()
             .getAll()
             .let { it[Random(seed).nextInt(it.size)] }
-        song.value = track.toDomainTrack()
+        this.track.value = track.toDomainTrack()
     }
 }
