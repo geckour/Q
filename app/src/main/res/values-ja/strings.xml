@@ -1,16 +1,17 @@
 <resources>
+    <!-- App Broad -->
     <string name="title_activity_setting">設定</string>
     <string name="title_activity_equalizer">イコライザ</string>
     <string name="title_activity_license">OSSライセンス</string>
 
-
     <string name="app_theme_light">ライト</string>
     <string name="app_theme_dark">ダーク</string>
 
+    <!-- Drawer -->
     <string name="drawer_open">開</string>
     <string name="drawer_close">閉</string>
 
-
+    <!-- Notification -->
     <string name="notification_channel_player">プレイヤー</string>
     <string name="notification_channel_description_player">プレイヤーを生存状態に保つためのプレイヤー情報通知</string>
     <string name="notification_channel_retriever">メディア探索</string>
@@ -32,16 +33,16 @@
     <string name="notification_action_pause">停止</string>
     <string name="notification_action_next">次へ</string>
 
-
+    <!-- Indicator -->
     <string name="syncing">ライブラリを同期中…</string>
     <string name="loading">アイテムを取得中…</string>
     <string name="button_cancel_sync">キャンセル</string>
 
-
+    <!-- Bottom Sheet -->
     <string name="bottom_sheet_time_total">総時間・%1$s</string>
     <string name="bottom_sheet_time_remain">残り・-%1$s</string>
 
-
+    <!-- Navigation Drawer -->
     <string name="nav_category_library">ライブラリ</string>
     <string name="nav_category_others">その他</string>
 
@@ -58,7 +59,7 @@
     <string name="nav_pay">投げ銭</string>
     <string name="nav_fortune">おみQじ</string>
 
-
+    <!-- Menu -->
     <string name="menu_search">検索</string>
 
     <string name="menu_daynight">テーマを切替</string>
@@ -103,7 +104,7 @@
     <string name="menu_transition_to_artist">アーティストへ移動</string>
     <string name="menu_transition_to_album">アルバムへ移動</string>
 
-
+    <!-- Dialog -->
     <string name="dialog_ok">決定</string>
     <string name="dialog_ng">キャンセル</string>
 
@@ -135,25 +136,25 @@
     <string name="dialog_title_dropbox_choose_folder">フォルダを選択</string>
     <string name="dialog_desc_dropbox_choose_folder">メディアを探索するルートフォルダを選択</string>
 
-
+    <!-- Payment -->
     <string name="payment_desc">Kyashを利用した投げ銭を受け付けています</string>
     <string name="payment_save_success">保存しました</string>
     <string name="payment_save_failure">エラー: 保存できませんでした</string>
 
-
+    <!-- Chooser -->
     <string name="share_chooser_title">共有先を選択…</string>
 
-
+    <!-- Easter Egg -->
     <string name="easter_egg_title">今日の一曲</string>
 
-
+    <!-- Search -->
     <string name="search_category_artist">アーティスト</string>
     <string name="search_category_album">アルバム</string>
     <string name="search_category_track">曲</string>
     <string name="search_category_playlist">プレイリスト</string>
     <string name="search_category_genre">ジャンル</string>
 
-
+    <!-- Settings -->
     <string name="setting_category_title_general">一般</string>
 
     <string name="setting_item_title_app_theme">アプリのテーマ</string>
@@ -181,7 +182,7 @@
     <string name="setting_item_title_license">ライセンス</string>
     <string name="setting_item_desc_license">OSSライセンスを表示</string>
 
-
+    <!-- Equalizer -->
     <string name="equalizer_flatten">リセット</string>
     <string name="equalizer_message_error_turn_on">エラー: 一度曲を再生してから再度お試しください</string>
 </resources>

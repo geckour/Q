@@ -76,7 +76,7 @@
             android:layout_marginEnd="12dp"
             android:ellipsize="end"
             android:maxLines="1"
-            android:text="@{@string/song_item_artist_and_album(data.artist.title, data.album.title)}"
+            android:text="@{@string/track_item_artist_and_album(data.artist.title, data.album.title)}"
             android:textSize="12sp"
             app:layout_constraintBottom_toBottomOf="@id/thumb"
             app:layout_constraintEnd_toStartOf="@id/barrier_right"

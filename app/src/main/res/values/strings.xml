@@ -1,21 +1,20 @@
 <resources>
+    <!-- App Broad -->
     <string name="app_name" translatable="false">Q</string>
-
 
     <string name="title_activity_main" translatable="false">Q</string>
     <string name="title_activity_setting">Settings</string>
     <string name="title_activity_equalizer">Equalizer</string>
     <string name="title_activity_license">OSS Licenses</string>
 
-
     <string name="app_theme_light">Light</string>
     <string name="app_theme_dark">Dark</string>
 
-
+    <!-- Drawer -->
     <string name="drawer_open">Open</string>
     <string name="drawer_close">Close</string>
 
-
+    <!-- Notification -->
     <string name="notification_channel_player">Player</string>
     <string name="notification_channel_description_player">Player information notification for keep player alive</string>
     <string name="notification_channel_retriever">Media Retriever</string>
@@ -37,18 +36,18 @@
     <string name="notification_action_pause">PAUSE</string>
     <string name="notification_action_next">NEXT</string>
 
-
+    <!-- Indicator -->
     <string name="syncing">Syncing library…</string>
     <string name="loading">Loading items…</string>
     <string name="progress_sync" translatable="false">%1$d / %2$d</string>
     <string name="progress_sync_dropbox" translatable="false">%d…</string>
     <string name="button_cancel_sync">Cancel</string>
 
-
+    <!-- Bottom Sheet -->
     <string name="bottom_sheet_time_total">Total・%1$s</string>
     <string name="bottom_sheet_time_remain">Remain・-%1$s</string>
 
-
+    <!-- Navigation Drawer -->
     <string name="nav_header_desc" translatable="false">: Queue oriented player</string>
 
     <string name="nav_category_library">Library</string>
@@ -67,7 +66,7 @@
     <string name="nav_pay">Donate</string>
     <string name="nav_fortune">Fortune</string>
 
-
+    <!-- Menu -->
     <string name="menu_search">Search</string>
 
     <string name="menu_daynight">Toggle theme</string>
@@ -112,7 +111,7 @@
     <string name="menu_transition_to_artist">Show artist</string>
     <string name="menu_transition_to_album">Show album</string>
 
-
+    <!-- Dialog -->
     <string name="dialog_ok">OK</string>
     <string name="dialog_ng">Cancel</string>
 
@@ -144,27 +143,29 @@
     <string name="dialog_title_dropbox_choose_folder">Select folder</string>
     <string name="dialog_desc_dropbox_choose_folder">Select root folder of retrieving media</string>
 
+    <!-- Track -->
+    <string name="track_item_artist_and_album" translatable="false">%1$s - %2$s</string>
+    <string name="track_file_info" translatable="false">%1$s・%2$dkbps・%3$.1fkHz</string>
 
+    <!-- Payment -->
     <string name="payment_desc">Available donation with Kyash</string>
     <string name="payment_save_success">Succeeded</string>
     <string name="payment_save_failure">Failure to save</string>
 
-
+    <!-- Chooser -->
     <string name="share_chooser_title">Choose destination to share…</string>
 
-
+    <!-- Easter Egg -->
     <string name="easter_egg_title">Today\'s song</string>
 
-
+    <!-- Search -->
     <string name="search_category_artist">Artist</string>
     <string name="search_category_album">Album</string>
     <string name="search_category_track">Track</string>
     <string name="search_category_playlist">Playlist</string>
     <string name="search_category_genre">Genre</string>
 
-    <string name="song_item_artist_and_album" translatable="false">%1$s - %2$s</string>
-
-
+    <!-- Settings -->
     <string name="setting_switch_on" translatable="false">ON</string>
     <string name="setting_switch_off" translatable="false">OFF</string>
 
@@ -197,14 +198,14 @@
 
     <string name="setting_default_sharing_text_pattern" translatable="false">#NowPlaying TI - AR (AL)</string>
 
-
+    <!-- Equalizer -->
     <string name="equalizer_flatten">Flatten</string>
     <string name="equalizer_seek_bar_label" translatable="false">%1$sHz</string>
     <string name="equalizer_scale_label_center" translatable="false">0dB</string>
     <string name="equalizer_scale_label" translatable="false">%1$sdB</string>
     <string name="equalizer_message_error_turn_on">Error: Please play music at once</string>
 
-
+    <!-- License -->
     <string name="license_name_coroutines" translatable="false">Kotlin Coroutines</string>
     <string name="license_text_coroutines" translatable="false">Copyright 2016–2018 JetBrains s.r.o.\nLicensed under the Apache License, Version 2.0 (the "License");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\nhttp://www.apache.org/licenses/LICENSE-2.0\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an "AS IS" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.</string>
 
@@ -237,5 +238,4 @@
 
     <string name="license_name_seek_bar" translatable="false">VerticalSeekBar</string>
     <string name="license_text_seek_bar" translatable="false">Copyright (C) 2015 Haruki Hasegawa\n\nLicensed under the Apache License, Version 2.0 (the "License");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n    http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an "AS IS" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.</string>
-    <string name="track_file_info" translatable="false">%1$s・%2$dkbps・%3$.1fkHz</string>
 </resources>
