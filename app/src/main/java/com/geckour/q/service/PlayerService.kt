@@ -2,6 +2,7 @@ package com.geckour.q.service
 
 import android.app.Notification
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.app.Service
 import android.bluetooth.BluetoothHeadset
 import android.content.BroadcastReceiver
@@ -19,11 +20,14 @@ import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.view.KeyEvent
+import androidx.media.session.MediaButtonReceiver
 import androidx.preference.PreferenceManager
 import com.dropbox.core.v2.DbxClientV2
+import com.geckour.q.App
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.PlayerState
+import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.util.EqualizerParams
 import com.geckour.q.util.EqualizerSettings
 import com.geckour.q.util.InsertActionType
@@ -387,6 +391,7 @@ class PlayerService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent ?: return START_NOT_STICKY
+        MediaButtonReceiver.handleIntent(mediaSession, intent)
         onPlayerControlAction(intent)
         onSettingAction(intent)
         return START_NOT_STICKY
@@ -852,17 +857,9 @@ class PlayerService : Service() {
         if (intent.hasExtra(ARGS_KEY_CONTROL_COMMAND)) {
             val key = intent.getIntExtra(ARGS_KEY_CONTROL_COMMAND, -1)
             when (PlayerControlCommand.values()[key]) {
-                PlayerControlCommand.PLAY_PAUSE -> sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE)
-                PlayerControlCommand.PAUSE -> sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_PAUSE)
-                PlayerControlCommand.NEXT -> sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_NEXT)
-                PlayerControlCommand.PREV -> sendMediaButtonDownEvent(KeyEvent.KEYCODE_MEDIA_PREVIOUS)
                 PlayerControlCommand.DESTROY -> onStopServiceRequested()
             }
         }
-    }
-
-    private fun sendMediaButtonDownEvent(keyCode: Int) {
-        mediaSession.controller?.dispatchMediaButtonEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
     }
 
     private fun onSettingAction(intent: Intent) {
@@ -995,7 +992,7 @@ class PlayerService : Service() {
     }
 
     private fun showNotification() = serviceScope.launch(Dispatchers.Main) {
-        val song = currentDomainTrack ?: return@launch
+        val domainTrack = currentDomainTrack ?: return@launch
         mediaSession.setPlaybackState(
             playbackStateCompat.setState(
                 player.playbackState.toPlaybackStateCompat,
@@ -1003,12 +1000,19 @@ class PlayerService : Service() {
                 player.playbackParameters.speed
             ).build()
         )
-        mediaSession.setMetadata(song.getMediaMetadata(this@PlayerService))
+        mediaSession.setMetadata(domainTrack.getMediaMetadata(this@PlayerService))
         mediaSession.isActive = true
+        mediaSession.setSessionActivity(
+            PendingIntent.getActivity(
+                this@PlayerService,
+                App.REQUEST_CODE_LAUNCH_APP,
+                LauncherActivity.createIntent(this@PlayerService),
+                PendingIntent.FLAG_UPDATE_CURRENT
+            )
+        )
         getPlayerNotification(
             this@PlayerService,
-            mediaSession.sessionToken,
-            song,
+            mediaSession,
             player.isPlaying
         ).show()
     }

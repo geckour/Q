@@ -7,14 +7,14 @@ import android.content.Intent
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.support.v4.media.session.PlaybackStateCompat
 import androidx.core.app.NotificationCompat
+import androidx.media.session.MediaButtonReceiver
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.LauncherActivity
-import com.geckour.q.util.PlayerControlCommand
 import com.geckour.q.util.QNotificationChannel
-import com.geckour.q.util.getCommandIntent
 import com.geckour.q.util.getNotificationBuilder
 import com.geckour.q.util.getTimeString
 import kotlinx.coroutines.GlobalScope
@@ -215,7 +215,10 @@ class SleepTimerService : Service() {
 
     private fun expire(pause: Boolean = true) {
         if (pause) {
-            startService(getCommandIntent(this@SleepTimerService, PlayerControlCommand.PAUSE))
+            MediaButtonReceiver.buildMediaButtonPendingIntent(
+                applicationContext,
+                PlaybackStateCompat.ACTION_PAUSE
+            ).send()
         }
         checkExpiredJob.cancel()
         destroyNotification()

@@ -16,23 +16,23 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
+import android.support.v4.media.session.PlaybackStateCompat
 import android.webkit.MimeTypeMap
 import androidx.core.app.NotificationCompat
+import androidx.media.session.MediaButtonReceiver
 import com.bumptech.glide.Glide
 import com.bumptech.glide.RequestBuilder
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.dropbox.core.v2.DbxClientV2
-import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.data.db.model.JoinedTrack
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
-import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.service.PlayerService
-import com.geckour.q.ui.LauncherActivity
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import kotlinx.coroutines.Dispatchers
@@ -40,12 +40,13 @@ import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import org.jaudiotagger.tag.images.ArtworkFactory
-import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.net.URLConnection
+import java.util.*
+import kotlin.collections.ArrayList
 import kotlin.math.min
 
 
@@ -66,7 +67,7 @@ enum class OrientedClassType {
 }
 
 enum class PlayerControlCommand {
-    PLAY_PAUSE, PAUSE, NEXT, PREV, DESTROY
+    DESTROY
 }
 
 enum class SettingCommand {
@@ -112,7 +113,7 @@ fun JoinedTrack.toDomainTrack(
     return DomainTrack(
         track.id,
         track.mediaId,
-        track.codec.toUpperCase(),
+        track.codec.toUpperCase(Locale.getDefault()),
         track.bitrate,
         track.sampleRate / 1000f,
         album,
@@ -315,36 +316,36 @@ fun List<DomainTrack>.sortedByTrackOrder(): List<DomainTrack> =
         .groupBy { it.first.artistId }
         .flatMap { it.value.flatMap { it.second } }
 
-fun List<DomainTrack>.shuffleByClassType(classType: OrientedClassType): List<DomainTrack> = when (classType) {
-    OrientedClassType.ARTIST -> {
-        val artists = this.map { it.artist }.distinct().shuffled()
-        artists.map { artist ->
-            this.filter { it.artist == artist }
-        }.flatten()
+fun List<DomainTrack>.shuffleByClassType(classType: OrientedClassType): List<DomainTrack> =
+    when (classType) {
+        OrientedClassType.ARTIST -> {
+            val artists = this.map { it.artist }.distinct().shuffled()
+            artists.map { artist ->
+                this.filter { it.artist == artist }
+            }.flatten()
+        }
+        OrientedClassType.ALBUM -> {
+            val albumIds = this.map { it.album.id }.distinct().shuffled()
+            albumIds.map { id ->
+                this.filter { it.album.id == id }
+            }.flatten()
+        }
+        OrientedClassType.SONG -> {
+            this.shuffled()
+        }
+        OrientedClassType.GENRE -> {
+            val genreIds = this.map { it.genreId }.distinct().shuffled()
+            genreIds.map { id ->
+                this.filter { it.genreId == id }
+            }.flatten()
+        }
+        OrientedClassType.PLAYLIST -> {
+            val playlistIds = this.map { it.playlistId }.distinct().shuffled()
+            playlistIds.map { id ->
+                this.filter { it.playlistId == id }
+            }.flatten()
+        }
     }
-    OrientedClassType.ALBUM -> {
-        val albumIds = this.map { it.album.id }.distinct().shuffled()
-        albumIds.map { id ->
-            this.filter { it.album.id == id }
-        }.flatten()
-    }
-    OrientedClassType.SONG -> {
-        this.shuffled()
-    }
-    OrientedClassType.GENRE -> {
-        val genreIds = this.map { it.genreId }.distinct().shuffled()
-        genreIds.map { id ->
-            this.filter { it.genreId == id }
-        }.flatten()
-    }
-    OrientedClassType.PLAYLIST -> {
-        val playlistIds = this.map { it.playlistId }.distinct().shuffled()
-        playlistIds.map { id ->
-            this.filter { it.playlistId == id }
-        }.flatten()
-    }
-    else -> emptyList()
-}
 
 suspend fun DomainTrack.getMediaMetadata(context: Context): MediaMetadataCompat =
     MediaMetadataCompat.Builder()
@@ -417,75 +418,74 @@ fun DomainTrack.getTempArtworkUriString(context: Context): String? =
         }
     }
 
-suspend fun getPlayerNotification(
+fun getPlayerNotification(
     context: Context,
-    sessionToken: MediaSessionCompat.Token,
-    domainTrack: DomainTrack, playing: Boolean
+    mediaSession: MediaSessionCompat,
+    playing: Boolean
 ): Notification {
-    val artwork = try {
-        withContext(Dispatchers.IO) {
-            Glide.with(context)
-                .asDrawable()
-                .load(domainTrack.album.artworkUriString.orDefaultForModel)
-                .applyDefaultSettings()
-                .submit()
-                .get()
-                .bitmap()
-        }
-    } catch (t: Throwable) {
-        Timber.e(t)
-        null
-    }
+    val description = mediaSession.controller.metadata.description
 
     return context.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER)
         .setSmallIcon(R.drawable.ic_notification_player)
-        .setLargeIcon(artwork)
-        .setContentTitle(domainTrack.title)
-        .setContentText(domainTrack.artist.title)
-        .setSubText(domainTrack.album.title)
+        .setLargeIcon(description.iconBitmap)
+        .setContentTitle(description.title)
+        .setContentText(description.subtitle)
+        .setSubText(description.description)
         .setOngoing(playing)
         .setStyle(
             androidx.media.app.NotificationCompat.MediaStyle()
                 .setShowActionsInCompactView(0, 1, 2)
-                .setMediaSession(sessionToken)
+                .setMediaSession(mediaSession.sessionToken)
         )
         .setShowWhen(false)
-        .setContentIntent(
-            PendingIntent.getActivity(
+        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+        .setContentIntent(mediaSession.controller.sessionActivity)
+        .setDeleteIntent(
+            MediaButtonReceiver.buildMediaButtonPendingIntent(
                 context,
-                App.REQUEST_CODE_LAUNCH_APP,
-                LauncherActivity.createIntent(context),
-                PendingIntent.FLAG_UPDATE_CURRENT
+                PlaybackStateCompat.ACTION_STOP
             )
         )
         .addAction(
-            NotificationCompat.Action.Builder(
+            NotificationCompat.Action(
                 R.drawable.ic_backward,
                 context.getString(R.string.notification_action_prev),
-                getCommandPendingIntent(context, PlayerControlCommand.PREV)
-            ).build()
+                MediaButtonReceiver.buildMediaButtonPendingIntent(
+                    context,
+                    PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+                )
+            )
         )
         .addAction(
             if (playing) {
-                NotificationCompat.Action.Builder(
+                NotificationCompat.Action(
                     R.drawable.ic_pause,
                     context.getString(R.string.notification_action_pause),
-                    getCommandPendingIntent(context, PlayerControlCommand.PLAY_PAUSE)
-                ).build()
+                    MediaButtonReceiver.buildMediaButtonPendingIntent(
+                        context,
+                        PlaybackStateCompat.ACTION_PAUSE
+                    )
+                )
             } else {
-                NotificationCompat.Action.Builder(
+                NotificationCompat.Action(
                     R.drawable.ic_play,
                     context.getString(R.string.notification_action_play),
-                    getCommandPendingIntent(context, PlayerControlCommand.PLAY_PAUSE)
-                ).build()
+                    MediaButtonReceiver.buildMediaButtonPendingIntent(
+                        context,
+                        PlaybackStateCompat.ACTION_PLAY
+                    )
+                )
             }
         )
         .addAction(
-            NotificationCompat.Action.Builder(
+            NotificationCompat.Action(
                 R.drawable.ic_forward,
                 context.getString(R.string.notification_action_next),
-                getCommandPendingIntent(context, PlayerControlCommand.NEXT)
-            ).build()
+                MediaButtonReceiver.buildMediaButtonPendingIntent(
+                    context,
+                    PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                )
+            )
         )
         .build()
 }

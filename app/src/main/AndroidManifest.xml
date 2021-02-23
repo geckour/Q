@@ -84,7 +84,11 @@
             </intent-filter>
         </activity>
 
-        <service android:name=".service.PlayerService" />
+        <service android:name=".service.PlayerService">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </service>
 
         <service android:name=".service.LocalMediaRetrieveService" />
 
@@ -93,6 +97,12 @@
         <service android:name=".service.SleepTimerService" />
 
         <service android:name=".service.InstantPlayerService" />
+
+        <receiver android:name="androidx.media.session.MediaButtonReceiver">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+        </receiver>
 
         <provider
             android:name="androidx.core.content.FileProvider"
