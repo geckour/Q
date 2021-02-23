@@ -229,19 +229,7 @@ class PlayerService : Service() {
                         Timber.e(error)
                         FirebaseCrashlytics.getInstance().recordException(error)
 
-                        if ((error.cause as? HttpDataSource.InvalidResponseCodeException)?.responseCode == 410) {
-                            (queue.getOrNull(requestedPositionCache)
-                                ?: currentDomainTrack)?.let { song ->
-                                serviceScope.launch {
-                                    replace(
-                                        song.verifyWithDropbox(
-                                            this@PlayerService,
-                                            dropboxClient
-                                        )
-                                    )
-                                }
-                            }
-                        }
+                        verifyByCauseIfNeeded(error)
                     }
                 })
             }
@@ -343,6 +331,8 @@ class PlayerService : Service() {
 
             Timber.e(error)
             FirebaseCrashlytics.getInstance().recordException(error)
+
+            verifyByCauseIfNeeded(error)
         }
     }
 
@@ -481,6 +471,21 @@ class PlayerService : Service() {
 
     fun setOnDestroyedListener(listener: (() -> Unit)?) {
         this.onDestroyed = listener
+    }
+
+    private fun verifyByCauseIfNeeded(throwable: Throwable) {
+        if ((throwable as? HttpDataSource.InvalidResponseCodeException)?.responseCode == 410) {
+            (queue.getOrNull(requestedPositionCache) ?: currentDomainTrack)?.let { song ->
+                serviceScope.launch {
+                    replace(
+                        song.verifyWithDropbox(
+                            this@PlayerService,
+                            dropboxClient
+                        )
+                    )
+                }
+            }
+        }
     }
 
     suspend fun submitQueue(
