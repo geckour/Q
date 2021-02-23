@@ -231,7 +231,7 @@ class BottomSheetFragment : Fragment() {
                                 true
                             }
                             else -> false
-                        }
+                        }.apply { behavior.state = BottomSheetBehavior.STATE_COLLAPSED }
                     }
                     inflate(R.menu.song_transition)
                 }.show()
