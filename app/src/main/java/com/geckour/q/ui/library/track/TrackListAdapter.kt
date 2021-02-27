@@ -22,6 +22,8 @@ import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.orDefaultForModel
+import com.geckour.q.util.showFileMetadataUpdateDialog
+import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -81,12 +83,12 @@ class TrackListAdapter(
         RecyclerView.ViewHolder(binding.root) {
 
         private val shortPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
-            setOnMenuItemClickListener {
-                when (it.itemId) {
+            setOnMenuItemClickListener { menuItem ->
+                when (menuItem.itemId) {
                     R.id.menu_insert_all_next, R.id.menu_insert_all_last, R.id.menu_override_all -> {
                         viewModel.selectedDomainTrack?.apply {
                             viewModel.onNewQueue(
-                                listOf(this), when (it.itemId) {
+                                listOf(this), when (menuItem.itemId) {
                                     R.id.menu_insert_all_next -> InsertActionType.NEXT
                                     R.id.menu_insert_all_last -> InsertActionType.LAST
                                     R.id.menu_override_all -> InsertActionType.OVERRIDE
@@ -94,6 +96,26 @@ class TrackListAdapter(
                                 }, OrientedClassType.TRACK
                             )
                         } ?: return@setOnMenuItemClickListener false
+                    }
+                    R.id.menu_edit_metadata -> {
+                        viewModel.selectedDomainTrack?.id?.let { trackId ->
+                            viewModel.viewModelScope.launch {
+                                val db = DB.getInstance(binding.root.context)
+
+                                viewModel.onLoadStateChanged(true)
+                                val tracks =
+                                    db.trackDao().get(trackId)?.let { listOf(it) }.orEmpty()
+                                viewModel.onLoadStateChanged(false)
+
+                                binding.root.context.showFileMetadataUpdateDialog(tracks) { binding ->
+                                    viewModel.viewModelScope.launch {
+                                        viewModel.onLoadStateChanged(true)
+                                        binding.updateFileMetadata(binding.root.context, db, tracks)
+                                        viewModel.onLoadStateChanged(false)
+                                    }
+                                }
+                            }
+                        }
                     }
                     R.id.menu_ignore -> toggleIgnored()
                     else -> return@setOnMenuItemClickListener false
@@ -114,6 +136,26 @@ class TrackListAdapter(
                         viewModel.selectedAlbum.value = binding.data?.album
                     }
                     R.id.menu_ignore -> toggleIgnored()
+                    R.id.menu_edit_metadata -> {
+                        viewModel.selectedDomainTrack?.id?.let { trackId ->
+                            viewModel.viewModelScope.launch {
+                                val db = DB.getInstance(binding.root.context)
+
+                                viewModel.onLoadStateChanged(true)
+                                val tracks =
+                                    db.trackDao().get(trackId)?.let { listOf(it) }.orEmpty()
+                                viewModel.onLoadStateChanged(false)
+
+                                binding.root.context.showFileMetadataUpdateDialog(tracks) { binding ->
+                                    viewModel.viewModelScope.launch {
+                                        viewModel.onLoadStateChanged(true)
+                                        binding.updateFileMetadata(binding.root.context, db, tracks)
+                                        viewModel.onLoadStateChanged(false)
+                                    }
+                                }
+                            }
+                        }
+                    }
                     R.id.menu_delete_track -> {
                         viewModel.selectedDomainTrack?.let { viewModel.deleteTrack(it) }
                     }

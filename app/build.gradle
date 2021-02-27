@@ -165,6 +165,9 @@ dependencies {
 
     // Dropbox
     implementation 'com.dropbox.core:dropbox-core-sdk:3.1.5'
+
+    // Charset detection
+    implementation 'com.googlecode.juniversalchardet:juniversalchardet:1.0.3'
 }
 
 apply plugin: 'com.google.gms.google-services'

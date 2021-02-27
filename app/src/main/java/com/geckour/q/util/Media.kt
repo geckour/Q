@@ -29,6 +29,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.data.db.model.JoinedTrack
+import com.geckour.q.databinding.DialogEditMetadataBinding
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
@@ -568,10 +569,33 @@ fun InputStream.saveTempAudioFile(context: Context): File {
     return file
 }
 
-suspend fun DomainTrack.updateFileMetadata(
+suspend fun DialogEditMetadataBinding.updateFileMetadata(
     context: Context,
     db: DB,
-    joinedTrack: JoinedTrack,
+    targets: List<JoinedTrack>
+) {
+    targets.asSequence().forEach {
+        it.updateFileMetadata(
+            context,
+            db,
+            inputTrackName.text?.toString(),
+            inputTrackNameKana.text?.toString(),
+            inputAlbumName.text?.toString(),
+            inputAlbumNameKana.text?.toString(),
+            inputArtistName.text?.toString(),
+            inputArtistNameKana.text?.toString(),
+            inputComposerName.text?.toString(),
+            inputComposerNameKana.text?.toString(),
+        )
+    }
+}
+
+/**
+ * Media placed at the outside of the device will be updated only data on the database
+ */
+suspend fun JoinedTrack.updateFileMetadata(
+    context: Context,
+    db: DB,
     newTrackName: String? = null,
     newTrackNameSort: String? = null,
     newAlbumName: String? = null,
@@ -582,69 +606,130 @@ suspend fun DomainTrack.updateFileMetadata(
     newComposerNameSort: String? = null,
     newArtwork: Bitmap? = null
 ) = withContext(Dispatchers.IO) {
-    val file =
-        if (sourcePath.startsWith("http")) null // Only the metadata that on the database will be updated in else block
-        else File(sourcePath)
-    val audioFile = file?.let { AudioFileIO.read(it) }
-    val artworkUriString = newArtwork?.toByteArray()?.storeArtwork(context)
-    val artwork = artworkUriString?.let { ArtworkFactory.createArtworkFromFile(File(it)) }
-    when {
-        newArtistName != null -> {
-            db.trackDao().getAllByArtist(joinedTrack.artist.id)
-                .map {
-                    if (it.track.sourcePath.startsWith("http")) null
-                    else AudioFileIO.read(File(it.track.sourcePath))
-                }
-                .forEach { existingAudioFile ->
-                    existingAudioFile?.tag?.apply {
-                        setField(FieldKey.ARTIST, newArtistName)
-                        newAlbumName?.let { setField(FieldKey.ALBUM, it) }
-                        artwork?.let { setField(it) }
-                        newTrackName?.let { setField(FieldKey.TITLE, it) }
+    catchAsNull {
+        val artworkUriString = newArtwork?.toByteArray()?.storeArtwork(context)
+        val artwork = artworkUriString?.let { ArtworkFactory.createArtworkFromFile(File(it)) }
+        when {
+            newArtistName.isNullOrBlank().not() || newArtistNameSort.isNullOrBlank().not() -> {
+                db.trackDao().getAllByArtist(artist.id)
+                    .mapNotNull {
+                        if (it.track.sourcePath.startsWith("http")) null
+                        else AudioFileIO.read(File(it.track.sourcePath))
                     }
+                    .forEach { existingAudioFile ->
+                        existingAudioFile.tag?.apply {
+                            newArtistName?.let { setField(FieldKey.ARTIST, it) }
+                            newArtistNameSort?.let { setField(FieldKey.ARTIST_SORT, it) }
+                            newAlbumName?.let { setField(FieldKey.ALBUM, it) }
+                            newAlbumNameSort?.let { setField(FieldKey.ALBUM_SORT, it) }
+                            artwork?.let { setField(it) }
+                            newTrackName?.let { setField(FieldKey.TITLE, it) }
+                            newTrackNameSort?.let { setField(FieldKey.TITLE_SORT, it) }
+                            newComposerName?.let { setField(FieldKey.COMPOSER, it) }
+                            newComposerNameSort?.let { setField(FieldKey.COMPOSER_SORT, it) }
+                        }
 
-                    existingAudioFile?.let { AudioFileIO.write(it) }
-                }
-            db.artistDao().update(joinedTrack.artist.copy(title = newArtistName))
-        }
-        newAlbumName != null || newArtwork != null -> {
-            db.trackDao().getAllByAlbum(joinedTrack.album.id)
-                .map {
-                    if (it.track.sourcePath.startsWith("http")) null
-                    else AudioFileIO.read(File(it.track.sourcePath))
-                }
-                .forEach { existingAudioFile ->
-                    existingAudioFile?.tag?.apply {
-                        newAlbumName?.let { setField(FieldKey.ALBUM, it) }
-                        artwork?.let { setField(it) }
-                        newTrackName?.let { setField(FieldKey.TITLE, it) }
+                        existingAudioFile.let { AudioFileIO.write(it) }
                     }
-
-                    existingAudioFile?.let { AudioFileIO.write(it) }
-                }
-            db.albumDao().update(
-                joinedTrack.album.copy(
-                    title = newAlbumName ?: joinedTrack.album.title,
-                    artworkUriString = artworkUriString
-                        ?: joinedTrack.album.artworkUriString
+                db.artistDao().update(
+                    artist.let {
+                        it.copy(
+                            title = newArtistName ?: it.title,
+                            titleSort = newArtistNameSort ?: it.titleSort
+                        )
+                    }
                 )
-            )
-        }
-        else -> {
-            audioFile?.tag?.apply {
-                newTrackName?.let { setField(FieldKey.TITLE, it) }
-                newComposerName?.let { setField(FieldKey.COMPOSER, it) }
+                if (newAlbumName.isNullOrBlank().not() || newAlbumNameSort.isNullOrBlank().not()) {
+                    db.albumDao().update(
+                        album.let {
+                            it.copy(
+                                title = newAlbumName ?: it.title,
+                                titleSort = newAlbumNameSort ?: it.titleSort,
+                                artworkUriString = artworkUriString
+                                    ?: it.artworkUriString
+                            )
+                        }
+                    )
+                }
+                if (newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not()) {
+                    db.trackDao().update(
+                        track.copy(
+                            title = newTrackName ?: track.title,
+                            titleSort = newTrackNameSort ?: track.titleSort,
+                            composer = newComposerName ?: track.composer,
+                            composerSort = newComposerNameSort ?: track.composerSort
+                        )
+                    )
+                }
             }
+            newAlbumName.isNullOrBlank().not() || newAlbumNameSort.isNullOrBlank()
+                .not() || newArtwork != null -> {
+                db.trackDao().getAllByAlbum(album.id)
+                    .mapNotNull {
+                        if (it.track.sourcePath.startsWith("http")) null
+                        else AudioFileIO.read(File(it.track.sourcePath))
+                    }
+                    .forEach { existingAudioFile ->
+                        existingAudioFile.tag?.apply {
+                            newAlbumName?.let { setField(FieldKey.ALBUM, it) }
+                            newAlbumNameSort?.let { setField(FieldKey.ALBUM_SORT, it) }
+                            artwork?.let { setField(it) }
+                            newTrackName?.let { setField(FieldKey.TITLE, it) }
+                            newTrackNameSort?.let { setField(FieldKey.TITLE_SORT, it) }
+                            newComposerName?.let { setField(FieldKey.COMPOSER, it) }
+                            newComposerNameSort?.let { setField(FieldKey.COMPOSER_SORT, it) }
+                        }
 
-            db.trackDao().update(
-                joinedTrack.track.copy(
-                    title = newTrackName ?: joinedTrack.track.title,
-                    composer = newComposerName ?: joinedTrack.track.composer
+                        existingAudioFile.let { AudioFileIO.write(it) }
+                    }
+                db.albumDao().update(
+                    album.let {
+                        it.copy(
+                            title = newAlbumName ?: it.title,
+                            titleSort = newAlbumNameSort ?: it.titleSort,
+                            artworkUriString = artworkUriString
+                                ?: it.artworkUriString
+                        )
+                    }
                 )
-            )
+                if (newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not()) {
+                    db.trackDao().update(
+                        track.copy(
+                            title = newTrackName ?: track.title,
+                            titleSort = newTrackNameSort ?: track.titleSort,
+                            composer = newComposerName ?: track.composer,
+                            composerSort = newComposerNameSort ?: track.composerSort
+                        )
+                    )
+                }
+            }
+            newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not() -> {
+                val file =
+                    if (track.sourcePath.startsWith("http")) null
+                    else File(track.sourcePath)
+                file?.let {
+                    val audioFile = AudioFileIO.read(it)
+                    audioFile?.tag?.apply {
+                        newTrackName?.let { setField(FieldKey.TITLE, it) }
+                        newTrackNameSort?.let { setField(FieldKey.TITLE_SORT, it) }
+                        newComposerName?.let { setField(FieldKey.COMPOSER, it) }
+                        newComposerNameSort?.let { setField(FieldKey.COMPOSER_SORT, it) }
+                    }
+                    audioFile?.let { AudioFileIO.write(it) }
+                }
+
+                db.trackDao().update(
+                    track.copy(
+                        title = newTrackName ?: track.title,
+                        titleSort = newTrackNameSort ?: track.titleSort,
+                        composer = newComposerName ?: track.composer,
+                        composerSort = newComposerNameSort ?: track.composerSort
+                    )
+                )
+            }
         }
+        return@withContext
     }
-    audioFile?.let { AudioFileIO.write(it) }
 }
 
 /**

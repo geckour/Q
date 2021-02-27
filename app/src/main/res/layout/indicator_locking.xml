@@ -75,7 +75,7 @@
             android:layout_marginBottom="16dp"
             android:backgroundTint="?attr/colorAccent"
             android:onClick="@{() -> viewModel.onCancelSync(context)}"
-            android:text="@string/button_cancel_sync"
+            android:text="@string/button_cancel"
             android:textColor="@android:color/white"
             app:layout_constraintBottom_toTopOf="@id/guide_peek_height"
             app:layout_constraintEnd_toEndOf="parent"

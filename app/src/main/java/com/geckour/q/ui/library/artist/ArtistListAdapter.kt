@@ -24,8 +24,10 @@ import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.orDefaultForModel
+import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
+import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -110,6 +112,26 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
         private fun onOptionSelected(context: Context, id: Int, artist: Artist?): Boolean {
             if (artist == null) return false
 
+            if (id == R.id.menu_edit_metadata) {
+                viewModel.viewModelScope.launch {
+                    val db = DB.getInstance(context)
+
+                    viewModel.onLoadStateChanged(true)
+                    val tracks = db.trackDao()
+                        .getAllByArtist(artist.id)
+                    viewModel.onLoadStateChanged(false)
+
+                    context.showFileMetadataUpdateDialog(tracks) { binding ->
+                        viewModel.viewModelScope.launch {
+                            viewModel.onLoadStateChanged(true)
+                            binding.updateFileMetadata(context, db, tracks)
+                            viewModel.onLoadStateChanged(false)
+                        }
+                    }
+                }
+                return true
+            }
+
             val actionType = when (id) {
                 R.id.menu_insert_all_next -> InsertActionType.NEXT
                 R.id.menu_insert_all_last -> InsertActionType.LAST
@@ -132,15 +154,13 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
                 val tracks = DB.getInstance(context).let { db ->
                     val sharedPreferences =
                         PreferenceManager.getDefaultSharedPreferences(context)
-                    db.albumDao().getAllByArtist(artist.id).map {
-                        db.trackDao().getAllByAlbum(
-                            it.album.id,
+                    db.trackDao()
+                        .getAllByArtist(
+                            artist.id,
                             BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                        ).map { it.toDomainTrack() }.let {
-                            if (sortByTrackOrder) it.sortedByTrackOrder()
-                            else it
-                        }
-                    }.flatten()
+                        )
+                        .map { it.toDomainTrack() }
+                        .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                 }
                 viewModel.onLoadStateChanged(false)
 

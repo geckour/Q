@@ -12,8 +12,8 @@ import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemPlaylistBinding
-import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.Playlist
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -22,6 +22,8 @@ import com.geckour.q.util.getDomainTrack
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.getTrackMediaIds
 import com.geckour.q.util.orDefaultForModel
+import com.geckour.q.util.showFileMetadataUpdateDialog
+import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -108,6 +110,27 @@ class PlaylistListAdapter(private val viewModel: MainViewModel) :
 
         private fun onOptionSelected(context: Context, id: Int, playlist: Playlist?): Boolean {
             if (playlist == null) return false
+
+            if (id == R.id.menu_edit_metadata) {
+                viewModel.viewModelScope.launch {
+                    val db = DB.getInstance(context)
+
+                    viewModel.onLoadStateChanged(true)
+                    val tracks = playlist.getTrackMediaIds(context)
+                        .map { it.first }
+                        .let { db.trackDao().getByMediaIds(it) }
+                    viewModel.onLoadStateChanged(false)
+
+                    context.showFileMetadataUpdateDialog(tracks) { binding ->
+                        viewModel.viewModelScope.launch {
+                            viewModel.onLoadStateChanged(true)
+                            binding.updateFileMetadata(context, db, tracks)
+                            viewModel.onLoadStateChanged(false)
+                        }
+                    }
+                }
+                return true
+            }
 
             val actionType = when (id) {
                 R.id.menu_insert_all_next -> InsertActionType.NEXT

@@ -40,4 +40,8 @@
         android:id="@+id/menu_override_all_simple_shuffle"
         app:showAsAction="never"
         android:title="@string/menu_override_all_simple_shuffle" />
+    <item
+        android:id="@+id/menu_edit_metadata"
+        android:title="@string/menu_edit_metadata"
+        app:showAsAction="never" />
 </menu>

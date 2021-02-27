@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
+import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.databinding.ItemAlbumBinding
 import com.geckour.q.domain.model.DomainTrack
@@ -19,6 +20,8 @@ import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.orDefaultForModel
+import com.geckour.q.util.showFileMetadataUpdateDialog
+import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -106,6 +109,25 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
 
         private fun onOptionSelected(id: Int, joinedAlbum: JoinedAlbum?): Boolean {
             if (joinedAlbum == null) return false
+
+            if (id == R.id.menu_edit_metadata) {
+                viewModel.viewModelScope.launch {
+                    val db = DB.getInstance(binding.root.context)
+
+                    viewModel.onLoadStateChanged(true)
+                    val tracks = db.trackDao().getAllByAlbum(joinedAlbum.album.id)
+                    viewModel.onLoadStateChanged(false)
+
+                    binding.root.context.showFileMetadataUpdateDialog(tracks) { binding ->
+                        viewModel.viewModelScope.launch {
+                            viewModel.onLoadStateChanged(true)
+                            binding.updateFileMetadata(binding.root.context, db, tracks)
+                            viewModel.onLoadStateChanged(false)
+                        }
+                    }
+                }
+                return true
+            }
 
             val actionType = when (id) {
                 R.id.menu_insert_all_next -> InsertActionType.NEXT

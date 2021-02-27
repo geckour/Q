@@ -25,4 +25,8 @@
         android:id="@+id/menu_delete_track"
         android:title="@string/menu_delete_track"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_edit_metadata"
+        android:title="@string/menu_edit_metadata"
+        app:showAsAction="never" />
 </menu>

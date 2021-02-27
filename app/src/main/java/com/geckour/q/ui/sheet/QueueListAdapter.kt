@@ -4,11 +4,13 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
+import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
+import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemTrackBinding
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.main.MainViewModel
@@ -16,6 +18,9 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.orDefaultForModel
+import com.geckour.q.util.showFileMetadataUpdateDialog
+import com.geckour.q.util.updateFileMetadata
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 class QueueListAdapter(private val viewModel: MainViewModel) :
@@ -67,8 +72,8 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
         private val nowPlaying get() = adapterPosition == nowPlayingIndex
 
         private val popupMenu = PopupMenu(binding.root.context, binding.root).apply {
-            setOnMenuItemClickListener {
-                when (it.itemId) {
+            setOnMenuItemClickListener { menuItem ->
+                when (menuItem.itemId) {
                     R.id.menu_transition_to_artist -> {
                         viewModel.selectedArtist.value = binding.data?.artist
                     }
@@ -78,7 +83,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
                     R.id.menu_insert_all_next, R.id.menu_insert_all_last, R.id.menu_override_all -> {
                         viewModel.selectedDomainTrack?.apply {
                             viewModel.onNewQueue(
-                                listOf(this), when (it.itemId) {
+                                listOf(this), when (menuItem.itemId) {
                                     R.id.menu_insert_all_next -> {
                                         InsertActionType.NEXT
                                     }
@@ -92,6 +97,24 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
                                 }, OrientedClassType.TRACK
                             )
                         } ?: return@setOnMenuItemClickListener false
+                    }
+                    R.id.menu_edit_metadata -> {
+                        viewModel.viewModelScope.launch {
+                            val db = DB.getInstance(binding.root.context)
+
+                            viewModel.onLoadStateChanged(true)
+                            val tracks = currentList.map { it.id }
+                                .let { db.trackDao().getByIds(it) }
+                            viewModel.onLoadStateChanged(false)
+
+                            binding.root.context.showFileMetadataUpdateDialog(tracks) { binding ->
+                                viewModel.viewModelScope.launch {
+                                    viewModel.onLoadStateChanged(true)
+                                    binding.updateFileMetadata(binding.root.context, db, tracks)
+                                    viewModel.onLoadStateChanged(false)
+                                }
+                            }
+                        }
                     }
                     R.id.menu_delete_track -> {
                         remove(adapterPosition)

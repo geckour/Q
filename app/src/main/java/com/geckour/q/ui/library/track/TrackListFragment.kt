@@ -12,6 +12,7 @@ import android.widget.SearchView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewModelScope
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
@@ -27,9 +28,11 @@ import com.geckour.q.util.getTrackListFromTrackMediaId
 import com.geckour.q.util.getTrackMediaIds
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
+import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toggleDayNight
+import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -130,6 +133,24 @@ class TrackListFragment : Fragment() {
         }
         if (item.itemId == R.id.menu_sleep) {
             (requireActivity() as? MainActivity)?.showSleepTimerDialog()
+            return true
+        }
+        if (item.itemId == R.id.menu_edit_metadata) {
+            mainViewModel.viewModelScope.launch {
+                val db = DB.getInstance(requireContext())
+
+                mainViewModel.onLoadStateChanged(true)
+                val tracks = adapter.currentList.map { it.id }.let { db.trackDao().getByIds(it) }
+                mainViewModel.onLoadStateChanged(false)
+
+                requireContext().showFileMetadataUpdateDialog(tracks) { binding ->
+                    mainViewModel.viewModelScope.launch {
+                        mainViewModel.onLoadStateChanged(true)
+                        binding.updateFileMetadata(requireContext(), db, tracks)
+                        mainViewModel.onLoadStateChanged(false)
+                    }
+                }
+            }
             return true
         }
 

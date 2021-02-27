@@ -1,10 +1,9 @@
 package com.geckour.q.util
 
 import androidx.appcompat.app.AppCompatDelegate
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import timber.log.Timber
 import kotlin.math.abs
-import com.geckour.q.data.db.model.Album as DBAlbum
-import com.geckour.q.data.db.model.Artist as DBArtist
 
 fun Float.getReadableString(digitToKeep: Int = 3): String {
     fun Float.format(suffix: String): String = String.format(
@@ -38,11 +37,15 @@ val Boolean.toNightModeInt: Int
     else AppCompatDelegate.MODE_NIGHT_NO
 
 val String.hiraganized: String
-    get() = this.map { if (it in 'ァ'..'ヶ') it - 0x60 else it }.toString()
+    get() = this.map { if (it in 'ァ'..'ヶ') it - 0x60 else it }.joinToString("")
 
-fun <T> catchAsNull(block: () -> T): T? = try {
+inline fun <reified T> catchAsNull(
+    onError: (Throwable) -> Unit = {},
+    block: () -> T
+) = runCatching {
     block()
-} catch (t: Throwable) {
-    Timber.e(t)
-    null
-}
+}.onFailure {
+    Timber.e(it)
+    FirebaseCrashlytics.getInstance().recordException(it)
+    onError(it)
+}.getOrNull()

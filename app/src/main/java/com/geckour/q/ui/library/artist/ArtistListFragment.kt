@@ -13,6 +13,7 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -22,9 +23,11 @@ import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
+import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toggleDayNight
+import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -93,6 +96,24 @@ class ArtistListFragment : Fragment() {
             }
             if (item.itemId == R.id.menu_sleep) {
                 (requireActivity() as? MainActivity)?.showSleepTimerDialog()
+                return true
+            }
+            if (item.itemId == R.id.menu_edit_metadata) {
+                viewModel.viewModelScope.launch {
+                    val db = DB.getInstance(context)
+
+                    mainViewModel.onLoadStateChanged(true)
+                    val tracks = db.trackDao().getAll()
+                    mainViewModel.onLoadStateChanged(false)
+
+                    context.showFileMetadataUpdateDialog(tracks) { binding ->
+                        viewModel.viewModelScope.launch {
+                            mainViewModel.onLoadStateChanged(true)
+                            binding.updateFileMetadata(context, db, tracks)
+                            mainViewModel.onLoadStateChanged(false)
+                        }
+                    }
+                }
                 return true
             }
 

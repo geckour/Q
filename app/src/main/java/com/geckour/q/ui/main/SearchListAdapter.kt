@@ -12,14 +12,16 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.databinding.ItemSearchCategoryBinding
 import com.geckour.q.databinding.ItemSearchItemBinding
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.SearchItem
-import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.orDefaultForModel
+import com.geckour.q.util.showFileMetadataUpdateDialog
+import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.launch
 
 class SearchListAdapter(private val viewModel: MainViewModel) :
@@ -85,12 +87,32 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
         RecyclerView.ViewHolder(binding.root) {
 
         private val trackPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
-            setOnMenuItemClickListener {
+            setOnMenuItemClickListener { menuItem ->
                 val track = (binding.data?.data as? DomainTrack)
                     ?: return@setOnMenuItemClickListener true
+
+                if (menuItem.itemId == R.id.menu_edit_metadata) {
+                    viewModel.viewModelScope.launch {
+                        val db = DB.getInstance(binding.root.context)
+
+                        viewModel.onLoadStateChanged(true)
+                        val tracks = db.trackDao().get(track.id)?.let { listOf(it) }.orEmpty()
+                        viewModel.onLoadStateChanged(false)
+
+                        binding.root.context.showFileMetadataUpdateDialog(tracks) { binding ->
+                            viewModel.viewModelScope.launch {
+                                viewModel.onLoadStateChanged(true)
+                                binding.updateFileMetadata(binding.root.context, db, tracks)
+                                viewModel.onLoadStateChanged(false)
+                            }
+                        }
+                    }
+                    return@setOnMenuItemClickListener true
+                }
+
                 viewModel.onNewQueue(
                     listOf(track),
-                    when (it.itemId) {
+                    when (menuItem.itemId) {
                         R.id.menu_insert_all_next -> {
                             InsertActionType.NEXT
                         }

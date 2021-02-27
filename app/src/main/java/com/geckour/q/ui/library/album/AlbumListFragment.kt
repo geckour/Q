@@ -26,8 +26,10 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
+import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toggleDayNight
+import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -111,6 +113,26 @@ class AlbumListFragment : Fragment() {
                 (requireActivity() as? MainActivity)?.showSleepTimerDialog()
                 return true
             }
+            if (item.itemId == R.id.menu_edit_metadata) {
+                viewModel.viewModelScope.launch {
+                    val db = DB.getInstance(context)
+
+                    mainViewModel.onLoadStateChanged(true)
+                    val tracks = adapter.currentList.flatMap { joinedAlbum ->
+                        db.trackDao().getAllByAlbum(joinedAlbum.album.id)
+                    }
+                    mainViewModel.onLoadStateChanged(false)
+
+                    context.showFileMetadataUpdateDialog(tracks) { binding ->
+                        viewModel.viewModelScope.launch {
+                            mainViewModel.onLoadStateChanged(true)
+                            binding.updateFileMetadata(context, db, tracks)
+                            mainViewModel.onLoadStateChanged(false)
+                        }
+                    }
+                }
+                return true
+            }
 
             val actionType = when (item.itemId) {
                 R.id.menu_insert_all_next -> InsertActionType.NEXT
@@ -130,7 +152,7 @@ class AlbumListFragment : Fragment() {
                     it != R.id.menu_insert_all_simple_shuffle_next || it != R.id.menu_insert_all_simple_shuffle_last || it != R.id.menu_override_all_simple_shuffle
                 }
                 mainViewModel.onLoadStateChanged(true)
-                val tracks = adapter.currentList.map { joinedAlbum ->
+                val tracks = adapter.currentList.flatMap { joinedAlbum ->
                     DB.getInstance(context).let { db ->
                         db.trackDao()
                             .let {
@@ -148,9 +170,8 @@ class AlbumListFragment : Fragment() {
                             }
                             .map { it.toDomainTrack() }
                     }
-                }.apply {
-                    mainViewModel.onLoadStateChanged(false)
-                }.flatten()
+                }
+                mainViewModel.onLoadStateChanged(false)
 
                 adapter.onNewQueue(tracks, actionType)
             }

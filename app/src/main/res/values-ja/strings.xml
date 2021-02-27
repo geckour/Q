@@ -36,7 +36,8 @@
     <!-- Indicator -->
     <string name="syncing">ライブラリを同期中…</string>
     <string name="loading">アイテムを取得中…</string>
-    <string name="button_cancel_sync">キャンセル</string>
+    <string name="button_apply">適用</string>
+    <string name="button_cancel">キャンセル</string>
 
     <!-- Bottom Sheet -->
     <string name="bottom_sheet_time_total">総時間・%1$s</string>
@@ -103,6 +104,8 @@
 
     <string name="menu_transition_to_artist">アーティストへ移動</string>
     <string name="menu_transition_to_album">アルバムへ移動</string>
+
+    <string name="menu_edit_metadata">曲情報を編集</string>
 
     <!-- Dialog -->
     <string name="dialog_ok">決定</string>
@@ -185,4 +188,16 @@
     <!-- Equalizer -->
     <string name="equalizer_flatten">リセット</string>
     <string name="equalizer_message_error_turn_on">エラー: 一度曲を再生してから再度お試しください</string>
+
+    <!-- Metadata Editor -->
+    <string name="metadata_edit_dialog_title">曲情報を編集</string>
+    <string name="metadata_edit_dialog_message">新しい曲情報を入力してください</string>
+    <string name="metadata_edit_track_name">曲名</string>
+    <string name="metadata_edit_track_name_kana">曲名読みがな</string>
+    <string name="metadata_edit_album_name">アルバム名</string>
+    <string name="metadata_edit_album_name_kana">アルバム名読みがな</string>
+    <string name="metadata_edit_artist_name">アーティスト名</string>
+    <string name="metadata_edit_artist_name_kana">アーティスト名読みがな</string>
+    <string name="metadata_edit_composer_name">作曲者名</string>
+    <string name="metadata_edit_composer_name_kana">作曲者名読みがな</string>
 </resources>

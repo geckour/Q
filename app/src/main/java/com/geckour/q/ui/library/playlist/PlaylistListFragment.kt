@@ -24,7 +24,9 @@ import com.geckour.q.util.getDomainTrack
 import com.geckour.q.util.getTrackMediaIds
 import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
+import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.toggleDayNight
+import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.launch
 
 class PlaylistListFragment : Fragment() {
@@ -102,6 +104,28 @@ class PlaylistListFragment : Fragment() {
                 (requireActivity() as? MainActivity)?.showSleepTimerDialog()
                 return true
             }
+            if (item.itemId == R.id.menu_edit_metadata) {
+                viewModel.viewModelScope.launch {
+                    val db = DB.getInstance(context)
+
+                    mainViewModel.onLoadStateChanged(true)
+                    val tracks = adapter.getItems().flatMap { playlist ->
+                        playlist.getTrackMediaIds(context)
+                            .map { it.first }
+                            .let { db.trackDao().getByMediaIds(it) }
+                    }
+                    mainViewModel.onLoadStateChanged(false)
+
+                    context.showFileMetadataUpdateDialog(tracks) { binding ->
+                        viewModel.viewModelScope.launch {
+                            mainViewModel.onLoadStateChanged(true)
+                            binding.updateFileMetadata(context, db, tracks)
+                            mainViewModel.onLoadStateChanged(false)
+                        }
+                    }
+                }
+                return true
+            }
 
             val actionType = when (item.itemId) {
                 R.id.menu_insert_all_next -> InsertActionType.NEXT
@@ -118,15 +142,14 @@ class PlaylistListFragment : Fragment() {
 
             viewModel.viewModelScope.launch {
                 mainViewModel.onLoadStateChanged(true)
-                val tracks = adapter.getItems().map { playlist ->
+                val tracks = adapter.getItems().flatMap { playlist ->
                     playlist.getTrackMediaIds(context).mapNotNull {
                         getDomainTrack(
                             DB.getInstance(context), it.first, playlistId = playlist.id
                         )
                     }
-                }.apply {
-                    mainViewModel.onLoadStateChanged(false)
-                }.flatten()
+                }
+                mainViewModel.onLoadStateChanged(false)
                 adapter.onNewQueue(tracks, actionType)
             }
         }

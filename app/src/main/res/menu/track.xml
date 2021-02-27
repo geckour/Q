@@ -17,4 +17,8 @@
         android:id="@+id/menu_ignore"
         android:title="@string/menu_ignore_to_true"
         app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_edit_metadata"
+        android:title="@string/menu_edit_metadata"
+        app:showAsAction="never" />
 </menu>

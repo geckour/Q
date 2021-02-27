@@ -41,7 +41,8 @@
     <string name="loading">Loading items…</string>
     <string name="progress_sync" translatable="false">%1$d / %2$d</string>
     <string name="progress_sync_dropbox" translatable="false">%d…</string>
-    <string name="button_cancel_sync">Cancel</string>
+    <string name="button_apply">Apply</string>
+    <string name="button_cancel">Cancel</string>
 
     <!-- Bottom Sheet -->
     <string name="bottom_sheet_time_total">Total・%1$s</string>
@@ -110,6 +111,8 @@
 
     <string name="menu_transition_to_artist">Show artist</string>
     <string name="menu_transition_to_album">Show album</string>
+
+    <string name="menu_edit_metadata">Edit metadata</string>
 
     <!-- Dialog -->
     <string name="dialog_ok">OK</string>
@@ -205,6 +208,18 @@
     <string name="equalizer_scale_label_center" translatable="false">0dB</string>
     <string name="equalizer_scale_label" translatable="false">%1$sdB</string>
     <string name="equalizer_message_error_turn_on">Error: Please play music at once</string>
+
+    <!-- Metadata Editor -->
+    <string name="metadata_edit_dialog_title">Edit metadata</string>
+    <string name="metadata_edit_dialog_message">Fill following fields by new metadata values</string>
+    <string name="metadata_edit_track_name">Track name</string>
+    <string name="metadata_edit_track_name_kana">Track name kana</string>
+    <string name="metadata_edit_album_name">Album name</string>
+    <string name="metadata_edit_album_name_kana">Album name kana</string>
+    <string name="metadata_edit_artist_name">Artist name</string>
+    <string name="metadata_edit_artist_name_kana">Artist name kana</string>
+    <string name="metadata_edit_composer_name">Composer name</string>
+    <string name="metadata_edit_composer_name_kana">Composer name kana</string>
 
     <!-- License -->
     <string name="license_name_coroutines" translatable="false">Kotlin Coroutines</string>

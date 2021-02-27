@@ -38,10 +38,12 @@ internal suspend fun File.storeMediaInfo(
     val bitrate = header.bitRateAsNumber
     val sampleRate = header.sampleRateAsNumber
 
-    val title = tag.getAll(FieldKey.TITLE).lastOrNull { it.isNotBlank() }
+    val title =
+        tag.getAll(FieldKey.TITLE).lastOrNull { it.isNotBlank() } ?: this@storeMediaInfo.name
     val titleSort =
-        (tag.getAll(FieldKey.TITLE_SORT).lastOrNull { it.isNotBlank() }
-            ?: title)?.hiraganized
+        (tag.getAll(FieldKey.TITLE_SORT).lastOrNull { it.isNotBlank() } ?: title)
+            ?.hiraganized
+            ?: this@storeMediaInfo.name
 
     val albumTitle = tag.getAll(FieldKey.ALBUM).lastOrNull { it.isNotBlank() }
     val cachedAlbum = albumTitle?.let { db.albumDao().getAllByTitle(it).firstOrNull() }
