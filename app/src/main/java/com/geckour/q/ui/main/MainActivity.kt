@@ -22,6 +22,7 @@ import androidx.core.view.GravityCompat
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.commit
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
 import com.dropbox.core.android.Auth
 import com.geckour.q.BuildConfig
@@ -56,6 +57,8 @@ import com.geckour.q.util.toNightModeInt
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.analytics.FirebaseAnalytics
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 import permissions.dispatcher.ktx.constructPermissionsRequest
 import timber.log.Timber
 import java.io.File
@@ -356,9 +359,8 @@ class MainActivity : AppCompatActivity() {
             supportActionBar?.title = title
         }
 
-        viewModel.loading.observe(this) {
-            it ?: return@observe
-            setLockingIndicator()
+        lifecycleScope.launch {
+            viewModel.loading.collectLatest { setLockingIndicator() }
         }
 
         viewModel.selectedArtist.observe(this) {
@@ -449,7 +451,7 @@ class MainActivity : AppCompatActivity() {
                 indicateSync()
                 toggleIndicateLock(true)
             }
-            viewModel.loading.value == true -> {
+            viewModel.loading.value -> {
                 indicateLoad()
                 toggleIndicateLock(true)
             }

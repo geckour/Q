@@ -45,7 +45,7 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     internal val artworkLongClick: LiveData<Boolean> = _artworkLongClick.distinctUntilChanged()
     internal val toggleSheetState = MutableLiveData<Unit>()
     internal var currentQueue: List<DomainTrack> = emptyList()
-    internal var currentPosition: Int = -1
+    internal var currentIndex: Int = -1
     internal var playbackPosition: Long = 0
     private val _showCurrentRemain = MutableLiveData<Boolean>()
     internal val showCurrentRemain: LiveData<Boolean> = _showCurrentRemain
@@ -55,7 +55,7 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     val touchLock: LiveData<Boolean> = _touchLock.distinctUntilChanged()
     val isQueueNotEmpty: Boolean get() = currentQueue.isEmpty().not()
 
-    val currentDomainTrack: DomainTrack? get() = currentQueue.getOrNull(currentPosition)
+    val currentDomainTrack: DomainTrack? get() = currentQueue.getOrNull(currentIndex)
 
     private var updateArtworkJob: Job = Job()
 
@@ -138,8 +138,8 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
         _touchLock.value = _touchLock.value?.not() ?: true
     }
 
-    internal fun onNewPosition(position: Int) {
-        currentPosition = position
+    internal fun onNewIndex(index: Int) {
+        currentIndex = index
         SleepTimerService.notifyTrackChanged(
             getApplication(),
             currentDomainTrack ?: return,

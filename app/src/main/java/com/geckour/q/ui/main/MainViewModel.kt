@@ -52,6 +52,8 @@ import com.geckour.q.util.toDomainTrack
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -83,7 +85,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var currentOrientedClassType: OrientedClassType? = null
 
     internal var syncing = false
-    internal val loading = MutableLiveData<Boolean>()
+    internal val loading = MutableStateFlow(false)
     internal var isSearchViewOpened = false
 
     private var searchJob: Job = Job()
@@ -96,10 +98,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 isBoundService = true
 
                 val playerService = (service as? PlayerService.PlayerBinder)?.service
-
-                playerService?.setOnLoadStateChangedListener { onLoadStateChanged(it) }
+                viewModelScope.launch {
+                    playerService?.loadStateFlow?.collectLatest { onLoadStateChanged(it) }
+                }
                 playerService?.setOnDestroyedListener { onPlayerDestroyed() }
-                playerService?.publishStatus()
 
                 player.value = playerService
             }
@@ -439,14 +441,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val tracks = DB.getInstance(getApplication()).let { db ->
                 val sharedPreferences =
                     PreferenceManager.getDefaultSharedPreferences(getApplication())
-                loading.postValue(true)
+                loading.emit(true)
                 db.trackDao()
                     .getAllByAlbum(
                         album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                     )
                     .map { it.toDomainTrack() }
                     .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
-                    .apply { loading.postValue(false) }
+                    .apply { loading.emit(false) }
             }
 
             onNewQueue(tracks, actionType, OrientedClassType.TRACK)
@@ -454,7 +456,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     internal fun onLoadStateChanged(state: Boolean) {
-        loading.postValue(state)
+        viewModelScope.launch { loading.emit(state) }
     }
 
     internal fun onChangeRequestedPositionInQueue(position: Int) {

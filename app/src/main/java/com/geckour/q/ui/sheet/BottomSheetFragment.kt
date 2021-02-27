@@ -12,6 +12,7 @@ import android.widget.SeekBar
 import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -32,6 +33,7 @@ import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -179,40 +181,37 @@ class BottomSheetFragment : Fragment() {
         binding.viewModel = viewModel
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        mainViewModel.player.value?.apply {
-            setOnQueueChangedListener(null)
-            setOnPlaybackStateChangeListener(null)
-            setOnPlaybackRatioChangedListener(null)
-            setOnRepeatModeChangedListener(null)
-        }
-    }
-
     @SuppressLint("ClickableViewAccessibility")
     private fun observeEvents() {
         mainViewModel.player.observe(viewLifecycleOwner) { player ->
             player ?: return@observe
 
-            player.setOnQueueChangedListener { tracks, position, trackChanged ->
-                onQueueChanged(tracks, position, trackChanged)
+            lifecycleScope.launch {
+                player.queueFlow.collectLatest { onQueueChanged(it) }
             }
-            player.setOnPlaybackStateChangeListener { playbackState, playWhenReady ->
-                onPlayingChanged(
-                    when (playbackState) {
-                        Player.STATE_READY -> {
-                            playWhenReady
+            lifecycleScope.launch {
+                player.currentIndexFlow.collectLatest { onCurrentIndexChanged(it) }
+            }
+            lifecycleScope.launch {
+                player.playbackInfoFlow.collectLatest { (playWhenReady, playbackState) ->
+                    onPlayingChanged(
+                        when (playbackState) {
+                            Player.STATE_READY -> {
+                                playWhenReady
+                            }
+                            else -> false
                         }
-                        else -> false
-                    }
-                )
+                    )
+                }
             }
-            player.setOnPlaybackRatioChangedListener {
-                viewModel.playbackPosition = it
-                onPlaybackPositionChanged(viewModel.playbackPosition)
+            lifecycleScope.launch {
+                player.playbackPositionFLow.collectLatest {
+                    viewModel.playbackPosition = it
+                    onPlaybackPositionChanged(it)
+                }
             }
-            player.setOnRepeatModeChangedListener {
-                onRepeatModeChanged(it)
+            lifecycleScope.launch {
+                player.repeatModeFlow.collectLatest { onRepeatModeChanged(it) }
             }
         }
 
@@ -280,15 +279,15 @@ class BottomSheetFragment : Fragment() {
 
     private fun scrollToCurrent() {
         if (adapter.itemCount > 0) {
-            binding.recyclerView.smoothScrollToPosition(viewModel.currentPosition)
+            binding.recyclerView.smoothScrollToPosition(viewModel.currentIndex)
         }
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun onQueueChanged(queue: List<DomainTrack>, position: Int, trackChanged: Boolean) {
-        adapter.setNowPlayingPosition(position, queue)
+    private fun onQueueChanged(queue: List<DomainTrack>) {
+        adapter.submitList(queue)
         viewModel.currentQueue = queue
-        viewModel.onNewPosition(position)
+
         binding.viewModel = viewModel
 
         val totalTime = queue.map { it.duration }.sum()
@@ -298,11 +297,6 @@ class BottomSheetFragment : Fragment() {
         val changed = (adapter.getItemIds() == queue.map { it.id }).not()
         if (changed && behavior.state == BottomSheetBehavior.STATE_COLLAPSED) {
             binding.buttonToggleVisibleQueue.shake()
-        }
-
-        if (trackChanged) {
-            viewModel.playbackPosition = 0
-            onPlaybackPositionChanged(0)
         }
 
         val noCurrentTrack = viewModel.currentDomainTrack == null
@@ -320,6 +314,16 @@ class BottomSheetFragment : Fragment() {
         resetMarquee()
     }
 
+    private fun onCurrentIndexChanged(index: Int) {
+        if (viewModel.currentIndex != index) {
+            viewModel.playbackPosition = 0
+            onPlaybackPositionChanged(0)
+        }
+
+        adapter.setNowPlayingPosition(index)
+        viewModel.onNewIndex(index)
+    }
+
     private fun onPlayingChanged(playing: Boolean) {
         viewModel.playing.value = playing
         if (playing.not()) {
@@ -335,7 +339,7 @@ class BottomSheetFragment : Fragment() {
 
         binding.textTimeLeft.text = playbackPosition.getTimeString()
         setTimeRightText(track, playbackPosition)
-        val remain = adapter.getItemsAfter(viewModel.currentPosition + 1)
+        val remain = adapter.getItemsAfter(viewModel.currentIndex + 1)
             .map { it.duration }
             .sum() + (track.duration - playbackPosition)
         binding.textTimeRemain.text =
