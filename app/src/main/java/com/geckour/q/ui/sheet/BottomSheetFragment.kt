@@ -61,7 +61,7 @@ class BottomSheetFragment : Fragment() {
         true
     }
 
-    private val itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
+    private val itemTouchHelperCallback = object : ItemTouchHelper.SimpleCallback(
         ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
     ) {
         var from: Int? = null
@@ -72,16 +72,26 @@ class BottomSheetFragment : Fragment() {
             fromHolder: RecyclerView.ViewHolder,
             toHolder: RecyclerView.ViewHolder
         ): Boolean {
-            val from = fromHolder.adapterPosition
-            val to = toHolder.adapterPosition
-
-            if (this.from == null) this.from = from
-            this.to = to
-
-            adapter.move(from, to)
             (fromHolder as QueueListAdapter.ViewHolder).dismissPopupMenu()
 
             return true
+        }
+
+        override fun onMoved(
+            recyclerView: RecyclerView,
+            viewHolder: RecyclerView.ViewHolder,
+            fromPos: Int,
+            target: RecyclerView.ViewHolder,
+            toPos: Int,
+            x: Int,
+            y: Int
+        ) {
+            super.onMoved(recyclerView, viewHolder, fromPos, target, toPos, x, y)
+
+            if (from == null) from = fromPos
+            to = toPos
+
+            adapter.notifyItemMoved(fromPos, toPos)
         }
 
         override fun onSwiped(holder: RecyclerView.ViewHolder, position: Int) = Unit
@@ -89,17 +99,18 @@ class BottomSheetFragment : Fragment() {
         override fun onSelectedChanged(viewHolder: RecyclerView.ViewHolder?, actionState: Int) {
             super.onSelectedChanged(viewHolder, actionState)
 
-            val from = this.from
-            val to = this.to
+            val from = this.from ?: return
+            val to = this.to ?: return
 
-            if (viewHolder == null && from != null && to != null) {
-                mainViewModel.onQueueSwap(from, to)
+            if (viewHolder == null) {
+                mainViewModel.onQueueMove(from, to)
+
+                this.from = null
+                this.to = null
             }
-
-            this.from = null
-            this.to = null
         }
-    })
+    }
+    private val itemTouchHelper = ItemTouchHelper(itemTouchHelperCallback)
 
     private val bottomSheetCallback = object : BottomSheetBehavior.BottomSheetCallback() {
         override fun onSlide(v: View, dy: Float) {
@@ -190,7 +201,7 @@ class BottomSheetFragment : Fragment() {
                 player.queueFlow.collectLatest { onQueueChanged(it) }
             }
             lifecycleScope.launch {
-                player.currentIndexFlow.collectLatest { onCurrentIndexChanged(it) }
+                player.currentIndexFlow.collectLatest { onNewQueue(it) }
             }
             lifecycleScope.launch {
                 player.playbackInfoFlow.collectLatest { (playWhenReady, playbackState) ->
@@ -296,12 +307,12 @@ class BottomSheetFragment : Fragment() {
             binding.buttonToggleVisibleQueue.shake()
         }
 
-        onCurrentIndexChanged(viewModel.currentIndex, queue)
+        onNewQueue(viewModel.currentIndex, queue)
     }
 
-    private fun onCurrentIndexChanged(index: Int, queue: List<DomainTrack>? = null) {
-        adapter.setNowPlayingPosition(index, queue)
-        viewModel.onNewIndex(index)
+    private fun onNewQueue(currentIndex: Int, queue: List<DomainTrack>? = null) {
+        adapter.submitNewQueue(currentIndex, queue)
+        viewModel.onNewIndex(currentIndex)
         viewModel.setArtwork(binding.artwork)
 
         val noCurrentTrack = viewModel.currentDomainTrack.value == null

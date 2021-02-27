@@ -49,6 +49,45 @@
             tools:src="@tools:sample/avatars" />
 
         <TextView
+            android:id="@+id/disc_number"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@{data.discNum.toString()}"
+            android:textSize="10sp"
+            android:visibility="@{data.discNum == null ? View.GONE : View.VISIBLE}"
+            app:layout_constraintBaseline_toBaselineOf="@id/duration"
+            app:layout_constraintEnd_toStartOf="@id/track_numbers_divider"
+            app:layout_constraintHorizontal_chainStyle="packed"
+            app:layout_constraintStart_toStartOf="@id/thumb"
+            tools:text="1" />
+
+        <TextView
+            android:id="@+id/track_numbers_divider"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="2dp"
+            android:text="@string/track_number_divider"
+            android:textColor="?attr/colorTextSettingNormal"
+            android:textSize="10sp"
+            android:visibility="@{data.discNum == null ? View.GONE : View.VISIBLE}"
+            app:layout_constraintBaseline_toBaselineOf="@id/duration"
+            app:layout_constraintEnd_toStartOf="@id/track_number"
+            app:layout_constraintStart_toEndOf="@id/disc_number"
+            tools:text="|" />
+
+        <TextView
+            android:id="@+id/track_number"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@{data.trackNum.toString()}"
+            android:textSize="10sp"
+            android:visibility="@{data.trackNum == null ? View.GONE : View.VISIBLE}"
+            app:layout_constraintBaseline_toBaselineOf="@id/duration"
+            app:layout_constraintEnd_toEndOf="@id/thumb"
+            app:layout_constraintStart_toEndOf="@id/track_numbers_divider"
+            tools:text="12" />
+
+        <TextView
             android:id="@+id/text_track"
             android:layout_width="0dp"
             android:layout_height="wrap_content"

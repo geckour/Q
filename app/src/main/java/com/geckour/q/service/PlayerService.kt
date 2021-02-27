@@ -49,7 +49,6 @@ import com.geckour.q.util.moved
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.removedAt
 import com.geckour.q.util.shuffleByClassType
-import com.geckour.q.util.swapped
 import com.geckour.q.util.verifyWithDropbox
 import com.google.android.exoplayer2.DefaultRenderersFactory
 import com.google.android.exoplayer2.ExoPlaybackException
@@ -529,11 +528,11 @@ class PlayerService : Service() {
         storeState()
     }
 
-    fun swapQueuePosition(from: Int, to: Int) {
+    fun moveQueuePosition(from: Int, to: Int) {
         val sourceRange = 0 until source.size
         if (from !in sourceRange || to !in sourceRange) return
         source.moveMediaSource(from, to)
-        serviceScope.launch { queueFlow.value = queueFlow.value.swapped(from, to) }
+        serviceScope.launch { queueFlow.value = queueFlow.value.moved(from, to) }
     }
 
     fun removeQueue(position: Int) {

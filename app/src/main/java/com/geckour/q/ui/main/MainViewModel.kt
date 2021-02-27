@@ -181,8 +181,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    fun onQueueSwap(from: Int, to: Int) {
-        player.value?.swapQueuePosition(from, to)
+    fun onQueueMove(from: Int, to: Int) {
+        player.value?.moveQueuePosition(from, to)
     }
 
     fun onQueueRemove(index: Int) {

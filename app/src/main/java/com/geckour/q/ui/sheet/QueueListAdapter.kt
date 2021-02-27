@@ -16,7 +16,6 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.orDefaultForModel
-import com.geckour.q.util.swapped
 import timber.log.Timber
 
 class QueueListAdapter(private val viewModel: MainViewModel) :
@@ -39,15 +38,16 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
         if (start in currentList.indices) currentList.subList(start, currentList.size)
         else emptyList()
 
-    internal fun setNowPlayingPosition(index: Int?, items: List<DomainTrack>? = null) {
+    internal fun submitNewQueue(currentIndex: Int?, items: List<DomainTrack>? = null) {
         submitList(
-            (items ?: currentList).mapIndexed { i, track -> track.copy(nowPlaying = i == index) }
+            (items ?: currentList).mapIndexed { i, track ->
+                track.copy(
+                    nowPlaying = i == currentIndex,
+                    discNum = null,
+                    trackNum = i + 1
+                )
+            }
         )
-    }
-
-    internal fun move(from: Int, to: Int) {
-        if (from !in currentList.indices || to !in currentList.indices) return
-        submitList(currentList.toMutableList().swapped(from, to))
     }
 
     private fun remove(index: Int) {
