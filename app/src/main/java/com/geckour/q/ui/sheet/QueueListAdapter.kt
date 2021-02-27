@@ -21,6 +21,8 @@ import timber.log.Timber
 class QueueListAdapter(private val viewModel: MainViewModel) :
     ListAdapter<DomainTrack, QueueListAdapter.ViewHolder>(diffUtil) {
 
+    private var nowPlayingIndex = -1
+
     companion object {
         private val diffUtil = object : DiffUtil.ItemCallback<DomainTrack>() {
 
@@ -38,16 +40,12 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
         if (start in currentList.indices) currentList.subList(start, currentList.size)
         else emptyList()
 
-    internal fun submitNewQueue(currentIndex: Int?, items: List<DomainTrack>? = null) {
-        submitList(
-            (items ?: currentList).mapIndexed { i, track ->
-                track.copy(
-                    nowPlaying = i == currentIndex,
-                    discNum = null,
-                    trackNum = i + 1
-                )
-            }
-        )
+    internal fun notifyNowPlayingIndex(newIndex: Int) {
+        val currentIndex = nowPlayingIndex
+        nowPlayingIndex = newIndex
+
+        notifyItemChanged(currentIndex)
+        notifyItemChanged(newIndex)
     }
 
     private fun remove(index: Int) {
@@ -65,6 +63,8 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
 
     inner class ViewHolder(private val binding: ItemTrackBinding) :
         RecyclerView.ViewHolder(binding.root) {
+
+        private val nowPlaying get() = adapterPosition == nowPlayingIndex
 
         private val popupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener {
@@ -105,8 +105,12 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
         }
 
         fun bind() {
-            val track = currentList[adapterPosition]
+            val track = currentList[adapterPosition].copy(
+                discNum = null,
+                trackNum = adapterPosition + 1
+            )
             binding.data = track
+            binding.nowPlaying = nowPlaying
             binding.duration.text = track.durationString
             try {
                 Glide.with(binding.thumb)

@@ -12,6 +12,10 @@
         <variable
             name="data"
             type="com.geckour.q.domain.model.DomainTrack" />
+
+        <variable
+            name="nowPlaying"
+            type="Boolean" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -19,7 +23,7 @@
         android:layout_height="wrap_content"
         android:background="?android:attr/selectableItemBackground"
         android:paddingVertical="4dp"
-        app:foregroundAttr="@{data.nowPlaying ? R.attr.colorWeakAccent : R.attr.colorTransparent}">
+        app:foregroundAttr="@{nowPlaying ? R.attr.colorWeakAccent : R.attr.colorTransparent}">
 
         <ImageView
             android:layout_width="0dp"
@@ -27,7 +31,7 @@
             android:padding="2dp"
             android:scaleType="fitCenter"
             android:src="@drawable/ic_spectrum"
-            android:visibility="@{data.nowPlaying ? View.VISIBLE : View.GONE}"
+            android:visibility="@{nowPlaying ? View.VISIBLE : View.GONE}"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toStartOf="@id/thumb"
             app:layout_constraintStart_toStartOf="parent"

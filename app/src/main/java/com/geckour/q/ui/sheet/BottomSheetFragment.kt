@@ -201,7 +201,9 @@ class BottomSheetFragment : Fragment() {
                 player.queueFlow.collectLatest { onQueueChanged(it) }
             }
             lifecycleScope.launch {
-                player.currentIndexFlow.collectLatest { onNewQueue(it) }
+                player.currentIndexFlow.collectLatest {
+                    notifyCurrentIndex(it)
+                }
             }
             lifecycleScope.launch {
                 player.playbackInfoFlow.collectLatest { (playWhenReady, playbackState) ->
@@ -307,12 +309,13 @@ class BottomSheetFragment : Fragment() {
             binding.buttonToggleVisibleQueue.shake()
         }
 
-        onNewQueue(viewModel.currentIndex, queue)
+        adapter.submitList(queue) { adapter.notifyDataSetChanged() }
+        notifyCurrentIndex(viewModel.currentIndex)
     }
 
-    private fun onNewQueue(currentIndex: Int, queue: List<DomainTrack>? = null) {
-        adapter.submitNewQueue(currentIndex, queue)
-        viewModel.onNewIndex(currentIndex)
+    private fun notifyCurrentIndex(newIndex: Int) {
+        adapter.notifyNowPlayingIndex(newIndex)
+        viewModel.onNewIndex(newIndex)
         viewModel.setArtwork(binding.artwork)
 
         val noCurrentTrack = viewModel.currentDomainTrack.value == null
