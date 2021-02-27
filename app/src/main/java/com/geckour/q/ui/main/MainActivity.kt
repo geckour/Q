@@ -22,6 +22,7 @@ import androidx.core.view.GravityCompat
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.commit
+import androidx.lifecycle.distinctUntilChanged
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
 import com.dropbox.core.android.Auth
@@ -405,19 +406,21 @@ class MainActivity : AppCompatActivity() {
             searchListAdapter.replaceItems(it)
         }
 
-        viewModel.dropboxItemList.observe(this) {
-            it ?: return@observe
-            (dropboxChooserDialog ?: run {
-                DropboxChooserDialog(
-                    this@MainActivity,
-                    onClickItem = { metadata ->
-                        viewModel.showDropboxFolderChooser(metadata)
-                    },
-                    onChoose = { path ->
-                        retrieveDropboxMedia(path)
-                    }
-                ).apply { dropboxChooserDialog = this }
-            }).show(it.first, it.second)
+        lifecycleScope.launch {
+            viewModel.dropboxItemList.collectLatest {
+                it ?: return@collectLatest
+                (dropboxChooserDialog ?: run {
+                    DropboxChooserDialog(
+                        this@MainActivity,
+                        onClickItem = { metadata ->
+                            viewModel.showDropboxFolderChooser(metadata)
+                        },
+                        onChoose = { path ->
+                            retrieveDropboxMedia(path)
+                        }
+                    ).apply { dropboxChooserDialog = this }
+                }).show(it.first, it.second)
+            }
         }
 
         paymentViewModel.saveSuccess.observe(this) {

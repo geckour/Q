@@ -52,6 +52,7 @@ import com.geckour.q.util.toDomainTrack
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -80,7 +81,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     internal val scrollToTop = MutableLiveData<Unit>()
     internal val forceLoad = MutableLiveData<Unit>()
 
-    internal val dropboxItemList = MutableLiveData<Pair<String, List<FolderMetadata>>>()
+    internal val dropboxItemList = MutableSharedFlow<Pair<String, List<FolderMetadata>>>()
 
     private var currentOrientedClassType: OrientedClassType? = null
 
@@ -503,9 +504,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 result = client.files().listFolderContinue(result.cursor)
             }
             val currentDirTitle = (dropboxMetadata?.name ?: "Root")
-            dropboxItemList.postValue(
-                currentDirTitle to result.entries.filterIsInstance<FolderMetadata>()
-            )
+            dropboxItemList.emit(currentDirTitle to result.entries.filterIsInstance<FolderMetadata>())
         }
 
     inner class SearchQueryListener(private val searchView: SearchView) :

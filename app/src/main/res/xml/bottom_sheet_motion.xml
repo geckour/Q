@@ -13,6 +13,30 @@
                 app:percentX="0.25"
                 app:percentY="0.25"
                 app:sizePercent="0.25" />
+
+            <KeyPosition
+                app:framePosition="50"
+                app:keyPositionType="deltaRelative"
+                app:motionTarget="@+id/text_track"
+                app:percentX="-6"
+                app:percentY="0.5" />
+
+            <KeyPosition
+                app:framePosition="50"
+                app:keyPositionType="deltaRelative"
+                app:motionTarget="@+id/text_artist_and_album"
+                app:percentX="-6"
+                app:percentY="0.5" />
+
+            <KeyAttribute
+                android:alpha="0"
+                app:framePosition="10"
+                app:motionTarget="@+id/file_info" />
+
+            <KeyAttribute
+                android:alpha="0"
+                app:framePosition="80"
+                app:motionTarget="@+id/file_info" />
         </KeyFrameSet>
     </Transition>
 
