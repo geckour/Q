@@ -249,7 +249,7 @@ class BottomSheetFragment : Fragment() {
         viewModel.showCurrentRemain.observe(viewLifecycleOwner) {
             it ?: return@observe
             sharedPreferences.showCurrentRemain = it
-            val track = viewModel.currentDomainTrack ?: return@observe
+            val track = viewModel.currentDomainTrack.value ?: return@observe
             val ratio = binding.seekBar.progress / binding.seekBar.max.toFloat()
             val elapsedTime = (track.duration * ratio).toLong()
             setTimeRightText(track, elapsedTime)
@@ -285,10 +285,7 @@ class BottomSheetFragment : Fragment() {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun onQueueChanged(queue: List<DomainTrack>) {
-        adapter.submitList(queue)
         viewModel.currentQueue = queue
-
-        binding.viewModel = viewModel
 
         val totalTime = queue.map { it.duration }.sum()
         binding.textTimeTotal.text =
@@ -299,7 +296,15 @@ class BottomSheetFragment : Fragment() {
             binding.buttonToggleVisibleQueue.shake()
         }
 
-        val noCurrentTrack = viewModel.currentDomainTrack == null
+        onCurrentIndexChanged(viewModel.currentIndex, queue)
+    }
+
+    private fun onCurrentIndexChanged(index: Int, queue: List<DomainTrack>? = null) {
+        adapter.setNowPlayingPosition(index, queue)
+        viewModel.onNewIndex(index)
+        viewModel.setArtwork(binding.artwork)
+
+        val noCurrentTrack = viewModel.currentDomainTrack.value == null
         binding.seekBar.setOnTouchListener { _, _ -> noCurrentTrack }
         if (noCurrentTrack) {
             with(binding) {
@@ -310,18 +315,8 @@ class BottomSheetFragment : Fragment() {
                 seekBar.progress = 0
             }
         }
-        viewModel.setArtwork(binding.artwork)
+
         resetMarquee()
-    }
-
-    private fun onCurrentIndexChanged(index: Int) {
-        if (viewModel.currentIndex != index) {
-            viewModel.playbackPosition = 0
-            onPlaybackPositionChanged(0)
-        }
-
-        adapter.setNowPlayingPosition(index)
-        viewModel.onNewIndex(index)
     }
 
     private fun onPlayingChanged(playing: Boolean) {
@@ -332,7 +327,7 @@ class BottomSheetFragment : Fragment() {
     }
 
     private fun onPlaybackPositionChanged(playbackPosition: Long) {
-        val track = viewModel.currentDomainTrack ?: return
+        val track = viewModel.currentDomainTrack.value ?: return
 
         val ratio = (playbackPosition.toFloat() / track.duration)
         binding.seekBar.progress = (binding.seekBar.max * ratio).toInt()

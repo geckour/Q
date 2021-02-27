@@ -19,10 +19,10 @@ import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.databinding.DialogAddQueuePlaylistBinding
 import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.service.SleepTimerService
 import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.ui.share.SharingActivity
-import com.geckour.q.service.SleepTimerService
 import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.fetchPlaylists
 import com.geckour.q.util.orDefaultForModel
@@ -45,7 +45,16 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     internal val artworkLongClick: LiveData<Boolean> = _artworkLongClick.distinctUntilChanged()
     internal val toggleSheetState = MutableLiveData<Unit>()
     internal var currentQueue: List<DomainTrack> = emptyList()
+        set(value) {
+            currentDomainTrack.value = value.getOrNull(currentIndex)
+            playerActive.value = value.isNotEmpty()
+            field = value
+        }
     internal var currentIndex: Int = -1
+        set(value) {
+            currentDomainTrack.value = currentQueue.getOrNull(value)
+            field = value
+        }
     internal var playbackPosition: Long = 0
     private val _showCurrentRemain = MutableLiveData<Boolean>()
     internal val showCurrentRemain: LiveData<Boolean> = _showCurrentRemain
@@ -53,9 +62,9 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     internal val scrollToCurrent: LiveData<Boolean> = _scrollToCurrent.distinctUntilChanged()
     private val _touchLock = MutableLiveData<Boolean>()
     val touchLock: LiveData<Boolean> = _touchLock.distinctUntilChanged()
-    val isQueueNotEmpty: Boolean get() = currentQueue.isEmpty().not()
+    val playerActive = MutableLiveData(false)
 
-    val currentDomainTrack: DomainTrack? get() = currentQueue.getOrNull(currentIndex)
+    val currentDomainTrack = MutableLiveData<DomainTrack>()
 
     private var updateArtworkJob: Job = Job()
 
@@ -126,7 +135,7 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
 
     fun onClickShareButton() {
         getApplication<Application>().startActivity(
-            SharingActivity.getIntent(getApplication(), currentDomainTrack ?: return)
+            SharingActivity.getIntent(getApplication(), currentDomainTrack.value ?: return)
         )
     }
 
@@ -142,7 +151,7 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
         currentIndex = index
         SleepTimerService.notifyTrackChanged(
             getApplication(),
-            currentDomainTrack ?: return,
+            currentDomainTrack.value ?: return,
             playbackPosition
         )
     }
@@ -152,17 +161,17 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     internal fun onTransitionToArtist(mainViewModel: MainViewModel) {
-        mainViewModel.selectedArtist.value = currentDomainTrack?.artist
+        mainViewModel.selectedArtist.value = currentDomainTrack.value?.artist
     }
 
     internal fun onTransitionToAlbum(mainViewModel: MainViewModel) {
-        mainViewModel.selectedAlbum.value = currentDomainTrack?.album
+        mainViewModel.selectedAlbum.value = currentDomainTrack.value?.album
     }
 
     internal fun setArtwork(imageView: ImageView) {
         updateArtworkJob.cancel()
         updateArtworkJob = viewModelScope.launch {
-            val drawable = when (val track = currentDomainTrack) {
+            val drawable = when (val track = currentDomainTrack.value) {
                 null -> null
                 else -> {
                     withContext(Dispatchers.IO) {

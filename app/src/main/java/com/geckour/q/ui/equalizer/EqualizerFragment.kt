@@ -15,13 +15,14 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentEqualizerBinding
 import com.geckour.q.databinding.LabelEqualizerBinding
 import com.geckour.q.databinding.SeekBarEqualizerBinding
-import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.service.PlayerService
+import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.EqualizerParams
 import com.geckour.q.util.EqualizerSettings
 import com.geckour.q.util.SettingCommand
@@ -34,6 +35,8 @@ import com.geckour.q.util.setEqualizerLevel
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toggleDayNight
 import com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBar
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.launch
 
 class EqualizerFragment : Fragment() {
 
@@ -105,8 +108,8 @@ class EqualizerFragment : Fragment() {
         mainViewModel.player.observe(viewLifecycleOwner) { player ->
             player ?: return@observe
 
-            player.setOnEqualizerStateChangedListener {
-                onEqualizerStateChanged(it)
+            lifecycleScope.launch {
+                player.equalizerStateFlow.collectLatest { onEqualizerStateChanged(it) }
             }
         }
 

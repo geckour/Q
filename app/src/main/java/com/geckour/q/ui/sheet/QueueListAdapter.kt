@@ -41,7 +41,8 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
 
     internal fun setNowPlayingPosition(index: Int?, items: List<DomainTrack>? = null) {
         submitList(
-            (items ?: currentList).mapIndexed { i, track -> track.copy(nowPlaying = i == index) })
+            (items ?: currentList).mapIndexed { i, track -> track.copy(nowPlaying = i == index) }
+        )
     }
 
     internal fun move(from: Int, to: Int) {

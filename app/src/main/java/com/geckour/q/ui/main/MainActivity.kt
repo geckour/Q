@@ -612,7 +612,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle(R.string.dialog_title_sleep_timer)
             .setMessage(R.string.dialog_desc_sleep_timer)
             .setPositiveButton(R.string.dialog_ok) { dialog, _ ->
-                bottomSheetViewModel.currentDomainTrack?.let {
+                bottomSheetViewModel.currentDomainTrack.value?.let {
                     val timerValue = binding.timerValue!!
                     val toleranceValue = binding.toleranceValue!!
                     sharedPreferences.sleepTimerTime = timerValue

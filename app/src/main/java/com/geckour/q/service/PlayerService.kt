@@ -75,6 +75,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -269,8 +270,8 @@ class PlayerService : Service() {
     internal val playbackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
     internal val playbackPositionFLow = MutableStateFlow(0L)
     internal val repeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
-    private var onEqualizerStateChanged: ((Boolean) -> Unit)? = null
-    private var onDestroyed: (() -> Unit)? = null
+    internal val equalizerStateFlow = MutableStateFlow(false)
+    internal val onDestroyFlow = MutableSharedFlow<Unit>()
 
     private lateinit var mediaSourceFactory: ProgressiveMediaSource.Factory
     private var source = ConcatenatingMediaSource()
@@ -432,7 +433,7 @@ class PlayerService : Service() {
         job.cancel()
         player.release()
 
-        onDestroyed?.invoke()
+        onDestroyFlow.tryEmit(Unit)
 
         super.onDestroy()
     }
@@ -443,14 +444,6 @@ class PlayerService : Service() {
 
     fun onMediaButtonEvent(event: KeyEvent) {
         mediaSession.controller?.dispatchMediaButtonEvent(event)
-    }
-
-    fun setOnEqualizerStateChangedListener(listener: ((Boolean) -> Unit)?) {
-        this.onEqualizerStateChanged = listener
-    }
-
-    fun setOnDestroyedListener(listener: (() -> Unit)?) {
-        this.onDestroyed = listener
     }
 
     private fun verifyByCauseIfNeeded(throwable: Throwable) {
@@ -625,6 +618,7 @@ class PlayerService : Service() {
     fun stop() {
         pause()
         forceIndex(0)
+        storeState()
     }
 
     fun clear(keepCurrentIfPlaying: Boolean = false) {
@@ -913,9 +907,7 @@ class PlayerService : Service() {
             equalizer = null
         }
 
-        serviceScope.launch(Dispatchers.Main) {
-            onEqualizerStateChanged?.invoke(equalizer?.enabled == true)
-        }
+        equalizerStateFlow.value = equalizer?.enabled == true
     }
 
     private fun reflectEqualizerSettings() {

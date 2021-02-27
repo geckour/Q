@@ -98,10 +98,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 isBoundService = true
 
                 val playerService = (service as? PlayerService.PlayerBinder)?.service
+
                 viewModelScope.launch {
                     playerService?.loadStateFlow?.collectLatest { onLoadStateChanged(it) }
                 }
-                playerService?.setOnDestroyedListener { onPlayerDestroyed() }
+                viewModelScope.launch {
+                    playerService?.onDestroyFlow?.collectLatest { onDestroyPlayer() }
+                }
 
                 player.value = playerService
             }
@@ -109,21 +112,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         override fun onServiceDisconnected(name: ComponentName?) {
             if (name == ComponentName(getApplication(), PlayerService::class.java)) {
-                onPlayerDestroyed()
+                onDestroyPlayer()
             }
         }
 
         override fun onBindingDied(name: ComponentName?) {
             super.onBindingDied(name)
             if (name == ComponentName(getApplication(), PlayerService::class.java)) {
-                onPlayerDestroyed()
+                onDestroyPlayer()
             }
         }
 
         override fun onNullBinding(name: ComponentName?) {
             super.onNullBinding(name)
             if (name == ComponentName(getApplication(), PlayerService::class.java)) {
-                onPlayerDestroyed()
+                onDestroyPlayer()
             }
         }
     }
@@ -308,7 +311,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (isBoundService) app.unbindService(serviceConnection)
     }
 
-    internal fun onPlayerDestroyed() {
+    internal fun onDestroyPlayer() {
         isBoundService = false
         player.value = null
     }
