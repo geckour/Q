@@ -50,10 +50,10 @@ internal suspend fun File.storeMediaInfo(
             ?.hiraganized
             ?: cachedAlbum?.album?.titleSort
 
-    val artistTitle = tag.getAll(FieldKey.ARTIST).lastOrNull { it.isNotBlank() }
+    val artistTitle = tag.getAll(FieldKey.ARTIST).firstOrNull { it.isNotBlank() }
     val cachedArtist = artistTitle?.let { db.artistDao().getAllByTitle(it).firstOrNull() }
     val artistTitleSort =
-        (tag.getAll(FieldKey.ARTIST_SORT).lastOrNull { it.isNotBlank() } ?: artistTitle)
+        (tag.getAll(FieldKey.ARTIST_SORT).firstOrNull { it.isNotBlank() } ?: artistTitle)
             ?.hiraganized
             ?: cachedArtist?.titleSort
 
@@ -77,9 +77,17 @@ internal suspend fun File.storeMediaInfo(
     val trackNum = catchAsNull {
         tag.getFirst(FieldKey.TRACK).let { if (it.isNullOrBlank()) null else it }?.toInt()
     }
+    val trackTotal = catchAsNull {
+        tag.getFirst(FieldKey.TRACK_TOTAL).let { if (it.isNullOrBlank()) null else it }?.toInt()
+    }
     val discNum = catchAsNull {
         tag.getFirst(FieldKey.DISC_NO).let { if (it.isNullOrBlank()) null else it }?.toInt()
     }
+    val discTotal = catchAsNull {
+        tag.getFirst(FieldKey.DISC_TOTAL).let { if (it.isNullOrBlank()) null else it }?.toInt()
+    }
+    val year = catchAsNull { tag.getAll(FieldKey.YEAR).lastOrNull { it.isNotBlank() }?.toInt() }
+    val genre = tag.getAll(FieldKey.GENRE).lastOrNull { it.isNotBlank() }
 
     val composerTitle = tag.getAll(FieldKey.COMPOSER).lastOrNull { it.isNotBlank() }
     val composerTitleSort =
@@ -142,7 +150,11 @@ internal suspend fun File.storeMediaInfo(
         composerSort = composerTitleSort ?: UNKNOWN,
         duration = duration,
         trackNum = trackNum,
+        trackTotal = trackTotal,
         discNum = discNum,
+        discTotal = discTotal,
+        year = year,
+        genre = genre,
         artworkUriString = artworkUriString,
         playbackCount = 0
     )

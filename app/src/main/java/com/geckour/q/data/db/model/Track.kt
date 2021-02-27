@@ -25,7 +25,11 @@ data class Track(
     val composerSort: String,
     val duration: Long,
     val trackNum: Int?,
+    val trackTotal: Int?,
     val discNum: Int?,
+    val discTotal: Int?,
+    val year: Int?,
+    val genre: String?,
     val playbackCount: Long,
     val artworkUriString: String?,
     val ignored: Bool = Bool.FALSE

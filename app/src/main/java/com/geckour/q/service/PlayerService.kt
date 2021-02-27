@@ -944,17 +944,6 @@ class PlayerService : Service() {
         }
     }
 
-    fun publishStatus() {
-        serviceScope.launch(Dispatchers.Main) {
-            currentIndexFlow.emit(currentIndex)
-            currentDomainTrack?.apply {
-                playbackPositionFLow.emit(player.currentPosition)
-            }
-            playbackInfoFlow.emit(player.playWhenReady to player.playbackState)
-            repeatModeFlow.emit(player.repeatMode)
-        }
-    }
-
     private fun onUnplugged() {
         pause()
     }

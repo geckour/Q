@@ -103,7 +103,7 @@ suspend fun getDomainTrack(
     trackNum: Int? = null
 ): DomainTrack? = db.trackDao()
     .getByMediaId(trackMediaId)
-    ?.toDomainTrack(genreId, playlistId, trackNum = trackNum)
+    ?.toDomainTrack(genreId, playlistId, trackNum)
 
 fun JoinedTrack.toDomainTrack(
     genreId: Long? = null,
@@ -125,7 +125,10 @@ fun JoinedTrack.toDomainTrack(
         album.artworkUriString,
         track.duration,
         trackNum ?: track.trackNum,
+        track.trackTotal,
         track.discNum,
+        track.discTotal,
+        track.year,
         genreId,
         playlistId,
         track.sourcePath,
@@ -351,25 +354,23 @@ suspend fun DomainTrack.getMediaMetadata(context: Context): MediaMetadataCompat 
     MediaMetadataCompat.Builder()
         .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaId.toString())
         .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, sourcePath)
+        .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, title)
+        .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, artist.title)
+        .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, album.title)
         .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
         .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist.title)
         .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album.title)
         .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer)
-        .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, getTempArtworkUriString(context))
         .apply {
-            album.artworkUriString?.let {
-                val bitmap = withContext(Dispatchers.IO) {
-                    catchAsNull {
-                        Glide.with(context)
-                            .asDrawable()
-                            .load(it)
-                            .applyDefaultSettings()
-                            .submit()
-                            .get()
-                            .bitmap()
-                    }
-                }
-                putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
+            val artworkUriString = getTempArtworkUriString(context)
+            putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, artworkUriString)
+            putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, artworkUriString)
+            trackNum?.let { putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, it.toLong()) }
+            trackTotal?.let { putLong(MediaMetadataCompat.METADATA_KEY_NUM_TRACKS, it.toLong()) }
+            discNum?.let { putLong(MediaMetadataCompat.METADATA_KEY_DISC_NUMBER, it.toLong()) }
+            year?.let { putLong(MediaMetadataCompat.METADATA_KEY_YEAR, it.toLong()) }
+            DB.getInstance(context).artistDao().get(album.artistId)?.title?.let {
+                putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ARTIST, it)
             }
         }
         .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
@@ -572,9 +573,13 @@ suspend fun DomainTrack.updateFileMetadata(
     db: DB,
     joinedTrack: JoinedTrack,
     newTrackName: String? = null,
+    newTrackNameSort: String? = null,
     newAlbumName: String? = null,
+    newAlbumNameSort: String? = null,
     newArtistName: String? = null,
+    newArtistNameSort: String? = null,
     newComposerName: String? = null,
+    newComposerNameSort: String? = null,
     newArtwork: Bitmap? = null
 ) = withContext(Dispatchers.IO) {
     val file =
