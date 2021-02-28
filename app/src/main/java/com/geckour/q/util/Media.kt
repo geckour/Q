@@ -182,7 +182,7 @@ suspend fun DB.searchArtistByFuzzyTitle(title: String): List<Artist> =
     this@searchArtistByFuzzyTitle.artistDao().findAllByTitle("%${title.escapeSql}%")
 
 suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<JoinedAlbum> =
-    this@searchAlbumByFuzzyTitle.albumDao().getAllByTitle("%${title.escapeSql}%")
+    this@searchAlbumByFuzzyTitle.albumDao().findAllByTitle("%${title.escapeSql}%")
 
 suspend fun DB.searchTrackByFuzzyTitle(title: String): List<JoinedTrack> =
     this@searchTrackByFuzzyTitle.trackDao().getAllByTitle("%${title.escapeSql}%")
@@ -631,7 +631,8 @@ suspend fun JoinedTrack.updateFileMetadata(
 
                         existingAudioFile.let { AudioFileIO.write(it) }
                     }
-                db.artistDao().update(
+                val artistId = db.artistDao().upsert(
+                    db,
                     artist.let {
                         it.copy(
                             title = newArtistName ?: it.title,
@@ -639,12 +640,15 @@ suspend fun JoinedTrack.updateFileMetadata(
                         )
                     }
                 )
+                var albumId = album.id
                 if (newAlbumName.isNullOrBlank().not() || newAlbumNameSort.isNullOrBlank().not()) {
-                    db.albumDao().update(
+                    albumId = db.albumDao().upsert(
+                        db,
                         album.let {
                             it.copy(
                                 title = newAlbumName ?: it.title,
                                 titleSort = newAlbumNameSort ?: it.titleSort,
+                                artistId = artistId,
                                 artworkUriString = artworkUriString
                                     ?: it.artworkUriString
                             )
@@ -652,13 +656,18 @@ suspend fun JoinedTrack.updateFileMetadata(
                     )
                 }
                 if (newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not()) {
-                    db.trackDao().update(
+                    db.trackDao().upsert(
                         track.copy(
                             title = newTrackName ?: track.title,
                             titleSort = newTrackNameSort ?: track.titleSort,
                             composer = newComposerName ?: track.composer,
-                            composerSort = newComposerNameSort ?: track.composerSort
-                        )
+                            composerSort = newComposerNameSort ?: track.composerSort,
+                            artistId = artistId,
+                            albumId = albumId
+                        ),
+                        albumId,
+                        artistId,
+                        track.duration
                     )
                 }
             }
@@ -682,7 +691,8 @@ suspend fun JoinedTrack.updateFileMetadata(
 
                         existingAudioFile.let { AudioFileIO.write(it) }
                     }
-                db.albumDao().update(
+                val albumId = db.albumDao().upsert(
+                    db,
                     album.let {
                         it.copy(
                             title = newAlbumName ?: it.title,
@@ -693,13 +703,17 @@ suspend fun JoinedTrack.updateFileMetadata(
                     }
                 )
                 if (newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not()) {
-                    db.trackDao().update(
+                    db.trackDao().upsert(
                         track.copy(
                             title = newTrackName ?: track.title,
                             titleSort = newTrackNameSort ?: track.titleSort,
                             composer = newComposerName ?: track.composer,
-                            composerSort = newComposerNameSort ?: track.composerSort
-                        )
+                            composerSort = newComposerNameSort ?: track.composerSort,
+                            albumId = albumId
+                        ),
+                        artist.id,
+                        albumId,
+                        track.duration
                     )
                 }
             }

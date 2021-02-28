@@ -113,14 +113,14 @@ interface TrackDao {
         pastTrackDuration: Long
     ): Long {
         val existedTrack =
-            if (track.mediaId < 0) getByTitles(track.title, albumId, artistId)
+            if (track.mediaId < 0) get(track.id) ?: getByTitles(track.title, albumId, artistId)
             else getByMediaId(track.mediaId)
-        val toInsert = existedTrack?.let {
-            val duration = it.track.duration - pastTrackDuration + track.duration
+        val toInsert = existedTrack?.track?.let {
+            val duration = it.duration - pastTrackDuration + track.duration
             track.copy(
-                id = it.track.id,
-                playbackCount = it.track.playbackCount,
-                ignored = it.track.ignored,
+                id = it.id,
+                playbackCount = it.playbackCount,
+                ignored = it.ignored,
                 duration = duration
             )
         } ?: track

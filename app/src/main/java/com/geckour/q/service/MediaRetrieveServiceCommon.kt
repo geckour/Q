@@ -46,7 +46,7 @@ internal suspend fun File.storeMediaInfo(
             ?: this@storeMediaInfo.name
 
     val albumTitle = tag.getAll(FieldKey.ALBUM).lastOrNull { it.isNotBlank() }
-    val cachedAlbum = albumTitle?.let { db.albumDao().getAllByTitle(it).firstOrNull() }
+    val cachedAlbum = albumTitle?.let { db.albumDao().findAllByTitle(it).firstOrNull() }
     val albumTitleSort =
         (tag.getAll(FieldKey.ALBUM_SORT).lastOrNull { it.isNotBlank() } ?: albumTitle)
             ?.hiraganized
@@ -107,7 +107,7 @@ internal suspend fun File.storeMediaInfo(
         totalDuration = duration,
         artworkUriString = artworkUriString ?: cachedArtist?.artworkUriString
     )
-    val artistId = db.artistDao().upsert(artist, pastTrackDuration)
+    val artistId = db.artistDao().upsert(db, artist, pastTrackDuration)
     val albumArtistId =
         if (albumArtistTitle != null && albumArtistTitleSort != null) {
             val albumArtist = Artist(
@@ -118,7 +118,7 @@ internal suspend fun File.storeMediaInfo(
                 totalDuration = duration,
                 artworkUriString = artworkUriString ?: cachedAlbumArtist?.artworkUriString
             )
-            db.artistDao().upsert(albumArtist, pastTrackDuration)
+            db.artistDao().upsert(db, albumArtist, pastTrackDuration)
         } else null
 
     val album = Album(
@@ -131,7 +131,7 @@ internal suspend fun File.storeMediaInfo(
         playbackCount = 0,
         totalDuration = duration
     )
-    val albumId = db.albumDao().upsert(album, pastTrackDuration)
+    val albumId = db.albumDao().upsert(db, album, pastTrackDuration)
 
     val track = Track(
         id = 0,

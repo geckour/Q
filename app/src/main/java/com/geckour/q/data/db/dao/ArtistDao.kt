@@ -7,6 +7,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
 import kotlinx.coroutines.flow.Flow
 
@@ -56,7 +57,7 @@ interface ArtistDao {
         delete(artistId)
     }
 
-    suspend fun upsert(artist: Artist, pastTrackDuration: Long = 0): Long {
+    suspend fun upsert(db: DB, artist: Artist, pastTrackDuration: Long = 0): Long {
         val toInsert = getByTitle(artist.title)?.let {
             val duration = it.totalDuration - pastTrackDuration + artist.totalDuration
             artist.copy(
@@ -67,6 +68,16 @@ interface ArtistDao {
             )
         } ?: artist
 
-        return insert(toInsert)
+        return insert(toInsert).apply {
+            if (artist.id > 0 && this != artist.id) {
+                db.albumDao().getAllByArtist(artist.id).asSequence().forEach {
+                    db.albumDao().update(it.album.copy(artistId = this))
+                }
+                db.trackDao().getAllByArtist(artist.id).asSequence().forEach {
+                    db.trackDao().update(it.track.copy(artistId = this))
+                }
+                delete(artist.id)
+            }
+        }
     }
 }

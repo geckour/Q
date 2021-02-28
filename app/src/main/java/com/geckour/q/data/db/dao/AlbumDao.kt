@@ -31,7 +31,7 @@ interface AlbumDao {
     suspend fun get(id: Long): JoinedAlbum?
 
     @Query("select * from album where title like :title")
-    suspend fun getByTitle(title: String): JoinedAlbum?
+    suspend fun findByTitle(title: String): JoinedAlbum?
 
     @Query("select * from album")
     fun getAllAsync(): Flow<List<JoinedAlbum>>
@@ -42,8 +42,11 @@ interface AlbumDao {
     @Query("select * from album where artistId = :artistId")
     fun getAllByArtistAsync(artistId: Long): Flow<List<JoinedAlbum>>
 
+    @Query("select * from album where title = :title and artistId = :artistId")
+    suspend fun getAllByTitle(title: String, artistId: Long): List<JoinedAlbum>
+
     @Query("select * from album where title like :title")
-    suspend fun getAllByTitle(title: String): List<JoinedAlbum>
+    suspend fun findAllByTitle(title: String): List<JoinedAlbum>
 
     @Query("update album set playbackCount = (select playbackCount from album where id = :albumId) + 1 where id = :albumId")
     suspend fun increasePlaybackCount(albumId: Long)
@@ -67,16 +70,41 @@ interface AlbumDao {
         }
     }
 
-    suspend fun upsert(album: Album, pastTrackDuration: Long = 0): Long {
-        val toInsert = getByTitle(album.title)?.let {
-            val duration = it.album.totalDuration - pastTrackDuration + album.totalDuration
+    suspend fun upsert(db: DB, album: Album, pastTrackDuration: Long = 0): Long {
+        val toInsert = getAllByTitle(album.title, album.artistId).let { albums ->
+            val firstAlbum = albums.firstOrNull() ?: return@let null
+            albums.drop(1).asSequence().forEach {
+                val duration =
+                    firstAlbum.album.totalDuration - pastTrackDuration + it.album.totalDuration
+                val target = it.album.copy(
+                    id = firstAlbum.album.id,
+                    totalDuration = duration,
+                    artworkUriString = it.album.artworkUriString
+                        ?: firstAlbum.album.artworkUriString
+                )
+                insert(target).apply {
+                    db.trackDao().getAllByAlbum(it.album.id).asSequence()
+                        .forEach { joinedTrack ->
+                            db.trackDao().update(joinedTrack.track.copy(albumId = this))
+                        }
+                    delete(it.album.id)
+                }
+            }
+            val duration = firstAlbum.album.totalDuration - pastTrackDuration + album.totalDuration
             album.copy(
-                id = it.album.id,
+                id = firstAlbum.album.id,
                 totalDuration = duration,
-                artworkUriString = album.artworkUriString ?: it.album.artworkUriString
+                artworkUriString = album.artworkUriString ?: firstAlbum.album.artworkUriString
             )
         } ?: album
 
-        return insert(toInsert)
+        return insert(toInsert).apply {
+            if (album.id > 0 && this != album.id) {
+                db.trackDao().getAllByAlbum(album.id).asSequence().forEach {
+                    db.trackDao().update(it.track.copy(albumId = this))
+                }
+                delete(album.id)
+            }
+        }
     }
 }
