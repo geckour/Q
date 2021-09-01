@@ -28,7 +28,6 @@ import com.geckour.q.databinding.DialogShuffleMenuBinding
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.PlaybackButton
-import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.SearchCategory
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.service.LocalMediaRetrieveService
@@ -45,7 +44,6 @@ import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.searchAlbumByFuzzyTitle
 import com.geckour.q.util.searchArtistByFuzzyTitle
 import com.geckour.q.util.searchGenreByFuzzyTitle
-import com.geckour.q.util.searchPlaylistByFuzzyTitle
 import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
@@ -71,9 +69,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     internal val selectedAlbum = MutableLiveData<Album>()
     internal val selectedArtist = MutableLiveData<Artist>()
     internal val selectedGenre = MutableLiveData<Genre>()
-    internal val selectedPlaylist = MutableLiveData<Playlist>()
 
-    internal val playOrderToRemoveFromPlaylist = MutableLiveData<Int>()
     internal val trackToDelete = MutableLiveData<DomainTrack>()
 
     internal val searchItems = MutableLiveData<List<SearchItem>>()
@@ -166,12 +162,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         currentOrientedClassType = OrientedClassType.GENRE
     }
 
-    fun onRequestNavigate(playlist: Playlist) {
-        clearSelections()
-        selectedPlaylist.value = playlist
-        currentOrientedClassType = OrientedClassType.PLAYLIST
-    }
-
     fun onNewQueue(
         domainTracks: List<DomainTrack>,
         actionType: InsertActionType,
@@ -188,10 +178,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onQueueRemove(index: Int) {
         player.value?.removeQueue(index)
-    }
-
-    fun onRequestRemoveTrackFromPlaylist(playOrder: Int) {
-        playOrderToRemoveFromPlaylist.value = playOrder
     }
 
     fun onCancelSync(context: Context) {
@@ -380,20 +366,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 items.addAll(artists)
             }
 
-            val playlists = getApplication<App>().searchPlaylistByFuzzyTitle(query)
-                .take(3)
-                .map { SearchItem(it.name, it, SearchItem.SearchItemType.PLAYLIST) }
-            if (playlists.isNotEmpty()) {
-                items.add(
-                    SearchItem(
-                        context.getString(R.string.search_category_playlist),
-                        SearchCategory(),
-                        SearchItem.SearchItemType.CATEGORY
-                    )
-                )
-                items.addAll(playlists)
-            }
-
             val genres = getApplication<App>().searchGenreByFuzzyTitle(query)
                 .take(3)
                 .map { SearchItem(it.name, it, SearchItem.SearchItemType.GENRE) }
@@ -417,7 +389,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         selectedAlbum.value = null
         selectedDomainTrack = null
         selectedGenre.value = null
-        selectedPlaylist.value = null
     }
 
     internal fun checkDBIsEmpty(onEmpty: () -> Unit) {

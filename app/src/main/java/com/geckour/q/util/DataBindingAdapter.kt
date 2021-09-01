@@ -11,42 +11,42 @@ import androidx.annotation.AttrRes
 import androidx.appcompat.widget.AppCompatSeekBar
 import androidx.databinding.BindingAdapter
 
-@BindingAdapter("app:srcBitmap")
+@BindingAdapter("srcBitmap")
 fun ImageView.loadImage(bitmap: Bitmap?) {
     setImageBitmap(bitmap)
 }
 
-@BindingAdapter("app:srcUri")
+@BindingAdapter("srcUri")
 fun ImageView.loadImage(uri: Uri?) {
     setImageURI(uri)
 }
 
-@BindingAdapter("app:foregroundAttr")
+@BindingAdapter("foregroundAttr")
 fun View.setForegroundFromAttribute(@AttrRes attr: Int) {
     foreground = ColorDrawable(context.theme.getColor(attr))
 }
 
-@BindingAdapter("app:backgroundAttr")
+@BindingAdapter("backgroundAttr")
 fun View.setBackgroundFromAttribute(@AttrRes attr: Int) {
     setBackgroundColor(context.theme.getColor(attr))
 }
 
-@BindingAdapter("app:textColorAttr")
+@BindingAdapter("textColorAttr")
 fun TextView.setTextColorFromAttribute(@AttrRes attr: Int) {
     setTextColor(context.theme.getColor(attr))
 }
 
-@BindingAdapter("app:tintAttr")
+@BindingAdapter("tintAttr")
 fun ImageView.setImageTintFromAttribute(@AttrRes attr: Int) {
     imageTintList = ColorStateList.valueOf(context.theme.getColor(attr))
 }
 
-@BindingAdapter("app:backgroundTintAttr")
+@BindingAdapter("backgroundTintAttr")
 fun View.setBackgroundTintFromAttribute(@AttrRes attr: Int) {
     backgroundTintList = ColorStateList.valueOf(context.theme.getColor(attr))
 }
 
-@BindingAdapter("app:thumbTintAttr")
+@BindingAdapter("thumbTintAttr")
 fun AppCompatSeekBar.setThumbTintFromAttribute(@AttrRes attr: Int) {
     thumbTintList = ColorStateList.valueOf(context.theme.getColor(attr))
 }

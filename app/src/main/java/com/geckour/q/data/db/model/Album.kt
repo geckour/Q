@@ -7,9 +7,11 @@ import androidx.room.PrimaryKey
 import androidx.room.Relation
 import com.geckour.q.domain.model.MediaItem
 import kotlinx.android.parcel.Parcelize
+import kotlinx.serialization.Serializable
 
 @Entity
 @Parcelize
+@Serializable
 data class Album(
     @PrimaryKey(autoGenerate = true) val id: Long,
     val artistId: Long,

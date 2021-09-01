@@ -5,9 +5,11 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.geckour.q.domain.model.MediaItem
 import kotlinx.android.parcel.Parcelize
+import kotlinx.serialization.Serializable
 
 @Entity
 @Parcelize
+@Serializable
 data class Artist(
     @PrimaryKey(autoGenerate = true) val id: Long,
     val title: String,

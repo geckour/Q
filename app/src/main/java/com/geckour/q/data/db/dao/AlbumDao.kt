@@ -27,24 +27,31 @@ interface AlbumDao {
     @Query("delete from track where albumId = :albumId")
     suspend fun deleteTrackByAlbum(albumId: Long): Int
 
+    @Transaction
     @Query("select * from album where id = :id")
     suspend fun get(id: Long): JoinedAlbum?
 
+    @Transaction
     @Query("select * from album where title like :title")
     suspend fun findByTitle(title: String): JoinedAlbum?
 
+    @Transaction
     @Query("select * from album")
     fun getAllAsync(): Flow<List<JoinedAlbum>>
 
+    @Transaction
     @Query("select * from album where artistId = :artistId")
     suspend fun getAllByArtist(artistId: Long): List<JoinedAlbum>
 
+    @Transaction
     @Query("select * from album where artistId = :artistId")
     fun getAllByArtistAsync(artistId: Long): Flow<List<JoinedAlbum>>
 
+    @Transaction
     @Query("select * from album where title = :title and artistId = :artistId")
     suspend fun getAllByTitle(title: String, artistId: Long): List<JoinedAlbum>
 
+    @Transaction
     @Query("select * from album where title like :title")
     suspend fun findAllByTitle(title: String): List<JoinedAlbum>
 
@@ -70,6 +77,7 @@ interface AlbumDao {
         }
     }
 
+    @Transaction
     suspend fun upsert(db: DB, album: Album, pastTrackDuration: Long = 0): Long {
         val toInsert = getAllByTitle(album.title, album.artistId).let { albums ->
             val firstAlbum = albums.firstOrNull() ?: return@let null

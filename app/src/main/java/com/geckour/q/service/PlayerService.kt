@@ -51,15 +51,15 @@ import com.geckour.q.util.removedAt
 import com.geckour.q.util.shuffleByClassType
 import com.geckour.q.util.verifyWithDropbox
 import com.google.android.exoplayer2.DefaultRenderersFactory
-import com.google.android.exoplayer2.ExoPlaybackException
+import com.google.android.exoplayer2.PlaybackException
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.exoplayer2.Timeline
 import com.google.android.exoplayer2.analytics.AnalyticsListener
 import com.google.android.exoplayer2.audio.AudioAttributes
-import com.google.android.exoplayer2.audio.AudioListener
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource
-import com.google.android.exoplayer2.source.MediaSourceEventListener
+import com.google.android.exoplayer2.source.LoadEventInfo
+import com.google.android.exoplayer2.source.MediaLoadData
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.source.TrackGroupArray
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
@@ -69,7 +69,6 @@ import com.google.android.exoplayer2.upstream.HttpDataSource
 import com.google.android.exoplayer2.util.EventLogger
 import com.google.android.exoplayer2.util.Util
 import com.google.firebase.crashlytics.FirebaseCrashlytics
-import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -79,6 +78,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import timber.log.Timber
 import java.io.IOException
 import kotlin.coroutines.CoroutineContext
@@ -212,28 +215,36 @@ class PlayerService : Service() {
             .setTrackSelector(trackSelector)
             .build()
             .apply {
-                addAudioListener(object : AudioListener {
-
-                    override fun onAudioSessionId(audioSessionId: Int) {
-                        super.onAudioSessionId(audioSessionId)
-
-                        setEqualizer(audioSessionId)
-                    }
-                })
-                addListener(eventListener)
+                addListener(listener)
                 setAudioAttributes(AudioAttributes.Builder().build(), ducking)
                 addAnalyticsListener(object : EventLogger(trackSelector) {
                     override fun onLoadError(
                         eventTime: AnalyticsListener.EventTime,
-                        loadEventInfo: MediaSourceEventListener.LoadEventInfo,
-                        mediaLoadData: MediaSourceEventListener.MediaLoadData,
+                        loadEventInfo: LoadEventInfo,
+                        mediaLoadData: MediaLoadData,
                         error: IOException,
                         wasCanceled: Boolean
                     ) {
+                        super.onLoadError(
+                            eventTime,
+                            loadEventInfo,
+                            mediaLoadData,
+                            error,
+                            wasCanceled
+                        )
+
                         Timber.e(error)
                         FirebaseCrashlytics.getInstance().recordException(error)
 
                         verifyByCauseIfNeeded(error)
+                    }
+
+                    override fun onAudioSessionIdChanged(
+                        eventTime: AnalyticsListener.EventTime,
+                        audioSessionId: Int
+                    ) {
+                        super.onAudioSessionIdChanged(eventTime, audioSessionId)
+                        setEqualizer(audioSessionId)
                     }
                 })
             }
@@ -275,7 +286,7 @@ class PlayerService : Service() {
     private lateinit var mediaSourceFactory: ProgressiveMediaSource.Factory
     private var source = ConcatenatingMediaSource()
 
-    private val eventListener = object : Player.EventListener {
+    private val listener = object : Player.Listener {
 
         override fun onTracksChanged(
             trackGroups: TrackGroupArray, trackSelections: TrackSelectionArray
@@ -328,7 +339,7 @@ class PlayerService : Service() {
             playbackInfoFlow.value = playWhenReady to playbackState
         }
 
-        override fun onPlayerError(error: ExoPlaybackException) {
+        override fun onPlayerError(error: PlaybackException) {
             super.onPlayerError(error)
 
             Timber.e(error)
@@ -921,6 +932,7 @@ class PlayerService : Service() {
         }
     }
 
+    @OptIn(ExperimentalSerializationApi::class)
     private fun storeState() {
         cachedQueueOrder.apply {
             clear()
@@ -933,13 +945,15 @@ class PlayerService : Service() {
             player.currentPosition,
             player.repeatMode
         )
-        sharedPreferences.edit().putString(PREF_KEY_PLAYER_STATE, Gson().toJson(state)).apply()
+        sharedPreferences.edit().putString(PREF_KEY_PLAYER_STATE, Json.encodeToString(state))
+            .apply()
     }
 
+    @OptIn(ExperimentalSerializationApi::class)
     private fun restoreState() {
         if (player.playWhenReady.not()) {
             sharedPreferences.getString(PREF_KEY_PLAYER_STATE, null)?.let {
-                Gson().fromJson(it, PlayerState::class.java)
+                Json.decodeFromString<PlayerState>(it)
             }?.set()
         }
     }

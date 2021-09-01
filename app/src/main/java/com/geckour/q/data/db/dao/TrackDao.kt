@@ -25,51 +25,64 @@ interface TrackDao {
     @Query("delete from track where id = :id")
     suspend fun delete(id: Long): Int
 
+    @Transaction
     @Query("select * from track where id = :id")
     suspend fun get(id: Long): JoinedTrack?
 
+    @Transaction
     @Query("select * from track where id in (:ids)")
     suspend fun getByIds(ids: List<Long>): List<JoinedTrack>
 
+    @Transaction
     @Query("select * from track where sourcePath = :sourcePath")
     suspend fun getBySourcePath(sourcePath: String): JoinedTrack?
 
+    @Transaction
     @Query("select * from track where title = :title and albumId = :albumId and artistId = :artistId")
     suspend fun getByTitles(title: String, albumId: Long, artistId: Long): JoinedTrack?
 
+    @Transaction
     @Query("select * from track where mediaId = :mediaId")
     suspend fun getByMediaId(mediaId: Long): JoinedTrack?
 
+    @Transaction
     @Query("select * from track where mediaId in (:mediaIds)")
     suspend fun getByMediaIds(mediaIds: List<Long>): List<JoinedTrack>
 
     @Query("select duration from track where mediaId = :mediaId")
     suspend fun getDurationWithMediaId(mediaId: Long): Long?
 
+    @Transaction
     @Query("select * from track where ignored != :ignore")
     suspend fun getAll(ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
     @Query("select mediaId from track")
     suspend fun getAllMediaIds(): List<Long>
 
+    @Transaction
     @Query("select * from track where ignored != :ignore order by titleSort collate nocase")
     fun getAllAsync(ignore: Bool = Bool.UNDEFINED): Flow<List<JoinedTrack>>
 
+    @Transaction
     @Query("select * from track where title like :title")
     suspend fun getAllByTitle(title: String): List<JoinedTrack>
 
+    @Transaction
     @Query("select * from track where albumId = :albumId and ignored != :ignore")
     suspend fun getAllByAlbum(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
+    @Transaction
     @Query("select * from track where albumId = :albumId and ignored != :ignore order by trackNum")
     suspend fun getAllByAlbumSorted(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
+    @Transaction
     @Query("select * from track where albumId = :albumId and ignored != :ignore")
     fun getAllByAlbumAsync(
         albumId: Long,
         ignore: Bool = Bool.UNDEFINED
     ): Flow<List<JoinedTrack>>
 
+    @Transaction
     @Query("select * from track where artistId = :artistId and ignored != :ignore")
     suspend fun getAllByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
@@ -106,6 +119,7 @@ interface TrackDao {
         }
     }
 
+    @Transaction
     suspend fun upsert(
         track: Track,
         albumId: Long,
@@ -128,6 +142,7 @@ interface TrackDao {
         return insert(toInsert)
     }
 
+    @Transaction
     suspend fun getDurationWithTitles(
         title: String,
         albumTitle: String,

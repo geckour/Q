@@ -200,16 +200,6 @@ class TrackListAdapter(
             }
             binding.root.setOnClickListener { onTrackSelected(track) }
             binding.root.setOnLongClickListener { onTrackLongTapped(track) }
-            if (classType == OrientedClassType.PLAYLIST) {
-                binding.option.visibility = View.VISIBLE
-                binding.option.setOnClickListener {
-                    track.trackNum?.apply { removeFromPlaylist(this) }
-                }
-            }
-        }
-
-        private fun removeFromPlaylist(playOrder: Int) {
-            viewModel.onRequestRemoveTrackFromPlaylist(playOrder)
         }
 
         private fun onTrackSelected(domainTrack: DomainTrack) {

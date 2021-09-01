@@ -22,7 +22,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:background="?attr/colorBackground"
-            tools:context=".view.activity.MainActivity">
+            android:clipChildren="false">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -63,19 +63,11 @@
                 </FrameLayout>
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="24dp"
-                android:background="@drawable/shadow_sheet_bottom"
-                app:layout_anchor="@id/bottom_sheet"
-                app:layout_anchorGravity="top" />
-
             <FrameLayout
                 android:id="@+id/bottom_sheet"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:layout_gravity="bottom"
-                android:layout_marginBottom="20dp"
                 app:behavior_peekHeight="@dimen/bottom_sheet_peek_height"
                 app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
                 tools:layout="@layout/fragment_sheet_bottom" />
@@ -90,8 +82,8 @@
             android:fitsSystemWindows="false"
             app:headerLayout="@layout/drawer_header"
             app:itemIconTint="@color/nav_item_color"
-            app:itemTextColor="@color/nav_item_color"
             app:itemShapeFillColor="@color/nav_item_background_color"
+            app:itemTextColor="@color/nav_item_color"
             app:menu="@menu/drawer_main" />
     </androidx.drawerlayout.widget.DrawerLayout>
 </layout>

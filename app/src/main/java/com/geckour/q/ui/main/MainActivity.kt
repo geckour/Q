@@ -40,7 +40,6 @@ import com.geckour.q.ui.equalizer.EqualizerFragment
 import com.geckour.q.ui.library.album.AlbumListFragment
 import com.geckour.q.ui.library.artist.ArtistListFragment
 import com.geckour.q.ui.library.genre.GenreListFragment
-import com.geckour.q.ui.library.playlist.PlaylistListFragment
 import com.geckour.q.ui.library.track.TrackListFragment
 import com.geckour.q.ui.pay.PaymentFragment
 import com.geckour.q.ui.pay.PaymentViewModel
@@ -146,7 +145,6 @@ class MainActivity : AppCompatActivity() {
             R.id.nav_album -> AlbumListFragment.newInstance()
             R.id.nav_track -> TrackListFragment.newInstance()
             R.id.nav_genre -> GenreListFragment.newInstance()
-            R.id.nav_playlist -> PlaylistListFragment.newInstance()
             R.id.nav_setting -> {
                 startActivityForResult(
                     SettingActivity.createIntent(this), RequestCode.RESULT_SETTING.code
@@ -341,7 +339,6 @@ class MainActivity : AppCompatActivity() {
                     R.id.nav_album -> it is AlbumListFragment
                     R.id.nav_track -> it is TrackListFragment
                     R.id.nav_genre -> it is GenreListFragment
-                    R.id.nav_playlist -> it is PlaylistListFragment
                     else -> false
                 }
             }?.tag ?: getString(
@@ -350,7 +347,6 @@ class MainActivity : AppCompatActivity() {
                     R.id.nav_album -> R.string.nav_album
                     R.id.nav_track -> R.string.nav_track
                     R.id.nav_genre -> R.string.nav_genre
-                    R.id.nav_playlist -> R.string.nav_playlist
                     R.id.nav_equalizer -> R.string.nav_equalizer
                     R.id.nav_pay -> R.string.nav_pay
                     R.layout.fragment_easter_egg -> R.string.nav_fortune
@@ -381,14 +377,6 @@ class MainActivity : AppCompatActivity() {
         viewModel.selectedGenre.observe(this) {
             it ?: return@observe
             requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.GENRE, genre = it)
-            tryTransaction()
-        }
-
-        viewModel.selectedPlaylist.observe(this) {
-            it ?: return@observe
-            requestedTransaction = RequestedTransaction(
-                RequestedTransaction.Tag.PLAYLIST, playlist = it
-            )
             tryTransaction()
         }
 
@@ -518,17 +506,6 @@ class MainActivity : AppCompatActivity() {
                                 R.id.content_main, TrackListFragment.newInstance(
                                     genre
                                 ), genre.name
-                            ).addToBackStack(
-                                null
-                            ).commit()
-                        }
-                    }
-                    RequestedTransaction.Tag.PLAYLIST -> {
-                        if (playlist != null) {
-                            supportFragmentManager.beginTransaction().replace(
-                                R.id.content_main, TrackListFragment.newInstance(
-                                    playlist
-                                ), playlist.name
                             ).addToBackStack(
                                 null
                             ).commit()

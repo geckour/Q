@@ -71,9 +71,6 @@ sealed class Pref<T>(protected val key: String) : ReadWriteProperty<SharedPrefer
                 Content.Screen("ALBUM", Content.Screen.Data(R.string.nav_album, R.id.nav_album)),
                 Content.Screen("TRACK", Content.Screen.Data(R.string.nav_track, R.id.nav_track)),
                 Content.Screen("GENRE", Content.Screen.Data(R.string.nav_genre, R.id.nav_genre)),
-                Content.Screen(
-                    "PLAYLIST", Content.Screen.Data(R.string.nav_playlist, R.id.nav_playlist)
-                )
             )
         }
     }

@@ -51,7 +51,6 @@
     <string name="nav_album">アルバム</string>
     <string name="nav_track">曲</string>
     <string name="nav_genre">ジャンル</string>
-    <string name="nav_playlist">プレイリスト</string>
     <string name="nav_dropbox">Dropbox</string>
     <string name="nav_setting">設定</string>
     <string name="nav_equalizer">イコライザ</string>
@@ -71,8 +70,6 @@
     <string name="menu_ignore_to_true">一括追加時スキップを有効にする</string>
 
     <string name="menu_delete_track">端末から削除</string>
-
-    <string name="menu_delete_playlist">プレイリストを削除</string>
 
     <string name="menu_insert_next">次へ挿入</string>
     <string name="menu_insert_last">最後へ挿入</string>
@@ -98,10 +95,6 @@
     <string name="menu_genres_insert_all_shuffle_last">ジャンルシャッフルで最後へ挿入</string>
     <string name="menu_genres_override_all_shuffle">ジャンルシャッフルで上書き</string>
 
-    <string name="menu_playlists_insert_all_shuffle_next">プレイリストシャッフルで次へ挿入</string>
-    <string name="menu_playlists_insert_all_shuffle_last">プレイリストシャッフルで最後へ挿入</string>
-    <string name="menu_playlists_override_all_shuffle">プレイリストシャッフルで上書き</string>
-
     <string name="menu_transition_to_artist">アーティストへ移動</string>
     <string name="menu_transition_to_album">アルバムへ移動</string>
 
@@ -110,12 +103,6 @@
     <!-- Dialog -->
     <string name="dialog_ok">決定</string>
     <string name="dialog_ng">キャンセル</string>
-
-    <string name="dialog_title_add_queue_to_playlist">プレイリストへキューを追加</string>
-    <string name="dialog_desc_add_queue_to_playlist">現在のキューを 既存 / 新規 プレイリストへ追加</string>
-    <string name="dialog_content_label_exist_playlist">既存プレイリストへ追加:</string>
-    <string name="dialog_content_label_new_playlist">新規プレイリストを作成:</string>
-    <string name="dialog_content_hint_playlist_name">プレイリストの名前を入力</string>
 
     <string name="dialog_title_choose_app_theme">テーマを選択</string>
     <string name="dialog_desc_choose_app_theme">アプリのカラーテーマを選択</string>
@@ -154,7 +141,6 @@
     <string name="search_category_artist">アーティスト</string>
     <string name="search_category_album">アルバム</string>
     <string name="search_category_track">曲</string>
-    <string name="search_category_playlist">プレイリスト</string>
     <string name="search_category_genre">ジャンル</string>
 
     <!-- Settings -->

@@ -1,7 +1,6 @@
 package com.geckour.q.ui.library.track
 
 import android.os.Bundle
-import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuInflater
@@ -18,12 +17,10 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Genre
-import com.geckour.q.domain.model.Playlist
 import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.getDomainTrackListFromTrackMediaIdWithTrackNum
 import com.geckour.q.util.getTrackListFromTrackMediaId
 import com.geckour.q.util.getTrackMediaIds
 import com.geckour.q.util.observe
@@ -43,7 +40,6 @@ class TrackListFragment : Fragment() {
         private const val ARGS_KEY_CLASS_TYPE = "args_key_class_type"
         private const val ARGS_KEY_ALBUM = "args_key_album"
         private const val ARGS_KEY_GENRE = "args_key_genre"
-        private const val ARGS_KEY_PLAYLIST = "args_key_playlist"
 
         fun newInstance(): TrackListFragment = TrackListFragment().apply {
             arguments = Bundle().apply {
@@ -62,13 +58,6 @@ class TrackListFragment : Fragment() {
             arguments = Bundle().apply {
                 putSerializable(ARGS_KEY_CLASS_TYPE, OrientedClassType.GENRE)
                 putParcelable(ARGS_KEY_GENRE, genre)
-            }
-        }
-
-        fun newInstance(playlist: Playlist): TrackListFragment = TrackListFragment().apply {
-            arguments = Bundle().apply {
-                putSerializable(ARGS_KEY_CLASS_TYPE, OrientedClassType.PLAYLIST)
-                putParcelable(ARGS_KEY_PLAYLIST, playlist)
             }
         }
     }
@@ -170,18 +159,6 @@ class TrackListFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        mainViewModel.playOrderToRemoveFromPlaylist.observe(viewLifecycleOwner) {
-            it ?: return@observe
-
-            val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST) ?: return@observe
-            val removed = context?.contentResolver?.delete(
-                MediaStore.Audio.Playlists.Members.getContentUri("external", playlist.id),
-                "${MediaStore.Audio.Playlists.Members.PLAY_ORDER}=?",
-                arrayOf(it.toString())
-            )?.equals(1) ?: return@observe
-            if (removed) adapter.removeByTrackNum(it)
-        }
-
         mainViewModel.scrollToTop.observe(viewLifecycleOwner) {
             binding.recyclerView.smoothScrollToPosition(0)
         }
@@ -195,12 +172,10 @@ class TrackListFragment : Fragment() {
     private fun fetchTracks() {
         val album = arguments?.getParcelable<Album>(ARGS_KEY_ALBUM)
         val genre = arguments?.getParcelable<Genre>(ARGS_KEY_GENRE)
-        val playlist = arguments?.getParcelable<Playlist>(ARGS_KEY_PLAYLIST)
 
         when {
             album != null -> observeTrackWithAlbum(album)
             genre != null -> loadTracksWithGenre(genre)
-            playlist != null -> loadTracksWithPlaylist(playlist)
             else -> observeAllTracks()
         }
     }
@@ -231,19 +206,6 @@ class TrackListFragment : Fragment() {
                     DB.getInstance(requireContext()),
                     genre.getTrackMediaIds(requireContext()),
                     genreId = genre.id
-                )
-            )
-            binding.recyclerView.smoothScrollToPosition(0)
-        }
-    }
-
-    private fun loadTracksWithPlaylist(playlist: Playlist) {
-        lifecycleScope.launch {
-            adapter.submitList(
-                getDomainTrackListFromTrackMediaIdWithTrackNum(
-                    DB.getInstance(requireContext()),
-                    playlist.getTrackMediaIds(requireContext()),
-                    playlistId = playlist.id
                 )
             )
             binding.recyclerView.smoothScrollToPosition(0)

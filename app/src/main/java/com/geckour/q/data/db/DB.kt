@@ -13,7 +13,7 @@ import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.util.BoolConverter
 
-@Database(entities = [Track::class, Album::class, Artist::class], version = 1)
+@Database(entities = [Track::class, Album::class, Artist::class], version = 1, exportSchema = false)
 @TypeConverters(BoolConverter::class)
 abstract class DB : RoomDatabase() {
 

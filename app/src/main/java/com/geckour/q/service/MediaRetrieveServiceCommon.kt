@@ -88,7 +88,7 @@ internal suspend fun File.storeMediaInfo(
     val discTotal = catchAsNull {
         tag.getFirst(FieldKey.DISC_TOTAL).let { if (it.isNullOrBlank()) null else it }?.toInt()
     }
-    val year = catchAsNull { tag.getAll(FieldKey.YEAR).lastOrNull { it.isNotBlank() }?.toInt() }
+    val releaseDate = catchAsNull { tag.getAll(FieldKey.YEAR).lastOrNull { it.isNotBlank() } }
     val genre = tag.getAll(FieldKey.GENRE).lastOrNull { it.isNotBlank() }
 
     val composerTitle = tag.getAll(FieldKey.COMPOSER).lastOrNull { it.isNotBlank() }
@@ -148,14 +148,14 @@ internal suspend fun File.storeMediaInfo(
         dropboxExpiredAt = dropboxExpiredAt,
         title = title ?: UNKNOWN,
         titleSort = titleSort ?: UNKNOWN,
-        composer = composerTitle ?: UNKNOWN,
-        composerSort = composerTitleSort ?: UNKNOWN,
+        composer = composerTitle,
+        composerSort = composerTitleSort,
         duration = duration,
         trackNum = trackNum,
         trackTotal = trackTotal,
         discNum = discNum,
         discTotal = discTotal,
-        year = year,
+        releaseDate = releaseDate,
         genre = genre,
         artworkUriString = artworkUriString,
         playbackCount = 0

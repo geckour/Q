@@ -77,8 +77,8 @@ class LicenseActivity : AppCompatActivity() {
         return super.onCreateOptionsMenu(menu)
     }
 
-    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
-        when (item?.itemId) {
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
             R.id.menu_toggle_daynight -> toggleDayNight(sharedPreferences)
             else -> return false
         }

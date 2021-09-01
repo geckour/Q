@@ -14,7 +14,6 @@ import com.geckour.q.databinding.ItemSearchCategoryBinding
 import com.geckour.q.databinding.ItemSearchItemBinding
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
-import com.geckour.q.domain.model.Playlist
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -170,9 +169,6 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
                     viewModel.selectedAlbum.value = data as Album
                 }
                 SearchItem.SearchItemType.TRACK -> trackPopupMenu.show()
-                SearchItem.SearchItemType.PLAYLIST -> {
-                    viewModel.selectedPlaylist.value = data as? Playlist
-                }
                 SearchItem.SearchItemType.GENRE -> {
                     viewModel.selectedGenre.value = data as? Genre
                 }

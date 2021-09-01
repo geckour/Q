@@ -24,6 +24,7 @@
         android:layout_height="match_parent"
         android:background="@drawable/sheet_background"
         android:clickable="true"
+        android:elevation="40dp"
         android:focusable="true"
         android:theme="?attr/bottomSheetStyle"
         app:layoutDescription="@xml/bottom_sheet_motion"
@@ -232,17 +233,6 @@
             android:src="@drawable/ic_touch_lock"
             app:tintAttr="@{viewModel.touchLock ? R.attr.colorAccent : R.attr.colorInactive}"
             tools:tint="@color/colorInactive" />
-
-        <ImageView
-            android:id="@+id/button_add_queue_to_playlist"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> viewModel.playerActive ? viewModel.onClickAddQueueToPlaylistButton(context) : null}"
-            android:padding="6dp"
-            android:src="@drawable/ic_playlist_add"
-            app:tintAttr="@{viewModel.playerActive ? R.attr.colorAccent : R.attr.colorInactive}"
-            tools:tint="@color/colorAccent" />
 
         <ImageView
             android:id="@+id/button_clear_queue"

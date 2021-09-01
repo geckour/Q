@@ -215,14 +215,6 @@
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:layout_marginEnd="4dp"
-            app:layout_constraintEnd_toStartOf="@id/button_add_queue_to_playlist"
-            app:layout_constraintTop_toBottomOf="@id/guide_peek_height" />
-
-        <Constraint
-            android:id="@+id/button_add_queue_to_playlist"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:layout_marginEnd="4dp"
             app:layout_constraintEnd_toStartOf="@id/button_clear_queue"
             app:layout_constraintTop_toBottomOf="@id/guide_peek_height" />
 
@@ -426,15 +418,6 @@
 
         <Constraint
             android:id="@id/button_touch_lock"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:layout_marginEnd="4dp"
-            app:layout_constraintBottom_toBottomOf="@id/button_scroll_to_current"
-            app:layout_constraintEnd_toStartOf="@id/button_add_queue_to_playlist"
-            app:layout_constraintTop_toTopOf="@id/button_scroll_to_current" />
-
-        <Constraint
-            android:id="@id/button_add_queue_to_playlist"
             android:layout_width="32dp"
             android:layout_height="32dp"
             android:layout_marginEnd="4dp"

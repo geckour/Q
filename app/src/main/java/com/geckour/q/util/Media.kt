@@ -32,7 +32,6 @@ import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.databinding.DialogEditMetadataBinding
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
-import com.geckour.q.domain.model.Playlist
 import com.geckour.q.service.PlayerService
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
@@ -64,7 +63,7 @@ enum class ShuffleActionType {
 }
 
 enum class OrientedClassType {
-    ARTIST, ALBUM, TRACK, GENRE, PLAYLIST
+    ARTIST, ALBUM, TRACK, GENRE
 }
 
 enum class PlayerControlCommand {
@@ -84,31 +83,21 @@ data class QueueInfo(
 )
 
 suspend fun getTrackListFromTrackMediaId(
-    db: DB, dbTrackIdList: List<Long>, genreId: Long? = null, playlistId: Long? = null
-): List<DomainTrack> = dbTrackIdList.mapNotNull { getDomainTrack(db, it, genreId, playlistId) }
-
-suspend fun getDomainTrackListFromTrackMediaIdWithTrackNum(
-    db: DB,
-    dbTrackMediaIdWithTrackNumList: List<Pair<Long, Int>>,
-    genreId: Long? = null,
-    playlistId: Long? = null
-): List<DomainTrack> = dbTrackMediaIdWithTrackNumList.mapNotNull {
-    getDomainTrack(db, it.first, genreId, playlistId, trackNum = it.second)
-}
+    db: DB, dbTrackIdList: List<Long>,
+    genreId: Long? = null
+): List<DomainTrack> = dbTrackIdList.mapNotNull { getDomainTrack(db, it, genreId) }
 
 suspend fun getDomainTrack(
     db: DB,
     trackMediaId: Long,
     genreId: Long? = null,
-    playlistId: Long? = null,
     trackNum: Int? = null
 ): DomainTrack? = db.trackDao()
     .getByMediaId(trackMediaId)
-    ?.toDomainTrack(genreId, playlistId, trackNum)
+    ?.toDomainTrack(genreId, trackNum)
 
 fun JoinedTrack.toDomainTrack(
     genreId: Long? = null,
-    playlistId: Long? = null,
     trackNum: Int? = null
 ): DomainTrack {
     return DomainTrack(
@@ -129,9 +118,8 @@ fun JoinedTrack.toDomainTrack(
         track.trackTotal,
         track.discNum,
         track.discTotal,
-        track.year,
+        track.releaseDate,
         genreId,
-        playlistId,
         track.sourcePath,
         track.dropboxPath,
         track.dropboxExpiredAt,
@@ -139,44 +127,6 @@ fun JoinedTrack.toDomainTrack(
         BoolConverter().toBoolean(track.ignored)
     )
 }
-
-suspend fun fetchPlaylists(context: Context): List<Playlist> = context.contentResolver.query(
-    MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
-    arrayOf(MediaStore.Audio.Playlists._ID, MediaStore.Audio.Playlists.NAME),
-    null,
-    null,
-    MediaStore.Audio.Playlists.DATE_MODIFIED
-)?.use {
-    val db = DB.getInstance(context)
-    val list: ArrayList<Playlist> = ArrayList()
-    while (it.moveToNext()) {
-        val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists._ID))
-        val tracks = getTrackMediaIdByPlaylistId(context, id).mapNotNull {
-            db.trackDao().getByMediaId(it.first)
-        }
-        val totalDuration = tracks.map { it.track.duration }.sum()
-        val name = it.getString(it.getColumnIndex(MediaStore.Audio.Playlists.NAME)).let {
-            if (it.isBlank()) UNKNOWN else it
-        }
-        val count = context.contentResolver.query(
-            MediaStore.Audio.Playlists.Members.getContentUri("external", id),
-            null,
-            null,
-            null,
-            null
-        )?.use { it.count } ?: 0
-        val playlist =
-            Playlist(id, tracks.getPlaylistThumb(context), name, count, totalDuration)
-        list.add(playlist)
-    }
-
-    return@use list.toList().sortedBy { it.name }
-} ?: emptyList()
-
-private suspend fun List<JoinedTrack>.getPlaylistThumb(context: Context): Bitmap? =
-    this@getPlaylistThumb.takeOrFillNull(10).map { joinedTrack ->
-        joinedTrack?.album?.artworkUriString
-    }.getThumb(context)
 
 suspend fun DB.searchArtistByFuzzyTitle(title: String): List<Artist> =
     this@searchArtistByFuzzyTitle.artistDao().findAllByTitle("%${title.escapeSql}%")
@@ -186,26 +136,6 @@ suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<JoinedAlbum> =
 
 suspend fun DB.searchTrackByFuzzyTitle(title: String): List<JoinedTrack> =
     this@searchTrackByFuzzyTitle.trackDao().getAllByTitle("%${title.escapeSql}%")
-
-fun Context.searchPlaylistByFuzzyTitle(title: String): List<Playlist> = contentResolver.query(
-    MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
-    arrayOf(
-        MediaStore.Audio.Playlists._ID, MediaStore.Audio.Playlists.NAME
-    ),
-    "${MediaStore.Audio.Playlists.NAME} like '%${title.escapeSql}%'",
-    null,
-    MediaStore.Audio.Playlists.DEFAULT_SORT_ORDER
-).use {
-    it ?: return@use emptyList()
-    val result: MutableList<Playlist> = mutableListOf()
-    while (it.moveToNext()) {
-        val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists._ID))
-        val name = it.getString(it.getColumnIndex(MediaStore.Audio.Playlists.NAME)) ?: UNKNOWN
-        result.add(Playlist(id, null, name, 0, 0))
-    }
-
-    return@use result
-}
 
 fun Context.searchGenreByFuzzyTitle(title: String): List<Genre> = contentResolver.query(
     MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
@@ -283,26 +213,6 @@ fun getTrackMediaIdsByGenreId(context: Context, genreId: Long): List<Long> =
         return@use trackMediaIdList
     } ?: emptyList()
 
-fun Playlist.getTrackMediaIds(context: Context): List<Pair<Long, Int>> =
-    getTrackMediaIdByPlaylistId(context, this.id)
-
-fun getTrackMediaIdByPlaylistId(context: Context, playlistId: Long): List<Pair<Long, Int>> =
-    context.contentResolver.query(
-        MediaStore.Audio.Playlists.Members.getContentUri("external", playlistId), arrayOf(
-            MediaStore.Audio.Playlists.Members.AUDIO_ID,
-            MediaStore.Audio.Playlists.Members.PLAY_ORDER
-        ), null, null, MediaStore.Audio.Playlists.Members.PLAY_ORDER
-    )?.use {
-        val trackMediaIdList: ArrayList<Pair<Long, Int>> = ArrayList()
-        while (it.moveToNext()) {
-            val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists.Members.AUDIO_ID))
-            val order = it.getInt(it.getColumnIndex(MediaStore.Audio.Playlists.Members.PLAY_ORDER))
-            trackMediaIdList.add(id to order)
-        }
-
-        return@use trackMediaIdList
-    } ?: emptyList()
-
 fun DomainTrack.getMediaSource(mediaSourceFactory: ProgressiveMediaSource.Factory): MediaSource =
     mediaSourceFactory.createMediaSource(
         if (mediaId < 0) Uri.parse(sourcePath)
@@ -343,12 +253,6 @@ fun List<DomainTrack>.shuffleByClassType(classType: OrientedClassType): List<Dom
                 this.filter { it.genreId == id }
             }.flatten()
         }
-        OrientedClassType.PLAYLIST -> {
-            val playlistIds = this.map { it.playlistId }.distinct().shuffled()
-            playlistIds.map { id ->
-                this.filter { it.playlistId == id }
-            }.flatten()
-        }
     }
 
 suspend fun DomainTrack.getMediaMetadata(context: Context): MediaMetadataCompat =
@@ -369,7 +273,7 @@ suspend fun DomainTrack.getMediaMetadata(context: Context): MediaMetadataCompat 
             trackNum?.let { putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, it.toLong()) }
             trackTotal?.let { putLong(MediaMetadataCompat.METADATA_KEY_NUM_TRACKS, it.toLong()) }
             discNum?.let { putLong(MediaMetadataCompat.METADATA_KEY_DISC_NUMBER, it.toLong()) }
-            year?.let { putLong(MediaMetadataCompat.METADATA_KEY_YEAR, it.toLong()) }
+            releaseDate?.let { putLong(MediaMetadataCompat.METADATA_KEY_YEAR, it.toLong()) }
             DB.getInstance(context).artistDao().get(album.artistId)?.title?.let {
                 putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ARTIST, it)
             }

@@ -21,10 +21,6 @@
                     android:id="@+id/nav_genre"
                     android:icon="@drawable/ic_genre"
                     android:title="@string/nav_genre" />
-                <item
-                    android:id="@+id/nav_playlist"
-                    android:icon="@drawable/ic_playlist"
-                    android:title="@string/nav_playlist" />
             </group>
         </menu>
     </item>

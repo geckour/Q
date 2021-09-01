@@ -57,6 +57,7 @@ interface ArtistDao {
         delete(artistId)
     }
 
+    @Transaction
     suspend fun upsert(db: DB, artist: Artist, pastTrackDuration: Long = 0): Long {
         val toInsert = getByTitle(artist.title)?.let {
             val duration = it.totalDuration - pastTrackDuration + artist.totalDuration
