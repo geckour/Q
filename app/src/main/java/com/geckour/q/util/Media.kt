@@ -1,17 +1,12 @@
 package com.geckour.q.util
 
 import android.app.Notification
-import android.app.PendingIntent
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Rect
-import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.provider.MediaStore
 import android.support.v4.media.MediaMetadataCompat
@@ -32,7 +27,7 @@ import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.databinding.DialogEditMetadataBinding
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
-import com.geckour.q.service.PlayerService
+import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import kotlinx.coroutines.Dispatchers
@@ -45,9 +40,9 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 import java.net.URLConnection
+import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.collections.ArrayList
-import kotlin.math.min
 
 
 const val UNKNOWN: String = "UNKNOWN"
@@ -103,7 +98,7 @@ fun JoinedTrack.toDomainTrack(
     return DomainTrack(
         track.id,
         track.mediaId,
-        track.codec.toUpperCase(Locale.getDefault()),
+        track.codec.uppercase(Locale.getDefault()),
         track.bitrate,
         track.sampleRate / 1000f,
         album,
@@ -215,20 +210,26 @@ fun getTrackMediaIdsByGenreId(context: Context, genreId: Long): List<Long> =
 
 fun DomainTrack.getMediaSource(mediaSourceFactory: ProgressiveMediaSource.Factory): MediaSource =
     mediaSourceFactory.createMediaSource(
-        if (mediaId < 0) Uri.parse(sourcePath)
-        else Uri.fromFile(File(sourcePath))
+        MediaItem.fromUri(
+            if (mediaId < 0) Uri.parse(sourcePath)
+            else Uri.fromFile(File(sourcePath))
+        )
     )
 
 fun List<DomainTrack>.sortedByTrackOrder(): List<DomainTrack> =
     this.groupBy { it.album }
-        .map {
-            it.key to it.value.groupBy { it.discNum }
-                .map { it.key to it.value.sortedBy { it.trackNum } }
+        .map { (album, tracks) ->
+            album to tracks.groupBy { it.discNum }
+                .map { (diskNum, track) ->
+                    diskNum to track.sortedBy { it.trackNum }
+                }
                 .sortedBy { it.first }
                 .flatMap { it.second }
         }
         .groupBy { it.first.artistId }
-        .flatMap { it.value.flatMap { it.second } }
+        .flatMap { (_, albumTrackMap) ->
+            albumTrackMap.flatMap { it.second }
+        }
 
 fun List<DomainTrack>.shuffleByClassType(classType: OrientedClassType): List<DomainTrack> =
     when (classType) {
@@ -273,13 +274,21 @@ suspend fun DomainTrack.getMediaMetadata(context: Context): MediaMetadataCompat 
             trackNum?.let { putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, it.toLong()) }
             trackTotal?.let { putLong(MediaMetadataCompat.METADATA_KEY_NUM_TRACKS, it.toLong()) }
             discNum?.let { putLong(MediaMetadataCompat.METADATA_KEY_DISC_NUMBER, it.toLong()) }
-            releaseDate?.let { putLong(MediaMetadataCompat.METADATA_KEY_YEAR, it.toLong()) }
+            releaseDate?.parseDateLong()?.let { putLong(MediaMetadataCompat.METADATA_KEY_YEAR, it) }
             DB.getInstance(context).artistDao().get(album.artistId)?.title?.let {
                 putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ARTIST, it)
             }
         }
         .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
         .build()
+
+fun String.parseDateLong(): Long? = catchAsNull {
+    SimpleDateFormat("yyyy-MM-dd", Locale.JAPAN).parse(this)?.time
+} ?: catchAsNull {
+    SimpleDateFormat("yyyy-MM", Locale.JAPAN).parse(this)?.time
+} ?: catchAsNull {
+    SimpleDateFormat("yyyy", Locale.JAPAN).parse(this)?.time
+}
 
 fun DomainTrack.getTempArtworkUriString(context: Context): String? =
     album.artworkUriString?.let { uriString ->
@@ -396,23 +405,6 @@ fun getPlayerNotification(
         .build()
 }
 
-fun getCommandIntent(context: Context, command: PlayerControlCommand): Intent =
-    PlayerService.createIntent(context).apply {
-        action = command.name
-        putExtra(PlayerService.ARGS_KEY_CONTROL_COMMAND, command.ordinal)
-    }
-
-private fun getCommandPendingIntent(
-    context: Context,
-    command: PlayerControlCommand
-): PendingIntent =
-    PendingIntent.getService(
-        context,
-        343,
-        getCommandIntent(context, command),
-        PendingIntent.FLAG_CANCEL_CURRENT
-    )
-
 fun Long.getTimeString(): String {
     val hour = this / 3600000
     val minute = (this % 3600000) / 60000
@@ -427,19 +419,6 @@ val Bitmap?.orDefaultForModel get() = this ?: R.drawable.ic_empty
 
 inline fun <reified T> RequestBuilder<T>.applyDefaultSettings() =
     this.diskCacheStrategy(DiskCacheStrategy.NONE)
-
-private fun Drawable.bitmap(minimumSideLength: Int = 1000, supportAlpha: Boolean = false): Bitmap {
-    val min = min(intrinsicWidth, intrinsicHeight)
-    val scale = if (min < minimumSideLength) minimumSideLength.toFloat() / min else 1f
-    return Bitmap.createBitmap(
-        (intrinsicWidth * scale).toInt(), (intrinsicHeight * scale).toInt(), Bitmap.Config.ARGB_8888
-    ).apply {
-        bounds = Rect(0, 0, width, height)
-        draw(Canvas(this).apply {
-            if (supportAlpha.not()) drawColor(Color.WHITE)
-        })
-    }
-}
 
 fun DbxClientV2.saveTempAudioFile(context: Context, pathLower: String): File {
     val dirName = "audio"
@@ -622,18 +601,16 @@ suspend fun JoinedTrack.updateFileMetadata(
                 }
             }
             newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not() -> {
-                val file =
-                    if (track.sourcePath.startsWith("http")) null
-                    else File(track.sourcePath)
-                file?.let {
-                    val audioFile = AudioFileIO.read(it)
-                    audioFile?.tag?.apply {
-                        newTrackName?.let { setField(FieldKey.TITLE, it) }
-                        newTrackNameSort?.let { setField(FieldKey.TITLE_SORT, it) }
-                        newComposerName?.let { setField(FieldKey.COMPOSER, it) }
-                        newComposerNameSort?.let { setField(FieldKey.COMPOSER_SORT, it) }
+                if (track.sourcePath.startsWith("http").not()) {
+                    AudioFileIO.read(File(track.sourcePath))?.let { audioFile ->
+                        audioFile.tag?.apply {
+                            newTrackName?.let { setField(FieldKey.TITLE, it) }
+                            newTrackNameSort?.let { setField(FieldKey.TITLE_SORT, it) }
+                            newComposerName?.let { setField(FieldKey.COMPOSER, it) }
+                            newComposerNameSort?.let { setField(FieldKey.COMPOSER_SORT, it) }
+                        }
+                        AudioFileIO.write(audioFile)
                     }
-                    audioFile?.let { AudioFileIO.write(it) }
                 }
 
                 db.trackDao().update(
