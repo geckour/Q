@@ -4,11 +4,8 @@ import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.bluetooth.BluetoothHeadset
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -103,10 +100,6 @@ class PlayerService : Service() {
         const val ARGS_KEY_SETTING_COMMAND = "args_key_setting_command"
 
         const val PREF_KEY_PLAYER_STATE = "pref_key_player_state"
-
-        private const val SOURCE_ACTION_WIRED_STATE = Intent.ACTION_HEADSET_PLUG
-        private const val SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE =
-            BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED
     }
 
     private val binder = PlayerBinder()
@@ -213,6 +206,7 @@ class PlayerService : Service() {
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
         SimpleExoPlayer.Builder(this, renderersFactory)
             .setTrackSelector(trackSelector)
+            .setHandleAudioBecomingNoisy(true)
             .build()
             .apply {
                 addListener(listener)
@@ -349,27 +343,6 @@ class PlayerService : Service() {
         }
     }
 
-    private val headsetStateReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            when (intent.action) {
-                SOURCE_ACTION_WIRED_STATE -> {
-                    val state = intent.getIntExtra("state", 1)
-                    Timber.d("qgeck wired state: $state")
-                    if (state <= 0) onUnplugged()
-                }
-
-                SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE -> {
-                    val state = intent.getIntExtra(BluetoothHeadset.EXTRA_STATE, -1)
-                    Timber.d("qgeck bl connection state: $state")
-                    when (state) {
-                        BluetoothHeadset.STATE_CONNECTED -> Unit
-                        BluetoothHeadset.STATE_DISCONNECTED -> onUnplugged()
-                    }
-                }
-            }
-        }
-    }
-
     private var job = Job()
     private val serviceScope = object : CoroutineScope {
         override val coroutineContext: CoroutineContext get() = job + Dispatchers.IO
@@ -421,12 +394,8 @@ class PlayerService : Service() {
             )
         )
 
-        player.prepare(source)
-
-        registerReceiver(headsetStateReceiver, IntentFilter().apply {
-            addAction(SOURCE_ACTION_WIRED_STATE)
-            addAction(SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE)
-        })
+        player.setMediaSource(source)
+        player.prepare()
 
         dropboxClient = obtainDbxClient()
 
@@ -437,9 +406,9 @@ class PlayerService : Service() {
         Timber.d("qgeck onDestroy called")
 
         stop()
-        player.stop(true)
+        player.stop()
+        player.clearMediaItems()
         destroyNotification()
-        unregisterReceiver(headsetStateReceiver)
         job.cancel()
         player.release()
 
@@ -958,10 +927,6 @@ class PlayerService : Service() {
         }
     }
 
-    private fun onUnplugged() {
-        pause()
-    }
-
     private fun showNotification() = serviceScope.launch(Dispatchers.Main) {
         val domainTrack = currentDomainTrack ?: return@launch
         mediaSession.setPlaybackState(
@@ -978,7 +943,7 @@ class PlayerService : Service() {
                 this@PlayerService,
                 App.REQUEST_CODE_LAUNCH_APP,
                 LauncherActivity.createIntent(this@PlayerService),
-                PendingIntent.FLAG_UPDATE_CURRENT
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
         )
         getPlayerNotification(
