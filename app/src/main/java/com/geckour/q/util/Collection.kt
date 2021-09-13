@@ -24,3 +24,5 @@ fun <T> List<T>.addedAll(index: Int, elements: List<T>): List<T> =
 
 fun <T> List<T>.removedAt(index: Int): List<T> =
     this.slice(0 until index) + this.slice(index + 1 until this.size)
+
+fun <T> List<T>.removedRange(from: Int, to: Int): List<T> = this - this.subList(from, to)

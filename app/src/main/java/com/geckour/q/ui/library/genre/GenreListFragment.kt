@@ -70,7 +70,7 @@ class GenreListFragment : Fragment() {
         if (adapter.itemCount == 0) {
             viewModel.viewModelScope.launch {
                 mainViewModel.onLoadStateChanged(true)
-                adapter.setItems(fetchGenres())
+                adapter.submitList(fetchGenres())
                 mainViewModel.onLoadStateChanged(false)
                 binding.recyclerView.smoothScrollToPosition(0)
             }
@@ -118,7 +118,8 @@ class GenreListFragment : Fragment() {
 
                     mainViewModel.onLoadStateChanged(true)
                     val tracks = adapter.getItems().flatMap { genre ->
-                        genre.getTrackMediaIds(context).let { db.trackDao().getByMediaIds(it) }
+                        genre.getTrackMediaIds(context)
+                            .mapNotNull { db.trackDao().getByMediaId(it) }
                     }
                     mainViewModel.onLoadStateChanged(false)
 
@@ -170,7 +171,7 @@ class GenreListFragment : Fragment() {
         mainViewModel.forceLoad.observe(viewLifecycleOwner) {
             viewModel.viewModelScope.launch {
                 mainViewModel.onLoadStateChanged(true)
-                adapter.setItems(fetchGenres())
+                adapter.submitList(fetchGenres())
                 mainViewModel.onLoadStateChanged(false)
                 binding.recyclerView.smoothScrollToPosition(0)
             }

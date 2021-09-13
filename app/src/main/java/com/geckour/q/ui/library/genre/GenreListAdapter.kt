@@ -6,6 +6,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
 import androidx.lifecycle.viewModelScope
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.geckour.q.R
@@ -27,15 +29,17 @@ import kotlinx.coroutines.launch
 import timber.log.Timber
 
 class GenreListAdapter(private val viewModel: MainViewModel) :
-    RecyclerView.Adapter<GenreListAdapter.ViewHolder>() {
+    ListAdapter<Genre, GenreListAdapter.ViewHolder>(
+        object : DiffUtil.ItemCallback<Genre>() {
+            override fun areItemsTheSame(oldItem: Genre, newItem: Genre): Boolean =
+                oldItem.id == newItem.id
+
+            override fun areContentsTheSame(oldItem: Genre, newItem: Genre): Boolean =
+                oldItem == newItem
+        }
+    ) {
 
     private val items: ArrayList<Genre> = ArrayList()
-
-    internal fun setItems(items: List<Genre>) {
-        this.items.clear()
-        this.items.addAll(items)
-        notifyDataSetChanged()
-    }
 
     internal fun getItems(): List<Genre> = items
 
@@ -104,7 +108,7 @@ class GenreListAdapter(private val viewModel: MainViewModel) :
 
                     viewModel.onLoadStateChanged(true)
                     val tracks = genre.getTrackMediaIds(context)
-                        .let { db.trackDao().getByMediaIds(it) }
+                        .mapNotNull { db.trackDao().getByMediaId(it) }
                     viewModel.onLoadStateChanged(false)
 
                     binding.root.context.showFileMetadataUpdateDialog(tracks) { binding ->

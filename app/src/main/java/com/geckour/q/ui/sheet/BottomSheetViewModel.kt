@@ -29,46 +29,17 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     }
 
     var playing = MutableLiveData(false)
-    internal var sheetState: Int = BottomSheetBehavior.STATE_COLLAPSED
-    private val _artworkLongClick = MutableLiveData<Boolean>()
-    internal val artworkLongClick: LiveData<Boolean> = _artworkLongClick.distinctUntilChanged()
     internal val toggleSheetState = MutableLiveData<Unit>()
-    internal var currentQueue: List<DomainTrack> = emptyList()
-        set(value) {
-            currentDomainTrack.value = value.getOrNull(currentIndex)
-            playerActive.value = value.isNotEmpty()
-            field = value
-        }
-    internal var currentIndex: Int = -1
-        set(value) {
-            currentDomainTrack.value = currentQueue.getOrNull(value)
-            field = value
-        }
-    internal var playbackPosition: Long = 0
     private val _showCurrentRemain = MutableLiveData<Boolean>()
     internal val showCurrentRemain: LiveData<Boolean> = _showCurrentRemain
     private val _scrollToCurrent = MutableLiveData<Boolean>()
     internal val scrollToCurrent: LiveData<Boolean> = _scrollToCurrent.distinctUntilChanged()
-    private val _touchLock = MutableLiveData<Boolean>()
-    val touchLock: LiveData<Boolean> = _touchLock.distinctUntilChanged()
-    val playerActive = MutableLiveData(false)
-
-    val currentDomainTrack = MutableLiveData<DomainTrack>()
 
     private var updateArtworkJob: Job = Job()
 
     init {
         val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(application)
-        _touchLock.value = sharedPreferences.getBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, false)
         _showCurrentRemain.value = sharedPreferences.showCurrentRemain
-    }
-
-    fun onLongClickArtwork(): Boolean {
-        if (currentQueue.isNotEmpty()) {
-            _artworkLongClick.value = true
-            return true
-        }
-        return false
     }
 
     fun onClickQueueButton() {
@@ -79,9 +50,9 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
         _showCurrentRemain.value = _showCurrentRemain.value?.not()
     }
 
-    fun onClickShareButton() {
+    fun onClickShareButton(currentDomainTrack: DomainTrack?) {
         getApplication<Application>().startActivity(
-            SharingActivity.getIntent(getApplication(), currentDomainTrack.value ?: return)
+            SharingActivity.getIntent(getApplication(), currentDomainTrack ?: return)
         )
     }
 
@@ -89,54 +60,38 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
         _scrollToCurrent.value = true
     }
 
-    fun onClickTouchLockButton() {
-        _touchLock.value = _touchLock.value?.not() ?: true
-    }
-
-    internal fun onNewIndex(index: Int) {
-        currentIndex = index
+    internal fun onNewIndex(currentDomainTrack: DomainTrack?, currentPlaybackPosition: Long = 0L) {
         SleepTimerService.notifyTrackChanged(
             getApplication(),
-            currentDomainTrack.value ?: return,
-            playbackPosition
+            currentDomainTrack ?: return,
+            currentPlaybackPosition
         )
     }
 
-    internal fun reAttach() {
-        _touchLock.value = touchLock.value
+    internal fun onTransitionToArtist(mainViewModel: MainViewModel, currentDomainTrack: DomainTrack?) {
+        mainViewModel.selectedArtist.value = currentDomainTrack?.artist
     }
 
-    internal fun onTransitionToArtist(mainViewModel: MainViewModel) {
-        mainViewModel.selectedArtist.value = currentDomainTrack.value?.artist
+    internal fun onTransitionToAlbum(mainViewModel: MainViewModel, currentDomainTrack: DomainTrack?) {
+        mainViewModel.selectedAlbum.value = currentDomainTrack?.album
     }
 
-    internal fun onTransitionToAlbum(mainViewModel: MainViewModel) {
-        mainViewModel.selectedAlbum.value = currentDomainTrack.value?.album
-    }
-
-    internal fun setArtwork(imageView: ImageView) {
+    internal fun setArtwork(imageView: ImageView, currentDomainTrack: DomainTrack?) {
         updateArtworkJob.cancel()
         updateArtworkJob = viewModelScope.launch {
-            val drawable = when (val track = currentDomainTrack.value) {
-                null -> null
-                else -> {
-                    withContext(Dispatchers.IO) {
-                        Glide.with(imageView)
-                            .asDrawable()
-                            .load(track.thumbUriString.orDefaultForModel)
-                            .applyDefaultSettings()
-                            .submit()
-                            .get()
-                    }
+            val drawable = currentDomainTrack?.let {
+                withContext(Dispatchers.IO) {
+                    Glide.with(imageView)
+                        .asDrawable()
+                        .load(currentDomainTrack.thumbUriString.orDefaultForModel)
+                        .applyDefaultSettings()
+                        .submit()
+                        .get()
                 }
             }
 
             imageView.setImageDrawable(drawable)
         }
-    }
-
-    internal fun onArtworkDialogShown() {
-        _artworkLongClick.value = false
     }
 
     internal fun onScrollToCurrentInvoked() {

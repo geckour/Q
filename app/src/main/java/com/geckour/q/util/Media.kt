@@ -28,6 +28,7 @@ import com.geckour.q.databinding.DialogEditMetadataBinding
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
 import com.google.android.exoplayer2.MediaItem
+import com.google.android.exoplayer2.source.ConcatenatingMediaSource
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import kotlinx.coroutines.Dispatchers
@@ -35,6 +36,7 @@ import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import org.jaudiotagger.tag.images.ArtworkFactory
+import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -626,6 +628,17 @@ suspend fun JoinedTrack.updateFileMetadata(
         return@withContext
     }
 }
+
+val ConcatenatingMediaSource.currentSourcePaths: List<String> get() =
+    (0 until this.size).mapNotNull {
+        getMediaSource(it).mediaItem.playbackProperties?.uri?.toString()
+    }
+
+suspend fun MediaSource.toDomainTrack(db: DB): DomainTrack? =
+    mediaItem.playbackProperties?.uri?.toString()?.toDomainTrack(db)
+
+suspend fun String.toDomainTrack(db: DB): DomainTrack? =
+    db.trackDao().getBySourcePath(this)?.toDomainTrack()
 
 /**
  * @return First value of `Pair` is the old (passed) sourcePath.

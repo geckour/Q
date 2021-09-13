@@ -5,17 +5,19 @@
 
     <data>
 
-        <import type="android.view.View" />
-
         <import type="com.geckour.q.R" />
 
         <variable
-            name="viewModel"
-            type="com.geckour.q.ui.sheet.BottomSheetViewModel" />
+            name="currentDomainTrack"
+            type="com.geckour.q.domain.model.DomainTrack" />
 
         <variable
-            name="mainViewModel"
-            type="com.geckour.q.ui.main.MainViewModel" />
+            name="isPlaying"
+            type="Boolean" />
+
+        <variable
+            name="isTouchLocked"
+            type="Boolean" />
     </data>
 
     <androidx.constraintlayout.motion.widget.MotionLayout
@@ -44,7 +46,6 @@
             android:id="@+id/artwork"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:onLongClick="@{() -> viewModel.onLongClickArtwork()}"
             android:scaleType="fitCenter"
             tools:src="@tools:sample/avatars" />
 
@@ -55,7 +56,7 @@
             android:ellipsize="marquee"
             android:marqueeRepeatLimit="marquee_forever"
             android:singleLine="true"
-            android:text="@{viewModel.currentDomainTrack.title}"
+            android:text="@{currentDomainTrack.title}"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="12sp"
             tools:text="曲タイトル" />
@@ -67,7 +68,7 @@
             android:ellipsize="marquee"
             android:marqueeRepeatLimit="marquee_forever"
             android:singleLine="true"
-            android:text="@{viewModel.currentDomainTrack == null ? null : @string/track_item_artist_and_album(viewModel.currentDomainTrack.artist.title, viewModel.currentDomainTrack.album.title)}"
+            android:text="@{currentDomainTrack == null ? null : @string/track_item_artist_and_album(currentDomainTrack.artist.title, currentDomainTrack.album.title)}"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="10sp"
             tools:text="アーティスト名アーティスト名アーティスト名 - アルバム名" />
@@ -77,11 +78,9 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> viewModel.playerActive ? mainViewModel.onPrev() : null}"
-            android:onLongClick="@{() -> mainViewModel.onRewind()}"
             android:padding="8dp"
             android:src="@drawable/ic_backward"
-            app:tintAttr="@{viewModel.playerActive ? R.attr.colorButtonNormal : R.attr.colorInactive}"
+            app:tintAttr="@{currentDomainTrack != null ? R.attr.colorButtonNormal : R.attr.colorInactive}"
             tools:tint="@color/colorPrimaryDark" />
 
         <ImageView
@@ -89,10 +88,9 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> viewModel.playerActive ? mainViewModel.onPlayOrPause(viewModel.playing) : null}"
             android:padding="8dp"
-            android:src="@{viewModel.playing ? @drawable/ic_pause : @drawable/ic_play}"
-            app:tintAttr="@{viewModel.playerActive ? R.attr.colorButtonNormal : R.attr.colorInactive}"
+            android:src="@{isPlaying ? @drawable/ic_pause : @drawable/ic_play}"
+            app:tintAttr="@{currentDomainTrack != null ? R.attr.colorButtonNormal : R.attr.colorInactive}"
             tools:src="@drawable/ic_pause"
             tools:tint="@color/colorPrimaryDark" />
 
@@ -101,11 +99,9 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> viewModel.playerActive ? mainViewModel.onNext() : null}"
-            android:onLongClick="@{() -> mainViewModel.onFF()}"
             android:padding="8dp"
             android:src="@drawable/ic_forward"
-            app:tintAttr="@{viewModel.playerActive ? R.attr.colorButtonNormal : R.attr.colorInactive}"
+            app:tintAttr="@{currentDomainTrack != null ? R.attr.colorButtonNormal : R.attr.colorInactive}"
             tools:tint="@color/colorPrimaryDark" />
 
         <ImageView
@@ -113,7 +109,6 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> mainViewModel.onClickRepeatButton()}"
             android:padding="6dp"
             android:visibility="gone"
             app:tint="?attr/colorAccent"
@@ -126,11 +121,9 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> viewModel.playerActive ? mainViewModel.onClickShuffleButton() : null}"
-            android:onLongClick="@{() -> viewModel.playerActive ? mainViewModel.onLongClickShuffleButton() : false}"
             android:padding="6dp"
             android:src="@drawable/ic_shuffle"
-            app:tintAttr="@{viewModel.playerActive ? R.attr.colorAccent : R.attr.colorInactive}"
+            app:tintAttr="@{currentDomainTrack != null ? R.attr.colorAccent : R.attr.colorInactive}"
             tools:tint="@color/colorAccent" />
 
         <ImageView
@@ -138,10 +131,9 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> viewModel.playerActive ? viewModel.onClickShareButton() : null}"
             android:padding="6dp"
             android:src="@drawable/ic_share"
-            app:tintAttr="@{viewModel.playerActive ? R.attr.colorAccent : R.attr.colorInactive}"
+            app:tintAttr="@{currentDomainTrack != null ? R.attr.colorAccent : R.attr.colorInactive}"
             tools:tint="@color/colorAccent" />
 
         <ImageView
@@ -149,7 +141,6 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> viewModel.onClickQueueButton()}"
             android:padding="6dp"
             android:src="@drawable/ic_queue"
             app:tint="?attr/colorAccent" />
@@ -171,7 +162,7 @@
             android:max="10000"
             android:progressBackgroundTint="?attr/colorBackgroundProgress"
             android:progressTint="?attr/colorButtonNormal"
-            app:thumbTintAttr="@{viewModel.playerActive ? R.attr.colorButtonNormal : R.attr.colorInactive}"
+            app:thumbTintAttr="@{currentDomainTrack != null ? R.attr.colorButtonNormal : R.attr.colorInactive}"
             tools:progress="2000" />
 
         <TextView
@@ -179,7 +170,6 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:ellipsize="end"
-            android:onClick="@{() -> viewModel.onClickTimeRight()}"
             android:textAlignment="viewStart"
             android:textColor="?attr/colorTextPrimary"
             android:textSize="12sp"
@@ -191,7 +181,7 @@
             android:layout_height="0dp"
             android:ellipsize="end"
             android:lines="1"
-            android:text="@{viewModel.currentDomainTrack == null ? null : @string/track_file_info(viewModel.currentDomainTrack.codec, viewModel.currentDomainTrack.bitrate, viewModel.currentDomainTrack.sampleRate)}"
+            android:text="@{currentDomainTrack == null ? null : @string/track_file_info(currentDomainTrack.codec, currentDomainTrack.bitrate, currentDomainTrack.sampleRate)}"
             android:textAlignment="viewEnd"
             android:textSize="10sp"
             tools:text="Apple Lossless・1091bps・44.1kHz" />
@@ -201,10 +191,9 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> viewModel.playerActive ? viewModel.onClickScrollToCurrentButton() : null}"
             android:padding="6dp"
             android:src="@drawable/ic_current"
-            app:tintAttr="@{viewModel.playerActive ? R.attr.colorAccent : R.attr.colorInactive}"
+            app:tintAttr="@{currentDomainTrack != null ? R.attr.colorAccent : R.attr.colorInactive}"
             tools:tint="@color/colorAccent" />
 
         <TextView
@@ -228,10 +217,9 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> viewModel.onClickTouchLockButton()}"
             android:padding="6dp"
             android:src="@drawable/ic_touch_lock"
-            app:tintAttr="@{viewModel.touchLock ? R.attr.colorAccent : R.attr.colorInactive}"
+            app:tintAttr="@{isTouchLocked ? R.attr.colorAccent : R.attr.colorInactive}"
             tools:tint="@color/colorInactive" />
 
         <ImageView
@@ -239,10 +227,9 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> viewModel.playerActive ? mainViewModel.onClickClearQueueButton() : null}"
             android:padding="6dp"
             android:src="@drawable/ic_remove"
-            app:tintAttr="@{viewModel.playerActive ? R.attr.colorAccent : R.attr.colorInactive}"
+            app:tintAttr="@{currentDomainTrack != null ? R.attr.colorAccent : R.attr.colorInactive}"
             tools:tint="@color/colorAccent" />
 
         <androidx.recyclerview.widget.RecyclerView

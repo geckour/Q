@@ -22,16 +22,16 @@ import androidx.core.view.GravityCompat
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.commit
-import androidx.lifecycle.distinctUntilChanged
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
 import com.dropbox.core.android.Auth
 import com.geckour.q.BuildConfig
 import com.geckour.q.R
+import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogSleepBinding
-import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.service.DropboxMediaRetrieveService
 import com.geckour.q.service.LocalMediaRetrieveService
 import com.geckour.q.service.SleepTimerService
@@ -53,8 +53,8 @@ import com.geckour.q.util.observe
 import com.geckour.q.util.preferScreen
 import com.geckour.q.util.sleepTimerTime
 import com.geckour.q.util.sleepTimerTolerance
+import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toNightModeInt
-import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.flow.collectLatest
@@ -98,7 +98,6 @@ class MainActivity : AppCompatActivity() {
 
     private val viewModel: MainViewModel by viewModels()
 
-    private val bottomSheetViewModel: BottomSheetViewModel by viewModels()
     private val paymentViewModel: PaymentViewModel by viewModels()
 
     internal lateinit var binding: ActivityMainBinding
@@ -305,9 +304,6 @@ class MainActivity : AppCompatActivity() {
             }
             binding.drawerLayout.isDrawerOpen(binding.navigationView) -> {
                 binding.drawerLayout.closeDrawer(binding.navigationView)
-            }
-            bottomSheetViewModel.sheetState == BottomSheetBehavior.STATE_EXPANDED -> {
-                bottomSheetViewModel.toggleSheetState.value = Unit
             }
             else -> super.onBackPressed()
         }
@@ -592,18 +588,25 @@ class MainActivity : AppCompatActivity() {
             .setTitle(R.string.dialog_title_sleep_timer)
             .setMessage(R.string.dialog_desc_sleep_timer)
             .setPositiveButton(R.string.dialog_ok) { dialog, _ ->
-                bottomSheetViewModel.currentDomainTrack.value?.let {
-                    val timerValue = binding.timerValue!!
-                    val toleranceValue = binding.toleranceValue!!
-                    sharedPreferences.sleepTimerTime = timerValue
-                    sharedPreferences.sleepTimerTolerance = toleranceValue
-                    SleepTimerService.start(
-                        this,
-                        it,
-                        bottomSheetViewModel.playbackPosition,
-                        System.currentTimeMillis() + timerValue * 60000,
-                        toleranceValue * 60000L
-                    )
+                lifecycleScope.launch {
+                    viewModel.player.value
+                        ?.currentMediaSource
+                        ?.toDomainTrack(DB.getInstance(this@MainActivity))
+                        ?.let {
+                            val timerValue = binding.timerValue!!
+                            val toleranceValue = binding.toleranceValue!!
+                            sharedPreferences.sleepTimerTime = timerValue
+                            sharedPreferences.sleepTimerTolerance = toleranceValue
+                            SleepTimerService.start(
+                                this@MainActivity,
+                                it,
+                                viewModel.player.value
+                                    ?.playbackPositionFLow
+                                    ?.value ?: return@launch,
+                                System.currentTimeMillis() + timerValue * 60000,
+                                toleranceValue * 60000L
+                            )
+                        }
                 }
                 dialog.dismiss()
             }

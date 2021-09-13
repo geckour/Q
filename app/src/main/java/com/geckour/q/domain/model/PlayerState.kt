@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class PlayerState(
     val playWhenReady: Boolean,
-    val queue: List<DomainTrack>,
+    val trackIds: List<Long>,
     val currentIndex: Int,
     val progress: Long,
     val repeatMode: Int

@@ -435,10 +435,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     internal fun onChangeRequestedPositionInQueue(position: Int) {
-        player.value?.play(position)
+        player.value?.resetQueuePosition(position)
     }
 
-    internal fun onNewSeekBarProgress(progress: Float) {
+    internal fun onNewSeekBarProgress(progress: Long) {
         player.value?.seek(progress)
     }
 

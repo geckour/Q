@@ -17,6 +17,10 @@ import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.view.KeyEvent
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ServiceLifecycleDispatcher
+import androidx.lifecycle.lifecycleScope
 import androidx.media.session.MediaButtonReceiver
 import androidx.preference.PreferenceManager
 import com.dropbox.core.v2.DbxClientV2
@@ -34,7 +38,7 @@ import com.geckour.q.util.QueueInfo
 import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.SettingCommand
 import com.geckour.q.util.ShuffleActionType
-import com.geckour.q.util.addedAll
+import com.geckour.q.util.currentSourcePaths
 import com.geckour.q.util.ducking
 import com.geckour.q.util.equalizerEnabled
 import com.geckour.q.util.equalizerParams
@@ -42,10 +46,9 @@ import com.geckour.q.util.equalizerSettings
 import com.geckour.q.util.getMediaMetadata
 import com.geckour.q.util.getMediaSource
 import com.geckour.q.util.getPlayerNotification
-import com.geckour.q.util.moved
 import com.geckour.q.util.obtainDbxClient
-import com.geckour.q.util.removedAt
 import com.geckour.q.util.shuffleByClassType
+import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.verifyWithDropbox
 import com.google.android.exoplayer2.DefaultRenderersFactory
 import com.google.android.exoplayer2.PlaybackException
@@ -57,6 +60,7 @@ import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource
 import com.google.android.exoplayer2.source.LoadEventInfo
 import com.google.android.exoplayer2.source.MediaLoadData
+import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.source.TrackGroupArray
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
@@ -66,7 +70,6 @@ import com.google.android.exoplayer2.upstream.HttpDataSource
 import com.google.android.exoplayer2.util.EventLogger
 import com.google.android.exoplayer2.util.Util
 import com.google.firebase.crashlytics.FirebaseCrashlytics
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -81,9 +84,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import timber.log.Timber
 import java.io.IOException
-import kotlin.coroutines.CoroutineContext
 
-class PlayerService : Service() {
+class PlayerService : Service(), LifecycleOwner {
 
     inner class PlayerBinder : Binder() {
         val service: PlayerService get() = this@PlayerService
@@ -257,18 +259,16 @@ class PlayerService : Service() {
                     PlaybackStateCompat.ACTION_SEEK_TO
         )
     private val currentIndex
-        get() = when (player.currentWindowIndex) {
-            -1 -> if (source.size > 0) 0 else -1
-            else -> player.currentWindowIndex
-        }
-
-    private val currentDomainTrack: DomainTrack?
-        get() = queueFlow.value.getOrNull(currentIndex)
+        get() =
+            if (player.currentWindowIndex == -1 && source.size > 0) 0
+            else player.currentWindowIndex
 
     private var equalizer: Equalizer? = null
 
-    internal val queueFlow = MutableStateFlow<List<DomainTrack>>(emptyList())
+    private lateinit var db: DB
+
     private val cachedQueueOrder = mutableListOf<Long>()
+    internal val sourcePathsFlow = MutableStateFlow(emptyList<String>())
     internal val currentIndexFlow = MutableStateFlow(0)
     internal val loadStateFlow = MutableStateFlow(false)
     internal val playbackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
@@ -279,13 +279,19 @@ class PlayerService : Service() {
 
     private lateinit var mediaSourceFactory: ProgressiveMediaSource.Factory
     private var source = ConcatenatingMediaSource()
+    internal val currentMediaSource: MediaSource?
+        get() =
+            if (source.size > 0 && currentIndex > -1) source.getMediaSource(currentIndex)
+            else null
 
     private val listener = object : Player.Listener {
 
         override fun onTracksChanged(
             trackGroups: TrackGroupArray, trackSelections: TrackSelectionArray
         ) {
+            sourcePathsFlow.value = source.currentSourcePaths
             currentIndexFlow.value = currentIndex
+            playbackPositionFLow.value = player.currentPosition
             notificationUpdateJob.cancel()
             notificationUpdateJob = showNotification()
             playbackCountIncreaseJob = increasePlaybackCount()
@@ -302,7 +308,6 @@ class PlayerService : Service() {
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = Unit
 
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
-            playbackPositionFLow.value = player.currentPosition
 
             if (source.size < 1) {
                 destroyNotification()
@@ -343,10 +348,6 @@ class PlayerService : Service() {
         }
     }
 
-    private var job = Job()
-    private val serviceScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = job + Dispatchers.IO
-    }
     private var notificationUpdateJob: Job = Job()
     private var notifyPlaybackPositionJob: Job = Job()
     private var playbackCountIncreaseJob: Job = Job()
@@ -361,9 +362,10 @@ class PlayerService : Service() {
 
     private lateinit var dropboxClient: DbxClientV2
 
-    private var requestedPositionCache = -1
-
-    override fun onBind(intent: Intent?): IBinder = binder
+    override fun onBind(intent: Intent?): IBinder {
+        dispatcher.onServicePreSuperOnBind()
+        return binder
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent ?: return START_NOT_STICKY
@@ -373,10 +375,15 @@ class PlayerService : Service() {
         return START_NOT_STICKY
     }
 
+    private val dispatcher = ServiceLifecycleDispatcher(this)
+    override fun getLifecycle(): Lifecycle = dispatcher.lifecycle
+
     override fun onCreate() {
+        dispatcher.onServicePreSuperOnCreate()
+
         super.onCreate()
 
-        job = Job()
+        db = DB.getInstance(this@PlayerService)
 
         mediaSession = MediaSessionCompat(this, TAG).apply {
             setFlags(
@@ -402,6 +409,12 @@ class PlayerService : Service() {
         restoreState()
     }
 
+    override fun onStart(intent: Intent?, startId: Int) {
+        dispatcher.onServicePreSuperOnStart()
+
+        super.onStart(intent, startId)
+    }
+
     override fun onDestroy() {
         Timber.d("qgeck onDestroy called")
 
@@ -409,7 +422,7 @@ class PlayerService : Service() {
         player.stop()
         player.clearMediaItems()
         destroyNotification()
-        job.cancel()
+        dispatcher.onServicePreSuperOnDestroy()
         player.release()
 
         onDestroyFlow.tryEmit(Unit)
@@ -427,13 +440,12 @@ class PlayerService : Service() {
 
     private fun verifyByCauseIfNeeded(throwable: Throwable) {
         if ((throwable as? HttpDataSource.InvalidResponseCodeException)?.responseCode == 410) {
-            (queueFlow.value.getOrNull(requestedPositionCache)
-                ?: currentDomainTrack)
-                ?.let { track ->
-                    serviceScope.launch {
-                        replace(track.verifyWithDropbox(this@PlayerService, dropboxClient))
-                    }
-                }
+            lifecycleScope.launch {
+                source.currentSourcePaths[currentIndex]
+                    .toDomainTrack(db)
+                    ?.verifyWithDropbox(this@PlayerService, dropboxClient)
+                    ?.let { replace(it) }
+            }
         }
     }
 
@@ -444,63 +456,76 @@ class PlayerService : Service() {
         loadStateFlow.value = true
 
         val newQueue = queueInfo.queue.map { it.verifyWithDropbox(this, dropboxClient) }
-        when (queueInfo.metadata.actionType) {
+        val needToResetSource = when (queueInfo.metadata.actionType) {
             InsertActionType.NEXT -> {
+                val isEmpty = source.size == 0
                 val position = if (source.size < 1) 0 else currentIndex + 1
-
-                queueFlow.value = queueFlow.value.addedAll(position, newQueue)
                 source.addMediaSources(position,
                     newQueue.map { it.getMediaSource(mediaSourceFactory) })
+                isEmpty
             }
             InsertActionType.LAST -> {
-                val currentQueue = queueFlow.value
-                queueFlow.value = currentQueue.addedAll(currentQueue.size, newQueue)
-                source.addMediaSources(source.size,
+                val isEmpty = source.size == 0
+                val position = source.size
+                source.addMediaSources(position,
                     newQueue.map { it.getMediaSource(mediaSourceFactory) })
+                isEmpty
             }
-            InsertActionType.OVERRIDE -> override(newQueue, force)
+            InsertActionType.OVERRIDE -> {
+                override(newQueue, force)
+                true
+            }
             InsertActionType.SHUFFLE_NEXT -> {
+                val isEmpty = source.size == 0
                 val position = if (source.size < 1) 0 else currentIndex + 1
                 val shuffled = newQueue.shuffleByClassType(queueInfo.metadata.classType)
 
-                queueFlow.value = queueFlow.value.addedAll(position, shuffled)
                 source.addMediaSources(position,
                     shuffled.map { it.getMediaSource(mediaSourceFactory) })
+                isEmpty
             }
             InsertActionType.SHUFFLE_LAST -> {
+                val isEmpty = source.size == 0
+                val position = source.size
                 val shuffled = newQueue.shuffleByClassType(queueInfo.metadata.classType)
 
-                val currentQueue = queueFlow.value
-                queueFlow.value = currentQueue.addedAll(currentQueue.size, shuffled)
-                source.addMediaSources(source.size,
+                source.addMediaSources(position,
                     shuffled.map { it.getMediaSource(mediaSourceFactory) })
+                isEmpty
             }
             InsertActionType.SHUFFLE_OVERRIDE -> {
                 val shuffled = newQueue.shuffleByClassType(queueInfo.metadata.classType)
-
                 override(shuffled, force)
+                true
             }
             InsertActionType.SHUFFLE_SIMPLE_NEXT -> {
+                val isEmpty = source.size == 0
                 val position = if (source.size < 1) 0 else currentIndex + 1
                 val shuffled = newQueue.shuffled()
 
-                queueFlow.value = queueFlow.value.addedAll(position, shuffled)
                 source.addMediaSources(position,
                     shuffled.map { it.getMediaSource(mediaSourceFactory) })
+                isEmpty
             }
             InsertActionType.SHUFFLE_SIMPLE_LAST -> {
+                val isEmpty = source.size == 0
+                val position = source.size
                 val shuffled = newQueue.shuffled()
 
-                val currentQueue = queueFlow.value
-                queueFlow.value = currentQueue.addedAll(currentQueue.size, shuffled)
-                source.addMediaSources(source.size,
+                source.addMediaSources(position,
                     shuffled.map { it.getMediaSource(mediaSourceFactory) })
+                isEmpty
             }
             InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
                 val shuffled = newQueue.shuffled()
 
                 override(shuffled, force)
+                true
             }
+        }
+        if (needToResetSource) {
+            player.setMediaSource(source)
+            player.prepare()
         }
 
         loadStateFlow.value = false
@@ -512,17 +537,17 @@ class PlayerService : Service() {
         val sourceRange = 0 until source.size
         if (from !in sourceRange || to !in sourceRange) return
         source.moveMediaSource(from, to)
-        serviceScope.launch { queueFlow.value = queueFlow.value.moved(from, to) }
     }
 
     fun removeQueue(position: Int) {
         source.removeMediaSource(position)
-        serviceScope.launch { queueFlow.value = queueFlow.value.removedAt(position) }
     }
 
     fun removeQueue(trackId: Long) {
-        serviceScope.launch {
-            removeQueue(queueFlow.value.indexOfFirst { it.id == trackId })
+        lifecycleScope.launch {
+            val position = source.currentSourcePaths
+                .indexOfFirst { it.toDomainTrack(db)?.id == trackId }
+            removeQueue(position)
         }
     }
 
@@ -546,16 +571,15 @@ class PlayerService : Service() {
         resume()
     }
 
-    fun play(position: Int) {
-        requestedPositionCache = position
-        if (currentIndex != position) forceIndex(position)
+    fun resetQueuePosition(position: Int, force: Boolean = false) {
+        if (force || currentIndex != position) forceIndex(position)
     }
 
     private fun resume() {
         Timber.d("qgeck resume invoked")
 
         notifyPlaybackPositionJob.cancel()
-        notifyPlaybackPositionJob = serviceScope.launch(Dispatchers.Main) {
+        notifyPlaybackPositionJob = lifecycleScope.launch(Dispatchers.Main) {
             while (this.isActive) {
                 playbackPositionFLow.value = player.currentPosition
                 delay(100)
@@ -601,42 +625,27 @@ class PlayerService : Service() {
     }
 
     fun clear(keepCurrentIfPlaying: Boolean = false) {
-        val before =
-            if (keepCurrentIfPlaying &&
-                player.playbackState == Player.STATE_READY &&
-                player.playWhenReady
-            ) currentIndex
-            else source.size
-        clear(before)
+        val needToKeepCurrent = keepCurrentIfPlaying
+                && player.playbackState == Player.STATE_READY
+                && player.playWhenReady
+        clear(if (needToKeepCurrent) currentIndex else -1)
     }
 
-    private fun clear(before: Int) {
-        if (before >= source.size) {
-            stop()
+    private fun clear(positionToKeep: Int) {
+        if (positionToKeep !in 0 until source.size) {
+            pause()
             destroyNotification()
             source.clear()
-            queueFlow.value = emptyList()
-            storeState()
-            return
+        } else {
+            source.removeMediaSourceRange(0, positionToKeep)
+            source.removeMediaSourceRange(1, source.size)
         }
-        val after = source.size - 1 - before
-
-        repeat(before) {
-            source.removeMediaSource(0)
-            queueFlow.value = queueFlow.value.removedAt(0)
-        }
-        repeat(after) {
-            source.removeMediaSource(1)
-            queueFlow.value = queueFlow.value.removedAt(1)
-        }
-
         storeState()
     }
 
     fun override(queue: List<DomainTrack>, force: Boolean = false) {
         clear(force.not())
         source.addMediaSources(queue.map { it.getMediaSource(mediaSourceFactory) })
-        queueFlow.value = queueFlow.value.addedAll(queue)
     }
 
     private fun replace(with: DomainTrack) {
@@ -647,16 +656,13 @@ class PlayerService : Service() {
         if (with.isEmpty()) return
 
         with.forEach { withTrack ->
-            queueFlow.value.mapIndexed { index, track -> index to track }
-                .filter { (_, track) -> track.id == withTrack.id }
-                .apply { Timber.d("qgeck target: $this") }
-                .forEach {
-                    val index = it.first
-
-                    removeQueue(index)
-                    source.addMediaSource(index, withTrack.getMediaSource(mediaSourceFactory))
-                    queueFlow.value = queueFlow.value.addedAll(index, listOf(withTrack))
+            val index = source.currentSourcePaths
+                .indexOfFirst {
+                    val path = withTrack.dropboxPath ?: withTrack.sourcePath
+                    it == path
                 }
+            removeQueue(index)
+            source.addMediaSource(index, withTrack.getMediaSource(mediaSourceFactory))
         }
     }
 
@@ -677,27 +683,28 @@ class PlayerService : Service() {
     }
 
     fun fastForward() {
-        val track = currentDomainTrack
-        if (track != null) {
-            seekJob.cancel()
-            seekJob = serviceScope.launch {
-                while (true) {
-                    withContext(Dispatchers.Main) {
-                        val seekTo = (player.currentPosition + 1000).let {
-                            if (it > track.duration) track.duration else it
+        lifecycleScope.launch {
+            currentMediaSource?.toDomainTrack(db)?.let { track ->
+                seekJob.cancel()
+                seekJob = lifecycleScope.launch {
+                    while (true) {
+                        withContext(Dispatchers.Main) {
+                            val seekTo = (player.currentPosition + 1000).let {
+                                if (it > track.duration) track.duration else it
+                            }
+                            seek(seekTo)
                         }
-                        seek(seekTo)
+                        delay(100)
                     }
-                    delay(100)
                 }
             }
         }
     }
 
     fun rewind() {
-        if (currentDomainTrack != null) {
+        if (source.size > 0 && currentIndex > -1) {
             seekJob.cancel()
-            seekJob = serviceScope.launch(Dispatchers.Main) {
+            seekJob = lifecycleScope.launch(Dispatchers.Main) {
                 while (true) {
                     val seekTo = (player.currentPosition - 1000).let {
                         if (it < 0) 0 else it
@@ -718,19 +725,18 @@ class PlayerService : Service() {
     }
 
     private fun seekToTail() {
-        currentDomainTrack?.duration?.apply { seek(this) }
+        lifecycleScope.launch {
+            currentMediaSource?.toDomainTrack(db)?.duration?.let { seek(it) }
+        }
     }
 
     fun headOrPrev() {
-        val current = currentDomainTrack ?: return
-        if (currentIndex > 0 && player.contentPosition < current.duration / 100) prev()
-        else seekToHead()
-    }
+        lifecycleScope.launch {
+            val currentDuration = currentMediaSource?.toDomainTrack(db)?.duration ?: return@launch
 
-    fun seek(ratio: Float) {
-        if (ratio !in 0f..1f) return
-        val current = currentDomainTrack ?: return
-        seek((current.duration * ratio).toLong())
+            if (currentIndex > 0 && player.contentPosition < currentDuration / 100) prev()
+            else seekToHead()
+        }
     }
 
     fun seek(playbackPosition: Long) {
@@ -739,45 +745,52 @@ class PlayerService : Service() {
     }
 
     fun shuffle(actionType: ShuffleActionType = ShuffleActionType.SHUFFLE_SIMPLE) {
-        val currentQueue = queueFlow.value
-        if (source.size < 1 && source.size != currentQueue.size) return
+        lifecycleScope.launch {
+            val currentQueue = source.currentSourcePaths.mapNotNull { it.toDomainTrack(db) }
+            if (source.size < 1 && source.size != currentQueue.size) return@launch
 
-        val shuffled = when (actionType) {
-            ShuffleActionType.SHUFFLE_SIMPLE -> currentQueue.map { it.id }.shuffled()
-            ShuffleActionType.SHUFFLE_ALBUM_ORIENTED -> {
-                currentQueue.groupBy { it.album.id }
-                    .map { it.value }
-                    .shuffled()
-                    .flatten()
-                    .map { it.id }
+            val shuffled = when (actionType) {
+                ShuffleActionType.SHUFFLE_SIMPLE -> currentQueue.map { it.id }.shuffled()
+                ShuffleActionType.SHUFFLE_ALBUM_ORIENTED -> {
+                    currentQueue.groupBy { it.album.id }
+                        .map { it.value }
+                        .shuffled()
+                        .flatten()
+                        .map { it.id }
+                }
+                ShuffleActionType.SHUFFLE_ARTIST_ORIENTED -> {
+                    currentQueue.groupBy { it.artist }
+                        .map { it.value }
+                        .shuffled()
+                        .flatten()
+                        .map { it.id }
+                }
             }
-            ShuffleActionType.SHUFFLE_ARTIST_ORIENTED -> {
-                currentQueue.groupBy { it.artist }
-                    .map { it.value }
-                    .shuffled()
-                    .flatten()
-                    .map { it.id }
-            }
+
+            reorderQueue(shuffled)
         }
-
-        reorderQueue(shuffled)
     }
 
     fun resetQueueOrder() {
         if (source.size < 1) return
-        val isCacheValid =
-            queueFlow.value.size == cachedQueueOrder.size &&
-                    queueFlow.value.map { it.id }.containsAll(cachedQueueOrder)
-        if (isCacheValid.not()) return
+        lifecycleScope.launch {
+            val currentIds = source.currentSourcePaths.mapNotNull { it.toDomainTrack(db)?.id }
+            val isCacheValid =
+                currentIds.size == cachedQueueOrder.size && currentIds.containsAll(cachedQueueOrder)
+            if (isCacheValid.not()) return@launch
 
-        reorderQueue(cachedQueueOrder)
+            reorderQueue(cachedQueueOrder)
+        }
     }
 
     private fun reorderQueue(order: List<Long>) {
-        order.forEachIndexed { i, id ->
-            val currentIndex = queueFlow.value.indexOfFirst { it.id == id }
-            source.moveMediaSource(currentIndex, i)
-            queueFlow.value = queueFlow.value.moved(currentIndex, i)
+        lifecycleScope.launch {
+            order.forEachIndexed { i, id ->
+                val currentIndex = source.currentSourcePaths
+                    .mapNotNull { it.toDomainTrack(db) }
+                    .indexOfFirst { it.id == id }
+                source.moveMediaSource(currentIndex, i)
+            }
         }
     }
 
@@ -788,7 +801,7 @@ class PlayerService : Service() {
             Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_OFF
             else -> throw IllegalStateException()
         }
-        serviceScope.launch(Dispatchers.Main) { repeatModeFlow.emit(player.repeatMode) }
+        lifecycleScope.launch(Dispatchers.Main) { repeatModeFlow.emit(player.repeatMode) }
     }
 
     private fun getPlaybackState(playWhenReady: Boolean, playbackState: Int) =
@@ -826,10 +839,13 @@ class PlayerService : Service() {
     }
 
     private fun PlayerState.set() {
-        val queueInfo = QueueInfo(
-            QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.TRACK), queue
-        )
-        serviceScope.launch(Dispatchers.Main) {
+        lifecycleScope.launch(Dispatchers.Main) {
+            val queueInfo = QueueInfo(
+                QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.TRACK),
+                db.trackDao().let { trackDao ->
+                    trackIds.mapNotNull { trackDao.get(it)?.toDomainTrack() }
+                }
+            )
             submitQueue(queueInfo, true)
             forceIndex(currentIndex)
             seek(progress)
@@ -840,17 +856,16 @@ class PlayerService : Service() {
     private fun forceIndex(windowIndex: Int) {
         val index = player.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
         player.seekToDefaultPosition(index + windowIndex)
-        seek(0)
-        requestedPositionCache = -1
+        playbackPositionFLow.value = player.currentPosition
     }
 
-    private fun increasePlaybackCount() = serviceScope.launch(Dispatchers.Main) {
-        currentDomainTrack?.let { track ->
-            val db = DB.getInstance(this@PlayerService)
-            db.trackDao().increasePlaybackCount(track.id)
-            db.albumDao().increasePlaybackCount(track.album.id)
-            db.artistDao().increasePlaybackCount(track.artist.id)
-        }
+    private fun increasePlaybackCount() = lifecycleScope.launch(Dispatchers.Main) {
+        currentMediaSource?.toDomainTrack(db)
+            ?.let { track ->
+                db.trackDao().increasePlaybackCount(track.id)
+                db.albumDao().increasePlaybackCount(track.album.id)
+                db.artistDao().increasePlaybackCount(track.artist.id)
+            }
     }
 
     private fun setEqualizer(audioSessionId: Int?) {
@@ -905,17 +920,23 @@ class PlayerService : Service() {
     private fun storeState() {
         cachedQueueOrder.apply {
             clear()
-            addAll(queueFlow.value.map { it.id })
+            lifecycleScope.launch {
+                val trackIds = source.currentSourcePaths.mapNotNull {
+                    it.toDomainTrack(db)?.id
+                }
+                addAll(trackIds)
+                val state = PlayerState(
+                    player.playWhenReady,
+                    trackIds,
+                    currentIndex,
+                    player.currentPosition,
+                    player.repeatMode
+                )
+                sharedPreferences.edit()
+                    .putString(PREF_KEY_PLAYER_STATE, Json.encodeToString(state))
+                    .apply()
+            }
         }
-        val state = PlayerState(
-            player.playWhenReady,
-            queueFlow.value,
-            currentIndex,
-            player.currentPosition,
-            player.repeatMode
-        )
-        sharedPreferences.edit().putString(PREF_KEY_PLAYER_STATE, Json.encodeToString(state))
-            .apply()
     }
 
     @OptIn(ExperimentalSerializationApi::class)
@@ -927,8 +948,9 @@ class PlayerService : Service() {
         }
     }
 
-    private fun showNotification() = serviceScope.launch(Dispatchers.Main) {
-        val domainTrack = currentDomainTrack ?: return@launch
+    private fun showNotification() = lifecycleScope.launch(Dispatchers.Main) {
+        val mediaMetadata = currentMediaSource?.toDomainTrack(db)
+            ?.getMediaMetadata(this@PlayerService) ?: return@launch
         mediaSession.setPlaybackState(
             playbackStateCompat.setState(
                 player.playbackState.toPlaybackStateCompat,
@@ -936,7 +958,7 @@ class PlayerService : Service() {
                 player.playbackParameters.speed
             ).build()
         )
-        mediaSession.setMetadata(domainTrack.getMediaMetadata(this@PlayerService))
+        mediaSession.setMetadata(mediaMetadata)
         mediaSession.isActive = true
         mediaSession.setSessionActivity(
             PendingIntent.getActivity(

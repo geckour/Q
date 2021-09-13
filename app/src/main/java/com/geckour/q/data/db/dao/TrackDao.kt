@@ -30,10 +30,6 @@ interface TrackDao {
     suspend fun get(id: Long): JoinedTrack?
 
     @Transaction
-    @Query("select * from track where id in (:ids)")
-    suspend fun getByIds(ids: List<Long>): List<JoinedTrack>
-
-    @Transaction
     @Query("select * from track where sourcePath = :sourcePath")
     suspend fun getBySourcePath(sourcePath: String): JoinedTrack?
 

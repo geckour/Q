@@ -129,7 +129,7 @@ class TrackListFragment : Fragment() {
                 val db = DB.getInstance(requireContext())
 
                 mainViewModel.onLoadStateChanged(true)
-                val tracks = adapter.currentList.map { it.id }.let { db.trackDao().getByIds(it) }
+                val tracks = adapter.currentList.mapNotNull { db.trackDao().get(it.id) }
                 mainViewModel.onLoadStateChanged(false)
 
                 requireContext().showFileMetadataUpdateDialog(tracks) { binding ->

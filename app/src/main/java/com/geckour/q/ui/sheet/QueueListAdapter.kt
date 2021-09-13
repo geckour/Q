@@ -26,8 +26,6 @@ import timber.log.Timber
 class QueueListAdapter(private val viewModel: MainViewModel) :
     ListAdapter<DomainTrack, QueueListAdapter.ViewHolder>(diffUtil) {
 
-    private var nowPlayingIndex = -1
-
     companion object {
         private val diffUtil = object : DiffUtil.ItemCallback<DomainTrack>() {
 
@@ -39,19 +37,14 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
         }
     }
 
+    internal val currentItem: DomainTrack? get() = currentList.firstOrNull { it.nowPlaying }
+    internal val currentIndex: Int get() = currentList.indexOfFirst { it.nowPlaying }
+
     internal fun getItemIds(): List<Long> = currentList.map { it.id }
 
     internal fun getItemsAfter(start: Int): List<DomainTrack> =
         if (start in currentList.indices) currentList.subList(start, currentList.size)
         else emptyList()
-
-    internal fun notifyNowPlayingIndex(newIndex: Int) {
-        val currentIndex = nowPlayingIndex
-        nowPlayingIndex = newIndex
-
-        notifyItemChanged(currentIndex)
-        notifyItemChanged(newIndex)
-    }
 
     private fun remove(index: Int) {
         if (index !in currentList.indices) return
@@ -68,9 +61,6 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
 
     inner class ViewHolder(private val binding: ItemTrackBinding) :
         RecyclerView.ViewHolder(binding.root) {
-
-        private val nowPlaying get() = adapterPosition == nowPlayingIndex
-
         private val popupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener { menuItem ->
                 when (menuItem.itemId) {
@@ -103,8 +93,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
                             val db = DB.getInstance(binding.root.context)
 
                             viewModel.onLoadStateChanged(true)
-                            val tracks = currentList.map { it.id }
-                                .let { db.trackDao().getByIds(it) }
+                            val tracks = currentList.mapNotNull { db.trackDao().get(it.id) }
                             viewModel.onLoadStateChanged(false)
 
                             binding.root.context.showFileMetadataUpdateDialog(tracks) { binding ->
@@ -133,7 +122,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
                 trackNum = adapterPosition + 1
             )
             binding.data = track
-            binding.nowPlaying = nowPlaying
+            binding.nowPlaying = track.nowPlaying
             binding.duration.text = track.durationString
             try {
                 Glide.with(binding.thumb)
