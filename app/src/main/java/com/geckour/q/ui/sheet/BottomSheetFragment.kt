@@ -10,7 +10,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupMenu
 import android.widget.SeekBar
-import androidx.activity.addCallback
+import androidx.activity.OnBackPressedCallback
 import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
@@ -131,17 +131,27 @@ class BottomSheetFragment : Fragment() {
                 }
             )
             if (state == BottomSheetBehavior.STATE_EXPANDED) scrollToCurrent()
+            onBackPressedCallback.isEnabled = state == BottomSheetBehavior.STATE_EXPANDED
         }
     }
+
+    private lateinit var onBackPressedCallback: OnBackPressedCallback
 
     override fun onAttach(context: Context) {
         super.onAttach(context)
 
-        requireActivity().onBackPressedDispatcher.addCallback(this) {
-            if (behavior.state == BottomSheetBehavior.STATE_EXPANDED) {
-                viewModel.toggleSheetState.value = Unit
+        behavior = BottomSheetBehavior.from(
+            (requireActivity() as MainActivity).binding.root.findViewById(R.id.bottom_sheet)
+        )
+        behavior.addBottomSheetCallback(bottomSheetCallback)
+        onBackPressedCallback =
+            object : OnBackPressedCallback(behavior.state == BottomSheetBehavior.STATE_EXPANDED) {
+                override fun handleOnBackPressed() {
+                    viewModel.toggleSheetState.value = Unit
+                }
             }
-        }
+
+        requireActivity().onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
     }
 
     override fun onCreateView(
@@ -248,11 +258,6 @@ class BottomSheetFragment : Fragment() {
         binding.buttonClearQueue.setOnClickListener { mainViewModel.onClickClearQueueButton() }
 
         resetMarquee()
-
-        behavior = BottomSheetBehavior.from(
-            (requireActivity() as MainActivity).binding.root.findViewById(R.id.bottom_sheet)
-        )
-        behavior.addBottomSheetCallback(bottomSheetCallback)
 
         observeEvents()
     }
