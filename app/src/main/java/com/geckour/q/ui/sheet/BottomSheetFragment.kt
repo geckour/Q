@@ -14,6 +14,7 @@ import androidx.activity.addCallback
 import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
@@ -48,7 +49,7 @@ class BottomSheetFragment : Fragment() {
         fun newInstance(): BottomSheetFragment = BottomSheetFragment()
     }
 
-    private val viewModel: BottomSheetViewModel by activityViewModels()
+    private val viewModel: BottomSheetViewModel by viewModels()
     private val mainViewModel: MainViewModel by activityViewModels()
     private lateinit var binding: FragmentSheetBottomBinding
     private lateinit var adapter: QueueListAdapter

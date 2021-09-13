@@ -45,7 +45,6 @@ import com.geckour.q.ui.pay.PaymentFragment
 import com.geckour.q.ui.pay.PaymentViewModel
 import com.geckour.q.ui.setting.SettingActivity
 import com.geckour.q.ui.sheet.BottomSheetFragment
-import com.geckour.q.ui.sheet.BottomSheetViewModel
 import com.geckour.q.util.dropboxToken
 import com.geckour.q.util.ducking
 import com.geckour.q.util.isNightMode
