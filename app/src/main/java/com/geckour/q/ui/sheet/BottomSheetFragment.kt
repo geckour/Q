@@ -270,11 +270,12 @@ class BottomSheetFragment : Fragment() {
 
             lifecycleScope.launch {
                 player.sourcePathsFlow.collectLatest { sourcePaths ->
-                    val queue = DB.getInstance(requireContext())
-                        .trackDao()
-                        .let { trackDao ->
-                            sourcePaths.mapNotNull { trackDao.getBySourcePath(it)?.toDomainTrack() }
-                        }
+                    val queue = sourcePaths.mapNotNull {
+                        DB.getInstance(requireContext())
+                            .trackDao()
+                            .getBySourcePath(it)
+                            ?.toDomainTrack()
+                    }
                     onQueueChanged(queue)
                 }
             }
@@ -350,7 +351,7 @@ class BottomSheetFragment : Fragment() {
         binding.textTimeTotal.text =
             requireContext().getString(R.string.bottom_sheet_time_total, totalTime.getTimeString())
 
-        val changed = (adapter.getItemIds() == queue.map { it.id }).not()
+        val changed = adapter.currentList != queue
         if (changed && behavior.state == BottomSheetBehavior.STATE_COLLAPSED) {
             binding.buttonToggleVisibleQueue.shake()
         }
@@ -359,38 +360,47 @@ class BottomSheetFragment : Fragment() {
     }
 
     private fun submitQueueWithCurrentIndex(
-        queue: List<DomainTrack> = adapter.currentList,
-        currentIndex: Int = mainViewModel.player.value?.currentIndexFlow?.value
-            ?: adapter.currentIndex.let { if (it in queue.indices) it else 0 }
+        queue: List<DomainTrack>? = null,
+        currentIndex: Int? = null
     ) {
-        val indexChanged = adapter.currentIndex != currentIndex
-        adapter.submitList(
-            queue.mapIndexed { index, domainTrack ->
-                domainTrack.copy(nowPlaying = index == currentIndex)
-            }
-        ) {
-            binding.currentDomainTrack = adapter.currentItem
-            viewModel.onNewIndex(adapter.currentItem, binding.seekBar.progress.toLong())
-            viewModel.setArtwork(binding.artwork, adapter.currentItem)
-            if (indexChanged) onPlaybackPositionChanged(0)
+        lifecycleScope.launch {
+            val newQueue = queue
+                ?: mainViewModel.player.value
+                    ?.sourcePathsFlow
+                    ?.value
+                    ?.mapNotNull { it.toDomainTrack(DB.getInstance(requireContext())) }
+                ?: adapter.currentList
+            val newCurrentIndex = currentIndex
+                ?: mainViewModel.player.value?.currentIndexFlow?.value
+                ?: adapter.currentIndex.let { if (it in newQueue.indices) it else 0 }
+            val indexChanged = adapter.currentIndex != newCurrentIndex
 
-            val noCurrentTrack = adapter.currentItem == null
-            binding.seekBar.setOnTouchListener { _, _ -> noCurrentTrack }
-            if (noCurrentTrack) {
-                with(binding) {
-                    textTimeLeft.text = null
-                    textTimeRight.text = null
-                    textTimeTotal.text = null
-                    textTimeRemain.text = null
-                    seekBar.progress = 0
+            adapter.submitList(newQueue.mapIndexed { index, domainTrack ->
+                domainTrack.copy(nowPlaying = index == newCurrentIndex)
+            }) {
+                binding.currentDomainTrack = adapter.currentItem
+                viewModel.onNewIndex(adapter.currentItem, binding.seekBar.progress.toLong())
+                viewModel.setArtwork(binding.artwork, adapter.currentItem)
+                if (indexChanged) onPlaybackPositionChanged(0)
+
+                val noCurrentTrack = adapter.currentItem == null
+                binding.seekBar.setOnTouchListener { _, _ -> noCurrentTrack }
+                if (noCurrentTrack) {
+                    with(binding) {
+                        textTimeLeft.text = null
+                        textTimeRight.text = null
+                        textTimeTotal.text = null
+                        textTimeRemain.text = null
+                        seekBar.progress = 0
+                    }
+                } else {
+                    onPlaybackPositionChanged(
+                        mainViewModel.player.value?.playbackPositionFLow?.value ?: 0
+                    )
                 }
-            } else {
-                onPlaybackPositionChanged(
-                    mainViewModel.player.value?.playbackPositionFLow?.value ?: 0
-                )
-            }
 
-            resetMarquee()
+                resetMarquee()
+            }
         }
     }
 

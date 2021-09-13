@@ -40,8 +40,6 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
     internal val currentItem: DomainTrack? get() = currentList.firstOrNull { it.nowPlaying }
     internal val currentIndex: Int get() = currentList.indexOfFirst { it.nowPlaying }
 
-    internal fun getItemIds(): List<Long> = currentList.map { it.id }
-
     internal fun getItemsAfter(start: Int): List<DomainTrack> =
         if (start in currentList.indices) currentList.subList(start, currentList.size)
         else emptyList()
