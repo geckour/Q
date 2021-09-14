@@ -11,7 +11,6 @@ import android.view.ViewGroup
 import android.widget.PopupMenu
 import android.widget.SeekBar
 import androidx.activity.OnBackPressedCallback
-import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.viewModels
@@ -53,7 +52,7 @@ class BottomSheetFragment : Fragment() {
     private val mainViewModel: MainViewModel by activityViewModels()
     private lateinit var binding: FragmentSheetBottomBinding
     private lateinit var adapter: QueueListAdapter
-    private lateinit var behavior: BottomSheetBehavior<MotionLayout>
+    private lateinit var behavior: BottomSheetBehavior<View>
 
     private val sharedPreferences: SharedPreferences by lazy {
         PreferenceManager.getDefaultSharedPreferences(requireContext())
@@ -137,12 +136,12 @@ class BottomSheetFragment : Fragment() {
 
     private lateinit var onBackPressedCallback: OnBackPressedCallback
 
-    override fun onAttach(context: Context) {
-        super.onAttach(context)
+    override fun onCreateView(
+        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
+    ): View {
+        binding = FragmentSheetBottomBinding.inflate(inflater, container, false)
 
-        behavior = BottomSheetBehavior.from(
-            (requireActivity() as MainActivity).binding.root.findViewById(R.id.bottom_sheet)
-        )
+        behavior = BottomSheetBehavior.from((requireActivity() as MainActivity).binding.bottomSheet)
         behavior.addBottomSheetCallback(bottomSheetCallback)
         onBackPressedCallback =
             object : OnBackPressedCallback(behavior.state == BottomSheetBehavior.STATE_EXPANDED) {
@@ -151,13 +150,9 @@ class BottomSheetFragment : Fragment() {
                 }
             }
 
-        requireActivity().onBackPressedDispatcher.addCallback(this, onBackPressedCallback)
-    }
+        requireActivity().onBackPressedDispatcher
+            .addCallback(viewLifecycleOwner, onBackPressedCallback)
 
-    override fun onCreateView(
-        inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
-    ): View {
-        binding = FragmentSheetBottomBinding.inflate(inflater, container, false)
         return binding.root
     }
 
