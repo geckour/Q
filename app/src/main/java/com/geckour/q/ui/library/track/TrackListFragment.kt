@@ -23,7 +23,6 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.getTrackListFromTrackMediaId
 import com.geckour.q.util.getTrackMediaIds
-import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.sortedByTrackOrder

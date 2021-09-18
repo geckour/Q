@@ -19,7 +19,6 @@ import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.applyDefaultSettings
-import com.geckour.q.util.observe
 import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toggleDayNight

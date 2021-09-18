@@ -29,7 +29,6 @@ import com.geckour.q.util.getDomainTrack
 import com.geckour.q.util.getThumb
 import com.geckour.q.util.getTrackMediaIds
 import com.geckour.q.util.getTrackMediaIdsByGenreId
-import com.geckour.q.util.observe
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.takeOrFillNull

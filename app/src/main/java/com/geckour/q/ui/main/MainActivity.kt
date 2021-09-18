@@ -48,7 +48,6 @@ import com.geckour.q.ui.sheet.BottomSheetFragment
 import com.geckour.q.util.dropboxToken
 import com.geckour.q.util.ducking
 import com.geckour.q.util.isNightMode
-import com.geckour.q.util.observe
 import com.geckour.q.util.preferScreen
 import com.geckour.q.util.sleepTimerTime
 import com.geckour.q.util.sleepTimerTolerance

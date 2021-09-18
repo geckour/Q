@@ -30,7 +30,6 @@ import com.geckour.q.util.equalizerEnabled
 import com.geckour.q.util.equalizerParams
 import com.geckour.q.util.equalizerSettings
 import com.geckour.q.util.getReadableString
-import com.geckour.q.util.observe
 import com.geckour.q.util.setEqualizerLevel
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toggleDayNight

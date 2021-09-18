@@ -29,7 +29,6 @@ import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.ui.sheet.BottomSheetViewModel.Companion.PREF_KEY_SHOW_LOCK_TOUCH_QUEUE
 import com.geckour.q.util.getTimeString
-import com.geckour.q.util.observe
 import com.geckour.q.util.shake
 import com.geckour.q.util.showCurrentRemain
 import com.geckour.q.util.toDomainTrack
