@@ -15,6 +15,7 @@ import com.geckour.q.databinding.ItemListMetadataBinding
 class DropboxChooserDialog(
     context: Context,
     private val onClickItem: (FolderMetadata) -> Unit,
+    private val onPrev: (FolderMetadata?) -> Unit,
     private val onChoose: (String) -> Unit
 ) {
 
@@ -32,26 +33,34 @@ class DropboxChooserDialog(
             ): Boolean =
                 oldItem.pathDisplay == newItem.pathDisplay
         }
+
+        private const val PATH_ROOT = "/"
     }
 
     private val adapter = MetadataListAdapter()
 
-    private var currentChoice = "/"
+    private val choiceHistory = mutableListOf<FolderMetadata>()
+    private val currentChoice get() = choiceHistory.lastOrNull()
 
     val binding = DialogMetadataListBinding.inflate(
         LayoutInflater.from(context),
         null,
         false
-    ).apply { recyclerView.adapter = adapter }
+    ).apply {
+        recyclerView.adapter = adapter
+        buttonPositive.setOnClickListener {
+            onChoose(currentChoice?.pathLower ?: PATH_ROOT)
+            dialog.dismiss()
+        }
+        buttonNegative.setOnClickListener {
+            dialog.dismiss()
+        }
+    }
 
     private val dialog: AlertDialog = AlertDialog.Builder(context)
         .setTitle(R.string.dialog_title_dropbox_choose_folder)
         .setMessage(R.string.dialog_desc_dropbox_choose_folder)
         .setView(binding.root)
-        .setPositiveButton(R.string.dialog_ok) { dialog, _ ->
-            onChoose(currentChoice)
-            dialog.dismiss()
-        }
         .create()
 
     fun show(currentDirTitle: String, items: List<FolderMetadata>) {
@@ -77,13 +86,26 @@ class DropboxChooserDialog(
             holder.bind(getItem(position))
         }
 
-        private inner class ViewHolder(private val binding: ItemListMetadataBinding) :
-            RecyclerView.ViewHolder(binding.root) {
+        private inner class ViewHolder(private val metadataBinding: ItemListMetadataBinding) :
+            RecyclerView.ViewHolder(metadataBinding.root) {
 
             fun bind(metadata: FolderMetadata) {
-                binding.metadata = metadata
-                binding.root.setOnClickListener {
-                    currentChoice = metadata.pathLower
+                metadataBinding.metadata = metadata
+                metadataBinding.root.setOnClickListener {
+                    binding.buttonNegative.apply {
+                        setText(R.string.dialog_prev)
+                        setOnClickListener {
+                            choiceHistory.removeLast()
+                            onPrev(currentChoice)
+                            if (currentChoice == null) {
+                                binding.buttonNegative.apply {
+                                    setText(R.string.dialog_ng)
+                                    setOnClickListener { dialog.dismiss() }
+                                }
+                            }
+                        }
+                    }
+                    choiceHistory.add(metadata)
                     onClickItem(metadata)
                 }
             }

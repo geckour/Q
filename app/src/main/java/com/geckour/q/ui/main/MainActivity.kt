@@ -397,6 +397,9 @@ class MainActivity : AppCompatActivity() {
                         onClickItem = { metadata ->
                             viewModel.showDropboxFolderChooser(metadata)
                         },
+                        onPrev = { metadata ->
+                            viewModel.showDropboxFolderChooser(metadata)
+                        },
                         onChoose = { path ->
                             retrieveDropboxMedia(path)
                         }

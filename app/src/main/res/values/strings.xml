@@ -110,6 +110,7 @@
     <!-- Dialog -->
     <string name="dialog_ok">OK</string>
     <string name="dialog_ng">Cancel</string>
+    <string name="dialog_prev">Prev</string>
 
     <string name="dialog_title_choose_app_theme">Select theme</string>
     <string name="dialog_desc_choose_app_theme">Select app color theme</string>
