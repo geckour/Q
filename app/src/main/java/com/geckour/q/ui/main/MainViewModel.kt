@@ -82,7 +82,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private var currentOrientedClassType: OrientedClassType? = null
 
     internal var syncing = false
-    internal val loading = MutableStateFlow(false)
+    internal val loading = MutableStateFlow<Pair<Boolean, (() -> Unit)?>>(false to null)
     internal var isSearchViewOpened = false
 
     private var searchJob: Job = Job()
@@ -97,7 +97,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val playerService = (service as? PlayerService.PlayerBinder)?.service
 
                 viewModelScope.launch {
-                    playerService?.loadStateFlow?.collectLatest { onLoadStateChanged(it) }
+                    playerService?.loadStateFlow?.collectLatest { (loading, onAbort) ->
+                        onLoadStateChanged(loading, onAbort)
+                    }
                 }
                 viewModelScope.launch {
                     playerService?.onDestroyFlow?.collectLatest { onDestroyPlayer() }
@@ -416,22 +418,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val tracks = DB.getInstance(getApplication()).let { db ->
                 val sharedPreferences =
                     PreferenceManager.getDefaultSharedPreferences(getApplication())
-                loading.emit(true)
+                var enabled = true
+                loading.emit(true to { enabled = false })
                 db.trackDao()
                     .getAllByAlbum(
                         album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                     )
-                    .map { it.toDomainTrack() }
+                    .map {
+                        if (enabled.not()) return@launch
+                        it.toDomainTrack()
+                    }
                     .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
-                    .apply { loading.emit(false) }
+                    .apply { loading.emit(false to null) }
             }
 
             onNewQueue(tracks, actionType, OrientedClassType.TRACK)
         }
     }
 
-    internal fun onLoadStateChanged(state: Boolean) {
-        viewModelScope.launch { loading.emit(state) }
+    internal fun onLoadStateChanged(state: Boolean, onAbort: (() -> Unit)? = null) {
+        viewModelScope.launch { loading.emit(state to onAbort) }
     }
 
     internal fun onChangeRequestedPositionInQueue(position: Int) {

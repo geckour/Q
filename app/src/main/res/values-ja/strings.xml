@@ -35,7 +35,7 @@
 
     <!-- Indicator -->
     <string name="syncing">ライブラリを同期中…</string>
-    <string name="loading">アイテムを取得中…</string>
+    <string name="loading">アイテムを読み込み中…</string>
     <string name="button_apply">適用</string>
     <string name="button_cancel">キャンセル</string>
 

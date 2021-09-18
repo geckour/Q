@@ -270,7 +270,7 @@ class PlayerService : Service(), LifecycleOwner {
     private val cachedQueueOrder = mutableListOf<Long>()
     internal val sourcePathsFlow = MutableStateFlow(emptyList<String>())
     internal val currentIndexFlow = MutableStateFlow(0)
-    internal val loadStateFlow = MutableStateFlow(false)
+    internal val loadStateFlow = MutableStateFlow<Pair<Boolean, (() -> Unit)?>>(false to null)
     internal val playbackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
     internal val playbackPositionFLow = MutableStateFlow(0L)
     internal val repeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
@@ -453,9 +453,16 @@ class PlayerService : Service(), LifecycleOwner {
         queueInfo: QueueInfo,
         force: Boolean = false
     ) {
-        loadStateFlow.value = true
+        var enabled = true
+        loadStateFlow.value = true to { enabled = false }
 
-        val newQueue = queueInfo.queue.map { it.verifyWithDropbox(this, dropboxClient) }
+        val newQueue = queueInfo.queue.map {
+            if (enabled.not()) {
+                loadStateFlow.value = false to null
+                return
+            }
+            it.verifyWithDropbox(this, dropboxClient)
+        }
         val needToResetSource = when (queueInfo.metadata.actionType) {
             InsertActionType.NEXT -> {
                 val isEmpty = source.size == 0
@@ -528,7 +535,7 @@ class PlayerService : Service(), LifecycleOwner {
             player.prepare()
         }
 
-        loadStateFlow.value = false
+        loadStateFlow.value = false to null
 
         storeState()
     }

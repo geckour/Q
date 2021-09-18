@@ -437,8 +437,8 @@ class MainActivity : AppCompatActivity() {
                 indicateSync()
                 toggleIndicateLock(true)
             }
-            viewModel.loading.value -> {
-                indicateLoad()
+            viewModel.loading.value.first -> {
+                indicateLoad(viewModel.loading.value.second)
                 toggleIndicateLock(true)
             }
             else -> {
@@ -450,13 +450,23 @@ class MainActivity : AppCompatActivity() {
     private fun indicateSync() {
         binding.indicatorLocking.descLocking.text = getString(R.string.syncing)
         binding.indicatorLocking.progressSync.visibility = View.VISIBLE
-        binding.indicatorLocking.buttonCancelSync.visibility = View.VISIBLE
+        binding.indicatorLocking.buttonCancel.apply {
+            setOnClickListener { viewModel.onCancelSync(this@MainActivity) }
+            visibility = View.VISIBLE
+        }
     }
 
-    private fun indicateLoad() {
+    private fun indicateLoad(onAbort: (() -> Unit)?) {
         binding.indicatorLocking.descLocking.text = getString(R.string.loading)
         binding.indicatorLocking.progressSync.visibility = View.GONE
-        binding.indicatorLocking.buttonCancelSync.visibility = View.GONE
+        onAbort?.let {
+            binding.indicatorLocking.buttonCancel.apply {
+                setOnClickListener { it() }
+                visibility = View.VISIBLE
+            }
+        } ?: run {
+            binding.indicatorLocking.buttonCancel.visibility = View.GONE
+        }
     }
 
     private fun toggleIndicateLock(locking: Boolean) {
