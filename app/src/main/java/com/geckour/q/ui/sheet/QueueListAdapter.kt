@@ -46,7 +46,6 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
 
     private fun remove(index: Int) {
         if (index !in currentList.indices) return
-        submitList(currentList.toMutableList().apply { removeAt(index) })
         viewModel.onQueueRemove(index)
     }
 

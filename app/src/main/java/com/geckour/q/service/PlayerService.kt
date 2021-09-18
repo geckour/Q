@@ -547,6 +547,11 @@ class PlayerService : Service(), LifecycleOwner {
     }
 
     fun removeQueue(position: Int) {
+        if (player.playWhenReady
+            && (player.playbackState == Player.STATE_READY || player.playbackState == Player.STATE_BUFFERING)
+            && position == currentIndex
+        ) return
+
         source.removeMediaSource(position)
     }
 
