@@ -547,7 +547,8 @@ class PlayerService : Service(), LifecycleOwner {
     }
 
     fun removeQueue(position: Int) {
-        if (player.playWhenReady
+        if (position !in 0 until source.size ||
+            player.playWhenReady
             && (player.playbackState == Player.STATE_READY || player.playbackState == Player.STATE_BUFFERING)
             && position == currentIndex
         ) return
@@ -555,10 +556,10 @@ class PlayerService : Service(), LifecycleOwner {
         source.removeMediaSource(position)
     }
 
-    fun removeQueue(trackId: Long) {
+    fun removeQueue(track: DomainTrack) {
         lifecycleScope.launch {
             val position = source.currentSourcePaths
-                .indexOfFirst { it.toDomainTrack(db)?.id == trackId }
+                .indexOfFirst { it.toDomainTrack(db)?.id == track.id }
             removeQueue(position)
         }
     }

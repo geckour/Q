@@ -403,7 +403,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     internal fun deleteTrack(domainTrack: DomainTrack) {
         viewModelScope.launch {
             trackToDelete.value = domainTrack
-            player.value?.removeQueue(domainTrack.id)
+            player.value?.removeQueue(domainTrack)
 
             DB.getInstance(getApplication())
                 .trackDao()

@@ -545,7 +545,7 @@ class MainActivity : AppCompatActivity() {
         ) {
             File(domainTrack.sourcePath).apply {
                 if (this.exists()) {
-                    viewModel.player.value?.removeQueue(domainTrack.id)
+                    viewModel.player.value?.removeQueue(domainTrack)
                     this.delete()
                 }
             }
