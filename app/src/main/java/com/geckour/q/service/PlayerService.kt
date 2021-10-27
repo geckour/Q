@@ -289,12 +289,7 @@ class PlayerService : Service(), LifecycleOwner {
         override fun onTracksChanged(
             trackGroups: TrackGroupArray, trackSelections: TrackSelectionArray
         ) {
-            sourcePathsFlow.value = source.currentSourcePaths
-            currentIndexFlow.value = currentIndex
-            playbackPositionFLow.value = player.currentPosition
-            notificationUpdateJob.cancel()
-            notificationUpdateJob = showNotification()
-            playbackCountIncreaseJob = increasePlaybackCount()
+            onSourcesChanged()
         }
 
         override fun onLoadingChanged(isLoading: Boolean) = Unit
@@ -308,6 +303,7 @@ class PlayerService : Service(), LifecycleOwner {
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = Unit
 
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
+            onSourcesChanged()
 
             if (source.size < 1) {
                 destroyNotification()
@@ -428,6 +424,15 @@ class PlayerService : Service(), LifecycleOwner {
         onDestroyFlow.tryEmit(Unit)
 
         super.onDestroy()
+    }
+
+    private fun onSourcesChanged() {
+        sourcePathsFlow.value = source.currentSourcePaths
+        currentIndexFlow.value = currentIndex
+        playbackPositionFLow.value = player.currentPosition
+        notificationUpdateJob.cancel()
+        notificationUpdateJob = showNotification()
+        playbackCountIncreaseJob = increasePlaybackCount()
     }
 
     private fun onStopServiceRequested() {
