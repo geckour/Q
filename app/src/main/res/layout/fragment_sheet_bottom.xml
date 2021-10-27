@@ -127,16 +127,6 @@
             tools:tint="@color/colorAccent" />
 
         <ImageView
-            android:id="@+id/button_share"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:padding="6dp"
-            android:src="@drawable/ic_share"
-            app:tintAttr="@{currentDomainTrack != null ? R.attr.colorAccent : R.attr.colorInactive}"
-            tools:tint="@color/colorAccent" />
-
-        <ImageView
             android:id="@+id/button_toggle_visible_queue"
             android:layout_width="0dp"
             android:layout_height="0dp"

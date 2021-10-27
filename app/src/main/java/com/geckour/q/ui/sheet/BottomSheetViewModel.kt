@@ -12,11 +12,9 @@ import com.bumptech.glide.Glide
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.service.SleepTimerService
 import com.geckour.q.ui.main.MainViewModel
-import com.geckour.q.ui.share.SharingActivity
 import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.showCurrentRemain
-import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -50,12 +48,6 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
         _showCurrentRemain.value = _showCurrentRemain.value?.not()
     }
 
-    fun onClickShareButton(currentDomainTrack: DomainTrack?) {
-        getApplication<Application>().startActivity(
-            SharingActivity.getIntent(getApplication(), currentDomainTrack ?: return)
-        )
-    }
-
     fun onClickScrollToCurrentButton() {
         _scrollToCurrent.value = true
     }
@@ -68,11 +60,17 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
         )
     }
 
-    internal fun onTransitionToArtist(mainViewModel: MainViewModel, currentDomainTrack: DomainTrack?) {
+    internal fun onTransitionToArtist(
+        mainViewModel: MainViewModel,
+        currentDomainTrack: DomainTrack?
+    ) {
         mainViewModel.selectedArtist.value = currentDomainTrack?.artist
     }
 
-    internal fun onTransitionToAlbum(mainViewModel: MainViewModel, currentDomainTrack: DomainTrack?) {
+    internal fun onTransitionToAlbum(
+        mainViewModel: MainViewModel,
+        currentDomainTrack: DomainTrack?
+    ) {
         mainViewModel.selectedAlbum.value = currentDomainTrack?.album
     }
 

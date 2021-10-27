@@ -234,8 +234,6 @@ class BottomSheetFragment : Fragment() {
             setOnLongClickListener { mainViewModel.onLongClickShuffleButton() }
         }
 
-        binding.buttonShare.setOnClickListener { viewModel.onClickShareButton(adapter.currentItem) }
-
         binding.buttonToggleVisibleQueue.setOnClickListener { viewModel.onClickQueueButton() }
 
         binding.textTimeRight.setOnClickListener { viewModel.onClickTimeRight() }

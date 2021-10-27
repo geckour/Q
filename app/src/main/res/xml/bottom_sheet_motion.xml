@@ -82,7 +82,7 @@
             android:layout_marginStart="12dp"
             android:layout_marginEnd="12dp"
             app:layout_constraintBottom_toTopOf="@id/button_controller_center"
-            app:layout_constraintEnd_toStartOf="@id/button_share"
+            app:layout_constraintEnd_toStartOf="@id/button_toggle_visible_queue"
             app:layout_constraintStart_toEndOf="@id/artwork" />
 
         <Constraint
@@ -128,14 +128,6 @@
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="@id/button_controller_center" />
-
-        <Constraint
-            android:id="@+id/button_share"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:layout_marginEnd="4dp"
-            app:layout_constraintEnd_toStartOf="@id/button_toggle_visible_queue"
-            app:layout_constraintTop_toTopOf="@id/button_toggle_visible_queue" />
 
         <Constraint
             android:id="@+id/button_toggle_visible_queue"
@@ -279,7 +271,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
             android:layout_marginEnd="16dp"
-            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintEnd_toEndOf="@id/text_artist_and_album"
             app:layout_constraintStart_toStartOf="@id/artwork"
             app:layout_constraintTop_toBottomOf="@id/artwork" />
 
@@ -287,7 +279,7 @@
             android:id="@id/text_artist_and_album"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            app:layout_constraintEnd_toEndOf="@id/text_track"
+            app:layout_constraintEnd_toStartOf="@id/button_toggle_visible_queue"
             app:layout_constraintStart_toStartOf="@id/text_track"
             app:layout_constraintTop_toBottomOf="@id/text_track" />
 
@@ -342,14 +334,6 @@
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="@id/button_controller_center" />
-
-        <Constraint
-            android:id="@id/button_share"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:layout_marginEnd="4dp"
-            app:layout_constraintEnd_toStartOf="@id/button_toggle_visible_queue"
-            app:layout_constraintTop_toTopOf="@id/button_toggle_visible_queue" />
 
         <Constraint
             android:id="@id/button_toggle_visible_queue"

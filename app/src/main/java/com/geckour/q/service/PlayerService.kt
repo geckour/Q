@@ -453,11 +453,11 @@ class PlayerService : Service(), LifecycleOwner {
         queueInfo: QueueInfo,
         force: Boolean = false
     ) {
-        var enabled = true
-        loadStateFlow.value = true to { enabled = false }
+        var alive = true
+        loadStateFlow.value = true to { alive = false }
 
         val newQueue = queueInfo.queue.map {
-            if (enabled.not()) {
+            if (alive.not()) {
                 loadStateFlow.value = false to null
                 return
             }
