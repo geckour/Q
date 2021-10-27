@@ -17,6 +17,7 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.PorterDuff
+import android.net.Uri
 import android.provider.MediaStore
 import com.geckour.q.App
 import com.geckour.q.R
@@ -274,6 +275,6 @@ class LocalMediaRetrieveService : IntentService(NAME) {
                 if (it.track.lastModified >= lastModified) return@runBlocking it.track.id
             }
 
-            file.storeMediaInfo(context, trackPath, trackMediaId, null, null, lastModified)
+            file.storeMediaInfo(context, Uri.fromFile(file).toString(), trackMediaId, null, null, lastModified)
         }
 }

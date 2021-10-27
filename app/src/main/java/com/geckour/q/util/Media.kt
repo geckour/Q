@@ -212,10 +212,7 @@ fun getTrackMediaIdsByGenreId(context: Context, genreId: Long): List<Long> =
 
 fun DomainTrack.getMediaSource(mediaSourceFactory: ProgressiveMediaSource.Factory): MediaSource =
     mediaSourceFactory.createMediaSource(
-        MediaItem.fromUri(
-            if (mediaId < 0) Uri.parse(sourcePath)
-            else Uri.fromFile(File(sourcePath))
-        )
+        MediaItem.fromUri(Uri.parse(sourcePath))
     )
 
 fun List<DomainTrack>.sortedByTrackOrder(): List<DomainTrack> =
