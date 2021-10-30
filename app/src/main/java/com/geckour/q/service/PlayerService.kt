@@ -461,78 +461,58 @@ class PlayerService : Service(), LifecycleOwner {
         var alive = true
         loadStateFlow.value = true to { alive = false }
 
-        val newQueue = queueInfo.queue.map {
-            if (alive.not()) {
-                loadStateFlow.value = false to null
-                return
+        val newQueue = queueInfo.queue
+            .let {
+                when (queueInfo.metadata.actionType) {
+                    InsertActionType.SHUFFLE_NEXT,
+                    InsertActionType.SHUFFLE_LAST,
+                    InsertActionType.SHUFFLE_OVERRIDE -> {
+                        it.shuffleByClassType(queueInfo.metadata.classType)
+                    }
+
+                    InsertActionType.SHUFFLE_SIMPLE_NEXT,
+                    InsertActionType.SHUFFLE_SIMPLE_LAST,
+                    InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
+                        it.shuffled()
+                    }
+
+                    else -> it
+                }
             }
-            it.verifyWithDropbox(this, dropboxClient)
+            .map {
+                if (alive.not()) {
+                    loadStateFlow.value = false to null
+                    return
+                }
+                it.verifyWithDropbox(this, dropboxClient)
+                    .getMediaSource(mediaSourceFactory)
+            }
+        when (queueInfo.metadata.actionType) {
+            InsertActionType.OVERRIDE,
+            InsertActionType.SHUFFLE_OVERRIDE,
+            InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> clear(force.not())
+            else -> Unit
         }
         val needToResetSource = when (queueInfo.metadata.actionType) {
-            InsertActionType.NEXT -> {
+            InsertActionType.NEXT,
+            InsertActionType.OVERRIDE,
+            InsertActionType.SHUFFLE_NEXT,
+            InsertActionType.SHUFFLE_OVERRIDE,
+            InsertActionType.SHUFFLE_SIMPLE_NEXT,
+            InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
                 val isEmpty = source.size == 0
                 val position = if (source.size < 1) 0 else currentIndex + 1
-                source.addMediaSources(position,
-                    newQueue.map { it.getMediaSource(mediaSourceFactory) })
+                source.addMediaSources(position, newQueue)
                 isEmpty
             }
-            InsertActionType.LAST -> {
-                val isEmpty = source.size == 0
-                val position = source.size
-                source.addMediaSources(position,
-                    newQueue.map { it.getMediaSource(mediaSourceFactory) })
-                isEmpty
-            }
-            InsertActionType.OVERRIDE -> {
-                override(newQueue, force)
-                true
-            }
-            InsertActionType.SHUFFLE_NEXT -> {
-                val isEmpty = source.size == 0
-                val position = if (source.size < 1) 0 else currentIndex + 1
-                val shuffled = newQueue.shuffleByClassType(queueInfo.metadata.classType)
 
-                source.addMediaSources(position,
-                    shuffled.map { it.getMediaSource(mediaSourceFactory) })
-                isEmpty
-            }
-            InsertActionType.SHUFFLE_LAST -> {
-                val isEmpty = source.size == 0
-                val position = source.size
-                val shuffled = newQueue.shuffleByClassType(queueInfo.metadata.classType)
-
-                source.addMediaSources(position,
-                    shuffled.map { it.getMediaSource(mediaSourceFactory) })
-                isEmpty
-            }
-            InsertActionType.SHUFFLE_OVERRIDE -> {
-                val shuffled = newQueue.shuffleByClassType(queueInfo.metadata.classType)
-                override(shuffled, force)
-                true
-            }
-            InsertActionType.SHUFFLE_SIMPLE_NEXT -> {
-                val isEmpty = source.size == 0
-                val position = if (source.size < 1) 0 else currentIndex + 1
-                val shuffled = newQueue.shuffled()
-
-                source.addMediaSources(position,
-                    shuffled.map { it.getMediaSource(mediaSourceFactory) })
-                isEmpty
-            }
+            InsertActionType.LAST,
+            InsertActionType.SHUFFLE_LAST,
             InsertActionType.SHUFFLE_SIMPLE_LAST -> {
                 val isEmpty = source.size == 0
                 val position = source.size
-                val shuffled = newQueue.shuffled()
-
-                source.addMediaSources(position,
-                    shuffled.map { it.getMediaSource(mediaSourceFactory) })
+                source.addMediaSources(position, newQueue)
                 isEmpty
-            }
-            InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
-                val shuffled = newQueue.shuffled()
-
-                override(shuffled, force)
-                true
             }
         }
         if (needToResetSource) {
@@ -659,11 +639,6 @@ class PlayerService : Service(), LifecycleOwner {
             source.removeMediaSourceRange(1, source.size)
         }
         storeState()
-    }
-
-    fun override(queue: List<DomainTrack>, force: Boolean = false) {
-        clear(force.not())
-        source.addMediaSources(queue.map { it.getMediaSource(mediaSourceFactory) })
     }
 
     private fun replace(with: DomainTrack) {
