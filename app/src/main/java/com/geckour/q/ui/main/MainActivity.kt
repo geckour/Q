@@ -312,7 +312,7 @@ class MainActivity : AppCompatActivity() {
 
         when (requestCode) {
             RequestCode.RESULT_SETTING.code -> {
-                if (viewModel.player.value?.getDuking() != sharedPreferences.ducking) {
+                if (viewModel.player.value?.ducking != sharedPreferences.ducking) {
                     viewModel.rebootPlayer()
                 }
             }

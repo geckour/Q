@@ -349,8 +349,8 @@ class PlayerService : Service(), LifecycleOwner {
     private var playbackCountIncreaseJob: Job = Job()
     private var seekJob: Job = Job()
 
-    private var ducking: Boolean = false
-    fun getDuking(): Boolean = ducking
+    var ducking: Boolean = false
+        private set
 
     private val sharedPreferences: SharedPreferences by lazy {
         PreferenceManager.getDefaultSharedPreferences(this)
