@@ -18,14 +18,14 @@
                 app:framePosition="50"
                 app:keyPositionType="deltaRelative"
                 app:motionTarget="@+id/text_track"
-                app:percentX="-6"
+                app:percentX="-2"
                 app:percentY="0.5" />
 
             <KeyPosition
                 app:framePosition="50"
                 app:keyPositionType="deltaRelative"
                 app:motionTarget="@+id/text_artist_and_album"
-                app:percentX="-6"
+                app:percentX="-2"
                 app:percentY="0.5" />
 
             <KeyAttribute
@@ -270,7 +270,6 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:layout_marginEnd="16dp"
             app:layout_constraintEnd_toEndOf="@id/text_artist_and_album"
             app:layout_constraintStart_toStartOf="@id/artwork"
             app:layout_constraintTop_toBottomOf="@id/artwork" />
@@ -279,7 +278,8 @@
             android:id="@id/text_artist_and_album"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            app:layout_constraintEnd_toStartOf="@id/button_toggle_visible_queue"
+            android:layout_marginEnd="16dp"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="@id/text_track"
             app:layout_constraintTop_toBottomOf="@id/text_track" />
 

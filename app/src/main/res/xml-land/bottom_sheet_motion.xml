@@ -14,6 +14,22 @@
                 app:percentY="0.2"
                 app:sizePercent="0.2" />
         </KeyFrameSet>
+
+        <KeyFrameSet>
+            <KeyPosition
+                app:framePosition="60"
+                app:keyPositionType="deltaRelative"
+                app:motionTarget="@+id/text_track"
+                app:percentX="0.2" />
+        </KeyFrameSet>
+
+        <KeyFrameSet>
+            <KeyPosition
+                app:framePosition="60"
+                app:keyPositionType="deltaRelative"
+                app:motionTarget="@+id/text_artist_and_album"
+                app:percentX="0.2" />
+        </KeyFrameSet>
     </Transition>
 
     <ConstraintSet android:id="@+id/motion_start">
