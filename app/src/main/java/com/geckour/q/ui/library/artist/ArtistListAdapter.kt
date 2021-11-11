@@ -10,7 +10,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
@@ -20,10 +19,9 @@ import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.BoolConverter
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.ignoringEnabled
-import com.geckour.q.util.orDefaultForModel
+import com.geckour.q.util.loadOrDefault
 import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
@@ -100,16 +98,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
                 true
             }
             binding.option.setOnClickListener { getPopupMenu(it).show() }
-            viewModel.viewModelScope.launch {
-                try {
-                    Glide.with(binding.thumb)
-                        .load(artist.artworkUriString.orDefaultForModel)
-                        .applyDefaultSettings()
-                        .into(binding.thumb)
-                } catch (t: Throwable) {
-                    Timber.e(t)
-                }
-            }
+            binding.thumb.loadOrDefault(artist.artworkUriString)
         }
 
         private fun onOptionSelected(context: Context, id: Int, artist: Artist?): Boolean {

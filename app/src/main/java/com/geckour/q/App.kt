@@ -5,7 +5,6 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
 import androidx.annotation.RequiresApi
-import com.facebook.stetho.Stetho
 import com.geckour.q.data.dataModule
 import com.geckour.q.ui.di.viewModelModule
 import com.geckour.q.util.QNotificationChannel
@@ -25,7 +24,6 @@ class App : Application() {
 
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
-            Stetho.initializeWithDefaults(this)
         }
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) createNotificationChannel()

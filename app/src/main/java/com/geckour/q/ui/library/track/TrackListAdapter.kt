@@ -8,7 +8,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Bool
@@ -17,9 +16,8 @@ import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.applyDefaultSettings
 import com.geckour.q.util.ignoringEnabled
-import com.geckour.q.util.orDefaultForModel
+import com.geckour.q.util.loadOrDefault
 import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.launch
@@ -188,16 +186,7 @@ class TrackListAdapter(private val viewModel: MainViewModel) :
             val track = getItem(adapterPosition)
             binding.data = track
             binding.duration.text = track.durationString
-            viewModel.viewModelScope.launch {
-                try {
-                    Glide.with(binding.thumb)
-                        .load(track.artworkUriString.orDefaultForModel)
-                        .applyDefaultSettings()
-                        .into(binding.thumb)
-                } catch (t: Throwable) {
-                    Timber.e(t)
-                }
-            }
+            binding.thumb.loadOrDefault(track.artworkUriString)
             binding.root.setOnClickListener { onTrackSelected(track) }
             binding.root.setOnLongClickListener { onTrackLongTapped(track) }
         }

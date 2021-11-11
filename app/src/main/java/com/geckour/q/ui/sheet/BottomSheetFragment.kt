@@ -15,6 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
+import coil.load
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentSheetBottomBinding
@@ -24,6 +25,7 @@ import com.geckour.q.service.SleepTimerService
 import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.ui.sheet.BottomSheetViewModel.Companion.PREF_KEY_SHOW_LOCK_TOUCH_QUEUE
+import com.geckour.q.util.catchAsNull
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.shake
 import com.geckour.q.util.showCurrentRemain
@@ -38,6 +40,7 @@ import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.sharedViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
+import java.io.File
 
 class BottomSheetFragment : Fragment() {
 
@@ -378,7 +381,11 @@ class BottomSheetFragment : Fragment() {
                     adapter.currentItem,
                     binding.seekBar.progress.toLong()
                 )
-                viewModel.setArtwork(binding.artwork, adapter.currentItem)
+                binding.artwork.load(
+                    adapter.currentItem
+                        ?.artworkUriString
+                        ?.let { catchAsNull { File(it) } }
+                ) { size(1000) }
                 if (indexChanged) onPlaybackPositionChanged(0)
 
                 val noCurrentTrack = adapter.currentItem == null

@@ -8,7 +8,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ItemTrackBinding
@@ -16,8 +15,7 @@ import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.applyDefaultSettings
-import com.geckour.q.util.orDefaultForModel
+import com.geckour.q.util.loadOrDefault
 import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.launch
@@ -121,14 +119,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
             binding.data = track
             binding.nowPlaying = track.nowPlaying
             binding.duration.text = track.durationString
-            try {
-                Glide.with(binding.thumb)
-                    .load(track.album.artworkUriString.orDefaultForModel)
-                    .applyDefaultSettings()
-                    .into(binding.thumb)
-            } catch (t: Throwable) {
-                Timber.e(t)
-            }
+            binding.thumb.loadOrDefault(track.album.artworkUriString)
 
             binding.option.apply {
                 visibility = View.VISIBLE

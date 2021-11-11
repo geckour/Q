@@ -5,19 +5,16 @@ import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Paint
 import android.net.Uri
 import android.provider.MediaStore
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.webkit.MimeTypeMap
+import android.widget.ImageView
 import androidx.core.app.NotificationCompat
 import androidx.media.session.MediaButtonReceiver
-import com.bumptech.glide.Glide
-import com.bumptech.glide.RequestBuilder
-import com.bumptech.glide.load.engine.DiskCacheStrategy
+import coil.load
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -146,48 +143,12 @@ fun Context.searchGenreByFuzzyTitle(title: String): List<Genre> = contentResolve
     it ?: return@use emptyList()
     val result: MutableList<Genre> = mutableListOf()
     while (it.moveToNext()) {
-        val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Genres._ID))
-        val name = it.getString(it.getColumnIndex(MediaStore.Audio.Genres.NAME)) ?: UNKNOWN
+        val id = it.getLong(it.getColumnIndexOrThrow(MediaStore.Audio.Genres._ID))
+        val name = it.getString(it.getColumnIndexOrThrow(MediaStore.Audio.Genres.NAME)) ?: UNKNOWN
         result.add(Genre(id, null, name, 0))
     }
 
     return@use result
-}
-
-fun <T> List<T>.takeOrFillNull(n: Int): List<T?> =
-    this.take(n).let { it + List(n - it.size) { null } }
-
-suspend fun List<String?>.getThumb(context: Context): Bitmap? {
-    if (this.isEmpty()) return null
-    val unit = 100
-    val bitmap = Bitmap.createBitmap(
-        ((this.size * 0.9 - 0.1) * unit).toInt(), unit, Bitmap.Config.ARGB_8888
-    )
-    val canvas = Canvas(bitmap)
-    withContext(Dispatchers.IO) {
-        this@getThumb.filterNotNull().reversed().forEachIndexed { i, uriString ->
-            val b = catchAsNull {
-                Glide.with(context)
-                    .asBitmap()
-                    .load(uriString)
-                    .applyDefaultSettings()
-                    .submit()
-                    .get()
-                    ?.let {
-                        Bitmap.createScaledBitmap(
-                            it, unit, (it.height * unit.toFloat() / it.width).toInt(), false
-                        )
-                    }
-            } ?: return@forEachIndexed
-            canvas.drawBitmap(
-                b,
-                bitmap.width - (i + 1) * unit * 0.9f,
-                (unit - b.height) / 2f,
-                Paint()
-            )
-        }
-    }
-    return bitmap
 }
 
 fun Genre.getTrackMediaIds(context: Context): List<Long> =
@@ -203,7 +164,7 @@ fun getTrackMediaIdsByGenreId(context: Context, genreId: Long): List<Long> =
     )?.use {
         val trackMediaIdList: ArrayList<Long> = ArrayList()
         while (it.moveToNext()) {
-            val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Genres.Members._ID))
+            val id = it.getLong(it.getColumnIndexOrThrow(MediaStore.Audio.Genres.Members._ID))
             trackMediaIdList.add(id)
         }
 
@@ -293,7 +254,7 @@ fun DomainTrack.getTempArtworkUriString(context: Context): String? =
     album.artworkUriString?.let { uriString ->
         val ext = MimeTypeMap.getFileExtensionFromUrl(uriString)
         File(uriString).inputStream().use { inputStream ->
-            val title = "Q_temporary_artwork"
+            val title = "Q_temp_artwork"
             val contentValues = ContentValues().apply {
                 put(MediaStore.Images.Media.TITLE, title)
                 put(MediaStore.Images.Media.DISPLAY_NAME, title)
@@ -307,24 +268,29 @@ fun DomainTrack.getTempArtworkUriString(context: Context): String? =
                 )
                 put(MediaStore.Images.Media.DATE_ADDED, System.currentTimeMillis() / 1000)
             }
-            val uri = context.contentResolver.query(
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                null,
-                "${MediaStore.Images.Media.TITLE} = '$title'",
-                null,
-                null
-            )?.use {
-                if (it.moveToFirst()) {
-                    ContentUris.withAppendedId(
-                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                        it.getLong(it.getColumnIndex(MediaStore.Images.Media._ID))
-                    )
-                } else null
-            } ?: context.contentResolver
-                .insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
-            ?: return null
+            val uri = context.applicationContext
+                .contentResolver
+                .query(
+                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    null,
+                    "${MediaStore.Images.Media.TITLE} = '$title'",
+                    null,
+                    null
+                )
+                ?.use {
+                    if (it.moveToFirst()) {
+                        ContentUris.withAppendedId(
+                            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                            it.getLong(it.getColumnIndexOrThrow(MediaStore.Images.Media._ID))
+                        )
+                    } else null
+                }
+                ?: context.applicationContext
+                    .contentResolver
+                    .insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, contentValues)
+                ?: return null
 
-            context.contentResolver
+            context.applicationContext.contentResolver
                 .openOutputStream(uri)
                 ?.use { it.write(inputStream.readBytes()) }
 
@@ -413,11 +379,12 @@ fun Long.getTimeString(): String {
     )
 }
 
-val String?.orDefaultForModel get() = this?.let { File(this) } ?: R.drawable.ic_empty
-val Bitmap?.orDefaultForModel get() = this ?: R.drawable.ic_empty
-
-inline fun <reified T> RequestBuilder<T>.applyDefaultSettings() =
-    this.diskCacheStrategy(DiskCacheStrategy.NONE)
+fun ImageView.loadOrDefault(uri: String?) {
+    uri?.let {
+        Timber.d("qgeck $it")
+        catchAsNull { load(File(it)) }
+    } ?: load(R.drawable.ic_empty)
+}
 
 fun DbxClientV2.saveTempAudioFile(context: Context, pathLower: String): File {
     val dirName = "audio"
@@ -626,10 +593,11 @@ suspend fun JoinedTrack.updateFileMetadata(
     }
 }
 
-val ConcatenatingMediaSource.currentSourcePaths: List<String> get() =
-    (0 until this.size).mapNotNull {
-        getMediaSource(it).mediaItem.playbackProperties?.uri?.toString()
-    }
+val ConcatenatingMediaSource.currentSourcePaths: List<String>
+    get() =
+        (0 until this.size).mapNotNull {
+            getMediaSource(it).mediaItem.playbackProperties?.uri?.toString()
+        }
 
 suspend fun MediaSource.toDomainTrack(db: DB): DomainTrack? =
     mediaItem.playbackProperties?.uri?.toString()?.toDomainTrack(db)

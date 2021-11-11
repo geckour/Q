@@ -5,7 +5,6 @@ import android.view.ViewGroup
 import android.widget.PopupMenu
 import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
@@ -17,13 +16,12 @@ import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.applyDefaultSettings
-import com.geckour.q.util.orDefaultForModel
+import com.geckour.q.util.loadOrDefault
 import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.launch
 
-class SearchListAdapter(private val viewModel: MainViewModel) :
+class SearchListAdapter(private val db: DB, private val viewModel: MainViewModel) :
     RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
     private val items = mutableListOf<SearchItem>()
@@ -92,8 +90,6 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
 
                 if (menuItem.itemId == R.id.menu_edit_metadata) {
                     viewModel.viewModelScope.launch {
-                        val db = DB.getInstance(binding.root.context)
-
                         viewModel.onLoadStateChanged(true)
                         val tracks = db.trackDao().get(track.id)?.let { listOf(it) }.orEmpty()
                         viewModel.onLoadStateChanged(false)
@@ -153,10 +149,7 @@ class SearchListAdapter(private val viewModel: MainViewModel) :
                     else -> null
                 }
 
-                Glide.with(binding.thumb)
-                    .load(artworkUriString.orDefaultForModel)
-                    .applyDefaultSettings()
-                    .into(binding.thumb)
+                binding.thumb.loadOrDefault(artworkUriString)
             }
         }
 

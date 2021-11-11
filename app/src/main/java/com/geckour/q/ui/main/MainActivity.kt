@@ -56,6 +56,7 @@ import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.get
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import permissions.dispatcher.ktx.constructPermissionsRequest
@@ -105,7 +106,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var drawerToggle: ActionBarDrawerToggle
 
-    private val searchListAdapter: SearchListAdapter by lazy { SearchListAdapter(viewModel) }
+    private val searchListAdapter: SearchListAdapter by lazy { SearchListAdapter(get(), viewModel) }
 
     private var requestedTransaction: RequestedTransaction? = null
     private var paused = true

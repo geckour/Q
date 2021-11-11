@@ -10,14 +10,12 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupMenu
 import androidx.fragment.app.Fragment
-import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentEasterEggBinding
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.applyDefaultSettings
-import com.geckour.q.util.orDefaultForModel
+import com.geckour.q.util.loadOrDefault
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toggleDayNight
 import com.google.firebase.analytics.FirebaseAnalytics
@@ -116,10 +114,7 @@ class EasterEggFragment : Fragment() {
                 return@setOnLongClickListener true
             }
 
-            Glide.with(binding.artwork)
-                .load(track.thumbUriString.orDefaultForModel)
-                .applyDefaultSettings()
-                .into(binding.artwork)
+            binding.artwork.loadOrDefault(track.thumbUriString)
         }
     }
 }
