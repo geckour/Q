@@ -10,6 +10,8 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Album
+import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.databinding.ItemAlbumBinding
 import com.geckour.q.domain.model.DomainTrack
@@ -23,7 +25,11 @@ import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-class AlbumListAdapter(private val viewModel: MainViewModel) :
+class AlbumListAdapter(
+    private val onClickAlbum: (album: Album) -> Unit,
+    private val onNewQueue: (actionType: InsertActionType, album: Album, shuffle: Boolean) -> Unit,
+    private val onEditMetadata: (album: Album) -> Unit,
+) :
     ListAdapter<JoinedAlbum, AlbumListAdapter.ViewHolder>(diffCallback) {
 
     companion object {
@@ -52,16 +58,6 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
         removeItem(albumId)
     }
 
-    internal fun onNewQueue(
-        domainTracks: List<DomainTrack>,
-        actionType: InsertActionType,
-        classType: OrientedClassType = OrientedClassType.ALBUM
-    ) {
-        viewModel.viewModelScope.launch {
-            viewModel.onNewQueue(domainTracks, actionType, classType)
-        }
-    }
-
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(
         ItemAlbumBinding.inflate(
             LayoutInflater.from(parent.context), parent, false
@@ -78,7 +74,32 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
 
         private fun getPopupMenu(bindTo: View) = PopupMenu(bindTo.context, bindTo).apply {
             setOnMenuItemClickListener {
-                return@setOnMenuItemClickListener onOptionSelected(it.itemId, binding.data)
+                if (it.itemId == R.id.menu_edit_metadata) {
+                    onEditMetadata(binding.data?.album ?: return@setOnMenuItemClickListener false)
+                    return@setOnMenuItemClickListener true
+                }
+
+                val actionType = when (it.itemId) {
+                    R.id.menu_insert_all_next -> InsertActionType.NEXT
+                    R.id.menu_insert_all_last -> InsertActionType.LAST
+                    R.id.menu_override_all -> InsertActionType.OVERRIDE
+                    R.id.menu_insert_all_simple_shuffle_next -> InsertActionType.SHUFFLE_SIMPLE_NEXT
+                    R.id.menu_insert_all_simple_shuffle_last -> InsertActionType.SHUFFLE_SIMPLE_LAST
+                    R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
+                    else -> null
+                } ?: return@setOnMenuItemClickListener false
+                val shuffle: Boolean = it.itemId !in listOf(
+                    R.id.menu_insert_all_simple_shuffle_next,
+                    R.id.menu_insert_all_simple_shuffle_last,
+                    R.id.menu_override_all_simple_shuffle
+                )
+                onNewQueue(
+                    actionType,
+                    binding.data?.album ?: return@setOnMenuItemClickListener false,
+                    shuffle
+                )
+
+                return@setOnMenuItemClickListener true
             }
             inflate(R.menu.tracks)
         }
@@ -87,56 +108,13 @@ class AlbumListAdapter(private val viewModel: MainViewModel) :
             val joinedAlbum = getItem(adapterPosition)
             binding.data = joinedAlbum
             binding.duration.text = joinedAlbum.album.totalDuration.getTimeString()
-            binding.root.setOnClickListener { viewModel.onRequestNavigate(joinedAlbum.album) }
+            binding.root.setOnClickListener { onClickAlbum(joinedAlbum.album) }
             binding.root.setOnLongClickListener {
                 getPopupMenu(it).show()
                 true
             }
             binding.option.setOnClickListener { getPopupMenu(it).show() }
             binding.thumb.loadOrDefault(joinedAlbum.album.artworkUriString)
-        }
-
-        private fun onOptionSelected(id: Int, joinedAlbum: JoinedAlbum?): Boolean {
-            if (joinedAlbum == null) return false
-
-            if (id == R.id.menu_edit_metadata) {
-                viewModel.viewModelScope.launch {
-                    val db = DB.getInstance(binding.root.context)
-
-                    viewModel.onLoadStateChanged(true)
-                    val tracks = db.trackDao().getAllByAlbum(joinedAlbum.album.id)
-                    viewModel.onLoadStateChanged(false)
-
-                    binding.root.context.showFileMetadataUpdateDialog(tracks) { binding ->
-                        viewModel.viewModelScope.launch {
-                            viewModel.onLoadStateChanged(true)
-                            binding.updateFileMetadata(binding.root.context, db, tracks)
-                            viewModel.onLoadStateChanged(false)
-                        }
-                    }
-                }
-                return true
-            }
-
-            val actionType = when (id) {
-                R.id.menu_insert_all_next -> InsertActionType.NEXT
-                R.id.menu_insert_all_last -> InsertActionType.LAST
-                R.id.menu_override_all -> InsertActionType.OVERRIDE
-                R.id.menu_insert_all_simple_shuffle_next -> InsertActionType.SHUFFLE_SIMPLE_NEXT
-                R.id.menu_insert_all_simple_shuffle_last -> InsertActionType.SHUFFLE_SIMPLE_LAST
-                R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
-                else -> return false
-            }
-
-            val shuffle = id !in listOf(
-                R.id.menu_insert_all_simple_shuffle_next,
-                R.id.menu_insert_all_simple_shuffle_last,
-                R.id.menu_override_all_simple_shuffle
-            )
-
-            viewModel.onTrackMenuAction(actionType, joinedAlbum.album, shuffle)
-
-            return true
         }
     }
 }

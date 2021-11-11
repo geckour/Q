@@ -20,6 +20,7 @@ import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.BoolConverter
 import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.showFileMetadataUpdateDialog
@@ -28,6 +29,7 @@ import com.geckour.q.util.toggleDayNight
 import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.get
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.sharedViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -51,7 +53,31 @@ class AlbumListFragment : Fragment() {
     }
     private val mainViewModel by sharedViewModel<MainViewModel>()
     private lateinit var binding: FragmentListLibraryBinding
-    private val adapter: AlbumListAdapter by lazy { AlbumListAdapter(mainViewModel) }
+    private val adapter: AlbumListAdapter = AlbumListAdapter(
+        onClickAlbum = { album ->
+            mainViewModel.onRequestNavigate(album)
+        },
+        onNewQueue = { actionType, album, shuffle ->
+            mainViewModel.onTrackMenuAction(actionType, album, shuffle)
+        },
+        onEditMetadata = { album ->
+            lifecycleScope.launchWhenResumed {
+
+                mainViewModel.onLoadStateChanged(true)
+                val db = get<DB>()
+                val tracks = db.trackDao().getAllByAlbum(album.id)
+                mainViewModel.onLoadStateChanged(false)
+
+                binding.root.context.showFileMetadataUpdateDialog(tracks) { binding ->
+                    lifecycleScope.launchWhenResumed {
+                        mainViewModel.onLoadStateChanged(true)
+                        binding.updateFileMetadata(requireContext(), db, tracks)
+                        mainViewModel.onLoadStateChanged(false)
+                    }
+                }
+            }
+        }
+    )
 
     private val sharedPreferences by inject<SharedPreferences>()
 
@@ -166,7 +192,7 @@ class AlbumListFragment : Fragment() {
                 }
                 mainViewModel.onLoadStateChanged(false)
 
-                adapter.onNewQueue(tracks, actionType)
+                mainViewModel.onNewQueue(tracks, actionType, OrientedClassType.ALBUM)
             }
         }
 

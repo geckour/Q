@@ -75,6 +75,7 @@ class ArtistListAdapter(
                 } ?: return@setOnMenuItemClickListener false
 
                 onNewQueue(actionType, binding.data ?: return@setOnMenuItemClickListener false)
+
                 return@setOnMenuItemClickListener true
             }
             inflate(R.menu.albums)
