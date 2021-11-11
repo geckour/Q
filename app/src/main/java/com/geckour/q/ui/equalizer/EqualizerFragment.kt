@@ -13,10 +13,7 @@ import android.view.ViewGroup
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
-import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
-import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentEqualizerBinding
 import com.geckour.q.databinding.LabelEqualizerBinding
@@ -36,6 +33,9 @@ import com.geckour.q.util.toggleDayNight
 import com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBar
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.sharedViewModel
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class EqualizerFragment : Fragment() {
 
@@ -44,11 +44,9 @@ class EqualizerFragment : Fragment() {
     }
 
     private lateinit var binding: FragmentEqualizerBinding
-    private val viewModel: EqualizerViewModel by viewModels()
-    private val mainViewModel: MainViewModel by activityViewModels()
-    private val sharedPreferences: SharedPreferences by lazy {
-        PreferenceManager.getDefaultSharedPreferences(requireContext())
-    }
+    private val viewModel by viewModel<EqualizerViewModel>()
+    private val mainViewModel by sharedViewModel<MainViewModel>()
+    private val sharedPreferences by inject<SharedPreferences>()
 
     private var initialStoredState = false
     private var errorThrown = false

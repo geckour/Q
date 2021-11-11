@@ -1,9 +1,9 @@
 package com.geckour.q.ui.main
 
-import android.app.Application
 import android.content.ComponentName
 import android.content.Context
 import android.content.ServiceConnection
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.os.IBinder
 import android.view.Gravity
@@ -12,8 +12,9 @@ import android.view.LayoutInflater
 import android.view.View
 import android.widget.PopupMenu
 import android.widget.SearchView
-import androidx.lifecycle.AndroidViewModel
+import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.preference.PreferenceManager
 import com.dropbox.core.android.Auth
@@ -56,9 +57,11 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-class MainViewModel(application: Application) : AndroidViewModel(application) {
+class MainViewModel(private val app: App, private val sharedPreferences: SharedPreferences) : ViewModel() {
 
-    internal var player: MutableLiveData<PlayerService> = MutableLiveData()
+    private val db = DB.getInstance(app)
+
+    internal val player: MutableLiveData<PlayerService> = MutableLiveData()
 
     private var isBoundService = false
 
@@ -66,9 +69,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     internal val currentFragmentId = MutableLiveData<Int>()
     internal var selectedDomainTrack: DomainTrack? = null
-    internal val selectedAlbum = MutableLiveData<Album>()
-    internal val selectedArtist = MutableLiveData<Artist>()
-    internal val selectedGenre = MutableLiveData<Genre>()
+    internal val selectedAlbum = MutableLiveData<Album?>()
+    internal val selectedArtist = MutableLiveData<Artist?>()
+    internal val selectedGenre = MutableLiveData<Genre?>()
 
     internal val trackToDelete = MutableLiveData<DomainTrack>()
 
@@ -91,18 +94,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            if (name == ComponentName(getApplication(), PlayerService::class.java)) {
+            if (name == ComponentName(app, PlayerService::class.java)) {
                 isBoundService = true
 
-                val playerService = (service as? PlayerService.PlayerBinder)?.service
+                val playerService = (service as? PlayerService.PlayerBinder)?.service ?: return
 
                 viewModelScope.launch {
-                    playerService?.loadStateFlow?.collectLatest { (loading, onAbort) ->
+                    playerService.loadStateFlow.collectLatest { (loading, onAbort) ->
                         onLoadStateChanged(loading, onAbort)
                     }
                 }
                 viewModelScope.launch {
-                    playerService?.onDestroyFlow?.collectLatest { onDestroyPlayer() }
+                    playerService.onDestroyFlow.collectLatest { onDestroyPlayer() }
                 }
 
                 player.value = playerService
@@ -110,21 +113,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
-            if (name == ComponentName(getApplication(), PlayerService::class.java)) {
+            if (name == ComponentName(app, PlayerService::class.java)) {
                 onDestroyPlayer()
             }
         }
 
         override fun onBindingDied(name: ComponentName?) {
             super.onBindingDied(name)
-            if (name == ComponentName(getApplication(), PlayerService::class.java)) {
+            if (name == ComponentName(app, PlayerService::class.java)) {
                 onDestroyPlayer()
             }
         }
 
         override fun onNullBinding(name: ComponentName?) {
             super.onNullBinding(name)
-            if (name == ComponentName(getApplication(), PlayerService::class.java)) {
+            if (name == ComponentName(app, PlayerService::class.java)) {
                 onDestroyPlayer()
             }
         }
@@ -182,8 +185,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         player.value?.removeQueue(index)
     }
 
-    fun onCancelSync(context: Context) {
-        LocalMediaRetrieveService.cancel(context)
+    fun onCancelSync() {
+        LocalMediaRetrieveService.cancel(app)
     }
 
     fun onToolbarClick() {
@@ -195,8 +198,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onLongClickShuffleButton(): Boolean {
-        val binding = DialogShuffleMenuBinding.inflate(LayoutInflater.from(getApplication()))
-        val dialog = androidx.appcompat.app.AlertDialog.Builder(getApplication())
+        val binding = DialogShuffleMenuBinding.inflate(LayoutInflater.from(app))
+        val dialog = AlertDialog.Builder(app)
             .setView(binding.root)
             .setCancelable(true)
             .show()
@@ -249,7 +252,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onEasterTapped(domainTrack: DomainTrack?) {
-        FirebaseAnalytics.getInstance(getApplication())
+        FirebaseAnalytics.getInstance(app)
             .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
                 putString(FirebaseAnalytics.Param.ITEM_NAME, "Tapped today's track")
             })
@@ -258,7 +261,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun onEasterLongTapped(domainTrack: DomainTrack?, anchorView: View): Boolean {
-        PopupMenu(getApplication(), anchorView, Gravity.BOTTOM).apply {
+        PopupMenu(app, anchorView, Gravity.BOTTOM).apply {
             setOnMenuItemClickListener { menuItem ->
                 when (menuItem.itemId) {
                     R.id.menu_transition_to_artist -> {
@@ -283,7 +286,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private fun bindPlayer() {
         if (isBoundService.not()) {
-            val app = getApplication<App>()
             app.bindService(
                 PlayerService.createIntent(app), serviceConnection, Context.BIND_AUTO_CREATE
             )
@@ -291,9 +293,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun unbindPlayer() {
-        val app = getApplication<App>()
         try {
-            app.startService(PlayerService.createIntent(getApplication()))
+            app.startService(PlayerService.createIntent(app))
         } catch (t: Throwable) {
             Timber.e(t)
         }
@@ -302,7 +303,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     internal fun onDestroyPlayer() {
         isBoundService = false
-        player.value = null
     }
 
     internal fun rebootPlayer() {
@@ -311,13 +311,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         bindPlayer()
     }
 
-    internal fun search(context: Context, query: String?) {
+    internal fun search(query: String?) {
         if (query.isNullOrBlank()) {
-            searchItems.value = null
+            searchItems.value = emptyList()
             return
         }
 
-        val db = DB.getInstance(getApplication())
         searchJob.cancel()
         searchJob = viewModelScope.launch {
             val items = mutableListOf<SearchItem>()
@@ -332,7 +331,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (tracks.isNotEmpty()) {
                 items.add(
                     SearchItem(
-                        context.getString(R.string.search_category_track),
+                        app.getString(R.string.search_category_track),
                         SearchCategory(),
                         SearchItem.SearchItemType.CATEGORY
                     )
@@ -346,7 +345,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (albums.isNotEmpty()) {
                 items.add(
                     SearchItem(
-                        context.getString(R.string.search_category_album),
+                        app.getString(R.string.search_category_album),
                         SearchCategory(),
                         SearchItem.SearchItemType.CATEGORY
                     )
@@ -360,7 +359,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (artists.isNotEmpty()) {
                 items.add(
                     SearchItem(
-                        context.getString(R.string.search_category_artist),
+                        app.getString(R.string.search_category_artist),
                         SearchCategory(),
                         SearchItem.SearchItemType.CATEGORY
                     )
@@ -368,13 +367,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 items.addAll(artists)
             }
 
-            val genres = getApplication<App>().searchGenreByFuzzyTitle(query)
+            val genres = app.searchGenreByFuzzyTitle(query)
                 .take(3)
                 .map { SearchItem(it.name, it, SearchItem.SearchItemType.GENRE) }
             if (genres.isNotEmpty()) {
                 items.add(
                     SearchItem(
-                        context.getString(R.string.search_category_genre),
+                        app.getString(R.string.search_category_genre),
                         SearchCategory(),
                         SearchItem.SearchItemType.CATEGORY
                     )
@@ -395,7 +394,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     internal fun checkDBIsEmpty(onEmpty: () -> Unit) {
         viewModelScope.launch {
-            val trackCount = DB.getInstance(this@MainViewModel.getApplication()).trackDao().count()
+            val trackCount = db.trackDao().count()
             if (trackCount == 0) onEmpty()
         }
     }
@@ -405,9 +404,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             trackToDelete.value = domainTrack
             player.value?.removeQueue(domainTrack)
 
-            DB.getInstance(getApplication())
-                .trackDao()
-                .deleteIncludingRootIfEmpty(getApplication(), domainTrack.id)
+            db.trackDao().deleteIncludingRootIfEmpty(db, domainTrack.id)
         }
     }
 
@@ -415,22 +412,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         actionType: InsertActionType, album: Album, sortByTrackOrder: Boolean
     ) {
         viewModelScope.launch {
-            val tracks = DB.getInstance(getApplication()).let { db ->
-                val sharedPreferences =
-                    PreferenceManager.getDefaultSharedPreferences(getApplication())
-                var enabled = true
-                loading.emit(true to { enabled = false })
-                db.trackDao()
-                    .getAllByAlbum(
-                        album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                    )
-                    .map {
-                        if (enabled.not()) return@launch
-                        it.toDomainTrack()
-                    }
-                    .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
-                    .apply { loading.emit(false to null) }
-            }
+            var enabled = true
+            loading.emit(true to { enabled = false })
+            val tracks = db.trackDao()
+                .getAllByAlbum(
+                    album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                )
+                .map {
+                    if (enabled.not()) return@launch
+                    it.toDomainTrack()
+                }
+                .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
+                .apply { loading.emit(false to null) }
 
             onNewQueue(tracks, actionType, OrientedClassType.TRACK)
         }
@@ -467,13 +460,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     internal fun storeDropboxApiToken() {
         val token = Auth.getOAuth2Token() ?: return
-        PreferenceManager.getDefaultSharedPreferences(getApplication()).dropboxToken = token
+        sharedPreferences.dropboxToken = token
         showDropboxFolderChooser()
     }
 
     internal fun showDropboxFolderChooser(dropboxMetadata: Metadata? = null) =
         viewModelScope.launch(Dispatchers.IO) {
-            val client = getApplication<App>().obtainDbxClient()
+            val client = obtainDbxClient(sharedPreferences)
             var result = client.files().listFolder(dropboxMetadata?.pathLower.orEmpty())
             while (true) {
                 if (result.hasMore.not()) break
@@ -488,14 +481,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         SearchView.OnQueryTextListener {
 
         override fun onQueryTextSubmit(query: String?): Boolean {
-            search(searchView.context, query)
+            search(query)
             searchView.clearFocus()
             isSearchViewOpened = true
             return true
         }
 
         override fun onQueryTextChange(newText: String?): Boolean {
-            search(searchView.context, newText)
+            search(newText)
             isSearchViewOpened = true
             return true
         }

@@ -1,12 +1,10 @@
 package com.geckour.q.ui.library.track
 
-import android.content.Context
+import android.content.SharedPreferences
 import android.view.LayoutInflater
-import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
 import androidx.lifecycle.viewModelScope
-import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -25,11 +23,13 @@ import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.launch
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.get
 import timber.log.Timber
 
-class TrackListAdapter(
-    private val viewModel: MainViewModel, private val classType: OrientedClassType
-) : ListAdapter<DomainTrack, TrackListAdapter.ViewHolder>(diffCallback) {
+class TrackListAdapter(private val viewModel: MainViewModel) :
+    ListAdapter<DomainTrack, TrackListAdapter.ViewHolder>(diffCallback),
+    KoinComponent {
 
     companion object {
 
@@ -55,8 +55,8 @@ class TrackListAdapter(
         submitList(null)
     }
 
-    internal fun onNewQueue(context: Context, actionType: InsertActionType) {
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
+    internal fun onNewQueue(actionType: InsertActionType) {
+        val sharedPreferences = get<SharedPreferences>()
         viewModel.onNewQueue(
             currentList.let {
                 if (sharedPreferences.ignoringEnabled) it.filter { it.ignored != true }

@@ -10,8 +10,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupMenu
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
-import androidx.fragment.app.viewModels
 import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentEasterEggBinding
@@ -23,6 +21,8 @@ import com.geckour.q.util.orDefaultForModel
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toggleDayNight
 import com.google.firebase.analytics.FirebaseAnalytics
+import org.koin.androidx.viewmodel.ext.android.sharedViewModel
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class EasterEggFragment : Fragment() {
 
@@ -31,8 +31,8 @@ class EasterEggFragment : Fragment() {
     }
 
     private lateinit var binding: FragmentEasterEggBinding
-    private val viewModel: EasterEggViewModel by viewModels()
-    private val mainViewModel: MainViewModel by activityViewModels()
+    private val viewModel by viewModel<EasterEggViewModel>()
+    private val mainViewModel by sharedViewModel<MainViewModel>()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?

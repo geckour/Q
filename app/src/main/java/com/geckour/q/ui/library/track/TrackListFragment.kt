@@ -9,7 +9,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.SearchView
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import com.geckour.q.R
@@ -31,6 +30,7 @@ import com.geckour.q.util.toggleDayNight
 import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.koin.androidx.viewmodel.ext.android.sharedViewModel
 
 class TrackListFragment : Fragment() {
 
@@ -61,15 +61,9 @@ class TrackListFragment : Fragment() {
         }
     }
 
-    private val mainViewModel: MainViewModel by activityViewModels()
+    private val mainViewModel by sharedViewModel<MainViewModel>()
     private lateinit var binding: FragmentListLibraryBinding
-    private val adapter: TrackListAdapter by lazy {
-        TrackListAdapter(
-            mainViewModel,
-            arguments?.getSerializable(ARGS_KEY_CLASS_TYPE) as? OrientedClassType
-                ?: OrientedClassType.TRACK
-        )
-    }
+    private val adapter: TrackListAdapter by lazy { TrackListAdapter(mainViewModel) }
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -143,7 +137,7 @@ class TrackListFragment : Fragment() {
         }
 
         adapter.onNewQueue(
-            requireContext(), when (item.itemId) {
+            when (item.itemId) {
                 R.id.menu_insert_all_next -> InsertActionType.NEXT
                 R.id.menu_insert_all_last -> InsertActionType.LAST
                 R.id.menu_override_all -> InsertActionType.OVERRIDE

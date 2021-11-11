@@ -1,12 +1,12 @@
 package com.geckour.q.ui.library.artist
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
 import androidx.lifecycle.viewModelScope
-import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -29,10 +29,13 @@ import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.launch
+import org.koin.core.component.KoinComponent
+import org.koin.core.component.get
 import timber.log.Timber
 
 class ArtistListAdapter(private val viewModel: MainViewModel) :
-    ListAdapter<Artist, ArtistListAdapter.ViewHolder>(diffCallback) {
+    ListAdapter<Artist, ArtistListAdapter.ViewHolder>(diffCallback),
+    KoinComponent {
 
     companion object {
 
@@ -152,8 +155,7 @@ class ArtistListAdapter(private val viewModel: MainViewModel) :
 
                 viewModel.onLoadStateChanged(true)
                 val tracks = DB.getInstance(context).let { db ->
-                    val sharedPreferences =
-                        PreferenceManager.getDefaultSharedPreferences(context)
+                    val sharedPreferences = get<SharedPreferences>()
                     db.trackDao()
                         .getAllByArtist(
                             artist.id,

@@ -13,10 +13,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.TextView
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
-import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivitySettingBinding
 import com.geckour.q.databinding.DialogEditTextBinding
@@ -33,6 +31,8 @@ import com.geckour.q.util.setIconTint
 import com.geckour.q.util.showArtworkOnLockScreen
 import com.geckour.q.util.toNightModeInt
 import com.geckour.q.util.toggleDayNight
+import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class SettingActivity : AppCompatActivity() {
 
@@ -40,11 +40,9 @@ class SettingActivity : AppCompatActivity() {
         fun createIntent(context: Context): Intent = Intent(context, SettingActivity::class.java)
     }
 
-    private val viewModel: SettingViewModel by viewModels()
+    private val viewModel by viewModel<SettingViewModel>()
     private lateinit var binding: ActivitySettingBinding
-    private val sharedPreferences: SharedPreferences by lazy {
-        PreferenceManager.getDefaultSharedPreferences(this)
-    }
+    private val sharedPreferences by inject<SharedPreferences>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,9 +66,9 @@ class SettingActivity : AppCompatActivity() {
         delegate.localNightMode = sharedPreferences.isNightMode.toNightModeInt
     }
 
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.toggle_theme_toolbar, menu)
-        menu?.setIconTint()
+        menu.setIconTint()
         return super.onCreateOptionsMenu(menu)
     }
 

@@ -6,7 +6,12 @@ import android.app.NotificationManager
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.facebook.stetho.Stetho
+import com.geckour.q.data.dataModule
+import com.geckour.q.ui.di.viewModelModule
 import com.geckour.q.util.QNotificationChannel
+import org.koin.android.ext.koin.androidContext
+import org.koin.android.ext.koin.androidLogger
+import org.koin.core.context.startKoin
 import timber.log.Timber
 
 class App : Application() {
@@ -24,6 +29,12 @@ class App : Application() {
         }
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) createNotificationChannel()
+
+        startKoin {
+            androidLogger()
+            androidContext(this@App)
+            modules(viewModelModule, dataModule)
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)

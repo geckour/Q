@@ -9,13 +9,13 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentPaymentBinding
 import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toggleDayNight
+import org.koin.androidx.viewmodel.ext.android.sharedViewModel
 
 class PaymentFragment : Fragment() {
 
@@ -24,8 +24,8 @@ class PaymentFragment : Fragment() {
     }
 
     private lateinit var binding: FragmentPaymentBinding
-    private val viewModel: PaymentViewModel by activityViewModels()
-    private val mainViewModel: MainViewModel by activityViewModels()
+    private val viewModel by sharedViewModel<PaymentViewModel>()
+    private val mainViewModel by sharedViewModel<MainViewModel>()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?

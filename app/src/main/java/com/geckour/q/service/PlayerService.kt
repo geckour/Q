@@ -22,7 +22,6 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ServiceLifecycleDispatcher
 import androidx.lifecycle.lifecycleScope
 import androidx.media.session.MediaButtonReceiver
-import androidx.preference.PreferenceManager
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.App
 import com.geckour.q.data.db.DB
@@ -82,6 +81,7 @@ import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.koin.android.ext.android.inject
 import timber.log.Timber
 import java.io.IOException
 
@@ -352,9 +352,7 @@ class PlayerService : Service(), LifecycleOwner {
     var ducking: Boolean = false
         private set
 
-    private val sharedPreferences: SharedPreferences by lazy {
-        PreferenceManager.getDefaultSharedPreferences(this)
-    }
+    private val sharedPreferences by inject<SharedPreferences>()
 
     private lateinit var dropboxClient: DbxClientV2
 
@@ -400,7 +398,7 @@ class PlayerService : Service(), LifecycleOwner {
         player.setMediaSource(source)
         player.prepare()
 
-        dropboxClient = obtainDbxClient()
+        dropboxClient = obtainDbxClient(sharedPreferences)
 
         restoreState()
     }

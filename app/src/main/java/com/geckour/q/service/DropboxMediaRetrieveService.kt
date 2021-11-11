@@ -11,6 +11,7 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.webkit.MimeTypeMap
+import androidx.preference.PreferenceManager
 import com.dropbox.core.RateLimitException
 import com.dropbox.core.v2.DbxClientV2
 import com.dropbox.core.v2.files.FileMetadata
@@ -98,7 +99,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
                 this,
                 db,
                 rootPath,
-                obtainDbxClient(),
+                obtainDbxClient(PreferenceManager.getDefaultSharedPreferences(this)),
                 seed,
                 bitmap
             )

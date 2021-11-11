@@ -8,7 +8,6 @@ import android.view.Menu
 import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
-import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivityLicenseBinding
 import com.geckour.q.domain.model.LicenseItem
@@ -16,6 +15,7 @@ import com.geckour.q.util.isNightMode
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toNightModeInt
 import com.geckour.q.util.toggleDayNight
+import org.koin.android.ext.android.inject
 
 class LicenseActivity : AppCompatActivity() {
 
@@ -24,9 +24,7 @@ class LicenseActivity : AppCompatActivity() {
     }
 
     private lateinit var binding: ActivityLicenseBinding
-    private val sharedPreferences: SharedPreferences by lazy {
-        PreferenceManager.getDefaultSharedPreferences(this)
-    }
+    private val sharedPreferences by inject<SharedPreferences>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -71,9 +69,9 @@ class LicenseActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
     }
 
-    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menuInflater.inflate(R.menu.toggle_theme_toolbar, menu)
-        menu?.setIconTint()
+        menu.setIconTint()
         return super.onCreateOptionsMenu(menu)
     }
 

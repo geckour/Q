@@ -1,13 +1,13 @@
 package com.geckour.q.ui.sheet
 
-import android.app.Application
+import android.content.Context
+import android.content.SharedPreferences
 import android.widget.ImageView
-import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
 import androidx.lifecycle.viewModelScope
-import androidx.preference.PreferenceManager
 import com.bumptech.glide.Glide
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.service.SleepTimerService
@@ -20,7 +20,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class BottomSheetViewModel(application: Application) : AndroidViewModel(application) {
+class BottomSheetViewModel(sharedPreferences: SharedPreferences) : ViewModel() {
 
     companion object {
         internal const val PREF_KEY_SHOW_LOCK_TOUCH_QUEUE = "pref_key_lock_touch_queue"
@@ -36,7 +36,6 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
     private var updateArtworkJob: Job = Job()
 
     init {
-        val sharedPreferences = PreferenceManager.getDefaultSharedPreferences(application)
         _showCurrentRemain.value = sharedPreferences.showCurrentRemain
     }
 
@@ -52,9 +51,13 @@ class BottomSheetViewModel(application: Application) : AndroidViewModel(applicat
         _scrollToCurrent.value = true
     }
 
-    internal fun onNewIndex(currentDomainTrack: DomainTrack?, currentPlaybackPosition: Long = 0L) {
+    internal fun onNewIndex(
+        context: Context,
+        currentDomainTrack: DomainTrack?,
+        currentPlaybackPosition: Long = 0L
+    ) {
         SleepTimerService.notifyTrackChanged(
-            getApplication(),
+            context,
             currentDomainTrack ?: return,
             currentPlaybackPosition
         )

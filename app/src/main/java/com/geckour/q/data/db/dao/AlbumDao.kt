@@ -59,11 +59,10 @@ interface AlbumDao {
     suspend fun increasePlaybackCount(albumId: Long)
 
     @Transaction
-    suspend fun deleteIncludingRootIfEmpty(context: Context, albumId: Long) {
+    suspend fun deleteIncludingRootIfEmpty(db: DB, albumId: Long) {
         get(albumId)?.let {
             delete(albumId)
 
-            val db = DB.getInstance(context)
             if (getAllByArtist(it.album.artistId).isEmpty()) {
                 db.artistDao().delete(it.album.artistId)
             } else {

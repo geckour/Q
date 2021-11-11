@@ -10,11 +10,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.SearchView
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
-import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
-import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
@@ -31,6 +28,10 @@ import com.geckour.q.util.toggleDayNight
 import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.sharedViewModel
+import org.koin.androidx.viewmodel.ext.android.viewModel
+import org.koin.core.parameter.parametersOf
 
 class AlbumListFragment : Fragment() {
 
@@ -45,21 +46,14 @@ class AlbumListFragment : Fragment() {
         }
     }
 
-    private val viewModel: AlbumListViewModel by viewModels(
-        factoryProducer = {
-            AlbumListViewModel.Factory(
-                requireActivity().application,
-                arguments?.getParcelable(ARGS_KEY_ARTIST)
-            )
-        }
-    )
-    private val mainViewModel: MainViewModel by activityViewModels()
+    private val viewModel by viewModel<AlbumListViewModel> {
+        parametersOf(arguments?.getParcelable(ARGS_KEY_ARTIST) as Artist?)
+    }
+    private val mainViewModel by sharedViewModel<MainViewModel>()
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: AlbumListAdapter by lazy { AlbumListAdapter(mainViewModel) }
 
-    private val sharedPreferences: SharedPreferences by lazy {
-        PreferenceManager.getDefaultSharedPreferences(requireContext())
-    }
+    private val sharedPreferences by inject<SharedPreferences>()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?

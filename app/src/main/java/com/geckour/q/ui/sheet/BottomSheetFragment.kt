@@ -11,11 +11,8 @@ import android.widget.PopupMenu
 import android.widget.SeekBar
 import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
-import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
-import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import com.geckour.q.R
@@ -38,6 +35,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.sharedViewModel
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class BottomSheetFragment : Fragment() {
 
@@ -46,15 +46,13 @@ class BottomSheetFragment : Fragment() {
         fun newInstance(): BottomSheetFragment = BottomSheetFragment()
     }
 
-    private val viewModel: BottomSheetViewModel by viewModels()
-    private val mainViewModel: MainViewModel by activityViewModels()
+    private val viewModel by viewModel<BottomSheetViewModel>()
+    private val mainViewModel by sharedViewModel<MainViewModel>()
     private lateinit var binding: FragmentSheetBottomBinding
     private lateinit var adapter: QueueListAdapter
     private lateinit var behavior: BottomSheetBehavior<View>
 
-    private val sharedPreferences: SharedPreferences by lazy {
-        PreferenceManager.getDefaultSharedPreferences(requireContext())
-    }
+    private val sharedPreferences by inject<SharedPreferences>()
 
     private val touchLockListener: (View, MotionEvent) -> Boolean = { _, event ->
         behavior.onTouchEvent(
@@ -375,7 +373,11 @@ class BottomSheetFragment : Fragment() {
                 domainTrack.copy(nowPlaying = index == newCurrentIndex)
             }) {
                 binding.currentDomainTrack = adapter.currentItem
-                viewModel.onNewIndex(adapter.currentItem, binding.seekBar.progress.toLong())
+                viewModel.onNewIndex(
+                    requireContext(),
+                    adapter.currentItem,
+                    binding.seekBar.progress.toLong()
+                )
                 viewModel.setArtwork(binding.artwork, adapter.currentItem)
                 if (indexChanged) onPlaybackPositionChanged(0)
 

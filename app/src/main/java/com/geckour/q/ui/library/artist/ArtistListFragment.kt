@@ -10,11 +10,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.SearchView
 import androidx.fragment.app.Fragment
-import androidx.fragment.app.activityViewModels
-import androidx.fragment.app.viewModels
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
-import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
@@ -29,6 +26,9 @@ import com.geckour.q.util.toggleDayNight
 import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.sharedViewModel
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class ArtistListFragment : Fragment() {
 
@@ -37,14 +37,12 @@ class ArtistListFragment : Fragment() {
         fun newInstance(): ArtistListFragment = ArtistListFragment()
     }
 
-    private val viewModel: ArtistListViewModel by viewModels()
-    private val mainViewModel: MainViewModel by activityViewModels()
+    private val viewModel by viewModel<ArtistListViewModel>()
+    private val mainViewModel by sharedViewModel<MainViewModel>()
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: ArtistListAdapter by lazy { ArtistListAdapter(mainViewModel) }
 
-    private val sharedPreferences: SharedPreferences by lazy {
-        PreferenceManager.getDefaultSharedPreferences(requireContext())
-    }
+    private val sharedPreferences by inject<SharedPreferences>()
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?

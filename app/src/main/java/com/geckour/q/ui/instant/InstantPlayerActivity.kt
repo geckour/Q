@@ -3,7 +3,6 @@ package com.geckour.q.ui.instant
 import android.os.Bundle
 import android.view.MotionEvent
 import android.widget.SeekBar
-import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import com.geckour.q.R
@@ -11,10 +10,11 @@ import com.geckour.q.databinding.ActivityInstantPlayerBinding
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.saveTempAudioFile
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class InstantPlayerActivity : AppCompatActivity() {
 
-    private val viewModel: InstantPlayerViewModel by viewModels()
+    private val viewModel by viewModel<InstantPlayerViewModel>()
     private lateinit var binding: ActivityInstantPlayerBinding
 
     override fun onCreate(savedInstanceState: Bundle?) {

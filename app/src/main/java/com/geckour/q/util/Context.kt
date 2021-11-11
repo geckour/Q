@@ -1,6 +1,7 @@
 package com.geckour.q.util
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.view.LayoutInflater
 import androidx.appcompat.app.AlertDialog
 import androidx.preference.PreferenceManager
@@ -10,12 +11,6 @@ import com.geckour.q.BuildConfig
 import com.geckour.q.R
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.databinding.DialogEditMetadataBinding
-
-fun Context.obtainDbxClient(): DbxClientV2 =
-    DbxClientV2(
-        DbxRequestConfig.newBuilder("qp/${BuildConfig.VERSION_NAME}").build(),
-        PreferenceManager.getDefaultSharedPreferences(this).dropboxToken
-    )
 
 fun Context.showFileMetadataUpdateDialog(
     target: List<JoinedTrack>,

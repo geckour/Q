@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.GestureDetector
@@ -14,7 +15,6 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.inputmethod.InputMethodManager
 import android.widget.SeekBar
-import androidx.activity.viewModels
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -39,7 +39,6 @@ import com.geckour.q.ui.easteregg.EasterEggFragment
 import com.geckour.q.ui.equalizer.EqualizerFragment
 import com.geckour.q.ui.library.album.AlbumListFragment
 import com.geckour.q.ui.library.artist.ArtistListFragment
-import com.geckour.q.ui.library.genre.GenreListFragment
 import com.geckour.q.ui.library.track.TrackListFragment
 import com.geckour.q.ui.pay.PaymentFragment
 import com.geckour.q.ui.pay.PaymentViewModel
@@ -57,6 +56,8 @@ import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.inject
+import org.koin.androidx.viewmodel.ext.android.viewModel
 import permissions.dispatcher.ktx.constructPermissionsRequest
 import timber.log.Timber
 import java.io.File
@@ -94,12 +95,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private val viewModel: MainViewModel by viewModels()
-
-    private val paymentViewModel: PaymentViewModel by viewModels()
+    private val viewModel by viewModel<MainViewModel>()
+    private val paymentViewModel by viewModel<PaymentViewModel>()
 
     internal lateinit var binding: ActivityMainBinding
-    private val sharedPreferences by lazy { PreferenceManager.getDefaultSharedPreferences(this) }
+    private val sharedPreferences by inject<SharedPreferences>()
 
     private lateinit var gestureDetector: GestureDetector
 
@@ -113,12 +113,10 @@ class MainActivity : AppCompatActivity() {
     private val syncingProgressReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             intent?.extras?.let { extras ->
-                extras.getBoolean(EXTRA_SYNCING_COMPLETE, false)?.let {
-                    if (it) {
-                        viewModel.syncing = false
-                        setLockingIndicator()
-                        viewModel.forceLoad.postValue(Unit)
-                    }
+                if (extras.getBoolean(EXTRA_SYNCING_COMPLETE, false)) {
+                    viewModel.syncing = false
+                    setLockingIndicator()
+                    viewModel.forceLoad.postValue(Unit)
                 }
                 extras.getInt(EXTRA_SYNCING_PROGRESS_NUMERATOR, -1).let progress@{ numerator ->
                     if (numerator < 0) return@progress
@@ -338,7 +336,6 @@ class MainActivity : AppCompatActivity() {
                     R.id.nav_artist -> R.string.nav_artist
                     R.id.nav_album -> R.string.nav_album
                     R.id.nav_track -> R.string.nav_track
-                    R.id.nav_genre -> R.string.nav_genre
                     R.id.nav_equalizer -> R.string.nav_equalizer
                     R.id.nav_pay -> R.string.nav_pay
                     R.layout.fragment_easter_egg -> R.string.nav_fortune
@@ -378,7 +375,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         viewModel.searchItems.observe(this) {
-            if (it == null) {
+            if (it.isEmpty()) {
                 binding.contentSearch.root.visibility = View.GONE
                 return@observe
             } else binding.contentSearch.root.visibility = View.VISIBLE
@@ -388,7 +385,6 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             viewModel.dropboxItemList.collectLatest {
-                it ?: return@collectLatest
                 (dropboxChooserDialog ?: run {
                     DropboxChooserDialog(
                         this@MainActivity,
@@ -451,7 +447,7 @@ class MainActivity : AppCompatActivity() {
         binding.indicatorLocking.descLocking.text = getString(R.string.syncing)
         binding.indicatorLocking.progressSync.visibility = View.VISIBLE
         binding.indicatorLocking.buttonCancel.apply {
-            setOnClickListener { viewModel.onCancelSync(this@MainActivity) }
+            setOnClickListener { viewModel.onCancelSync() }
             visibility = View.VISIBLE
         }
     }

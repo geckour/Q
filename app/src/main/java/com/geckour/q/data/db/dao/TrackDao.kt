@@ -95,13 +95,12 @@ interface TrackDao {
     suspend fun getLatestModifiedEpochTime(): Long?
 
     @Transaction
-    suspend fun deleteIncludingRootIfEmpty(context: Context, trackId: Long) {
+    suspend fun deleteIncludingRootIfEmpty(db: DB, trackId: Long) {
         get(trackId)?.let {
             delete(trackId)
 
-            val db = DB.getInstance(context)
             if (getAllByAlbum(it.track.albumId, Bool.UNDEFINED).isEmpty()) {
-                db.albumDao().deleteIncludingRootIfEmpty(context, it.track.albumId)
+                db.albumDao().deleteIncludingRootIfEmpty(db, it.track.albumId)
             } else {
                 db.albumDao()
                     .update(
