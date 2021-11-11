@@ -44,14 +44,17 @@ import com.geckour.q.ui.pay.PaymentFragment
 import com.geckour.q.ui.pay.PaymentViewModel
 import com.geckour.q.ui.setting.SettingActivity
 import com.geckour.q.ui.sheet.BottomSheetFragment
+import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.dropboxToken
 import com.geckour.q.util.ducking
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.preferScreen
+import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.sleepTimerTime
 import com.geckour.q.util.sleepTimerTolerance
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toNightModeInt
+import com.geckour.q.util.updateFileMetadata
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.flow.collectLatest
@@ -106,7 +109,32 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var drawerToggle: ActionBarDrawerToggle
 
-    private val searchListAdapter: SearchListAdapter by lazy { SearchListAdapter(get(), viewModel) }
+    private val searchListAdapter: SearchListAdapter = SearchListAdapter(
+        onNewQueue = { actionType, track ->
+            viewModel.onNewQueue(listOf(track), actionType, OrientedClassType.TRACK)
+        },
+        onEditMetadata = { track ->
+            lifecycleScope.launchWhenResumed {
+                viewModel.onLoadStateChanged(true)
+                val tracks = get<DB>().trackDao().get(track.id)?.let { listOf(it) }.orEmpty()
+                viewModel.onLoadStateChanged(false)
+
+                this@MainActivity.showFileMetadataUpdateDialog(tracks) { binding ->
+                    lifecycleScope.launchWhenResumed {
+                        viewModel.onLoadStateChanged(true)
+                        binding.updateFileMetadata(this@MainActivity, get(), tracks)
+                        viewModel.onLoadStateChanged(false)
+                    }
+                }
+            }
+        },
+        onClickArtist = { artist ->
+            viewModel.selectedArtist.value = artist
+        },
+        onClickAlbum = { album ->
+            viewModel.selectedAlbum.value = album
+        }
+    )
 
     private var requestedTransaction: RequestedTransaction? = null
     private var paused = true
@@ -381,7 +409,7 @@ class MainActivity : AppCompatActivity() {
                 return@observe
             } else binding.contentSearch.root.visibility = View.VISIBLE
 
-            searchListAdapter.replaceItems(it)
+            searchListAdapter.submitList(it)
         }
 
         lifecycleScope.launch {

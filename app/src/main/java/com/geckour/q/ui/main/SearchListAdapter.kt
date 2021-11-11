@@ -3,43 +3,36 @@ package com.geckour.q.ui.main
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import android.widget.PopupMenu
-import androidx.lifecycle.viewModelScope
+import androidx.recyclerview.widget.DiffUtil
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.geckour.q.R
-import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.databinding.ItemSearchCategoryBinding
 import com.geckour.q.databinding.ItemSearchItemBinding
 import com.geckour.q.domain.model.DomainTrack
-import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.loadOrDefault
-import com.geckour.q.util.showFileMetadataUpdateDialog
-import com.geckour.q.util.updateFileMetadata
-import kotlinx.coroutines.launch
 
-class SearchListAdapter(private val db: DB, private val viewModel: MainViewModel) :
-    RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+class SearchListAdapter(
+    private val onNewQueue: (actionType: InsertActionType, track: DomainTrack) -> Unit,
+    private val onEditMetadata: (track: DomainTrack) -> Unit,
+    private val onClickArtist: (artist: Artist) -> Unit,
+    private val onClickAlbum: (album: Album) -> Unit,
+) : ListAdapter<SearchItem, RecyclerView.ViewHolder>(diffCallback) {
 
-    private val items = mutableListOf<SearchItem>()
+    companion object {
 
-    private fun addItems(items: List<SearchItem>) {
-        val size = itemCount
-        this.items.addAll(items)
-        notifyItemRangeInserted(size, items.size)
-    }
+        val diffCallback = object : DiffUtil.ItemCallback<SearchItem>() {
 
-    private fun clearItems() {
-        items.clear()
-        notifyDataSetChanged()
-    }
+            override fun areItemsTheSame(oldItem: SearchItem, newItem: SearchItem): Boolean =
+                oldItem.type == newItem.type && oldItem.title == newItem.title
 
-    internal fun replaceItems(items: List<SearchItem>) {
-        clearItems()
-        addItems(items)
+            override fun areContentsTheSame(oldItem: SearchItem, newItem: SearchItem): Boolean =
+                oldItem == newItem
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder =
@@ -60,14 +53,12 @@ class SearchListAdapter(private val db: DB, private val viewModel: MainViewModel
             }
         }
 
-    override fun getItemViewType(position: Int): Int = items[position].type.ordinal
-
-    override fun getItemCount(): Int = items.size
+    override fun getItemViewType(position: Int): Int = currentList[position].type.ordinal
 
     override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
         when (holder) {
-            is CategoryViewHolder -> holder.onBind(items[position])
-            is ItemViewHolder -> holder.onBind(items[position])
+            is CategoryViewHolder -> holder.onBind(currentList[position])
+            is ItemViewHolder -> holder.onBind(currentList[position])
             else -> throw IllegalArgumentException()
         }
     }
@@ -80,8 +71,9 @@ class SearchListAdapter(private val db: DB, private val viewModel: MainViewModel
         }
     }
 
-    inner class ItemViewHolder(private val binding: ItemSearchItemBinding) :
-        RecyclerView.ViewHolder(binding.root) {
+    inner class ItemViewHolder(
+        private val binding: ItemSearchItemBinding
+    ) : RecyclerView.ViewHolder(binding.root) {
 
         private val trackPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener { menuItem ->
@@ -89,24 +81,11 @@ class SearchListAdapter(private val db: DB, private val viewModel: MainViewModel
                     ?: return@setOnMenuItemClickListener true
 
                 if (menuItem.itemId == R.id.menu_edit_metadata) {
-                    viewModel.viewModelScope.launch {
-                        viewModel.onLoadStateChanged(true)
-                        val tracks = db.trackDao().get(track.id)?.let { listOf(it) }.orEmpty()
-                        viewModel.onLoadStateChanged(false)
-
-                        binding.root.context.showFileMetadataUpdateDialog(tracks) { binding ->
-                            viewModel.viewModelScope.launch {
-                                viewModel.onLoadStateChanged(true)
-                                binding.updateFileMetadata(binding.root.context, db, tracks)
-                                viewModel.onLoadStateChanged(false)
-                            }
-                        }
-                    }
+                    onEditMetadata(track)
                     return@setOnMenuItemClickListener true
                 }
 
-                viewModel.onNewQueue(
-                    listOf(track),
+                onNewQueue(
                     when (menuItem.itemId) {
                         R.id.menu_insert_all_next -> {
                             InsertActionType.NEXT
@@ -119,7 +98,7 @@ class SearchListAdapter(private val db: DB, private val viewModel: MainViewModel
                         }
                         else -> return@setOnMenuItemClickListener true
                     },
-                    OrientedClassType.TRACK
+                    track
                 )
 
                 return@setOnMenuItemClickListener true
@@ -130,41 +109,31 @@ class SearchListAdapter(private val db: DB, private val viewModel: MainViewModel
         fun onBind(item: SearchItem) {
             binding.data = item
             binding.root.setOnClickListener { item.onClick() }
-            viewModel.viewModelScope.launch {
-                val db = DB.getInstance(binding.root.context)
-                val artworkUriString = when (item.type) {
-                    SearchItem.SearchItemType.ARTIST -> {
-                        (item.data as? Artist)?.id?.let {
-                            db.albumDao().getAllByArtist(it)
-                                .mapNotNull { it.album.artworkUriString }
-                                .firstOrNull()
-                        }
-                    }
-                    SearchItem.SearchItemType.ALBUM -> {
-                        (item.data as? Album)?.artworkUriString
-                    }
-                    SearchItem.SearchItemType.TRACK -> {
-                        (item.data as? DomainTrack)?.album?.artworkUriString
-                    }
-                    else -> null
+            val artworkUriString = when (item.type) {
+                SearchItem.SearchItemType.ARTIST -> {
+                    (item.data as? Artist)?.artworkUriString
                 }
-
-                binding.thumb.loadOrDefault(artworkUriString)
+                SearchItem.SearchItemType.ALBUM -> {
+                    (item.data as? Album)?.artworkUriString
+                }
+                SearchItem.SearchItemType.TRACK -> {
+                    (item.data as? DomainTrack)?.album?.artworkUriString
+                }
+                else -> null
             }
+
+            binding.thumb.loadOrDefault(artworkUriString)
         }
 
         fun SearchItem.onClick() {
             when (type) {
                 SearchItem.SearchItemType.ARTIST -> {
-                    viewModel.selectedArtist.value = data as? Artist
+                    onClickArtist(data as? Artist ?: return)
                 }
                 SearchItem.SearchItemType.ALBUM -> {
-                    viewModel.selectedAlbum.value = data as Album
+                    onClickAlbum(data as? Album ?: return)
                 }
                 SearchItem.SearchItemType.TRACK -> trackPopupMenu.show()
-                SearchItem.SearchItemType.GENRE -> {
-                    viewModel.selectedGenre.value = data as? Genre
-                }
                 else -> Unit
             }
         }
