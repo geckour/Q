@@ -173,7 +173,7 @@ class LocalMediaRetrieveService : IntentService(NAME) {
                 this,
                 App.REQUEST_CODE_LAUNCH_APP,
                 LauncherActivity.createIntent(this),
-                PendingIntent.FLAG_UPDATE_CURRENT
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
         )
         .setDeleteIntent(
@@ -181,7 +181,7 @@ class LocalMediaRetrieveService : IntentService(NAME) {
                 this,
                 0,
                 Intent(ACTION_CANCEL),
-                PendingIntent.FLAG_UPDATE_CURRENT
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
         )
         .setLargeIcon(bitmap.drawProgressIcon(progressNumerator, progressDenominator, seed))

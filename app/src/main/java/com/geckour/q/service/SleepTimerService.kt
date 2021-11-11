@@ -113,7 +113,7 @@ class SleepTimerService : Service() {
                         this,
                         0,
                         getCancelIntent(this),
-                        PendingIntent.FLAG_UPDATE_CURRENT
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
                 )
                 .setShowWhen(false)
@@ -122,7 +122,7 @@ class SleepTimerService : Service() {
                         this,
                         App.REQUEST_CODE_LAUNCH_APP,
                         LauncherActivity.createIntent(this),
-                        PendingIntent.FLAG_UPDATE_CURRENT
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
                 )
                 .setDeleteIntent(
@@ -130,7 +130,7 @@ class SleepTimerService : Service() {
                         this,
                         0,
                         getCancelIntent(this),
-                        PendingIntent.FLAG_UPDATE_CURRENT
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                     )
                 )
     }
