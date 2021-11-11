@@ -17,15 +17,20 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
+import com.geckour.q.util.BoolConverter
 import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toggleDayNight
 import com.geckour.q.util.updateFileMetadata
+import kotlinx.android.synthetic.main.fragment_easter_egg.*
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.get
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.sharedViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -40,7 +45,48 @@ class ArtistListFragment : Fragment() {
     private val viewModel by viewModel<ArtistListViewModel>()
     private val mainViewModel by sharedViewModel<MainViewModel>()
     private lateinit var binding: FragmentListLibraryBinding
-    private val adapter: ArtistListAdapter by lazy { ArtistListAdapter(mainViewModel) }
+    private val adapter: ArtistListAdapter = ArtistListAdapter(
+        onClickArtist = { artist ->
+            mainViewModel.onRequestNavigate(artist)
+        },
+        onNewQueue = { actionType, artist ->
+            lifecycleScope.launchWhenResumed {
+                val sortByTrackOrder: Boolean =
+                    id != R.id.menu_insert_all_simple_shuffle_next
+                            || id != R.id.menu_insert_all_simple_shuffle_last
+                            || id != R.id.menu_override_all_simple_shuffle
+
+                mainViewModel.onLoadStateChanged(true)
+                val tracks = get<DB>().trackDao()
+                    .getAllByArtist(
+                        artist.id,
+                        BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
+                    )
+                    .map { it.toDomainTrack() }
+                    .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
+                mainViewModel.onLoadStateChanged(false)
+
+                mainViewModel.onNewQueue(tracks, actionType, OrientedClassType.ALBUM)
+            }
+        },
+        onEditMetadata = { artist ->
+            lifecycleScope.launchWhenResumed {
+                mainViewModel.onLoadStateChanged(true)
+                val db = get<DB>()
+                val tracks = db.trackDao()
+                    .getAllByArtist(artist.id)
+                mainViewModel.onLoadStateChanged(false)
+
+                requireContext().showFileMetadataUpdateDialog(tracks) { binding ->
+                    lifecycleScope.launchWhenResumed {
+                        mainViewModel.onLoadStateChanged(true)
+                        binding.updateFileMetadata(requireContext(), db, tracks)
+                        mainViewModel.onLoadStateChanged(false)
+                    }
+                }
+            }
+        }
+    )
 
     private val sharedPreferences by inject<SharedPreferences>()
 
@@ -141,7 +187,7 @@ class ArtistListFragment : Fragment() {
                     .map { it.toDomainTrack() }
                     .apply { if (sortByTrackOrder) sortedByTrackOrder() }
 
-                adapter.onNewQueue(tracks, actionType)
+                mainViewModel.onNewQueue(tracks, actionType, OrientedClassType.ARTIST)
             }
         }
 
