@@ -62,13 +62,12 @@ class AlbumListFragment : Fragment() {
         },
         onEditMetadata = { album ->
             lifecycleScope.launchWhenResumed {
-
                 mainViewModel.onLoadStateChanged(true)
                 val db = get<DB>()
                 val tracks = db.trackDao().getAllByAlbum(album.id)
                 mainViewModel.onLoadStateChanged(false)
 
-                binding.root.context.showFileMetadataUpdateDialog(tracks) { binding ->
+                requireContext().showFileMetadataUpdateDialog(tracks) { binding ->
                     lifecycleScope.launchWhenResumed {
                         mainViewModel.onLoadStateChanged(true)
                         binding.updateFileMetadata(requireContext(), db, tracks)

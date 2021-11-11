@@ -1,5 +1,6 @@
 package com.geckour.q.ui.library.track
 
+import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.Menu
@@ -14,6 +15,7 @@ import androidx.lifecycle.viewModelScope
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
+import com.geckour.q.data.db.model.Bool
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.ui.main.MainActivity
@@ -22,6 +24,7 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.getTrackListFromTrackMediaId
 import com.geckour.q.util.getTrackMediaIds
+import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.sortedByTrackOrder
@@ -30,6 +33,7 @@ import com.geckour.q.util.toggleDayNight
 import com.geckour.q.util.updateFileMetadata
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import org.koin.android.ext.android.get
 import org.koin.androidx.viewmodel.ext.android.sharedViewModel
 
 class TrackListFragment : Fragment() {
@@ -63,7 +67,53 @@ class TrackListFragment : Fragment() {
 
     private val mainViewModel by sharedViewModel<MainViewModel>()
     private lateinit var binding: FragmentListLibraryBinding
-    private val adapter: TrackListAdapter by lazy { TrackListAdapter(mainViewModel) }
+    private val adapter: TrackListAdapter = TrackListAdapter(
+        onNewQueue = { actionType, track ->
+            mainViewModel.onNewQueue(listOf(track), actionType, OrientedClassType.TRACK)
+        },
+        onEditMetadata = { track ->
+            lifecycleScope.launchWhenResumed {
+                val db = DB.getInstance(binding.root.context)
+
+                mainViewModel.onLoadStateChanged(true)
+                val tracks =
+                    db.trackDao().get(track.id)?.let { listOf(it) }.orEmpty()
+                mainViewModel.onLoadStateChanged(false)
+
+                requireContext().showFileMetadataUpdateDialog(tracks) { binding ->
+                    lifecycleScope.launchWhenResumed {
+                        mainViewModel.onLoadStateChanged(true)
+                        binding.updateFileMetadata(requireContext(), db, tracks)
+                        mainViewModel.onLoadStateChanged(false)
+                    }
+                }
+            }
+        },
+        onTransitToArtist = { artist ->
+            mainViewModel.selectedArtist.value = artist
+        },
+        onTransitToAlbum = { album ->
+            mainViewModel.selectedAlbum.value = album
+        },
+        onDeleteTrack = { track ->
+            mainViewModel.deleteTrack(track)
+        },
+        onClickTrack = { track ->
+            mainViewModel.onRequestNavigate(track)
+        },
+        onToggleIgnored = { track ->
+            lifecycleScope.launchWhenResumed {
+                get<DB>().trackDao().apply {
+                    val ignored = when (this.get(track.id)?.track?.ignored ?: Bool.FALSE) {
+                        Bool.TRUE -> Bool.FALSE
+                        Bool.FALSE -> Bool.TRUE
+                        Bool.UNDEFINED -> Bool.UNDEFINED
+                    }
+                    setIgnored(track.id, ignored)
+                }
+            }
+        }
+    )
 
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?
@@ -136,7 +186,11 @@ class TrackListFragment : Fragment() {
             return true
         }
 
-        adapter.onNewQueue(
+        mainViewModel.onNewQueue(
+            adapter.currentList.let { tracks ->
+                if (get<SharedPreferences>().ignoringEnabled) tracks.filter { it.ignored != true }
+                else tracks
+            },
             when (item.itemId) {
                 R.id.menu_insert_all_next -> InsertActionType.NEXT
                 R.id.menu_insert_all_last -> InsertActionType.LAST
@@ -145,7 +199,8 @@ class TrackListFragment : Fragment() {
                 R.id.menu_insert_all_simple_shuffle_last -> InsertActionType.SHUFFLE_SIMPLE_LAST
                 R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
                 else -> return false
-            }
+            },
+            OrientedClassType.TRACK
         )
 
         return true

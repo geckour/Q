@@ -4,33 +4,22 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
-import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.geckour.q.R
-import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
-import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.databinding.ItemAlbumBinding
-import com.geckour.q.domain.model.DomainTrack
-import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.loadOrDefault
-import com.geckour.q.util.showFileMetadataUpdateDialog
-import com.geckour.q.util.updateFileMetadata
-import kotlinx.coroutines.launch
-import timber.log.Timber
 
 class AlbumListAdapter(
     private val onClickAlbum: (album: Album) -> Unit,
     private val onNewQueue: (actionType: InsertActionType, album: Album, shuffle: Boolean) -> Unit,
     private val onEditMetadata: (album: Album) -> Unit,
-) :
-    ListAdapter<JoinedAlbum, AlbumListAdapter.ViewHolder>(diffCallback) {
+) : ListAdapter<JoinedAlbum, AlbumListAdapter.ViewHolder>(diffCallback) {
 
     companion object {
 

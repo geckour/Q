@@ -16,7 +16,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.preference.PreferenceManager
 import com.dropbox.core.android.Auth
 import com.dropbox.core.v2.files.FolderMetadata
 import com.dropbox.core.v2.files.Metadata
@@ -57,7 +56,10 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-class MainViewModel(private val app: App, private val sharedPreferences: SharedPreferences) : ViewModel() {
+class MainViewModel(
+    private val app: App,
+    private val sharedPreferences: SharedPreferences
+) : ViewModel() {
 
     private val db = DB.getInstance(app)
 
@@ -159,12 +161,6 @@ class MainViewModel(private val app: App, private val sharedPreferences: SharedP
         clearSelections()
         selectedDomainTrack = domainTrack
         currentOrientedClassType = OrientedClassType.TRACK
-    }
-
-    fun onRequestNavigate(genre: Genre) {
-        clearSelections()
-        selectedGenre.value = genre
-        currentOrientedClassType = OrientedClassType.GENRE
     }
 
     fun onNewQueue(
