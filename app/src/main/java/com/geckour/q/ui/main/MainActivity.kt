@@ -141,7 +141,6 @@ class MainActivity : AppCompatActivity() {
             R.id.nav_artist -> ArtistListFragment.newInstance()
             R.id.nav_album -> AlbumListFragment.newInstance()
             R.id.nav_track -> TrackListFragment.newInstance()
-            R.id.nav_genre -> GenreListFragment.newInstance()
             R.id.nav_setting -> {
                 startActivityForResult(
                     SettingActivity.createIntent(this), RequestCode.RESULT_SETTING.code
@@ -332,7 +331,6 @@ class MainActivity : AppCompatActivity() {
                     R.id.nav_artist -> it is ArtistListFragment
                     R.id.nav_album -> it is AlbumListFragment
                     R.id.nav_track -> it is TrackListFragment
-                    R.id.nav_genre -> it is GenreListFragment
                     else -> false
                 }
             }?.tag ?: getString(
