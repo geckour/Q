@@ -3,11 +3,13 @@ package com.geckour.q
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.content.SharedPreferences
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.geckour.q.data.dataModule
 import com.geckour.q.ui.di.viewModelModule
 import com.geckour.q.util.QNotificationChannel
+import org.koin.android.ext.android.get
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin

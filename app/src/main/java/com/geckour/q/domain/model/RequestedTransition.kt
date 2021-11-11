@@ -6,7 +6,7 @@ import com.geckour.q.data.db.model.Artist
 import kotlinx.android.parcel.Parcelize
 
 @Parcelize
-data class RequestedTransaction(
+data class RequestedTransition(
     val tag: Tag,
     val artist: Artist? = null,
     val album: Album? = null,

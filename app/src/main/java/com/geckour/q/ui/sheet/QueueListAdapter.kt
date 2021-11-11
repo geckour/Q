@@ -4,25 +4,27 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.PopupMenu
-import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.geckour.q.R
-import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Album
+import com.geckour.q.data.db.model.Artist
 import com.geckour.q.databinding.ItemTrackBinding
 import com.geckour.q.domain.model.DomainTrack
-import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.loadOrDefault
-import com.geckour.q.util.showFileMetadataUpdateDialog
-import com.geckour.q.util.updateFileMetadata
-import kotlinx.coroutines.launch
-import timber.log.Timber
 
-class QueueListAdapter(private val viewModel: MainViewModel) :
-    ListAdapter<DomainTrack, QueueListAdapter.ViewHolder>(diffUtil) {
+class QueueListAdapter(
+    private val onNewQueue: (actionType: InsertActionType, track: DomainTrack) -> Unit,
+    private val onEditMetadata: (tracks: List<DomainTrack>) -> Unit,
+    private val onQueueRemove: (position: Int) -> Unit,
+    private val onClickArtist: (artist: Artist) -> Unit,
+    private val onClickAlbum: (album: Album) -> Unit,
+    private val onClickTrack: (track: DomainTrack) -> Unit,
+    private val onChangeCurrentPosition: (position: Int) -> Unit,
+    private val onDeleteTrack: (track: DomainTrack) -> Unit
+) : ListAdapter<DomainTrack, QueueListAdapter.ViewHolder>(diffUtil) {
 
     companion object {
         private val diffUtil = object : DiffUtil.ItemCallback<DomainTrack>() {
@@ -44,7 +46,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
 
     private fun remove(index: Int) {
         if (index !in currentList.indices) return
-        viewModel.onQueueRemove(index)
+        onQueueRemove(index)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
@@ -60,45 +62,36 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
             setOnMenuItemClickListener { menuItem ->
                 when (menuItem.itemId) {
                     R.id.menu_transition_to_artist -> {
-                        viewModel.selectedArtist.value = binding.data?.artist
+                        onClickArtist(
+                            binding.data?.artist ?: return@setOnMenuItemClickListener false
+                        )
                     }
                     R.id.menu_transition_to_album -> {
-                        viewModel.selectedAlbum.value = binding.data?.album
+                        onClickAlbum(
+                            binding.data?.album ?: return@setOnMenuItemClickListener false
+                        )
                     }
-                    R.id.menu_insert_all_next, R.id.menu_insert_all_last, R.id.menu_override_all -> {
-                        viewModel.selectedDomainTrack?.apply {
-                            viewModel.onNewQueue(
-                                listOf(this), when (menuItem.itemId) {
-                                    R.id.menu_insert_all_next -> {
-                                        InsertActionType.NEXT
-                                    }
-                                    R.id.menu_insert_all_last -> {
-                                        InsertActionType.LAST
-                                    }
-                                    R.id.menu_override_all -> {
-                                        InsertActionType.OVERRIDE
-                                    }
-                                    else -> return@setOnMenuItemClickListener false
-                                }, OrientedClassType.TRACK
-                            )
-                        } ?: return@setOnMenuItemClickListener false
+                    R.id.menu_insert_all_next,
+                    R.id.menu_insert_all_last,
+                    R.id.menu_override_all -> {
+                        onNewQueue(
+                            when (menuItem.itemId) {
+                                R.id.menu_insert_all_next -> {
+                                    InsertActionType.NEXT
+                                }
+                                R.id.menu_insert_all_last -> {
+                                    InsertActionType.LAST
+                                }
+                                R.id.menu_override_all -> {
+                                    InsertActionType.OVERRIDE
+                                }
+                                else -> return@setOnMenuItemClickListener false
+                            },
+                            binding.data ?: return@setOnMenuItemClickListener false
+                        )
                     }
                     R.id.menu_edit_metadata -> {
-                        viewModel.viewModelScope.launch {
-                            val db = DB.getInstance(binding.root.context)
-
-                            viewModel.onLoadStateChanged(true)
-                            val tracks = currentList.mapNotNull { db.trackDao().get(it.id) }
-                            viewModel.onLoadStateChanged(false)
-
-                            binding.root.context.showFileMetadataUpdateDialog(tracks) { binding ->
-                                viewModel.viewModelScope.launch {
-                                    viewModel.onLoadStateChanged(true)
-                                    binding.updateFileMetadata(binding.root.context, db, tracks)
-                                    viewModel.onLoadStateChanged(false)
-                                }
-                            }
-                        }
+                        onEditMetadata(currentList)
                     }
                     R.id.menu_delete_track -> {
                         remove(adapterPosition)
@@ -131,12 +124,12 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
         }
 
         private fun onTrackSelected(domainTrack: DomainTrack, position: Int) {
-            viewModel.onRequestNavigate(domainTrack)
-            viewModel.onChangeRequestedPositionInQueue(position)
+            onClickTrack(domainTrack)
+            onChangeCurrentPosition(position)
         }
 
         private fun onTrackLongTapped(domainTrack: DomainTrack): Boolean {
-            viewModel.onRequestNavigate(domainTrack)
+            onClickTrack(domainTrack)
             popupMenu.apply {
                 show()
             }
@@ -146,7 +139,7 @@ class QueueListAdapter(private val viewModel: MainViewModel) :
 
         private fun deleteTrack(domainTrack: DomainTrack?) {
             domainTrack ?: return
-            viewModel.deleteTrack(domainTrack)
+            onDeleteTrack(domainTrack)
         }
 
         fun dismissPopupMenu() {

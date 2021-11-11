@@ -24,6 +24,7 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
+import com.dropbox.core.DbxRequestConfig
 import com.dropbox.core.android.Auth
 import com.geckour.q.BuildConfig
 import com.geckour.q.R
@@ -31,7 +32,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogSleepBinding
 import com.geckour.q.domain.model.DomainTrack
-import com.geckour.q.domain.model.RequestedTransaction
+import com.geckour.q.domain.model.RequestedTransition
 import com.geckour.q.service.DropboxMediaRetrieveService
 import com.geckour.q.service.LocalMediaRetrieveService
 import com.geckour.q.service.SleepTimerService
@@ -39,13 +40,14 @@ import com.geckour.q.ui.easteregg.EasterEggFragment
 import com.geckour.q.ui.equalizer.EqualizerFragment
 import com.geckour.q.ui.library.album.AlbumListFragment
 import com.geckour.q.ui.library.artist.ArtistListFragment
+import com.geckour.q.ui.library.genre.GenreListFragment
 import com.geckour.q.ui.library.track.TrackListFragment
 import com.geckour.q.ui.pay.PaymentFragment
 import com.geckour.q.ui.pay.PaymentViewModel
 import com.geckour.q.ui.setting.SettingActivity
 import com.geckour.q.ui.sheet.BottomSheetFragment
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.dropboxToken
+import com.geckour.q.util.dropboxCredential
 import com.geckour.q.util.ducking
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.preferScreen
@@ -133,10 +135,13 @@ class MainActivity : AppCompatActivity() {
         },
         onClickAlbum = { album ->
             viewModel.selectedAlbum.value = album
+        },
+        onClickGenre = { genre ->
+            viewModel.selectedGenre.value = genre
         }
     )
 
-    private var requestedTransaction: RequestedTransaction? = null
+    private var requestedTransition: RequestedTransition? = null
     private var paused = true
 
     private val syncingProgressReceiver = object : BroadcastReceiver() {
@@ -168,6 +173,7 @@ class MainActivity : AppCompatActivity() {
             R.id.nav_artist -> ArtistListFragment.newInstance()
             R.id.nav_album -> AlbumListFragment.newInstance()
             R.id.nav_track -> TrackListFragment.newInstance()
+            R.id.nav_genre -> GenreListFragment.newInstance()
             R.id.nav_setting -> {
                 startActivityForResult(
                     SettingActivity.createIntent(this), RequestCode.RESULT_SETTING.code
@@ -187,8 +193,8 @@ class MainActivity : AppCompatActivity() {
                 null
             }
             R.id.nav_dropbox_sync -> {
-                val token = sharedPreferences.dropboxToken
-                if (token.isBlank()) {
+                val credential = sharedPreferences.dropboxCredential
+                if (credential.isNullOrBlank()) {
                     viewModel.isDropboxAuthOngoing = true
                     Auth.startOAuth2Authentication(this, BuildConfig.DROPBOX_APP_KEY)
                 } else {
@@ -272,8 +278,8 @@ class MainActivity : AppCompatActivity() {
             val navId = PreferenceManager.getDefaultSharedPreferences(this).preferScreen.value.navId
             onNavigationItemSelected(binding.navigationView.menu.findItem(navId))
         } else if (savedInstanceState.containsKey(STATE_KEY_REQUESTED_TRANSACTION)) {
-            requestedTransaction =
-                savedInstanceState.getParcelable(STATE_KEY_REQUESTED_TRANSACTION) as RequestedTransaction?
+            requestedTransition =
+                savedInstanceState.getParcelable(STATE_KEY_REQUESTED_TRANSACTION) as RequestedTransition?
         }
 
         supportFragmentManager.commit {
@@ -303,7 +309,7 @@ class MainActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         super.onSaveInstanceState(outState)
 
-        requestedTransaction?.apply {
+        requestedTransition?.apply {
             outState.putParcelable(STATE_KEY_REQUESTED_TRANSACTION, this)
         }
     }
@@ -358,6 +364,7 @@ class MainActivity : AppCompatActivity() {
                     R.id.nav_artist -> it is ArtistListFragment
                     R.id.nav_album -> it is AlbumListFragment
                     R.id.nav_track -> it is TrackListFragment
+                    R.id.nav_genre -> it is GenreListFragment
                     else -> false
                 }
             }?.tag ?: getString(
@@ -365,6 +372,7 @@ class MainActivity : AppCompatActivity() {
                     R.id.nav_artist -> R.string.nav_artist
                     R.id.nav_album -> R.string.nav_album
                     R.id.nav_track -> R.string.nav_track
+                    R.id.nav_genre -> R.string.nav_genre
                     R.id.nav_equalizer -> R.string.nav_equalizer
                     R.id.nav_pay -> R.string.nav_pay
                     R.layout.fragment_easter_egg -> R.string.nav_fortune
@@ -380,21 +388,21 @@ class MainActivity : AppCompatActivity() {
 
         viewModel.selectedArtist.observe(this) {
             it ?: return@observe
-            requestedTransaction = RequestedTransaction(
-                RequestedTransaction.Tag.ARTIST, artist = it
+            requestedTransition = RequestedTransition(
+                RequestedTransition.Tag.ARTIST, artist = it
             )
             tryTransaction()
         }
 
         viewModel.selectedAlbum.observe(this) {
             it ?: return@observe
-            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.ALBUM, album = it)
+            requestedTransition = RequestedTransition(RequestedTransition.Tag.ALBUM, album = it)
             tryTransaction()
         }
 
         viewModel.selectedGenre.observe(this) {
             it ?: return@observe
-            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.GENRE, genre = it)
+            requestedTransition = RequestedTransition(RequestedTransition.Tag.GENRE, genre = it)
             tryTransaction()
         }
 
@@ -450,7 +458,7 @@ class MainActivity : AppCompatActivity() {
         binding.navigationView.getHeaderView(0)
             .findViewById<View>(R.id.drawer_head_icon)
             ?.setOnLongClickListener {
-                requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.EASTER_EGG)
+                requestedTransition = RequestedTransition(RequestedTransition.Tag.EASTER_EGG)
                 tryTransaction()
                 true
             }
@@ -504,53 +512,58 @@ class MainActivity : AppCompatActivity() {
 
     private fun tryTransaction() {
         if (paused.not()) {
-            requestedTransaction?.apply {
-                Timber.d("qgeck requested transaction: $requestedTransaction")
+            requestedTransition?.apply {
+                Timber.d("qgeck requested transaction: $requestedTransition")
                 dismissSearch()
                 when (this.tag) {
-                    RequestedTransaction.Tag.ARTIST -> {
+                    RequestedTransition.Tag.ARTIST -> {
                         if (artist != null) {
-                            supportFragmentManager.beginTransaction().replace(
-                                R.id.content_main, AlbumListFragment.newInstance(
-                                    artist
-                                ), artist.title
-                            ).addToBackStack(
-                                null
-                            ).commit()
+                            supportFragmentManager.commit {
+                                replace(
+                                    R.id.content_main,
+                                    AlbumListFragment.newInstance(artist),
+                                    artist.title
+                                )
+                                addToBackStack(null)
+                            }
                         }
                     }
-                    RequestedTransaction.Tag.ALBUM -> {
+                    RequestedTransition.Tag.ALBUM -> {
                         if (album != null) {
-                            supportFragmentManager.beginTransaction().replace(
-                                R.id.content_main, TrackListFragment.newInstance(
-                                    album
-                                ), album.title
-                            ).addToBackStack(
-                                null
-                            ).commit()
+                            supportFragmentManager.commit {
+                                replace(
+                                    R.id.content_main,
+                                    TrackListFragment.newInstance(album),
+                                    album.title
+                                )
+                                addToBackStack(null)
+                            }
                         }
                     }
-                    RequestedTransaction.Tag.GENRE -> {
+                    RequestedTransition.Tag.GENRE -> {
                         if (genre != null) {
-                            supportFragmentManager.beginTransaction().replace(
-                                R.id.content_main, TrackListFragment.newInstance(
-                                    genre
-                                ), genre.name
-                            ).addToBackStack(
-                                null
-                            ).commit()
+                            supportFragmentManager.commit {
+                                replace(
+                                    R.id.content_main,
+                                    TrackListFragment.newInstance(genre),
+                                    genre.name
+                                )
+                                addToBackStack(null)
+                            }
                         }
                     }
-                    RequestedTransaction.Tag.EASTER_EGG -> {
-                        supportFragmentManager.beginTransaction().replace(
-                            R.id.content_main, EasterEggFragment.newInstance()
-                        ).addToBackStack(
-                            null
-                        ).commit()
+                    RequestedTransition.Tag.EASTER_EGG -> {
+                        supportFragmentManager.commit {
+                            replace(
+                                R.id.content_main,
+                                EasterEggFragment.newInstance()
+                            )
+                            addToBackStack(null)
+                        }
                         binding.drawerLayout.closeDrawer(binding.navigationView)
                     }
                 }
-                requestedTransaction = null
+                requestedTransition = null
             }
         }
     }

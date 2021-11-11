@@ -79,8 +79,20 @@ interface TrackDao {
     ): Flow<List<JoinedTrack>>
 
     @Transaction
+    @Query("select * from track where genre = :genreName")
+    suspend fun getAllByGenreName(genreName: String): List<JoinedTrack>
+
+    @Transaction
     @Query("select * from track where artistId = :artistId and ignored != :ignore")
     suspend fun getAllByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
+
+    @Transaction
+    @Query("select distinct genre from track where genre is not null")
+    suspend fun getAllGenre(): List<String>
+
+    @Transaction
+    @Query("select distinct genre from track where genre is not null and genre like :name")
+    suspend fun getAllGenreByName(name: String): List<String>
 
     @Query("update track set playbackCount = (select playbackCount from track where id = :trackId) + 1 where id = :trackId")
     suspend fun increasePlaybackCount(trackId: Long)

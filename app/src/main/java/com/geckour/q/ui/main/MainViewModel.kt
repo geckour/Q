@@ -38,12 +38,11 @@ import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.QueueInfo
 import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.ShuffleActionType
-import com.geckour.q.util.dropboxToken
+import com.geckour.q.util.dropboxCredential
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.searchAlbumByFuzzyTitle
 import com.geckour.q.util.searchArtistByFuzzyTitle
-import com.geckour.q.util.searchGenreByFuzzyTitle
 import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
@@ -70,7 +69,6 @@ class MainViewModel(
     internal var isDropboxAuthOngoing = false
 
     internal val currentFragmentId = MutableLiveData<Int>()
-    internal var selectedDomainTrack: DomainTrack? = null
     internal val selectedAlbum = MutableLiveData<Album?>()
     internal val selectedArtist = MutableLiveData<Artist?>()
     internal val selectedGenre = MutableLiveData<Genre?>()
@@ -83,8 +81,6 @@ class MainViewModel(
     internal val forceLoad = MutableLiveData<Unit>()
 
     internal val dropboxItemList = MutableSharedFlow<Pair<String, List<FolderMetadata>>>()
-
-    private var currentOrientedClassType: OrientedClassType? = null
 
     internal var syncing = false
     internal val loading = MutableStateFlow<Pair<Boolean, (() -> Unit)?>>(false to null)
@@ -148,19 +144,20 @@ class MainViewModel(
     fun onRequestNavigate(artist: Artist) {
         clearSelections()
         selectedArtist.value = artist
-        currentOrientedClassType = OrientedClassType.ARTIST
     }
 
     fun onRequestNavigate(album: Album) {
         clearSelections()
         selectedAlbum.value = album
-        currentOrientedClassType = OrientedClassType.ALBUM
     }
 
     fun onRequestNavigate(domainTrack: DomainTrack) {
         clearSelections()
-        selectedDomainTrack = domainTrack
-        currentOrientedClassType = OrientedClassType.TRACK
+    }
+
+    fun onRequestNavigate(genre: Genre) {
+        clearSelections()
+        selectedGenre.value = genre
     }
 
     fun onNewQueue(
@@ -363,9 +360,13 @@ class MainViewModel(
                 items.addAll(artists)
             }
 
-            val genres = app.searchGenreByFuzzyTitle(query)
+            val genres = db.trackDao().getAllGenreByName(query)
                 .take(3)
-                .map { SearchItem(it.name, it, SearchItem.SearchItemType.GENRE) }
+                .map {
+                    val totalDuration =
+                        db.trackDao().getAllByGenreName(it).sumOf { it.track.duration }
+                    SearchItem(it, Genre(null, it, totalDuration), SearchItem.SearchItemType.GENRE)
+                }
             if (genres.isNotEmpty()) {
                 items.add(
                     SearchItem(
@@ -384,7 +385,6 @@ class MainViewModel(
     private fun clearSelections() {
         selectedArtist.value = null
         selectedAlbum.value = null
-        selectedDomainTrack = null
         selectedGenre.value = null
     }
 
@@ -455,14 +455,14 @@ class MainViewModel(
     }
 
     internal fun storeDropboxApiToken() {
-        val token = Auth.getOAuth2Token() ?: return
-        sharedPreferences.dropboxToken = token
+        val credential = Auth.getDbxCredential() ?: return
+        sharedPreferences.dropboxCredential = credential.toString()
         showDropboxFolderChooser()
     }
 
     internal fun showDropboxFolderChooser(dropboxMetadata: Metadata? = null) =
         viewModelScope.launch(Dispatchers.IO) {
-            val client = obtainDbxClient(sharedPreferences)
+            val client = obtainDbxClient(sharedPreferences) ?: return@launch
             var result = client.files().listFolder(dropboxMetadata?.pathLower.orEmpty())
             while (true) {
                 if (result.hasMore.not()) break

@@ -9,6 +9,7 @@ data class SearchItem(
         CATEGORY,
         ARTIST,
         ALBUM,
-        TRACK
+        TRACK,
+        GENRE
     }
 }

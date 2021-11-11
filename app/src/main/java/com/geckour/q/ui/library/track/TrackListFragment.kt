@@ -22,8 +22,6 @@ import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.getTrackListFromTrackMediaId
-import com.geckour.q.util.getTrackMediaIds
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.showFileMetadataUpdateDialog
@@ -230,7 +228,7 @@ class TrackListFragment : Fragment() {
 
     private fun observeAllTracks() {
         lifecycleScope.launch {
-            DB.getInstance(requireContext()).trackDao().getAllAsync()
+            get<DB>().trackDao().getAllAsync()
                 .collectLatest { joinedTracks ->
                     adapter.submitList(joinedTracks.map { it.toDomainTrack() })
                 }
@@ -239,7 +237,7 @@ class TrackListFragment : Fragment() {
 
     private fun observeTrackWithAlbum(album: Album) {
         lifecycleScope.launch {
-            DB.getInstance(requireContext()).trackDao()
+            get<DB>().trackDao()
                 .getAllByAlbumAsync(album.id)
                 .collectLatest { joinedTracks ->
                     adapter.submitList(joinedTracks.map { it.toDomainTrack() }.sortedByTrackOrder())
@@ -250,11 +248,9 @@ class TrackListFragment : Fragment() {
     private fun loadTracksWithGenre(genre: Genre) {
         lifecycleScope.launch {
             adapter.submitList(
-                getTrackListFromTrackMediaId(
-                    DB.getInstance(requireContext()),
-                    genre.getTrackMediaIds(requireContext()),
-                    genreId = genre.id
-                )
+                get<DB>().trackDao()
+                    .getAllByGenreName(genre.name)
+                    .mapIndexed { i, track -> track.toDomainTrack(i) }
             )
             binding.recyclerView.smoothScrollToPosition(0)
         }

@@ -28,7 +28,7 @@ data class DomainTrack(
     val discNum: Int?,
     val discTotal: Int?,
     val releaseDate: String?,
-    val genreId: Long?,
+    val genreName: String?,
     val sourcePath: String,
     val dropboxPath: String?,
     val dropboxExpiredAt: Long?,

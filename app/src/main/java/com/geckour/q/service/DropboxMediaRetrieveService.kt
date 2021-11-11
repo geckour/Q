@@ -29,6 +29,7 @@ import com.geckour.q.util.getNotificationBuilder
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.saveTempAudioFile
 import kotlinx.coroutines.runBlocking
+import org.koin.android.ext.android.get
 import timber.log.Timber
 
 class DropboxMediaRetrieveService : IntentService(NAME) {
@@ -81,6 +82,8 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
         if (applicationContext.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)
             == PackageManager.PERMISSION_GRANTED
         ) {
+            val dbxClient = obtainDbxClient(get()) ?: return
+
             val bitmap = Bitmap.createBitmap(1000, 1000, Bitmap.Config.ARGB_8888)
             val seed = System.currentTimeMillis()
             Timber.d("qgeck Dropbox media retrieve service started")
@@ -99,7 +102,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
                 this,
                 db,
                 rootPath,
-                obtainDbxClient(PreferenceManager.getDefaultSharedPreferences(this)),
+                dbxClient,
                 seed,
                 bitmap
             )

@@ -12,6 +12,7 @@ import com.geckour.q.data.db.model.Artist
 import com.geckour.q.databinding.ItemSearchCategoryBinding
 import com.geckour.q.databinding.ItemSearchItemBinding
 import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.loadOrDefault
@@ -21,6 +22,7 @@ class SearchListAdapter(
     private val onEditMetadata: (track: DomainTrack) -> Unit,
     private val onClickArtist: (artist: Artist) -> Unit,
     private val onClickAlbum: (album: Album) -> Unit,
+    private val onClickGenre: (genre: Genre) -> Unit
 ) : ListAdapter<SearchItem, RecyclerView.ViewHolder>(diffCallback) {
 
     companion object {
@@ -134,6 +136,9 @@ class SearchListAdapter(
                     onClickAlbum(data as? Album ?: return)
                 }
                 SearchItem.SearchItemType.TRACK -> trackPopupMenu.show()
+                SearchItem.SearchItemType.GENRE -> {
+                    onClickGenre(data as? Genre ?: return)
+                }
                 else -> Unit
             }
         }

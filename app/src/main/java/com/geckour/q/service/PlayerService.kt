@@ -354,7 +354,8 @@ class PlayerService : Service(), LifecycleOwner {
 
     private val sharedPreferences by inject<SharedPreferences>()
 
-    private lateinit var dropboxClient: DbxClientV2
+    private val dropboxClient: DbxClientV2?
+        get() = obtainDbxClient(sharedPreferences)
 
     override fun onBind(intent: Intent?): IBinder {
         dispatcher.onServicePreSuperOnBind()
@@ -397,8 +398,6 @@ class PlayerService : Service(), LifecycleOwner {
 
         player.setMediaSource(source)
         player.prepare()
-
-        dropboxClient = obtainDbxClient(sharedPreferences)
 
         restoreState()
     }
@@ -446,7 +445,11 @@ class PlayerService : Service(), LifecycleOwner {
             lifecycleScope.launch {
                 source.currentSourcePaths[currentIndex]
                     .toDomainTrack(db)
-                    ?.verifyWithDropbox(this@PlayerService, dropboxClient)
+                    ?.let { track ->
+                        dropboxClient?.let {
+                            track.verifyWithDropbox(this@PlayerService, it)
+                        } ?: track
+                    }
                     ?.let { replace(it) }
             }
         }
@@ -477,12 +480,12 @@ class PlayerService : Service(), LifecycleOwner {
                     else -> it
                 }
             }
-            .map {
+            .map { track ->
                 if (alive.not()) {
                     loadStateFlow.value = false to null
                     return
                 }
-                it.verifyWithDropbox(this, dropboxClient)
+                (dropboxClient?.let { track.verifyWithDropbox(this, it) } ?: track)
                     .getMediaSource(mediaSourceFactory)
             }
         when (queueInfo.metadata.actionType) {

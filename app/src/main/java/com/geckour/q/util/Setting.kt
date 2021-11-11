@@ -155,7 +155,7 @@ var SharedPreferences.sleepTimerTolerance by Pref.PrefInt("key_tolerance_sleep-t
 
 var SharedPreferences.showCurrentRemain by Pref.PrefBoolean("pref_key_show_current_remain", false)
 
-var SharedPreferences.dropboxToken by Pref.PrefAny("key_dropbox_token", "")
+var SharedPreferences.dropboxCredential by NullablePref.PrefString("key_dropbox_credential", null)
 
 fun SharedPreferences.setEqualizerLevel(bandNum: Int, level: Int) {
     equalizerSettings?.apply {

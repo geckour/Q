@@ -5,6 +5,9 @@ import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.provider.MediaStore
 import android.support.v4.media.MediaMetadataCompat
@@ -14,7 +17,9 @@ import android.webkit.MimeTypeMap
 import android.widget.ImageView
 import androidx.core.app.NotificationCompat
 import androidx.media.session.MediaButtonReceiver
+import coil.ImageLoader
 import coil.load
+import coil.request.ImageRequest
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -23,7 +28,6 @@ import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.databinding.DialogEditMetadataBinding
 import com.geckour.q.domain.model.DomainTrack
-import com.geckour.q.domain.model.Genre
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource
 import com.google.android.exoplayer2.source.MediaSource
@@ -41,7 +45,6 @@ import java.io.InputStream
 import java.net.URLConnection
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.collections.ArrayList
 
 
 const val UNKNOWN: String = "UNKNOWN"
@@ -76,22 +79,18 @@ data class QueueInfo(
     val metadata: QueueMetadata, val queue: List<DomainTrack>
 )
 
-suspend fun getTrackListFromTrackMediaId(
-    db: DB, dbTrackIdList: List<Long>,
-    genreId: Long? = null
-): List<DomainTrack> = dbTrackIdList.mapNotNull { getDomainTrack(db, it, genreId) }
+suspend fun getTrackListFromTrackMediaId(db: DB, dbTrackIdList: List<Long>): List<DomainTrack> =
+    dbTrackIdList.mapNotNull { getDomainTrack(db, it) }
 
 suspend fun getDomainTrack(
     db: DB,
     trackMediaId: Long,
-    genreId: Long? = null,
     trackNum: Int? = null
 ): DomainTrack? = db.trackDao()
     .getByMediaId(trackMediaId)
-    ?.toDomainTrack(genreId, trackNum)
+    ?.toDomainTrack(trackNum)
 
 fun JoinedTrack.toDomainTrack(
-    genreId: Long? = null,
     trackNum: Int? = null
 ): DomainTrack {
     return DomainTrack(
@@ -113,7 +112,7 @@ fun JoinedTrack.toDomainTrack(
         track.discNum,
         track.discTotal,
         track.releaseDate,
-        genreId,
+        track.genre,
         track.sourcePath,
         track.dropboxPath,
         track.dropboxExpiredAt,
@@ -131,45 +130,32 @@ suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<JoinedAlbum> =
 suspend fun DB.searchTrackByFuzzyTitle(title: String): List<JoinedTrack> =
     this@searchTrackByFuzzyTitle.trackDao().getAllByTitle("%${title.escapeSql}%")
 
-fun Context.searchGenreByFuzzyTitle(title: String): List<Genre> = contentResolver.query(
-    MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
-    arrayOf(
-        MediaStore.Audio.Genres._ID, MediaStore.Audio.Genres.NAME
-    ),
-    "${MediaStore.Audio.Genres.NAME} like '%${title.escapeSql}%'",
-    null,
-    MediaStore.Audio.Genres.DEFAULT_SORT_ORDER
-).use {
-    it ?: return@use emptyList()
-    val result: MutableList<Genre> = mutableListOf()
-    while (it.moveToNext()) {
-        val id = it.getLong(it.getColumnIndexOrThrow(MediaStore.Audio.Genres._ID))
-        val name = it.getString(it.getColumnIndexOrThrow(MediaStore.Audio.Genres.NAME)) ?: UNKNOWN
-        result.add(Genre(id, null, name, 0))
-    }
+fun <T> List<T>.takeOrFillNull(n: Int): List<T?> =
+    this.take(n).let { it + List(n - it.size) { null } }
 
-    return@use result
-}
-
-fun Genre.getTrackMediaIds(context: Context): List<Long> =
-    getTrackMediaIdsByGenreId(context, this.id)
-
-fun getTrackMediaIdsByGenreId(context: Context, genreId: Long): List<Long> =
-    context.contentResolver.query(
-        MediaStore.Audio.Genres.Members.getContentUri("external", genreId),
-        arrayOf(MediaStore.Audio.Genres.Members._ID),
-        null,
-        null,
-        null
-    )?.use {
-        val trackMediaIdList: ArrayList<Long> = ArrayList()
-        while (it.moveToNext()) {
-            val id = it.getLong(it.getColumnIndexOrThrow(MediaStore.Audio.Genres.Members._ID))
-            trackMediaIdList.add(id)
+suspend fun List<String?>.getThumb(context: Context): Bitmap? {
+    if (this.isEmpty()) return null
+    val unit = 100
+    val bitmap = Bitmap.createBitmap(
+        ((this.size * 0.9 - 0.1) * unit).toInt(), unit, Bitmap.Config.ARGB_8888
+    )
+    val canvas = Canvas(bitmap)
+    withContext(Dispatchers.IO) {
+        this@getThumb.filterNotNull().reversed().forEachIndexed { i, uriString ->
+            val b = catchAsNull {
+                val request = ImageRequest.Builder(context).data(File(uriString)).build()
+                (ImageLoader(context).execute(request).drawable as BitmapDrawable?)?.bitmap
+            } ?: return@forEachIndexed
+            canvas.drawBitmap(
+                b,
+                bitmap.width - (i + 1) * unit * 0.9f,
+                (unit - b.height) / 2f,
+                Paint()
+            )
         }
-
-        return@use trackMediaIdList
-    } ?: emptyList()
+    }
+    return bitmap
+}
 
 fun DomainTrack.getMediaSource(mediaSourceFactory: ProgressiveMediaSource.Factory): MediaSource =
     mediaSourceFactory.createMediaSource(
@@ -194,25 +180,16 @@ fun List<DomainTrack>.sortedByTrackOrder(): List<DomainTrack> =
 fun List<DomainTrack>.shuffleByClassType(classType: OrientedClassType): List<DomainTrack> =
     when (classType) {
         OrientedClassType.ARTIST -> {
-            val artists = this.map { it.artist }.distinct().shuffled()
-            artists.map { artist ->
-                this.filter { it.artist == artist }
-            }.flatten()
+            this.distinctBy { it.artist }.shuffled()
         }
         OrientedClassType.ALBUM -> {
-            val albumIds = this.map { it.album.id }.distinct().shuffled()
-            albumIds.map { id ->
-                this.filter { it.album.id == id }
-            }.flatten()
+            this.distinctBy { it.album.id }.shuffled()
         }
         OrientedClassType.TRACK -> {
             this.shuffled()
         }
         OrientedClassType.GENRE -> {
-            val genreIds = this.map { it.genreId }.distinct().shuffled()
-            genreIds.map { id ->
-                this.filter { it.genreId == id }
-            }.flatten()
+            this.distinctBy { it.genreName }.shuffled()
         }
     }
 
@@ -383,6 +360,13 @@ fun ImageView.loadOrDefault(uri: String?) {
     uri?.let {
         Timber.d("qgeck $it")
         catchAsNull { load(File(it)) }
+    } ?: load(R.drawable.ic_empty)
+}
+
+fun ImageView.loadOrDefault(bitmap: Bitmap?) {
+    bitmap?.let {
+        Timber.d("qgeck $it")
+        catchAsNull { load(it) }
     } ?: load(R.drawable.ic_empty)
 }
 

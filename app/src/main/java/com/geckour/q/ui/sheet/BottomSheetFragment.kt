@@ -25,11 +25,14 @@ import com.geckour.q.service.SleepTimerService
 import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.ui.sheet.BottomSheetViewModel.Companion.PREF_KEY_SHOW_LOCK_TOUCH_QUEUE
+import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.catchAsNull
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.shake
 import com.geckour.q.util.showCurrentRemain
+import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.toDomainTrack
+import com.geckour.q.util.updateFileMetadata
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.Dispatchers
@@ -160,7 +163,46 @@ class BottomSheetFragment : Fragment() {
 
         binding.lifecycleOwner = viewLifecycleOwner
         binding.isTouchLocked = sharedPreferences.getBoolean(PREF_KEY_SHOW_LOCK_TOUCH_QUEUE, false)
-        adapter = QueueListAdapter(mainViewModel)
+        adapter = QueueListAdapter(
+            onNewQueue = { actionType, track ->
+                mainViewModel.onNewQueue(listOf(track), actionType, OrientedClassType.TRACK)
+            },
+            onEditMetadata = { tracks ->
+                lifecycleScope.launchWhenResumed {
+                    val db = DB.getInstance(binding.root.context)
+
+                    mainViewModel.onLoadStateChanged(true)
+                    val t = tracks.mapNotNull { db.trackDao().get(it.id) }
+                    mainViewModel.onLoadStateChanged(false)
+
+                    requireContext().showFileMetadataUpdateDialog(t) { binding ->
+                        lifecycleScope.launchWhenResumed {
+                            mainViewModel.onLoadStateChanged(true)
+                            binding.updateFileMetadata(requireContext(), db, t)
+                            mainViewModel.onLoadStateChanged(false)
+                        }
+                    }
+                }
+            },
+            onQueueRemove = { position ->
+                mainViewModel.onQueueRemove(position)
+            },
+            onClickArtist = { artist ->
+                mainViewModel.selectedArtist.value = artist
+            },
+            onClickAlbum = { album ->
+                mainViewModel.selectedAlbum.value = album
+            },
+            onClickTrack = { track ->
+                mainViewModel.onRequestNavigate(track)
+            },
+            onChangeCurrentPosition = { position ->
+                mainViewModel.onChangeRequestedPositionInQueue(position)
+            },
+            onDeleteTrack = { track ->
+                mainViewModel.deleteTrack(track)
+            }
+        )
         binding.recyclerView.adapter = adapter
         itemTouchHelper.attachToRecyclerView(binding.recyclerView)
 
