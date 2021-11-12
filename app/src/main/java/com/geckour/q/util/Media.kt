@@ -17,9 +17,7 @@ import android.webkit.MimeTypeMap
 import android.widget.ImageView
 import androidx.core.app.NotificationCompat
 import androidx.media.session.MediaButtonReceiver
-import coil.ImageLoader
-import coil.load
-import coil.request.ImageRequest
+import com.bumptech.glide.Glide
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -37,7 +35,6 @@ import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import org.jaudiotagger.tag.images.ArtworkFactory
-import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -78,9 +75,6 @@ data class QueueMetadata(
 data class QueueInfo(
     val metadata: QueueMetadata, val queue: List<DomainTrack>
 )
-
-suspend fun getTrackListFromTrackMediaId(db: DB, dbTrackIdList: List<Long>): List<DomainTrack> =
-    dbTrackIdList.mapNotNull { getDomainTrack(db, it) }
 
 suspend fun getDomainTrack(
     db: DB,
@@ -143,8 +137,7 @@ suspend fun List<String?>.getThumb(context: Context): Bitmap? {
     withContext(Dispatchers.IO) {
         this@getThumb.filterNotNull().reversed().forEachIndexed { i, uriString ->
             val b = catchAsNull {
-                val request = ImageRequest.Builder(context).data(File(uriString)).build()
-                (ImageLoader(context).execute(request).drawable as BitmapDrawable?)?.bitmap
+                Glide.with(context).asBitmap().load(File(uriString)).submit().get()
             } ?: return@forEachIndexed
             canvas.drawBitmap(
                 b,
@@ -358,16 +351,14 @@ fun Long.getTimeString(): String {
 
 fun ImageView.loadOrDefault(uri: String?) {
     uri?.let {
-        Timber.d("qgeck $it")
-        catchAsNull { load(File(it)) }
-    } ?: load(R.drawable.ic_empty)
+        Glide.with(this).load(File(uri)).into(this)
+    } ?: Glide.with(this).load(R.drawable.ic_empty).into(this)
 }
 
 fun ImageView.loadOrDefault(bitmap: Bitmap?) {
     bitmap?.let {
-        Timber.d("qgeck $it")
-        catchAsNull { load(it) }
-    } ?: load(R.drawable.ic_empty)
+        catchAsNull { Glide.with(this).load(it).into(this) }
+    } ?: Glide.with(this).load(R.drawable.ic_empty).into(this)
 }
 
 fun DbxClientV2.saveTempAudioFile(context: Context, pathLower: String): File {

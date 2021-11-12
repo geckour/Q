@@ -2,12 +2,10 @@ package com.geckour.q.ui.sheet
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.widget.ImageView
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
-import coil.load
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.service.SleepTimerService
 import com.geckour.q.ui.main.MainViewModel

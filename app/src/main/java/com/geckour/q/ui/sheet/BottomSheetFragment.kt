@@ -15,7 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
-import coil.load
+import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentSheetBottomBinding
@@ -423,11 +423,14 @@ class BottomSheetFragment : Fragment() {
                     adapter.currentItem,
                     binding.seekBar.progress.toLong()
                 )
-                binding.artwork.load(
-                    adapter.currentItem
-                        ?.artworkUriString
-                        ?.let { catchAsNull { File(it) } }
-                ) { size(1000) }
+                Glide.with(binding.artwork)
+                    .load(
+                        adapter.currentItem
+                            ?.artworkUriString
+                            ?.let { catchAsNull { File(it) } }
+                    )
+                    .override(1000)
+                    .into(binding.artwork)
                 if (indexChanged) onPlaybackPositionChanged(0)
 
                 val noCurrentTrack = adapter.currentItem == null
