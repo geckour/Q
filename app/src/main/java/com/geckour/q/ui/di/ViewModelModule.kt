@@ -28,7 +28,7 @@ val viewModelModule = module {
         InstantPlayerViewModel(app = androidApplication() as App)
     }
     viewModel { params ->
-        AlbumListViewModel(db = get(), params.get())
+        AlbumListViewModel(db = get(), params.getOrNull())
     }
     viewModel {
         ArtistListViewModel(db = get())

@@ -7,7 +7,6 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.graphics.drawable.BitmapDrawable
 import android.net.Uri
 import android.provider.MediaStore
 import android.support.v4.media.MediaMetadataCompat
@@ -75,14 +74,6 @@ data class QueueMetadata(
 data class QueueInfo(
     val metadata: QueueMetadata, val queue: List<DomainTrack>
 )
-
-suspend fun getDomainTrack(
-    db: DB,
-    trackMediaId: Long,
-    trackNum: Int? = null
-): DomainTrack? = db.trackDao()
-    .getByMediaId(trackMediaId)
-    ?.toDomainTrack(trackNum)
 
 fun JoinedTrack.toDomainTrack(
     trackNum: Int? = null
@@ -571,11 +562,11 @@ suspend fun JoinedTrack.updateFileMetadata(
 val ConcatenatingMediaSource.currentSourcePaths: List<String>
     get() =
         (0 until this.size).mapNotNull {
-            getMediaSource(it).mediaItem.playbackProperties?.uri?.toString()
+            getMediaSource(it).mediaItem.localConfiguration?.uri?.toString()
         }
 
 suspend fun MediaSource.toDomainTrack(db: DB): DomainTrack? =
-    mediaItem.playbackProperties?.uri?.toString()?.toDomainTrack(db)
+    mediaItem.localConfiguration?.uri?.toString()?.toDomainTrack(db)
 
 suspend fun String.toDomainTrack(db: DB): DomainTrack? =
     db.trackDao().getBySourcePath(this)?.toDomainTrack()

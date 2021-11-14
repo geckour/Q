@@ -115,10 +115,10 @@ class LocalMediaRetrieveService : IntentService(NAME) {
                         val numerator = cursor.position
                         val denominator = cursor.count
                         val trackPath = cursor.getString(
-                            cursor.getColumnIndex(MediaStore.Audio.Media.DATA)
+                            cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
                         )
                         val trackMediaId = cursor.getLong(
-                            cursor.getColumnIndex(MediaStore.Audio.Media._ID)
+                            cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
                         )
                         runCatching {
                             db.storeMediaInfo(applicationContext, trackPath, trackMediaId)
@@ -275,6 +275,13 @@ class LocalMediaRetrieveService : IntentService(NAME) {
                 if (it.track.lastModified >= lastModified) return@runBlocking it.track.id
             }
 
-            file.storeMediaInfo(context, Uri.fromFile(file).toString(), trackMediaId, null, null, lastModified)
+            file.storeMediaInfo(
+                context,
+                Uri.fromFile(file).toString(),
+                trackMediaId,
+                null,
+                null,
+                lastModified
+            )
         }
 }

@@ -152,8 +152,8 @@ interface TrackDao {
     @Transaction
     suspend fun getDurationWithTitles(
         title: String,
-        albumTitle: String,
-        artistTitle: String
+        albumTitle: String?,
+        artistTitle: String?
     ): Long? =
         getAllByTitle(title)
             .firstOrNull { it.album.title == albumTitle && it.artist.title == artistTitle }

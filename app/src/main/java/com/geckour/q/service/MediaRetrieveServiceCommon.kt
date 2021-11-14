@@ -38,12 +38,11 @@ internal suspend fun File.storeMediaInfo(
     val bitrate = header.bitRateAsNumber
     val sampleRate = header.sampleRateAsNumber
 
-    val title =
-        tag.getAll(FieldKey.TITLE).lastOrNull { it.isNotBlank() } ?: this@storeMediaInfo.name
-    val titleSort =
-        (tag.getAll(FieldKey.TITLE_SORT).lastOrNull { it.isNotBlank() } ?: title)
-            ?.hiraganized
-            ?: this@storeMediaInfo.name
+    val title = tag.getAll(FieldKey.TITLE).lastOrNull { it.isNotBlank() }
+        ?: this@storeMediaInfo.name
+    val titleSort = (tag.getAll(FieldKey.TITLE_SORT).lastOrNull { it.isNotBlank() } ?: title)
+        ?.hiraganized
+        ?: this@storeMediaInfo.name
 
     val albumTitle = tag.getAll(FieldKey.ALBUM).lastOrNull { it.isNotBlank() }
     val cachedAlbum = albumTitle?.let { db.albumDao().findAllByTitle(it).firstOrNull() }
@@ -72,9 +71,9 @@ internal suspend fun File.storeMediaInfo(
     val pastTrackDuration =
         trackMediaId?.let { db.trackDao().getDurationWithMediaId(trackMediaId) ?: 0 }
             ?: db.trackDao().getDurationWithTitles(
-                title ?: UNKNOWN,
-                albumTitle ?: UNKNOWN,
-                artistTitle ?: UNKNOWN
+                title,
+                albumTitle,
+                artistTitle
             ) ?: 0
     val trackNum = catchAsNull {
         tag.getFirst(FieldKey.TRACK).let { if (it.isNullOrBlank()) null else it }?.toInt()
