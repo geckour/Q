@@ -72,7 +72,6 @@ static def getQuotedKey(keyName) {
 
 repositories {
     maven { url "https://jitpack.io" }
-    maven { url "https://dl.bintray.com/ijabz/maven" }
 }
 
 dependencies {
@@ -159,6 +158,9 @@ dependencies {
 
     // Dropbox
     implementation 'com.dropbox.core:dropbox-core-sdk:5.0.0'
+
+    // Audio Metadata
+    implementation 'net.jthink:jaudiotagger:3.0.1'
 }
 
 apply plugin: 'com.google.gms.google-services'

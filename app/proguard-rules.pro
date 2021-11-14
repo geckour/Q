@@ -21,6 +21,7 @@
 #-renamesourcefileattribute SourceFile
 
 -keep class com.geckour.q.service.** { *; }
+-keep class org.jaudiotagger.**  { *; }
 
 -dontwarn androidx.concurrent.futures.**
 
