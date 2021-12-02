@@ -205,20 +205,7 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
                 }
                 is FileMetadata -> {
                     if (name.isAudioFilePath) {
-                        runCatching {
-                            storeMediaInfo(context, db, client, this@storeMediaInfo)
-                        }.onSuccess {
-                            filesCount++
-                        }.onFailure { t ->
-                            if (t is RateLimitException) {
-                                Thread.sleep(t.backoffMillis)
-                                this.storeMediaInfo(context, db, client, seed, bitmap)
-                            } else {
-                                Timber.e(t)
-                                return
-                            }
-                        }
-
+                        filesCount++
                         sendBroadcast(
                             MainActivity.createProgressIntent(
                                 filesCount,
@@ -229,6 +216,18 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
                             NOTIFICATION_ID_RETRIEVE,
                             getNotification(this.pathDisplay, filesCount)
                         )
+
+                        runCatching {
+                            storeMediaInfo(context, db, client, this@storeMediaInfo)
+                        }.onFailure { t ->
+                            if (t is RateLimitException) {
+                                Thread.sleep(t.backoffMillis)
+                                this.storeMediaInfo(context, db, client, seed, bitmap)
+                            } else {
+                                Timber.e(t)
+                                return
+                            }
+                        }
                     }
                 }
             }

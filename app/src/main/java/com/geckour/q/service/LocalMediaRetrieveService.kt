@@ -112,7 +112,7 @@ class LocalMediaRetrieveService : IntentService(NAME) {
                     )
                     val newTrackMediaIds = mutableListOf<Long>()
                     while (expired.not() && cursor.moveToNext()) {
-                        val numerator = cursor.position
+                        val numerator = cursor.position + 1
                         val denominator = cursor.count
                         val trackPath = cursor.getString(
                             cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
@@ -120,11 +120,6 @@ class LocalMediaRetrieveService : IntentService(NAME) {
                         val trackMediaId = cursor.getLong(
                             cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
                         )
-                        runCatching {
-                            db.storeMediaInfo(applicationContext, trackPath, trackMediaId)
-                        }.onSuccess {
-                            newTrackMediaIds.add(trackMediaId)
-                        }.onFailure { Timber.e(it) }
                         sendBroadcast(
                             MainActivity.createProgressIntent(
                                 numerator,
@@ -136,6 +131,12 @@ class LocalMediaRetrieveService : IntentService(NAME) {
                             NOTIFICATION_ID_RETRIEVE,
                             getNotification(trackPath, numerator, denominator, seed, bitmap)
                         )
+
+                        runCatching {
+                            db.storeMediaInfo(applicationContext, trackPath, trackMediaId)
+                        }.onSuccess {
+                            newTrackMediaIds.add(trackMediaId)
+                        }.onFailure { Timber.e(it) }
                     }
 
                     if (expired.not() && onlyAdded.not()) {
