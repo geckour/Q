@@ -46,7 +46,6 @@ import com.geckour.q.util.getMediaMetadata
 import com.geckour.q.util.getMediaSource
 import com.geckour.q.util.getPlayerNotification
 import com.geckour.q.util.obtainDbxClient
-import com.geckour.q.util.shuffleByClassType
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.verifyWithDropbox
