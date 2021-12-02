@@ -57,8 +57,8 @@ class AlbumListFragment : Fragment() {
         onClickAlbum = { album ->
             mainViewModel.onRequestNavigate(album)
         },
-        onNewQueue = { actionType, album, shuffle ->
-            mainViewModel.onTrackMenuAction(actionType, album, shuffle)
+        onNewQueue = { actionType, album ->
+            mainViewModel.onTrackMenuAction(actionType, album)
         },
         onEditMetadata = { album ->
             lifecycleScope.launchWhenResumed {

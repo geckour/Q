@@ -151,7 +151,7 @@ class MainViewModel(
         selectedAlbum.value = album
     }
 
-    fun onRequestNavigate(domainTrack: DomainTrack) {
+    fun onRequestNavigate() {
         clearSelections()
     }
 
@@ -405,7 +405,7 @@ class MainViewModel(
     }
 
     internal fun onTrackMenuAction(
-        actionType: InsertActionType, album: Album, sortByTrackOrder: Boolean
+        actionType: InsertActionType, album: Album
     ) {
         viewModelScope.launch {
             var enabled = true
@@ -418,7 +418,6 @@ class MainViewModel(
                     if (enabled.not()) return@launch
                     it.toDomainTrack()
                 }
-                .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                 .apply { loading.emit(false to null) }
 
             onNewQueue(tracks, actionType, OrientedClassType.TRACK)

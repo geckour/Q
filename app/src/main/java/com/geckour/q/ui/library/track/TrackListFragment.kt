@@ -96,8 +96,8 @@ class TrackListFragment : Fragment() {
         onDeleteTrack = { track ->
             mainViewModel.deleteTrack(track)
         },
-        onClickTrack = { track ->
-            mainViewModel.onRequestNavigate(track)
+        onClickTrack = {
+            mainViewModel.onRequestNavigate()
         },
         onToggleIgnored = { track ->
             lifecycleScope.launchWhenResumed {
@@ -240,7 +240,10 @@ class TrackListFragment : Fragment() {
             get<DB>().trackDao()
                 .getAllByAlbumAsync(album.id)
                 .collectLatest { joinedTracks ->
-                    adapter.submitList(joinedTracks.map { it.toDomainTrack() }.sortedByTrackOrder())
+                    adapter.submitList(
+                        joinedTracks.map { it.toDomainTrack() }
+                            .sortedByTrackOrder(OrientedClassType.TRACK, InsertActionType.LAST)
+                    )
                 }
         }
     }

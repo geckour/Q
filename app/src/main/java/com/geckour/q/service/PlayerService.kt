@@ -47,6 +47,7 @@ import com.geckour.q.util.getMediaSource
 import com.geckour.q.util.getPlayerNotification
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.shuffleByClassType
+import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.verifyWithDropbox
 import com.google.android.exoplayer2.DefaultRenderersFactory
@@ -462,22 +463,21 @@ class PlayerService : Service(), LifecycleOwner {
         var alive = true
         loadStateFlow.value = true to { alive = false }
 
+        val shuffleSimple = queueInfo.metadata.actionType in listOf(
+            InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
+            InsertActionType.SHUFFLE_SIMPLE_NEXT,
+            InsertActionType.SHUFFLE_SIMPLE_LAST,
+        )
+
         val newQueue = queueInfo.queue
             .let {
-                when (queueInfo.metadata.actionType) {
-                    InsertActionType.SHUFFLE_NEXT,
-                    InsertActionType.SHUFFLE_LAST,
-                    InsertActionType.SHUFFLE_OVERRIDE -> {
-                        it.shuffleByClassType(queueInfo.metadata.classType)
-                    }
-
-                    InsertActionType.SHUFFLE_SIMPLE_NEXT,
-                    InsertActionType.SHUFFLE_SIMPLE_LAST,
-                    InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
-                        it.shuffled()
-                    }
-
-                    else -> it
+                if (shuffleSimple) {
+                    it.shuffled()
+                } else {
+                    it.sortedByTrackOrder(
+                        queueInfo.metadata.classType,
+                        queueInfo.metadata.actionType
+                    )
                 }
             }
             .map { track ->

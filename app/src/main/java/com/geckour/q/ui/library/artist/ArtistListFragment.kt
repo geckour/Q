@@ -51,11 +51,6 @@ class ArtistListFragment : Fragment() {
         },
         onNewQueue = { actionType, artist ->
             lifecycleScope.launchWhenResumed {
-                val sortByTrackOrder: Boolean =
-                    id != R.id.menu_insert_all_simple_shuffle_next
-                            || id != R.id.menu_insert_all_simple_shuffle_last
-                            || id != R.id.menu_override_all_simple_shuffle
-
                 mainViewModel.onLoadStateChanged(true)
                 val tracks = get<DB>().trackDao()
                     .getAllByArtist(
@@ -63,7 +58,6 @@ class ArtistListFragment : Fragment() {
                         BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
                     )
                     .map { it.toDomainTrack() }
-                    .let { if (sortByTrackOrder) it.sortedByTrackOrder() else it }
                 mainViewModel.onLoadStateChanged(false)
 
                 mainViewModel.onNewQueue(tracks, actionType, OrientedClassType.ALBUM)
@@ -174,18 +168,12 @@ class ArtistListFragment : Fragment() {
             }
 
             lifecycleScope.launch {
-                val sortByTrackOrder = item.itemId !in listOf(
-                    R.id.menu_insert_all_simple_shuffle_next,
-                    R.id.menu_insert_all_simple_shuffle_last,
-                    R.id.menu_override_all_simple_shuffle
-                )
 
                 mainViewModel.onLoadStateChanged(true)
                 val tracks = DB.getInstance(context)
                     .trackDao()
                     .getAll()
                     .map { it.toDomainTrack() }
-                    .apply { if (sortByTrackOrder) sortedByTrackOrder() }
 
                 mainViewModel.onNewQueue(tracks, actionType, OrientedClassType.ARTIST)
             }

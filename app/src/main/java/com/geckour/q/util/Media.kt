@@ -146,8 +146,13 @@ fun DomainTrack.getMediaSource(mediaSourceFactory: ProgressiveMediaSource.Factor
         MediaItem.fromUri(Uri.parse(sourcePath))
     )
 
-fun List<DomainTrack>.sortedByTrackOrder(): List<DomainTrack> =
-    this.groupBy { it.album }
+fun List<DomainTrack>.sortedByTrackOrder(classType: OrientedClassType, actionType: InsertActionType): List<DomainTrack> {
+    val shuffleConditional = actionType in listOf(
+        InsertActionType.SHUFFLE_OVERRIDE,
+        InsertActionType.SHUFFLE_NEXT,
+        InsertActionType.SHUFFLE_LAST,
+    )
+    return this.groupBy { it.album }
         .map { (album, tracks) ->
             album to tracks.groupBy { it.discNum }
                 .map { (diskNum, track) ->
@@ -156,26 +161,18 @@ fun List<DomainTrack>.sortedByTrackOrder(): List<DomainTrack> =
                 .sortedBy { it.first }
                 .flatMap { it.second }
         }
+        .let {
+            if (shuffleConditional && classType == OrientedClassType.ALBUM) it.shuffled() else it
+        }
         .groupBy { it.first.artistId }
+        .toList()
+        .let {
+            if (shuffleConditional && classType == OrientedClassType.ARTIST) it.shuffled() else it
+        }
         .flatMap { (_, albumTrackMap) ->
             albumTrackMap.flatMap { it.second }
         }
-
-fun List<DomainTrack>.shuffleByClassType(classType: OrientedClassType): List<DomainTrack> =
-    when (classType) {
-        OrientedClassType.ARTIST -> {
-            this.distinctBy { it.artist }.shuffled()
-        }
-        OrientedClassType.ALBUM -> {
-            this.distinctBy { it.album.id }.shuffled()
-        }
-        OrientedClassType.TRACK -> {
-            this.shuffled()
-        }
-        OrientedClassType.GENRE -> {
-            this.distinctBy { it.genreName }.shuffled()
-        }
-    }
+}
 
 suspend fun DomainTrack.getMediaMetadata(context: Context): MediaMetadataCompat =
     MediaMetadataCompat.Builder()

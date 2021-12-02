@@ -193,8 +193,8 @@ class BottomSheetFragment : Fragment() {
             onClickAlbum = { album ->
                 mainViewModel.selectedAlbum.value = album
             },
-            onClickTrack = { track ->
-                mainViewModel.onRequestNavigate(track)
+            onClickTrack = {
+                mainViewModel.onRequestNavigate()
             },
             onChangeCurrentPosition = { position ->
                 mainViewModel.onChangeRequestedPositionInQueue(position)

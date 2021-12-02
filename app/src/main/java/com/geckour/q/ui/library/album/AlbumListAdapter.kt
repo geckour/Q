@@ -17,7 +17,7 @@ import com.geckour.q.util.loadOrDefault
 
 class AlbumListAdapter(
     private val onClickAlbum: (album: Album) -> Unit,
-    private val onNewQueue: (actionType: InsertActionType, album: Album, shuffle: Boolean) -> Unit,
+    private val onNewQueue: (actionType: InsertActionType, album: Album) -> Unit,
     private val onEditMetadata: (album: Album) -> Unit,
 ) : ListAdapter<JoinedAlbum, AlbumListAdapter.ViewHolder>(diffCallback) {
 
@@ -77,15 +77,9 @@ class AlbumListAdapter(
                     R.id.menu_override_all_simple_shuffle -> InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
                     else -> null
                 } ?: return@setOnMenuItemClickListener false
-                val shuffle: Boolean = it.itemId !in listOf(
-                    R.id.menu_insert_all_simple_shuffle_next,
-                    R.id.menu_insert_all_simple_shuffle_last,
-                    R.id.menu_override_all_simple_shuffle
-                )
                 onNewQueue(
                     actionType,
-                    binding.data?.album ?: return@setOnMenuItemClickListener false,
-                    shuffle
+                    binding.data?.album ?: return@setOnMenuItemClickListener false
                 )
 
                 return@setOnMenuItemClickListener true
