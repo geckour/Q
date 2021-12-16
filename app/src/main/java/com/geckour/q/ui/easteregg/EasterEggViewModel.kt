@@ -1,28 +1,26 @@
 package com.geckour.q.ui.easteregg
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.util.toDomainTrack
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import java.util.*
 
 class EasterEggViewModel(private val db: DB) : ViewModel() {
 
-    val track = MutableLiveData<DomainTrack>()
+    val track: Flow<DomainTrack>
 
     init {
-        viewModelScope.launch { pickupTrack() }
-    }
-
-    private suspend fun pickupTrack() {
         val seed = Calendar.getInstance(TimeZone.getDefault())
             .let { it.get(Calendar.YEAR) * 1000L + it.get(Calendar.DAY_OF_YEAR) }
-        val track = db.trackDao().getAll().let { it[Random(seed).nextInt(it.size)] }
-        this.track.value = track.toDomainTrack()
+
+        track = db.albumDao().getAllAsync()
+            .map { albums ->
+                val random = Random(seed)
+                db.trackDao().getAllByAlbum(albums[random.nextInt(albums.size)].album.id)
+                    .let { it[random.nextInt(it.size)] }.toDomainTrack()
+            }
     }
 }

@@ -6,12 +6,8 @@
     <data>
 
         <variable
-            name="viewModel"
-            type="com.geckour.q.ui.easteregg.EasterEggViewModel" />
-
-        <variable
-            name="mainViewModel"
-            type="com.geckour.q.ui.main.MainViewModel" />
+            name="track"
+            type="com.geckour.q.domain.model.DomainTrack" />
     </data>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -53,7 +49,7 @@
             android:ellipsize="end"
             android:lines="1"
             android:maxLines="1"
-            android:text="@{viewModel.track.title}"
+            android:text="@{track.title}"
             android:textColor="?attr/colorAccent"
             android:textSize="16sp"
             app:layout_constraintBottom_toTopOf="@id/artist"
@@ -71,7 +67,7 @@
             android:ellipsize="end"
             android:lines="1"
             android:maxLines="1"
-            android:text="@{viewModel.track.artist.title}"
+            android:text="@{track.artist.title}"
             android:textColor="?attr/colorAccent"
             android:textSize="16sp"
             app:layout_constraintBottom_toTopOf="@id/guide_peek_height"

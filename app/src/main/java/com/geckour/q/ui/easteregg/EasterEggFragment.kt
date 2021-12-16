@@ -10,6 +10,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.PopupMenu
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.lifecycleScope
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentEasterEggBinding
 import com.geckour.q.ui.main.MainViewModel
@@ -19,6 +20,8 @@ import com.geckour.q.util.loadOrDefault
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toggleDayNight
 import com.google.firebase.analytics.FirebaseAnalytics
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import org.koin.androidx.viewmodel.ext.android.sharedViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
@@ -51,7 +54,6 @@ class EasterEggFragment : Fragment() {
             })
 
         binding.lifecycleOwner = viewLifecycleOwner
-        binding.viewModel = viewModel
 
         observeEvents()
     }
@@ -79,9 +81,8 @@ class EasterEggFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        viewModel.track.observe(viewLifecycleOwner) { track ->
-            track ?: return@observe
-
+        viewModel.track.onEach { track ->
+            binding.track = track
             binding.tapArea?.setOnClickListener {
                 FirebaseAnalytics.getInstance(requireContext())
                     .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
@@ -115,6 +116,6 @@ class EasterEggFragment : Fragment() {
             }
 
             binding.artwork.loadOrDefault(track.thumbUriString)
-        }
+        }.launchIn(lifecycleScope)
     }
 }
