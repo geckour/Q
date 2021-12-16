@@ -50,9 +50,9 @@ import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.verifyWithDropbox
 import com.google.android.exoplayer2.DefaultRenderersFactory
+import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.PlaybackException
 import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.SimpleExoPlayer
 import com.google.android.exoplayer2.Timeline
 import com.google.android.exoplayer2.analytics.AnalyticsListener
 import com.google.android.exoplayer2.audio.AudioAttributes
@@ -64,10 +64,9 @@ import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.source.TrackGroupArray
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray
-import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
+import com.google.android.exoplayer2.upstream.DefaultDataSource
 import com.google.android.exoplayer2.upstream.HttpDataSource
 import com.google.android.exoplayer2.util.EventLogger
-import com.google.android.exoplayer2.util.Util
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -201,12 +200,12 @@ class PlayerService : Service(), LifecycleOwner {
         }
     }
 
-    private val player: SimpleExoPlayer by lazy {
+    private val player: ExoPlayer by lazy {
         ducking = sharedPreferences.ducking
         val trackSelector = DefaultTrackSelector(this)
         val renderersFactory = DefaultRenderersFactory(this)
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
-        SimpleExoPlayer.Builder(this, renderersFactory)
+        ExoPlayer.Builder(this, renderersFactory)
             .setTrackSelector(trackSelector)
             .setHandleAudioBecomingNoisy(true)
             .build()
@@ -260,8 +259,8 @@ class PlayerService : Service(), LifecycleOwner {
         )
     private val currentIndex
         get() =
-            if (player.currentWindowIndex == -1 && source.size > 0) 0
-            else player.currentWindowIndex
+            if (player.currentMediaItemIndex == -1 && source.size > 0) 0
+            else player.currentMediaItemIndex
 
     private var equalizer: Equalizer? = null
 
@@ -390,10 +389,7 @@ class PlayerService : Service(), LifecycleOwner {
         }
 
         mediaSourceFactory = ProgressiveMediaSource.Factory(
-            DefaultDataSourceFactory(
-                applicationContext,
-                Util.getUserAgent(applicationContext, packageName)
-            )
+            DefaultDataSource.Factory(applicationContext)
         )
 
         player.setMediaSource(source)
@@ -404,8 +400,6 @@ class PlayerService : Service(), LifecycleOwner {
 
     override fun onStart(intent: Intent?, startId: Int) {
         dispatcher.onServicePreSuperOnStart()
-
-        super.onStart(intent, startId)
     }
 
     override fun onDestroy() {
@@ -662,15 +656,15 @@ class PlayerService : Service(), LifecycleOwner {
     fun next() {
         if (player.repeatMode != Player.REPEAT_MODE_OFF) seekToTail()
         else {
-            if (player.currentWindowIndex < source.size - 1) {
-                val index = player.currentWindowIndex + 1
+            if (player.currentMediaItemIndex < source.size - 1) {
+                val index = player.currentMediaItemIndex + 1
                 forceIndex(index)
             } else stop()
         }
     }
 
     private fun prev() {
-        val index = if (player.currentWindowIndex > 0) player.currentWindowIndex - 1
+        val index = if (player.currentMediaItemIndex > 0) player.currentMediaItemIndex - 1
         else 0
         player.seekToDefaultPosition(index)
     }
