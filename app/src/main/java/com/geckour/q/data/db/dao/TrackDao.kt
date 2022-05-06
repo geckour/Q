@@ -134,7 +134,7 @@ interface TrackDao {
         pastTrackDuration: Long
     ): Long {
         val existedTrack =
-            if (track.mediaId < 0) get(track.id) ?: getByTitles(track.title, albumId, artistId)
+            if (track.mediaId < 0) get(track.id)
             else getByMediaId(track.mediaId)
         val toInsert = existedTrack?.track?.let {
             val duration = it.duration - pastTrackDuration + track.duration

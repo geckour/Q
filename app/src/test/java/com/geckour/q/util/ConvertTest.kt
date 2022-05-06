@@ -1,8 +1,6 @@
 package com.geckour.q.util
 
 import com.google.common.truth.Truth
-import org.junit.Assert.*
-
 import org.junit.Test
 
 class ConvertTest {

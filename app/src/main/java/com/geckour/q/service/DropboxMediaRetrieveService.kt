@@ -11,7 +11,6 @@ import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.webkit.MimeTypeMap
-import androidx.preference.PreferenceManager
 import com.dropbox.core.RateLimitException
 import com.dropbox.core.v2.DbxClientV2
 import com.dropbox.core.v2.files.FileMetadata
@@ -244,17 +243,20 @@ class DropboxMediaRetrieveService : IntentService(NAME) {
             val currentTime = System.currentTimeMillis()
             val url = client.files().getTemporaryLink(dropboxMetadata.pathLower).link
 
-            db.trackDao().getBySourcePath(url)?.track?.let {
+            val trackId = db.trackDao().getBySourcePath(url)?.track?.let {
                 if (it.lastModified >= dropboxMetadata.serverModified.time) it.id
                 else null
-            } ?: client.saveTempAudioFile(context, dropboxMetadata.pathLower)
-                .storeMediaInfo(
-                    context,
-                    url,
-                    null,
-                    dropboxMetadata.pathLower,
-                    currentTime + DROPBOX_EXPIRES_IN,
-                    dropboxMetadata.serverModified.time
-                )
+            }
+
+            return@runBlocking trackId
+                ?: client.saveTempAudioFile(context, dropboxMetadata.pathLower)
+                    .storeMediaInfo(
+                        context,
+                        url,
+                        null,
+                        dropboxMetadata.pathLower,
+                        currentTime + DROPBOX_EXPIRES_IN,
+                        dropboxMetadata.serverModified.time
+                    )
         }
 }
