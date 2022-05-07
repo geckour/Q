@@ -1,6 +1,5 @@
 package com.geckour.q.data.db.dao
 
-import android.content.Context
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -51,7 +50,7 @@ interface ArtistDao {
     suspend fun increasePlaybackCount(artistId: Long)
 
     @Transaction
-    suspend fun deleteRecursively(context: Context, artistId: Long) {
+    suspend fun deleteRecursively(artistId: Long) {
         deleteTrackByArtist(artistId)
         deleteAlbumByArtist(artistId)
         delete(artistId)
@@ -71,7 +70,7 @@ interface ArtistDao {
 
         return insert(toInsert).apply {
             if (artist.id > 0 && this != artist.id) {
-                db.albumDao().getAllByArtist(artist.id).asSequence().forEach {
+                db.albumDao().getAllByArtistId(artist.id).asSequence().forEach {
                     db.albumDao().update(it.album.copy(artistId = this))
                 }
                 db.trackDao().getAllByArtist(artist.id).asSequence().forEach {

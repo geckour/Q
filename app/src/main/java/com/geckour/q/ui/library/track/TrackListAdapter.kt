@@ -53,37 +53,7 @@ class TrackListAdapter(
     inner class ViewHolder(private val binding: ItemTrackBinding) :
         RecyclerView.ViewHolder(binding.root) {
 
-        private val shortPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
-            setOnMenuItemClickListener { menuItem ->
-                when (menuItem.itemId) {
-                    R.id.menu_insert_all_next,
-                    R.id.menu_insert_all_last,
-                    R.id.menu_override_all -> {
-                        onNewQueue(
-                            when (menuItem.itemId) {
-                                R.id.menu_insert_all_next -> InsertActionType.NEXT
-                                R.id.menu_insert_all_last -> InsertActionType.LAST
-                                R.id.menu_override_all -> InsertActionType.OVERRIDE
-                                else -> return@setOnMenuItemClickListener false
-                            },
-                            binding.data ?: return@setOnMenuItemClickListener false
-                        )
-                    }
-                    R.id.menu_edit_metadata -> {
-                        onEditMetadata(binding.data ?: return@setOnMenuItemClickListener false)
-                    }
-                    R.id.menu_ignore -> {
-                        onToggleIgnored(binding.data ?: return@setOnMenuItemClickListener false)
-                    }
-                    else -> return@setOnMenuItemClickListener false
-                }
-
-                return@setOnMenuItemClickListener true
-            }
-            inflate(R.menu.track)
-        }
-
-        private val longPopupMenu = PopupMenu(binding.root.context, binding.root).apply {
+        private val popupMenu = PopupMenu(binding.root.context, binding.root).apply {
             setOnMenuItemClickListener { menuItem ->
                 when (menuItem.itemId) {
                     R.id.menu_transition_to_artist -> {
@@ -129,7 +99,7 @@ class TrackListAdapter(
 
                 return@setOnMenuItemClickListener true
             }
-            inflate(R.menu.track_long)
+            inflate(R.menu.track)
         }
 
         fun bind() {
@@ -138,27 +108,19 @@ class TrackListAdapter(
             binding.duration.text = track.durationString
             binding.thumb.loadOrDefault(track.artworkUriString)
             binding.root.setOnClickListener { onTrackSelected(track) }
-            binding.root.setOnLongClickListener { onTrackLongTapped(track) }
+            binding.root.setOnLongClickListener {
+                onTrackSelected(track)
+                return@setOnLongClickListener true
+            }
         }
 
         private fun onTrackSelected(domainTrack: DomainTrack) {
             onClickTrack(domainTrack)
-            shortPopupMenu.show()
-            shortPopupMenu.menu.findItem(R.id.menu_ignore).title = binding.root.context.getString(
+            popupMenu.show()
+            popupMenu.menu.findItem(R.id.menu_ignore).title = binding.root.context.getString(
                 if (binding.data?.ignored == true) R.string.menu_ignore_to_false
                 else R.string.menu_ignore_to_true
             )
-        }
-
-        private fun onTrackLongTapped(domainTrack: DomainTrack): Boolean {
-            onClickTrack(domainTrack)
-            longPopupMenu.show()
-            longPopupMenu.menu.findItem(R.id.menu_ignore).title = binding.root.context.getString(
-                if (binding.data?.ignored == true) R.string.menu_ignore_to_false
-                else R.string.menu_ignore_to_true
-            )
-
-            return true
         }
     }
 }

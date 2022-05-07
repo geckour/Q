@@ -23,7 +23,7 @@
         app:showAsAction="never" />
     <item
         android:id="@+id/menu_delete_track"
-        android:title="@string/menu_delete_track"
+        android:title="@string/menu_delete_from_device"
         app:showAsAction="never" />
     <item
         android:id="@+id/menu_edit_metadata"

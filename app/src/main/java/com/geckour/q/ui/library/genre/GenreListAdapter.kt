@@ -49,7 +49,7 @@ class GenreListAdapter(
                     bindTo.context, it.itemId, binding.data
                 )
             }
-            inflate(R.menu.tracks)
+            inflate(R.menu.genre)
         }
 
         fun bind() {

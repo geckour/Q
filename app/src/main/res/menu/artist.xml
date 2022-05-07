@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/menu_insert_all_next"
+        android:title="@string/menu_insert_all_next"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_insert_all_last"
+        android:title="@string/menu_insert_all_last"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_override_all"
+        android:title="@string/menu_override_all"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_insert_all_shuffle_next"
+        android:title="@string/menu_albums_insert_all_shuffle_next"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_insert_all_shuffle_last"
+        android:title="@string/menu_albums_insert_all_shuffle_last"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_override_all_shuffle"
+        android:title="@string/menu_albums_override_all_shuffle"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_insert_all_simple_shuffle_next"
+        android:title="@string/menu_insert_all_simple_shuffle_next"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_insert_all_simple_shuffle_last"
+        android:title="@string/menu_insert_all_simple_shuffle_last"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_override_all_simple_shuffle"
+        android:title="@string/menu_override_all_simple_shuffle"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_edit_metadata"
+        android:title="@string/menu_edit_metadata"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/menu_delete_artist"
+        android:title="@string/menu_delete_from_device"
+        app:showAsAction="never" />
+</menu>

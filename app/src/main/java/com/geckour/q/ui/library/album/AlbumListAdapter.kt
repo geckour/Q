@@ -19,6 +19,7 @@ class AlbumListAdapter(
     private val onClickAlbum: (album: Album) -> Unit,
     private val onNewQueue: (actionType: InsertActionType, album: Album) -> Unit,
     private val onEditMetadata: (album: Album) -> Unit,
+    private val onDeleteAlbum: (album: Album) -> Unit
 ) : ListAdapter<JoinedAlbum, AlbumListAdapter.ViewHolder>(diffCallback) {
 
     companion object {
@@ -67,6 +68,10 @@ class AlbumListAdapter(
                     onEditMetadata(binding.data?.album ?: return@setOnMenuItemClickListener false)
                     return@setOnMenuItemClickListener true
                 }
+                if (it.itemId == R.id.menu_delete_album) {
+                    onDeleteAlbum(binding.data?.album ?: return@setOnMenuItemClickListener false)
+                    return@setOnMenuItemClickListener true
+                }
 
                 val actionType = when (it.itemId) {
                     R.id.menu_insert_all_next -> InsertActionType.NEXT
@@ -84,7 +89,7 @@ class AlbumListAdapter(
 
                 return@setOnMenuItemClickListener true
             }
-            inflate(R.menu.tracks)
+            inflate(R.menu.album)
         }
 
         fun bind() {
@@ -94,7 +99,7 @@ class AlbumListAdapter(
             binding.root.setOnClickListener { onClickAlbum(joinedAlbum.album) }
             binding.root.setOnLongClickListener {
                 getPopupMenu(it).show()
-                true
+                return@setOnLongClickListener true
             }
             binding.option.setOnClickListener { getPopupMenu(it).show() }
             binding.thumb.loadOrDefault(joinedAlbum.album.artworkUriString)

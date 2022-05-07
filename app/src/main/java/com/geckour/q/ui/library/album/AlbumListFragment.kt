@@ -75,6 +75,9 @@ class AlbumListFragment : Fragment() {
                     }
                 }
             }
+        },
+        onDeleteAlbum = { album ->
+            viewModel.deleteAlbum(album.id)
         }
     )
 
@@ -111,7 +114,7 @@ class AlbumListFragment : Fragment() {
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
 
-        inflater.inflate(R.menu.albums_toolbar, menu)
+        inflater.inflate(R.menu.artist_toolbar, menu)
         (menu.findItem(R.id.menu_search)?.actionView as? SearchView?)
             ?.let {
                 mainViewModel.initSearchQueryListener(it)
@@ -149,6 +152,10 @@ class AlbumListFragment : Fragment() {
                         }
                     }
                 }
+                return true
+            }
+            if (item.itemId == R.id.menu_delete_artist) {
+                viewModel.deleteArtist()
                 return true
             }
 

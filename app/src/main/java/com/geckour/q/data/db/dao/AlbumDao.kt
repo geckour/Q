@@ -1,6 +1,5 @@
 package com.geckour.q.data.db.dao
 
-import android.content.Context
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -24,12 +23,20 @@ interface AlbumDao {
     @Query("delete from album where id = :id")
     suspend fun delete(id: Long): Int
 
+    @Transaction
+    @Query("delete from album where id in (:ids)")
+    suspend fun deleteAllByIds(ids: List<Long>): Int
+
     @Query("delete from track where albumId = :albumId")
     suspend fun deleteTrackByAlbum(albumId: Long): Int
 
     @Transaction
     @Query("select * from album where id = :id")
     suspend fun get(id: Long): JoinedAlbum?
+
+    @Transaction
+    @Query("select * from album where id in (:ids)")
+    suspend fun getAllByIds(ids: List<Long>): List<JoinedAlbum>
 
     @Transaction
     @Query("select * from album where title like :title")
@@ -41,15 +48,15 @@ interface AlbumDao {
 
     @Transaction
     @Query("select * from album where artistId = :artistId")
-    suspend fun getAllByArtist(artistId: Long): List<JoinedAlbum>
+    suspend fun getAllByArtistId(artistId: Long): List<JoinedAlbum>
 
     @Transaction
     @Query("select * from album where artistId = :artistId")
-    fun getAllByArtistAsync(artistId: Long): Flow<List<JoinedAlbum>>
+    fun getAllByArtistIdAsync(artistId: Long): Flow<List<JoinedAlbum>>
 
     @Transaction
     @Query("select * from album where title = :title and artistId = :artistId")
-    suspend fun getAllByTitle(title: String, artistId: Long): List<JoinedAlbum>
+    suspend fun getAllByTitleAndArtistId(title: String, artistId: Long): List<JoinedAlbum>
 
     @Transaction
     @Query("select * from album where title like :title")
@@ -59,11 +66,12 @@ interface AlbumDao {
     suspend fun increasePlaybackCount(albumId: Long)
 
     @Transaction
-    suspend fun deleteIncludingRootIfEmpty(db: DB, albumId: Long) {
-        get(albumId)?.let {
-            delete(albumId)
+    suspend fun deleteIncludingRootIfEmpty(db: DB, vararg albumIds: Long) {
+        val albums = getAllByIds(albumIds.toList())
+        deleteAllByIds(albumIds.toList())
 
-            if (getAllByArtist(it.album.artistId).isEmpty()) {
+        albums.forEach {
+            if (getAllByArtistId(it.album.artistId).isEmpty()) {
                 db.artistDao().delete(it.album.artistId)
             } else {
                 db.artistDao()
@@ -77,8 +85,14 @@ interface AlbumDao {
     }
 
     @Transaction
+    suspend fun deleteRecursively(albumId: Long) {
+        deleteTrackByAlbum(albumId)
+        delete(albumId)
+    }
+
+    @Transaction
     suspend fun upsert(db: DB, album: Album, pastTrackDuration: Long = 0): Long {
-        val toInsert = getAllByTitle(album.title, album.artistId).let { albums ->
+        val toInsert = getAllByTitleAndArtistId(album.title, album.artistId).let { albums ->
             val firstAlbum = albums.firstOrNull() ?: return@let null
             albums.drop(1).asSequence().forEach {
                 val duration =

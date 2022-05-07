@@ -79,6 +79,9 @@ class ArtistListFragment : Fragment() {
                     }
                 }
             }
+        },
+        onDeleteArtist = { artist ->
+            viewModel.deleteArtist(artist.id)
         }
     )
 

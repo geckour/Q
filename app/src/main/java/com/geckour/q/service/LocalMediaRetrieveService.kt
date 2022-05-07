@@ -248,7 +248,7 @@ class LocalMediaRetrieveService : IntentService(NAME) {
     }
 
     private fun DB.deleteTracks(mediaIds: List<Long>) = runBlocking {
-        trackDao().getByMediaIds(mediaIds).forEach {
+        trackDao().getAllByMediaIds(mediaIds).forEach {
             trackDao().deleteIncludingRootIfEmpty(this@deleteTracks, it.track.id)
         }
     }
@@ -267,7 +267,6 @@ class LocalMediaRetrieveService : IntentService(NAME) {
             val file = File(trackPath)
             if (file.exists().not()) {
                 context.contentResolver.delete(uri, null, null)
-                trackDao().deleteIncludingRootIfEmpty(this@storeMediaInfo, trackMediaId)
                 throw IllegalStateException("Media file does not exist")
             }
 

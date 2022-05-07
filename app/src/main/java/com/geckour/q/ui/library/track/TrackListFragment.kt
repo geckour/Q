@@ -18,6 +18,7 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Bool
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Genre
+import com.geckour.q.ui.library.album.AlbumListViewModel
 import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
@@ -33,6 +34,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.get
 import org.koin.androidx.viewmodel.ext.android.sharedViewModel
+import org.koin.androidx.viewmodel.ext.android.viewModel
 
 class TrackListFragment : Fragment() {
 
@@ -63,6 +65,7 @@ class TrackListFragment : Fragment() {
         }
     }
 
+    private val viewModel by viewModel<TrackListViewModel>()
     private val mainViewModel by sharedViewModel<MainViewModel>()
     private lateinit var binding: FragmentListLibraryBinding
     private val adapter: TrackListAdapter = TrackListAdapter(
@@ -146,7 +149,17 @@ class TrackListFragment : Fragment() {
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         super.onCreateOptionsMenu(menu, inflater)
 
-        inflater.inflate(R.menu.tracks_toolbar, menu)
+        val album = arguments?.getParcelable<Album>(ARGS_KEY_ALBUM)
+        val genre = arguments?.getParcelable<Genre>(ARGS_KEY_GENRE)
+
+        val menuRes = when {
+            album != null -> R.menu.album_toolbar
+            genre != null -> R.menu.genre_toolbar
+            else -> null
+        }
+        menuRes?.let {
+            inflater.inflate(it, menu)
+        }
         (menu.findItem(R.id.menu_search)?.actionView as? SearchView?)
             ?.let {
                 mainViewModel.initSearchQueryListener(it)
@@ -180,6 +193,12 @@ class TrackListFragment : Fragment() {
                         mainViewModel.onLoadStateChanged(false)
                     }
                 }
+            }
+            return true
+        }
+        if (item.itemId == R.id.menu_delete_album) {
+            arguments?.getParcelable<Album>(ARGS_KEY_ALBUM)?.let {
+                viewModel.deleteAlbum(it.id)
             }
             return true
         }

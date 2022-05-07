@@ -1,6 +1,5 @@
 package com.geckour.q.data.db.dao
 
-import android.content.Context
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -25,9 +24,16 @@ interface TrackDao {
     @Query("delete from track where id = :id")
     suspend fun delete(id: Long): Int
 
+    @Query("delete from track where id in (:ids)")
+    suspend fun deleteAllByIds(ids: List<Long>): Int
+
     @Transaction
     @Query("select * from track where id = :id")
     suspend fun get(id: Long): JoinedTrack?
+
+    @Transaction
+    @Query("select * from track where id in (:ids)")
+    suspend fun getAllByIds(ids: List<Long>): List<JoinedTrack>
 
     @Transaction
     @Query("select * from track where sourcePath = :sourcePath")
@@ -43,7 +49,7 @@ interface TrackDao {
 
     @Transaction
     @Query("select * from track where mediaId in (:mediaIds)")
-    suspend fun getByMediaIds(mediaIds: List<Long>): List<JoinedTrack>
+    suspend fun getAllByMediaIds(mediaIds: List<Long>): List<JoinedTrack>
 
     @Query("select duration from track where mediaId = :mediaId")
     suspend fun getDurationWithMediaId(mediaId: Long): Long?
@@ -107,20 +113,25 @@ interface TrackDao {
     suspend fun getLatestModifiedEpochTime(): Long?
 
     @Transaction
-    suspend fun deleteIncludingRootIfEmpty(db: DB, trackId: Long) {
-        get(trackId)?.let {
-            delete(trackId)
+    suspend fun deleteIncludingRootIfEmpty(db: DB, vararg trackIds: Long) {
+        val tracks = getAllByIds(trackIds.toList())
+        deleteAllByIds(trackIds.toList())
 
+        tracks.forEach {
             if (getAllByAlbum(it.track.albumId, Bool.UNDEFINED).isEmpty()) {
                 db.albumDao().deleteIncludingRootIfEmpty(db, it.track.albumId)
             } else {
                 db.albumDao()
                     .update(
-                        it.album.copy(totalDuration = it.album.totalDuration - it.track.duration)
+                        it.album.copy(
+                            totalDuration = it.album.totalDuration - it.track.duration
+                        )
                     )
                 db.artistDao()
                     .update(
-                        it.artist.copy(totalDuration = it.artist.totalDuration - it.track.duration)
+                        it.artist.copy(
+                            totalDuration = it.artist.totalDuration - it.track.duration
+                        )
                     )
             }
         }

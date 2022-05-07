@@ -18,6 +18,7 @@ class ArtistListAdapter(
     private val onClickArtist: (artist: Artist) -> Unit,
     private val onNewQueue: (actionType: InsertActionType, artist: Artist) -> Unit,
     private val onEditMetadata: (artist: Artist) -> Unit,
+    private val onDeleteArtist: (artist: Artist) -> Unit
 ) : ListAdapter<Artist, ArtistListAdapter.ViewHolder>(diffCallback) {
 
     companion object {
@@ -60,6 +61,10 @@ class ArtistListAdapter(
                     onEditMetadata(binding.data ?: return@setOnMenuItemClickListener false)
                     return@setOnMenuItemClickListener true
                 }
+                if (it.itemId == R.id.menu_delete_artist) {
+                    onDeleteArtist(binding.data ?: return@setOnMenuItemClickListener false)
+                    return@setOnMenuItemClickListener true
+                }
 
                 val actionType = when (it.itemId) {
                     R.id.menu_insert_all_next -> InsertActionType.NEXT
@@ -78,7 +83,7 @@ class ArtistListAdapter(
 
                 return@setOnMenuItemClickListener true
             }
-            inflate(R.menu.albums)
+            inflate(R.menu.artist)
         }
 
         fun bind() {
