@@ -85,9 +85,9 @@ interface AlbumDao {
     }
 
     @Transaction
-    suspend fun deleteRecursively(albumId: Long) {
+    suspend fun deleteRecursively(db: DB, albumId: Long) {
         deleteTrackByAlbum(albumId)
-        delete(albumId)
+        deleteIncludingRootIfEmpty(db, albumId)
     }
 
     @Transaction

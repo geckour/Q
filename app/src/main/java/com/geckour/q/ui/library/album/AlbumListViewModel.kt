@@ -5,7 +5,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
-import com.geckour.q.data.db.model.Bool
 import kotlinx.coroutines.launch
 
 class AlbumListViewModel(private val db: DB, private val artist: Artist?) : ViewModel() {
@@ -18,7 +17,7 @@ class AlbumListViewModel(private val db: DB, private val artist: Artist?) : View
 
     internal fun deleteAlbum(albumId: Long) {
         viewModelScope.launch {
-            db.albumDao().deleteRecursively(albumId)
+            db.albumDao().deleteRecursively(db, albumId)
         }
     }
 

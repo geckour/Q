@@ -9,7 +9,7 @@ class TrackListViewModel(private val db: DB) : ViewModel() {
 
     internal fun deleteAlbum(albumId: Long) {
         viewModelScope.launch {
-            db.albumDao().deleteRecursively(albumId)
+            db.albumDao().deleteRecursively(db, albumId)
         }
     }
 }
