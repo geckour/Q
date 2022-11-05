@@ -12,10 +12,11 @@ android {
     def keyNameDropBoxAppKey = "DROPBOX_APP_KEY"
     def keyNameDropBoxAppSecret = "DROPBOX_APP_SECRET"
 
-    compileSdkVersion 31
+    compileSdkVersion 33
     defaultConfig {
         applicationId "com.geckour.q"
         minSdkVersion 24
+        targetSdkVersion 33
         versionCode 4
         versionName "1.2.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
@@ -77,10 +78,10 @@ repositories {
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.1'
-    implementation 'androidx.appcompat:appcompat:1.3.1'
-    implementation "androidx.media:media:1.4.3"
-    implementation 'com.google.android.material:material:1.4.0'
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.appcompat:appcompat:1.5.1'
+    implementation "androidx.media:media:1.6.0"
+    implementation 'com.google.android.material:material:1.7.0'
     testImplementation 'junit:junit:4.13.2'
     testImplementation "com.google.truth:truth:1.1.3"
     androidTestImplementation 'androidx.test:runner:1.4.0'
@@ -88,57 +89,52 @@ dependencies {
 
     implementation platform('com.google.firebase:firebase-bom:26.4.0')
 
-    def koin_version = "3.1.3"
-    implementation "io.insert-koin:koin-android:$koin_version"
+    // DI
+    implementation "io.insert-koin:koin-android:3.3.0"
 
     // Logging
     implementation 'com.google.firebase:firebase-core'
     implementation 'com.google.firebase:firebase-crashlytics-ktx'
     implementation 'com.jakewharton.timber:timber:5.0.1'
 
-    // Coroutines
-    def coroutines_ver = '1.5.1'
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutines_ver"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutines_ver"
-
     // JSON
-    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.2.2"
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1"
 
     // Networking
     def retrofit2_version = "2.9.0"
-    def okhttp_version = "4.9.1"
+    def okhttp_version = "4.10.0"
     implementation "com.squareup.retrofit2:retrofit:$retrofit2_version"
     implementation "com.squareup.retrofit2:converter-gson:$retrofit2_version"
     implementation "com.squareup.okhttp3:okhttp:$okhttp_version"
     implementation "com.squareup.okhttp3:logging-interceptor:$okhttp_version"
 
     // AAC ViewModel
-    def aac_lifecycle_ver = '2.4.0'
+    def aac_lifecycle_ver = '2.5.1'
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$aac_lifecycle_ver"
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:$aac_lifecycle_ver"
-    implementation "androidx.lifecycle:lifecycle-common-java8:$aac_lifecycle_ver"
     testImplementation 'androidx.arch.core:core-testing:2.1.0'
 
     // AAC Room
-    def aac_room_ver = '2.3.0'
+    def aac_room_ver = '2.4.3'
     implementation "androidx.room:room-runtime:$aac_room_ver"
     implementation "androidx.room:room-ktx:$aac_room_ver"
     kapt "androidx.room:room-compiler:$aac_room_ver"
     testImplementation "androidx.room:room-testing:$aac_room_ver"
 
     // AndroidX
-    implementation 'androidx.preference:preference-ktx:1.1.1'
+    implementation 'androidx.preference:preference-ktx:1.2.0'
     implementation "androidx.browser:browser:1.4.0"
 
     // KTX
-    implementation 'androidx.fragment:fragment-ktx:1.3.6'
-    implementation 'androidx.activity:activity-ktx:1.4.0'
+    implementation 'androidx.fragment:fragment-ktx:1.5.4'
+    implementation 'androidx.activity:activity-ktx:1.6.1'
+    implementation "androidx.core:core-ktx:1.9.0"
 
     // WorkManager
-    implementation 'androidx.work:work-runtime-ktx:2.7.0'
+    implementation 'androidx.work:work-runtime-ktx:2.7.1'
 
     // Permission
-    implementation 'com.github.permissions-dispatcher:ktx:1.1.3'
+    implementation 'com.github.permissions-dispatcher:ktx:1.1.4'
 
     // Image processing
     implementation "com.github.bumptech.glide:glide:4.12.0"
@@ -157,7 +153,7 @@ dependencies {
     implementation 'commons-codec:commons-codec:1.11'
 
     // Dropbox
-    implementation 'com.dropbox.core:dropbox-core-sdk:5.0.0'
+    implementation 'com.dropbox.core:dropbox-core-sdk:5.4.4'
 
     // Audio Metadata
     implementation 'net.jthink:jaudiotagger:3.0.1'

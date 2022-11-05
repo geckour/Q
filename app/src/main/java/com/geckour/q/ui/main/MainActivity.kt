@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.SharedPreferences
+import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.GestureDetector
@@ -24,7 +25,13 @@ import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.commit
 import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
-import com.dropbox.core.DbxRequestConfig
+import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import com.dropbox.core.DbxHost
 import com.dropbox.core.android.Auth
 import com.geckour.q.BuildConfig
 import com.geckour.q.R
@@ -33,8 +40,7 @@ import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogSleepBinding
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.RequestedTransition
-import com.geckour.q.service.DropboxMediaRetrieveService
-import com.geckour.q.service.LocalMediaRetrieveService
+import com.geckour.q.service.MEDIA_RETRIEVE_WORKER_NAME
 import com.geckour.q.service.SleepTimerService
 import com.geckour.q.ui.easteregg.EasterEggFragment
 import com.geckour.q.ui.equalizer.EqualizerFragment
@@ -47,6 +53,7 @@ import com.geckour.q.ui.pay.PaymentViewModel
 import com.geckour.q.ui.setting.SettingActivity
 import com.geckour.q.ui.sheet.BottomSheetFragment
 import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.dbxRequestConfig
 import com.geckour.q.util.dropboxCredential
 import com.geckour.q.util.ducking
 import com.geckour.q.util.isNightMode
@@ -57,6 +64,8 @@ import com.geckour.q.util.sleepTimerTolerance
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toNightModeInt
 import com.geckour.q.util.updateFileMetadata
+import com.geckour.q.worker.DropboxMediaRetrieveWorker
+import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.flow.collectLatest
@@ -148,22 +157,29 @@ class MainActivity : AppCompatActivity() {
         override fun onReceive(context: Context?, intent: Intent?) {
             intent?.extras?.let { extras ->
                 if (extras.getBoolean(EXTRA_SYNCING_COMPLETE, false)) {
-                    viewModel.syncing = false
-                    setLockingIndicator()
-                    viewModel.forceLoad.postValue(Unit)
+                    onCancelSync()
                 }
-                extras.getInt(EXTRA_SYNCING_PROGRESS_NUMERATOR, -1).let progress@{ numerator ->
-                    if (numerator < 0) return@progress
+                extras.getInt(EXTRA_SYNCING_PROGRESS_NUMERATOR, -1)
+                    .let progress@{ numerator ->
+                        if (numerator < 0) return@progress
+                        if (WorkManager.getInstance(this@MainActivity)
+                                .getWorkInfosForUniqueWork(MEDIA_RETRIEVE_WORKER_NAME)
+                                .get()
+                                .all { it.state == WorkInfo.State.CANCELLED }
+                        ) {
+                            onCancelSync()
+                            return
+                        }
 
-                    val denominator = extras.getInt(EXTRA_SYNCING_PROGRESS_DENOMINATOR, -1)
-                    val path = extras.getString(EXTRA_SYNCING_PROGRESS_PATH)
-                    viewModel.syncing = true
-                    setLockingIndicator()
-                    binding.indicatorLocking.progressSync.text =
-                        if (denominator < 0) getString(R.string.progress_sync_dropbox, numerator)
-                        else getString(R.string.progress_sync, numerator, denominator)
-                    binding.indicatorLocking.progressPath.text = path
-                }
+                        val denominator = extras.getInt(EXTRA_SYNCING_PROGRESS_DENOMINATOR, -1)
+                        val path = extras.getString(EXTRA_SYNCING_PROGRESS_PATH)
+                        viewModel.syncing = true
+                        setLockingIndicator()
+                        binding.indicatorLocking.progressSync.text =
+                            if (denominator < 0) null
+                            else getString(R.string.progress_sync, numerator, denominator)
+                        binding.indicatorLocking.progressPath.text = path
+                    }
             }
         }
     }
@@ -196,7 +212,12 @@ class MainActivity : AppCompatActivity() {
                 val credential = sharedPreferences.dropboxCredential
                 if (credential.isNullOrBlank()) {
                     viewModel.isDropboxAuthOngoing = true
-                    Auth.startOAuth2Authentication(this, BuildConfig.DROPBOX_APP_KEY)
+                    Auth.startOAuth2PKCE(
+                        this,
+                        BuildConfig.DROPBOX_APP_KEY,
+                        dbxRequestConfig,
+                        DbxHost.DEFAULT
+                    )
                 } else {
                     viewModel.showDropboxFolderChooser()
                 }
@@ -219,26 +240,6 @@ class MainActivity : AppCompatActivity() {
 
     private var dropboxChooserDialog: DropboxChooserDialog? = null
 
-    private fun retrieveMedia(onlyAdded: Boolean) {
-        constructPermissionsRequest(
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            onPermissionDenied = ::onReadExternalStorageDenied
-        ) {
-            startService(LocalMediaRetrieveService.getIntent(this, false, onlyAdded))
-        }.launch()
-    }
-
-    private fun retrieveDropboxMedia(rootPath: String) {
-        constructPermissionsRequest(
-            Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE,
-            onPermissionDenied = ::onReadExternalStorageDenied
-        ) {
-            startService(DropboxMediaRetrieveService.getIntent(this, rootPath, false))
-        }.launch()
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -250,8 +251,8 @@ class MainActivity : AppCompatActivity() {
         gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
 
             override fun onFling(
-                e1: MotionEvent?,
-                e2: MotionEvent?,
+                e1: MotionEvent,
+                e2: MotionEvent,
                 velocityX: Float,
                 velocityY: Float
             ): Boolean {
@@ -279,7 +280,14 @@ class MainActivity : AppCompatActivity() {
             onNavigationItemSelected(binding.navigationView.menu.findItem(navId))
         } else if (savedInstanceState.containsKey(STATE_KEY_REQUESTED_TRANSACTION)) {
             requestedTransition =
-                savedInstanceState.getParcelable(STATE_KEY_REQUESTED_TRANSACTION) as RequestedTransition?
+                if (Build.VERSION.SDK_INT < 33) {
+                    savedInstanceState.getParcelable(STATE_KEY_REQUESTED_TRANSACTION) as RequestedTransition?
+                } else {
+                    savedInstanceState.getParcelable(
+                        STATE_KEY_REQUESTED_TRANSACTION,
+                        RequestedTransition::class.java
+                    )
+                }
         }
 
         supportFragmentManager.commit {
@@ -302,7 +310,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         return if (gestureDetector.onTouchEvent(ev)) true else super.dispatchTouchEvent(ev)
     }
 
@@ -349,6 +357,74 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    private fun onCancelSync() {
+        viewModel.syncing = false
+        setLockingIndicator()
+        viewModel.forceLoad.postValue(Unit)
+    }
+
+    private fun retrieveMedia(onlyAdded: Boolean) {
+        if (Build.VERSION.SDK_INT < 33) {
+            constructPermissionsRequest(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                onPermissionDenied = ::onReadExternalStorageDenied
+            ) {
+                enqueueLocalRetrieveWorker(onlyAdded)
+            }.launch()
+        } else {
+            enqueueLocalRetrieveWorker(onlyAdded)
+        }
+    }
+
+    private fun retrieveDropboxMedia(rootPath: String) {
+        if (Build.VERSION.SDK_INT < 33) {
+            constructPermissionsRequest(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                onPermissionDenied = ::onReadExternalStorageDenied
+            ) {
+                enqueueDropboxRetrieveWorker(rootPath)
+            }.launch()
+        } else {
+            enqueueDropboxRetrieveWorker(rootPath)
+        }
+    }
+
+    private fun enqueueLocalRetrieveWorker(onlyAdded: Boolean) {
+        WorkManager.getInstance(this)
+            .beginUniqueWork(
+                MEDIA_RETRIEVE_WORKER_NAME,
+                ExistingWorkPolicy.REPLACE,
+                OneTimeWorkRequestBuilder<LocalMediaRetrieveWorker>()
+                    .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                    .setInputData(
+                        Data.Builder()
+                            .putBoolean(LocalMediaRetrieveWorker.KEY_ONLY_ADDED, onlyAdded)
+                            .build()
+                    )
+                    .build()
+            )
+            .enqueue()
+    }
+
+    private fun enqueueDropboxRetrieveWorker(rootPath: String) {
+        WorkManager.getInstance(this)
+            .beginUniqueWork(
+                MEDIA_RETRIEVE_WORKER_NAME,
+                ExistingWorkPolicy.REPLACE,
+                OneTimeWorkRequestBuilder<DropboxMediaRetrieveWorker>()
+                    .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                    .setInputData(
+                        Data.Builder()
+                            .putString(DropboxMediaRetrieveWorker.KEY_ROOT_PATH, rootPath)
+                            .build()
+                    )
+                    .build()
+            )
+            .enqueue()
     }
 
     private fun onReadExternalStorageDenied() {
@@ -446,6 +522,14 @@ class MainActivity : AppCompatActivity() {
                 else R.string.payment_save_failure, Snackbar.LENGTH_SHORT
             ).show()
         }
+
+        WorkManager.getInstance(this)
+            .getWorkInfosForUniqueWorkLiveData(MEDIA_RETRIEVE_WORKER_NAME)
+            .observe(this) { workInfoList ->
+                if (workInfoList.none { it.state == WorkInfo.State.RUNNING }) {
+                    onCancelSync()
+                }
+            }
     }
 
     private fun setupDrawer() {
@@ -484,7 +568,10 @@ class MainActivity : AppCompatActivity() {
         binding.indicatorLocking.descLocking.text = getString(R.string.syncing)
         binding.indicatorLocking.progressSync.visibility = View.VISIBLE
         binding.indicatorLocking.buttonCancel.apply {
-            setOnClickListener { viewModel.onCancelSync() }
+            setOnClickListener {
+                WorkManager.getInstance(this@MainActivity)
+                    .cancelUniqueWork(MEDIA_RETRIEVE_WORKER_NAME)
+            }
             visibility = View.VISIBLE
         }
     }

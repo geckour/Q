@@ -30,7 +30,6 @@ import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.SearchCategory
 import com.geckour.q.domain.model.SearchItem
-import com.geckour.q.service.LocalMediaRetrieveService
 import com.geckour.q.service.PlayerService
 import com.geckour.q.util.BoolConverter
 import com.geckour.q.util.InsertActionType
@@ -44,14 +43,15 @@ import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.searchAlbumByFuzzyTitle
 import com.geckour.q.util.searchArtistByFuzzyTitle
 import com.geckour.q.util.searchTrackByFuzzyTitle
-import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -80,7 +80,9 @@ class MainViewModel(
     internal val scrollToTop = MutableLiveData<Unit>()
     internal val forceLoad = MutableLiveData<Unit>()
 
-    internal val dropboxItemList = MutableSharedFlow<Pair<String, List<FolderMetadata>>>()
+    private val dropboxItemListChannel =
+        Channel<Pair<String, List<FolderMetadata>>>(capacity = Channel.CONFLATED)
+    internal val dropboxItemList = dropboxItemListChannel.receiveAsFlow().distinctUntilChanged()
 
     internal var syncing = false
     internal val loading = MutableStateFlow<Pair<Boolean, (() -> Unit)?>>(false to null)
@@ -176,10 +178,6 @@ class MainViewModel(
 
     fun onQueueRemove(index: Int) {
         player.value?.removeQueue(index)
-    }
-
-    fun onCancelSync() {
-        LocalMediaRetrieveService.cancel(app)
     }
 
     fun onToolbarClick() {
@@ -469,7 +467,7 @@ class MainViewModel(
                 result = client.files().listFolderContinue(result.cursor)
             }
             val currentDirTitle = (dropboxMetadata?.name ?: "Root")
-            dropboxItemList.emit(currentDirTitle to result.entries.filterIsInstance<FolderMetadata>())
+            dropboxItemListChannel.send(currentDirTitle to result.entries.filterIsInstance<FolderMetadata>())
         }
 
     inner class SearchQueryListener(private val searchView: SearchView) :

@@ -12,6 +12,11 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.BLUETOOTH" />
 
+
+    <queries>
+        <package android:name="com.dropbox.android" />
+    </queries>
+
     <application
         android:name=".App"
         android:allowBackup="true"
@@ -42,14 +47,21 @@
 
         <activity
             android:name="com.dropbox.core.android.AuthActivity"
-            android:exported="true">
+            android:configChanges="orientation|keyboard"
+            android:exported="true"
+            android:launchMode="singleTask">
             <intent-filter>
+                <data android:scheme="${dropboxAppKey}" />
+
                 <action android:name="android.intent.action.VIEW" />
 
-                <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-
-                <data android:scheme="${dropboxAppKey}" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+            <!-- Additional intent-filter required as a workaround for Apps using targetSdk=33 until the fix in the Dropbox app is available to all users. https://github.com/dropbox/dropbox-sdk-java/issues/406 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 
@@ -88,10 +100,6 @@
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </service>
-
-        <service android:name=".service.LocalMediaRetrieveService" />
-
-        <service android:name=".service.DropboxMediaRetrieveService" />
 
         <service android:name=".service.SleepTimerService" />
 

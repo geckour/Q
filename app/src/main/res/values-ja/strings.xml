@@ -21,8 +21,6 @@
     <string name="notification_title_retriever">メディアを探索中</string>
     <string name="notification_text_retriever">%1$d / %2$d | ライブラリを同期しています…</string>
     <string name="notification_text_retriever_with_path">%1$d / %2$d | ライブラリを同期しています…%3$s</string>
-    <string name="notification_text_retriever_dropbox">%1$d | ライブラリを同期しています…</string>
-    <string name="notification_text_retriever_dropbox_with_path">%1$d | ライブラリを同期しています…%2$s</string>
     <string name="notification_title_media_add">メディアを追加中</string>
     <string name="notification_text_media_add">%s を追加しています…</string>
     <string name="notification_title_sleep_timer">おやすみタイマー</string>

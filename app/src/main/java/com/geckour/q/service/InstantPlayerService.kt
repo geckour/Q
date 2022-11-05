@@ -15,20 +15,18 @@ import android.os.IBinder
 import androidx.lifecycle.MutableLiveData
 import com.geckour.q.domain.model.PlaybackButton
 import com.google.android.exoplayer2.DefaultRenderersFactory
+import com.google.android.exoplayer2.ExoPlayer
+import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
-import com.google.android.exoplayer2.SimpleExoPlayer
-import com.google.android.exoplayer2.Timeline
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
-import com.google.android.exoplayer2.source.TrackGroupArray
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
-import com.google.android.exoplayer2.trackselection.TrackSelectionArray
-import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory
+import com.google.android.exoplayer2.upstream.DefaultDataSource
 import com.google.android.exoplayer2.util.EventLogger
-import com.google.android.exoplayer2.util.Util
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -55,39 +53,31 @@ class InstantPlayerService : Service() {
 
     private val binder = PlayerBinder()
 
-    private val eventListener = object : Player.EventListener {
+    private val eventListener = object : Player.Listener {
 
-        override fun onTracksChanged(
-            trackGroups: TrackGroupArray, trackSelections: TrackSelectionArray
-        ) = Unit
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            super.onPlaybackStateChanged(playbackState)
 
-        override fun onLoadingChanged(isLoading: Boolean) = Unit
-
-        override fun onPositionDiscontinuity(reason: Int) = Unit
-
-        override fun onRepeatModeChanged(repeatMode: Int) = Unit
-
-        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = Unit
-
-        override fun onTimelineChanged(timeline: Timeline, reason: Int) = Unit
-
-        override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
             if (playbackState == Player.STATE_ENDED) stop()
+        }
 
-            isPlaying.value = playWhenReady && playbackState == Player.STATE_READY
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            super.onPlayWhenReadyChanged(playWhenReady, reason)
+
+            isPlaying.value = playWhenReady && player.playbackState == Player.STATE_READY
         }
     }
 
-    private val player: SimpleExoPlayer by lazy {
+    private val player: ExoPlayer by lazy {
         val trackSelector = DefaultTrackSelector(this)
         val renderersFactory = DefaultRenderersFactory(this)
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
-        SimpleExoPlayer.Builder(this, renderersFactory)
+        ExoPlayer.Builder(this, renderersFactory)
             .setTrackSelector(trackSelector)
             .build()
             .apply {
                 addListener(eventListener)
-                addAnalyticsListener(EventLogger(trackSelector))
+                addAnalyticsListener(EventLogger())
             }
     }
 
@@ -111,6 +101,7 @@ class InstantPlayerService : Service() {
             }
         }
     }
+    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var seekJob: Job = Job()
     private var progressJob: Job = Job()
 
@@ -124,9 +115,7 @@ class InstantPlayerService : Service() {
         super.onCreate()
 
         mediaSourceFactory = ProgressiveMediaSource.Factory(
-            DefaultDataSourceFactory(
-                applicationContext, Util.getUserAgent(applicationContext, packageName)
-            )
+            DefaultDataSource.Factory(applicationContext)
         )
 
         registerReceiver(headsetStateReceiver, IntentFilter().apply {
@@ -134,7 +123,7 @@ class InstantPlayerService : Service() {
             addAction(SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE)
         })
 
-        progressJob = GlobalScope.launch(Dispatchers.IO) {
+        progressJob = coroutineScope.launch {
             while (true) {
                 withContext(Dispatchers.Main) {
                     progress.value = if (player.contentDuration > 0) {
@@ -149,7 +138,8 @@ class InstantPlayerService : Service() {
     override fun onDestroy() {
         progressJob.cancel()
         stop()
-        player.stop(true)
+        player.stop()
+        player.clearMediaItems()
         unregisterReceiver(headsetStateReceiver)
         player.release()
 
@@ -159,8 +149,11 @@ class InstantPlayerService : Service() {
     fun submit(path: String) {
         Timber.d("qgeck path: $path")
         source.clear()
-        source.addMediaSource(mediaSourceFactory.createMediaSource(Uri.fromFile(File(path))))
-        player.prepare(source)
+        source.addMediaSource(
+            mediaSourceFactory.createMediaSource(MediaItem.fromUri(Uri.fromFile(File(path))))
+        )
+        player.setMediaSource(source)
+        player.prepare()
     }
 
     fun onPlaybackButtonCommitted(playbackButton: PlaybackButton) {
@@ -200,7 +193,7 @@ class InstantPlayerService : Service() {
         }
     }
 
-    fun pause() {
+    private fun pause() {
         player.playWhenReady = false
         getSystemService(AudioManager::class.java)?.apply {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -214,7 +207,7 @@ class InstantPlayerService : Service() {
         }
     }
 
-    fun togglePlayPause() {
+    private fun togglePlayPause() {
         if (player.playWhenReady) pause()
         else {
             if (player.playbackState == Player.STATE_READY) resume()
@@ -228,7 +221,7 @@ class InstantPlayerService : Service() {
 
     private fun fastForward() {
         seekJob.cancel()
-        seekJob = GlobalScope.launch(Dispatchers.IO) {
+        seekJob = coroutineScope.launch(Dispatchers.IO) {
             while (true) {
                 val seekTo = (player.currentPosition + 1000).let {
                     if (it > player.contentDuration) player.contentDuration else it
@@ -241,7 +234,7 @@ class InstantPlayerService : Service() {
 
     private fun rewind() {
         seekJob.cancel()
-        seekJob = GlobalScope.launch(Dispatchers.IO) {
+        seekJob = coroutineScope.launch(Dispatchers.IO) {
             while (true) {
                 val seekTo = (player.currentPosition - 1000).let {
                     if (it < 0) 0 else it
@@ -269,7 +262,7 @@ class InstantPlayerService : Service() {
         seek((player.contentDuration * ratio).toLong())
     }
 
-    fun seek(playbackPosition: Long) {
+    private fun seek(playbackPosition: Long) {
         player.seekTo(playbackPosition)
     }
 

@@ -1,6 +1,13 @@
 package com.geckour.q.service
 
 import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.PointF
+import android.graphics.PorterDuff
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
@@ -14,10 +21,14 @@ import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import java.io.File
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
+import kotlin.random.Random
 
 internal const val NOTIFICATION_ID_RETRIEVE = 300
 
-internal const val ACTION_CANCEL = "com.geckour.q.service.retrieve.cancel"
+internal const val MEDIA_RETRIEVE_WORKER_NAME = "MediaRetrieveWorker"
 internal const val KEY_CLEAR = "key_clear"
 
 internal suspend fun File.storeMediaInfo(
@@ -161,4 +172,48 @@ internal suspend fun File.storeMediaInfo(
     )
 
     return@withContext db.trackDao().upsert(track, albumId, artistId, pastTrackDuration)
+}
+
+internal fun Bitmap.drawProgressIcon(
+    progressNumerator: Int,
+    progressDenominator: Int,
+    seed: Long
+): Bitmap {
+    val maxTileNumber = 24
+    val progressRatio = progressNumerator.toFloat() / progressDenominator
+    val tileNumber = (maxTileNumber * progressRatio).toInt()
+    val canvas = Canvas(this)
+    val paint = Paint().apply {
+        isAntiAlias = true
+    }
+    val offset = PointF(canvas.width * 0.5f, canvas.height * 0.5f)
+    val innerR = canvas.width * 0.35f
+    val outerR = canvas.width * 0.45f
+    val random = Random(seed)
+    canvas.drawColor(0, PorterDuff.Mode.CLEAR)
+    repeat(tileNumber + 1) {
+        val start = 3
+        val angleLeft = ((start + it) * PI / 12).toFloat()
+        val angleRight = ((start + it + 1) * PI / 12).toFloat()
+        val path = Path().apply {
+            fillType = Path.FillType.EVEN_ODD
+            moveTo(offset.x + outerR * cos(angleLeft), offset.y + outerR * sin(angleLeft))
+            lineTo(offset.x + outerR * cos(angleRight), offset.y + outerR * sin(angleRight))
+            lineTo(offset.x + innerR * cos(angleRight), offset.y + innerR * sin(angleRight))
+            lineTo(offset.x + innerR * cos(angleLeft), offset.y + innerR * sin(angleLeft))
+            close()
+        }
+        val alphaC =
+            if (it == tileNumber) maxTileNumber * progressRatio % 1f
+            else 1f
+        paint.color = Color.argb(
+            (150 * alphaC).toInt(),
+            random.nextInt(255),
+            random.nextInt(255),
+            random.nextInt(255)
+        )
+        canvas.drawPath(path, paint)
+    }
+
+    return this
 }

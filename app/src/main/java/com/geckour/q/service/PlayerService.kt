@@ -54,6 +54,7 @@ import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.PlaybackException
 import com.google.android.exoplayer2.Player
 import com.google.android.exoplayer2.Timeline
+import com.google.android.exoplayer2.Tracks
 import com.google.android.exoplayer2.analytics.AnalyticsListener
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource
@@ -61,9 +62,7 @@ import com.google.android.exoplayer2.source.LoadEventInfo
 import com.google.android.exoplayer2.source.MediaLoadData
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
-import com.google.android.exoplayer2.source.TrackGroupArray
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
-import com.google.android.exoplayer2.trackselection.TrackSelectionArray
 import com.google.android.exoplayer2.upstream.DefaultDataSource
 import com.google.android.exoplayer2.upstream.HttpDataSource
 import com.google.android.exoplayer2.util.EventLogger
@@ -76,7 +75,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -143,7 +141,14 @@ class PlayerService : Service(), LifecycleOwner {
 
         override fun onMediaButtonEvent(mediaButtonEvent: Intent): Boolean {
             val keyEvent: KeyEvent =
-                mediaButtonEvent.getParcelableExtra(Intent.EXTRA_KEY_EVENT) ?: return false
+                if (Build.VERSION.SDK_INT >= 33) {
+                    mediaButtonEvent.getParcelableExtra(
+                        Intent.EXTRA_KEY_EVENT,
+                        KeyEvent::class.java
+                    )
+                } else {
+                    mediaButtonEvent.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
+                } ?: return false
             return when (keyEvent.action) {
                 KeyEvent.ACTION_DOWN -> {
                     when (keyEvent.keyCode) {
@@ -212,7 +217,7 @@ class PlayerService : Service(), LifecycleOwner {
             .apply {
                 addListener(listener)
                 setAudioAttributes(AudioAttributes.Builder().build(), ducking)
-                addAnalyticsListener(object : EventLogger(trackSelector) {
+                addAnalyticsListener(object : EventLogger() {
                     override fun onLoadError(
                         eventTime: AnalyticsListener.EventTime,
                         loadEventInfo: LoadEventInfo,
@@ -285,15 +290,11 @@ class PlayerService : Service(), LifecycleOwner {
 
     private val listener = object : Player.Listener {
 
-        override fun onTracksChanged(
-            trackGroups: TrackGroupArray, trackSelections: TrackSelectionArray
-        ) {
+        override fun onTracksChanged(tracks: Tracks) {
+            super.onTracksChanged(tracks)
+
             onSourcesChanged()
         }
-
-        override fun onLoadingChanged(isLoading: Boolean) = Unit
-
-        override fun onPositionDiscontinuity(reason: Int) = Unit
 
         override fun onRepeatModeChanged(repeatMode: Int) {
             repeatModeFlow.value = repeatMode
@@ -309,11 +310,13 @@ class PlayerService : Service(), LifecycleOwner {
             }
         }
 
-        override fun onPlayerStateChanged(playWhenReady: Boolean, playbackState: Int) {
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            super.onPlaybackStateChanged(playbackState)
+
             mediaSession.setPlaybackState(
                 PlaybackStateCompat.Builder()
                     .setState(
-                        getPlaybackState(playWhenReady, playbackState),
+                        getPlaybackState(player.playWhenReady, playbackState),
                         player.currentPosition,
                         1f
                     )
@@ -330,7 +333,13 @@ class PlayerService : Service(), LifecycleOwner {
                 notificationUpdateJob = showNotification()
             }
 
-            playbackInfoFlow.value = playWhenReady to playbackState
+            playbackInfoFlow.value = player.playWhenReady to playbackState
+        }
+
+        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+            super.onPlayWhenReadyChanged(playWhenReady, reason)
+
+            playbackInfoFlow.value = playWhenReady to player.playbackState
         }
 
         override fun onPlayerError(error: PlaybackException) {
@@ -396,10 +405,6 @@ class PlayerService : Service(), LifecycleOwner {
         player.prepare()
 
         restoreState()
-    }
-
-    override fun onStart(intent: Intent?, startId: Int) {
-        dispatcher.onServicePreSuperOnStart()
     }
 
     override fun onDestroy() {
@@ -903,7 +908,6 @@ class PlayerService : Service(), LifecycleOwner {
         }
     }
 
-    @OptIn(ExperimentalSerializationApi::class)
     private fun storeState() {
         cachedQueueOrder.apply {
             clear()
@@ -926,7 +930,6 @@ class PlayerService : Service(), LifecycleOwner {
         }
     }
 
-    @OptIn(ExperimentalSerializationApi::class)
     private fun restoreState() {
         if (player.playWhenReady.not()) {
             sharedPreferences.getString(PREF_KEY_PLAYER_STATE, null)?.let {
@@ -968,7 +971,7 @@ class PlayerService : Service(), LifecycleOwner {
             startForeground(NOTIFICATION_ID_PLAYER, this)
         } else {
             Timber.d("qgeck stopping foreground player service")
-            stopForeground(false)
+            stopForeground(STOP_FOREGROUND_DETACH)
             getSystemService(NotificationManager::class.java)?.notify(NOTIFICATION_ID_PLAYER, this)
         }
     }
@@ -976,7 +979,7 @@ class PlayerService : Service(), LifecycleOwner {
     private fun destroyNotification() {
         mediaSession.isActive = false
         notificationUpdateJob.cancel()
-        stopForeground(true)
+        stopForeground(STOP_FOREGROUND_REMOVE)
         getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID_PLAYER)
     }
 
