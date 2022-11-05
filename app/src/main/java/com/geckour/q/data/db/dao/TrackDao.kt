@@ -40,6 +40,10 @@ interface TrackDao {
     suspend fun getBySourcePath(sourcePath: String): JoinedTrack?
 
     @Transaction
+    @Query("select * from track where dropboxPath = :dropboxPath")
+    suspend fun getByDropboxPath(dropboxPath: String): JoinedTrack?
+
+    @Transaction
     @Query("select * from track where title = :title and albumId = :albumId and artistId = :artistId")
     suspend fun getByTitles(title: String, albumId: Long, artistId: Long): JoinedTrack?
 

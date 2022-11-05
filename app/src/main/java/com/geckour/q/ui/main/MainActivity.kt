@@ -40,7 +40,6 @@ import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogSleepBinding
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.RequestedTransition
-import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import com.geckour.q.service.SleepTimerService
 import com.geckour.q.ui.easteregg.EasterEggFragment
 import com.geckour.q.ui.equalizer.EqualizerFragment
@@ -66,6 +65,7 @@ import com.geckour.q.util.toNightModeInt
 import com.geckour.q.util.updateFileMetadata
 import com.geckour.q.worker.DropboxMediaRetrieveWorker
 import com.geckour.q.worker.LocalMediaRetrieveWorker
+import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.flow.collectLatest
@@ -397,7 +397,7 @@ class MainActivity : AppCompatActivity() {
         WorkManager.getInstance(this)
             .beginUniqueWork(
                 MEDIA_RETRIEVE_WORKER_NAME,
-                ExistingWorkPolicy.REPLACE,
+                ExistingWorkPolicy.KEEP,
                 OneTimeWorkRequestBuilder<LocalMediaRetrieveWorker>()
                     .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                     .setInputData(
@@ -414,7 +414,7 @@ class MainActivity : AppCompatActivity() {
         WorkManager.getInstance(this)
             .beginUniqueWork(
                 MEDIA_RETRIEVE_WORKER_NAME,
-                ExistingWorkPolicy.REPLACE,
+                ExistingWorkPolicy.KEEP,
                 OneTimeWorkRequestBuilder<DropboxMediaRetrieveWorker>()
                     .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                     .setInputData(
@@ -567,6 +567,7 @@ class MainActivity : AppCompatActivity() {
     private fun indicateSync() {
         binding.indicatorLocking.descLocking.text = getString(R.string.syncing)
         binding.indicatorLocking.progressSync.visibility = View.VISIBLE
+        binding.indicatorLocking.progressPath.visibility = View.VISIBLE
         binding.indicatorLocking.buttonCancel.apply {
             setOnClickListener {
                 WorkManager.getInstance(this@MainActivity)
@@ -579,6 +580,7 @@ class MainActivity : AppCompatActivity() {
     private fun indicateLoad(onAbort: (() -> Unit)?) {
         binding.indicatorLocking.descLocking.text = getString(R.string.loading)
         binding.indicatorLocking.progressSync.visibility = View.GONE
+        binding.indicatorLocking.progressPath.visibility = View.GONE
         onAbort?.let {
             binding.indicatorLocking.buttonCancel.apply {
                 setOnClickListener { it() }

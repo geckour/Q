@@ -166,7 +166,7 @@ class DropboxMediaRetrieveWorker(
             )
             .build()
 
-    private fun FileMetadata.storeMediaInfo(
+    private suspend fun FileMetadata.storeMediaInfo(
         context: Context,
         db: DB,
         client: DbxClientV2
@@ -196,30 +196,26 @@ class DropboxMediaRetrieveWorker(
         }
     }
 
-    private fun storeMediaInfo(
+    private suspend fun storeMediaInfo(
         context: Context,
         db: DB,
         client: DbxClientV2,
         dropboxMetadata: FileMetadata
-    ): Long =
-        runBlocking {
-            val currentTime = System.currentTimeMillis()
-            val url = client.files().getTemporaryLink(dropboxMetadata.pathLower).link
-
-            val trackId = db.trackDao().getBySourcePath(url)?.track?.let {
-                if (it.lastModified >= dropboxMetadata.serverModified.time) it.id
-                else null
-            }
-
-            return@runBlocking trackId
-                ?: client.saveTempAudioFile(context, dropboxMetadata.pathLower)
-                    .storeMediaInfo(
-                        context,
-                        url,
-                        null,
-                        dropboxMetadata.pathLower,
-                        currentTime + DROPBOX_EXPIRES_IN,
-                        dropboxMetadata.serverModified.time
-                    )
+    ): Long {
+        db.trackDao().getByDropboxPath(dropboxMetadata.pathLower)?.track?.let {
+            if (it.lastModified >= dropboxMetadata.serverModified.time) return it.id
         }
+        val url = client.files().getTemporaryLink(dropboxMetadata.pathLower).link
+        val currentTime = System.currentTimeMillis()
+
+        return client.saveTempAudioFile(context, dropboxMetadata.pathLower)
+            .storeMediaInfo(
+                context,
+                url,
+                null,
+                dropboxMetadata.pathLower,
+                currentTime + DROPBOX_EXPIRES_IN,
+                dropboxMetadata.serverModified.time
+            )
+    }
 }
