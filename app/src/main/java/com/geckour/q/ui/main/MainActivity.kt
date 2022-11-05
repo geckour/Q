@@ -40,7 +40,7 @@ import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogSleepBinding
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.RequestedTransition
-import com.geckour.q.service.MEDIA_RETRIEVE_WORKER_NAME
+import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import com.geckour.q.service.SleepTimerService
 import com.geckour.q.ui.easteregg.EasterEggFragment
 import com.geckour.q.ui.equalizer.EqualizerFragment

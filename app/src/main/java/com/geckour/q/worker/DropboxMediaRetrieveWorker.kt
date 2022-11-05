@@ -19,9 +19,6 @@ import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.service.NOTIFICATION_ID_RETRIEVE
-import com.geckour.q.service.drawProgressIcon
-import com.geckour.q.service.storeMediaInfo
 import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.util.DROPBOX_EXPIRES_IN

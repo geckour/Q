@@ -1,4 +1,4 @@
-package com.geckour.q.service
+package com.geckour.q.worker
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -29,7 +29,6 @@ import kotlin.random.Random
 internal const val NOTIFICATION_ID_RETRIEVE = 300
 
 internal const val MEDIA_RETRIEVE_WORKER_NAME = "MediaRetrieveWorker"
-internal const val KEY_CLEAR = "key_clear"
 
 internal suspend fun File.storeMediaInfo(
     context: Context,
