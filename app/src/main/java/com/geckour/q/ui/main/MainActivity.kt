@@ -30,7 +30,6 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkInfo
-import androidx.work.WorkManager
 import com.dropbox.core.DbxHost
 import com.dropbox.core.android.Auth
 import com.geckour.q.BuildConfig
@@ -162,7 +161,7 @@ class MainActivity : AppCompatActivity() {
                 extras.getInt(EXTRA_SYNCING_PROGRESS_NUMERATOR, -1)
                     .let progress@{ numerator ->
                         if (numerator < 0) return@progress
-                        if (WorkManager.getInstance(this@MainActivity)
+                        if (viewModel.workManager
                                 .getWorkInfosForUniqueWork(MEDIA_RETRIEVE_WORKER_NAME)
                                 .get()
                                 .all { it.state == WorkInfo.State.CANCELLED }
@@ -394,7 +393,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun enqueueLocalRetrieveWorker(onlyAdded: Boolean) {
-        WorkManager.getInstance(this)
+        viewModel.workManager
             .beginUniqueWork(
                 MEDIA_RETRIEVE_WORKER_NAME,
                 ExistingWorkPolicy.KEEP,
@@ -411,7 +410,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun enqueueDropboxRetrieveWorker(rootPath: String) {
-        WorkManager.getInstance(this)
+        viewModel.workManager
             .beginUniqueWork(
                 MEDIA_RETRIEVE_WORKER_NAME,
                 ExistingWorkPolicy.KEEP,
@@ -523,13 +522,11 @@ class MainActivity : AppCompatActivity() {
             ).show()
         }
 
-        WorkManager.getInstance(this)
-            .getWorkInfosForUniqueWorkLiveData(MEDIA_RETRIEVE_WORKER_NAME)
-            .observe(this) { workInfoList ->
-                if (workInfoList.none { it.state == WorkInfo.State.RUNNING }) {
-                    onCancelSync()
-                }
+        viewModel.mediaRetrieveWorkInfoList.observe(this) { workInfoList ->
+            if (workInfoList.none { it.state == WorkInfo.State.RUNNING }) {
+                onCancelSync()
             }
+        }
     }
 
     private fun setupDrawer() {
@@ -570,7 +567,7 @@ class MainActivity : AppCompatActivity() {
         binding.indicatorLocking.progressPath.visibility = View.VISIBLE
         binding.indicatorLocking.buttonCancel.apply {
             setOnClickListener {
-                WorkManager.getInstance(this@MainActivity)
+                viewModel.workManager
                     .cancelUniqueWork(MEDIA_RETRIEVE_WORKER_NAME)
             }
             visibility = View.VISIBLE

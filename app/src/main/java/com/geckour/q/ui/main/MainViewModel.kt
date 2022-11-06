@@ -16,6 +16,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkManager
 import com.dropbox.core.android.Auth
 import com.dropbox.core.v2.files.FolderMetadata
 import com.dropbox.core.v2.files.Metadata
@@ -44,6 +45,7 @@ import com.geckour.q.util.searchAlbumByFuzzyTitle
 import com.geckour.q.util.searchArtistByFuzzyTitle
 import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.toDomainTrack
+import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -61,6 +63,9 @@ class MainViewModel(
 ) : ViewModel() {
 
     private val db = DB.getInstance(app)
+    internal val workManager = WorkManager.getInstance(app)
+    internal val mediaRetrieveWorkInfoList =
+        workManager.getWorkInfosForUniqueWorkLiveData(MEDIA_RETRIEVE_WORKER_NAME)
 
     internal val player: MutableLiveData<PlayerService> = MutableLiveData()
 
