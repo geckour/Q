@@ -7,6 +7,7 @@ data class PlayerState(
     val playWhenReady: Boolean,
     val trackIds: List<Long>,
     val currentIndex: Int,
+    val duration: Long,
     val progress: Long,
     val repeatMode: Int
 )

@@ -9,6 +9,7 @@ import android.graphics.Bitmap
 import android.os.Build
 import android.webkit.MimeTypeMap
 import androidx.work.CoroutineWorker
+import androidx.work.Data
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.dropbox.core.RateLimitException
@@ -20,7 +21,6 @@ import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.ui.LauncherActivity
-import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.util.DROPBOX_EXPIRES_IN
 import com.geckour.q.util.QNotificationChannel
 import com.geckour.q.util.getExtension
@@ -53,7 +53,16 @@ class DropboxMediaRetrieveWorker(
         if (Build.VERSION.SDK_INT >= 33
             || applicationContext.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         ) {
-            val dbxClient = obtainDbxClient(get()) ?: return Result.failure()
+            val dbxClient = obtainDbxClient(get())
+                ?: return Result.failure(
+                    Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build()
+                )
+
+            try {
+                setForeground(getForegroundInfo())
+            } catch (t: Throwable) {
+                return Result.failure(Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build())
+            }
 
             seed = System.currentTimeMillis()
             Timber.d("qgeck Dropbox media retrieve service started")
@@ -62,23 +71,26 @@ class DropboxMediaRetrieveWorker(
             val rootPath = requireNotNull(inputData.getString(KEY_ROOT_PATH))
             Timber.d("qgeck rootPath: $rootPath")
 
-            applicationContext.sendBroadcast(MainActivity.createProgressIntent(0))
+            setProgress(createProgressData(0))
 
             files.clear()
             retrieveAudioFilePaths(rootPath, dbxClient)
             files.forEach {
-                if (isStopped) return Result.success()
+                if (isStopped) {
+                    return Result.success(
+                        Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build()
+                    )
+                }
 
                 it.storeMediaInfo(applicationContext, db, dbxClient)
             }
 
             Timber.d("qgeck track in db count: ${runBlocking { db.trackDao().count() }}")
             delay(200)
-            applicationContext.sendBroadcast(MainActivity.createSyncCompleteIntent(true))
-            return Result.success()
+            return Result.success(Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build())
         }
 
-        return Result.failure()
+        return Result.failure(Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build())
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo =
@@ -108,12 +120,8 @@ class DropboxMediaRetrieveWorker(
                 }
             }.apply {
                 files.addAll(this)
-                applicationContext.sendBroadcast(
-                    MainActivity.createProgressIntent(
-                        processedFilesCount,
-                        files.size
-                    )
-                )
+                setProgress(createProgressData(processedFilesCount, files.size))
+                setForeground(getForegroundInfo())
             }
         } catch (e: RateLimitException) {
             delay(e.backoffMillis)
@@ -173,13 +181,8 @@ class DropboxMediaRetrieveWorker(
     ) {
         if (name.isAudioFilePath) {
             processedFilesCount++
-            applicationContext.sendBroadcast(
-                MainActivity.createProgressIntent(
-                    processedFilesCount,
-                    files.size,
-                    progressPath = this.pathDisplay
-                )
-            )
+            setProgress(createProgressData(processedFilesCount, files.size, pathDisplay))
+            setForeground(getForegroundInfo())
             currentPath = this.pathDisplay
 
             runCatching {

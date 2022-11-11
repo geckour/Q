@@ -1,5 +1,7 @@
 package com.geckour.q.ui.sheet
 
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
 import android.annotation.SuppressLint
 import android.content.SharedPreferences
 import android.os.Bundle
@@ -15,13 +17,13 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
+import androidx.work.WorkManager
 import com.bumptech.glide.Glide
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.databinding.FragmentSheetBottomBinding
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.PlaybackButton
-import com.geckour.q.service.SleepTimerService
 import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.ui.sheet.BottomSheetViewModel.Companion.PREF_KEY_SHOW_LOCK_TOUCH_QUEUE
@@ -33,15 +35,18 @@ import com.geckour.q.util.showCurrentRemain
 import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.updateFileMetadata
+import com.geckour.q.worker.SleepTimerWorker
 import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
-import org.koin.androidx.viewmodel.ext.android.sharedViewModel
+import org.koin.androidx.viewmodel.ext.android.activityViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import java.io.File
 
@@ -53,10 +58,11 @@ class BottomSheetFragment : Fragment() {
     }
 
     private val viewModel by viewModel<BottomSheetViewModel>()
-    private val mainViewModel by sharedViewModel<MainViewModel>()
+    private val mainViewModel by activityViewModel<MainViewModel>()
     private lateinit var binding: FragmentSheetBottomBinding
     private lateinit var adapter: QueueListAdapter
     private lateinit var behavior: BottomSheetBehavior<View>
+    private lateinit var centerControlButtonAnimator: ValueAnimator
 
     private val sharedPreferences by inject<SharedPreferences>()
 
@@ -291,6 +297,13 @@ class BottomSheetFragment : Fragment() {
 
         binding.buttonClearQueue.setOnClickListener { mainViewModel.onClickClearQueueButton() }
 
+        centerControlButtonAnimator =
+            ObjectAnimator.ofFloat(binding.buttonControllerCenter, View.ROTATION, 360f, 0f).apply {
+                repeatMode = ValueAnimator.RESTART
+                repeatCount = ValueAnimator.INFINITE
+                duration = 1000
+            }
+
         resetMarquee()
 
         observeEvents()
@@ -304,44 +317,57 @@ class BottomSheetFragment : Fragment() {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun observeEvents() {
-        mainViewModel.player.observe(viewLifecycleOwner) { player ->
-            player ?: return@observe
+        lifecycleScope.launchWhenResumed {
+            mainViewModel.player.collect { player ->
+                player ?: return@collect
 
-            lifecycleScope.launch {
-                player.sourcePathsFlow.collectLatest { sourcePaths ->
-                    val queue = sourcePaths.mapNotNull {
-                        DB.getInstance(requireContext())
-                            .trackDao()
-                            .getBySourcePath(it)
-                            ?.toDomainTrack()
-                    }
-                    onQueueChanged(queue)
-                }
-            }
-            lifecycleScope.launch {
-                player.currentIndexFlow.collectLatest {
-                    submitQueueWithCurrentIndex(currentIndex = it)
-                }
-            }
-            lifecycleScope.launch {
-                player.playbackInfoFlow.collectLatest { (playWhenReady, playbackState) ->
-                    onPlayingChanged(
-                        when (playbackState) {
-                            Player.STATE_READY -> {
-                                playWhenReady
-                            }
-                            else -> false
+                lifecycleScope.launchWhenResumed {
+                    player.sourcePathsFlow.collect { sourcePaths ->
+                        val queue = sourcePaths.mapNotNull {
+                            DB.getInstance(requireContext())
+                                .trackDao()
+                                .getBySourcePath(it)
+                                ?.toDomainTrack()
                         }
-                    )
+                        onQueueChanged(queue)
+                    }
                 }
-            }
-            lifecycleScope.launch {
-                player.playbackPositionFLow.collectLatest {
-                    onPlaybackPositionChanged(it)
+
+                lifecycleScope.launchWhenResumed {
+                    player.currentIndexFlow.collect {
+                        submitQueueWithCurrentIndex(currentIndex = it)
+                    }
                 }
-            }
-            lifecycleScope.launch {
-                player.repeatModeFlow.collectLatest { onRepeatModeChanged(it) }
+
+                lifecycleScope.launchWhenResumed {
+                    player.playbackInfoFlow.collect { (playWhenReady, playbackState) ->
+                        onPlayingChanged(
+                            when (playbackState) {
+                                Player.STATE_READY -> {
+                                    playWhenReady
+                                }
+                                else -> false
+                            }
+                        )
+                        if (playWhenReady && playbackState == Player.STATE_BUFFERING) {
+                            centerControlButtonAnimator.start()
+                        } else {
+                            centerControlButtonAnimator.end()
+                        }
+                    }
+                }
+
+                lifecycleScope.launchWhenResumed {
+                    player.playbackPositionFLow.collect {
+                        onPlaybackPositionChanged(it)
+                    }
+                }
+
+                lifecycleScope.launchWhenResumed {
+                    player.repeatModeFlow.collect {
+                        onRepeatModeChanged(it)
+                    }
+                }
             }
         }
 
@@ -401,56 +427,49 @@ class BottomSheetFragment : Fragment() {
     private fun submitQueueWithCurrentIndex(
         queue: List<DomainTrack>? = null,
         currentIndex: Int? = null
-    ) {
-        lifecycleScope.launch {
-            val newQueue = queue
-                ?: mainViewModel.player.value
-                    ?.sourcePathsFlow
-                    ?.value
-                    ?.mapNotNull { it.toDomainTrack(DB.getInstance(requireContext())) }
-                ?: adapter.currentList
-            val newCurrentIndex = currentIndex
-                ?: mainViewModel.player.value?.currentIndexFlow?.value
-                ?: adapter.currentIndex.let { if (it in newQueue.indices) it else 0 }
-            val indexChanged = adapter.currentIndex != newCurrentIndex
+    ) = lifecycleScope.launch {
+        val newQueue = queue
+            ?: mainViewModel.player.value
+                ?.sourcePathsFlow
+                ?.value
+                ?.mapNotNull { it.toDomainTrack(DB.getInstance(requireContext())) }
+            ?: adapter.currentList
+        val newCurrentIndex = currentIndex
+            ?: mainViewModel.player.value?.currentIndexFlow?.value
+            ?: adapter.currentIndex.let { if (it in newQueue.indices) it else 0 }
+        val indexChanged = adapter.currentIndex != newCurrentIndex
 
-            adapter.submitList(newQueue.mapIndexed { index, domainTrack ->
-                domainTrack.copy(nowPlaying = index == newCurrentIndex)
-            }) {
-                binding.currentDomainTrack = adapter.currentItem
-                viewModel.onNewIndex(
-                    requireContext(),
-                    adapter.currentItem,
-                    binding.seekBar.progress.toLong()
+        adapter.submitList(newQueue.mapIndexed { index, domainTrack ->
+            domainTrack.copy(nowPlaying = index == newCurrentIndex)
+        }) {
+            binding.currentDomainTrack = adapter.currentItem
+            Glide.with(binding.artwork)
+                .load(
+                    adapter.currentItem
+                        ?.artworkUriString
+                        ?.let { catchAsNull { File(it) } }
                 )
-                Glide.with(binding.artwork)
-                    .load(
-                        adapter.currentItem
-                            ?.artworkUriString
-                            ?.let { catchAsNull { File(it) } }
-                    )
-                    .override(1000)
-                    .into(binding.artwork)
-                if (indexChanged) onPlaybackPositionChanged(0)
+                .override(1000)
+                .into(binding.artwork)
+            if (indexChanged) onPlaybackPositionChanged(0)
 
-                val noCurrentTrack = adapter.currentItem == null
-                binding.seekBar.setOnTouchListener { _, _ -> noCurrentTrack }
-                if (noCurrentTrack) {
-                    with(binding) {
-                        textTimeLeft.text = null
-                        textTimeRight.text = null
-                        textTimeTotal.text = null
-                        textTimeRemain.text = null
-                        seekBar.progress = 0
-                    }
-                } else {
-                    onPlaybackPositionChanged(
-                        mainViewModel.player.value?.playbackPositionFLow?.value ?: 0
-                    )
+            val noCurrentTrack = adapter.currentItem == null
+            binding.seekBar.setOnTouchListener { _, _ -> noCurrentTrack }
+            if (noCurrentTrack) {
+                with(binding) {
+                    textTimeLeft.text = null
+                    textTimeRight.text = null
+                    textTimeTotal.text = null
+                    textTimeRemain.text = null
+                    seekBar.progress = 0
                 }
-
-                resetMarquee()
+            } else {
+                onPlaybackPositionChanged(
+                    mainViewModel.player.value?.playbackPositionFLow?.value ?: 0
+                )
             }
+
+            resetMarquee()
         }
     }
 
@@ -458,7 +477,8 @@ class BottomSheetFragment : Fragment() {
         viewModel.playing.value = isPlaying
         binding.isPlaying = isPlaying
         if (isPlaying.not()) {
-            requireContext().startService(SleepTimerService.getCancelIntent(requireContext()))
+            WorkManager.getInstance(requireContext().applicationContext)
+                .cancelUniqueWork(SleepTimerWorker.NAME)
         }
     }
 

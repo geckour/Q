@@ -1,13 +1,11 @@
 package com.geckour.q.ui.sheet
 
-import android.content.Context
 import android.content.SharedPreferences
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
 import com.geckour.q.domain.model.DomainTrack
-import com.geckour.q.service.SleepTimerService
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.showCurrentRemain
 
@@ -38,18 +36,6 @@ class BottomSheetViewModel(sharedPreferences: SharedPreferences) : ViewModel() {
 
     fun onClickScrollToCurrentButton() {
         _scrollToCurrent.value = true
-    }
-
-    internal fun onNewIndex(
-        context: Context,
-        currentDomainTrack: DomainTrack?,
-        currentPlaybackPosition: Long = 0L
-    ) {
-        SleepTimerService.notifyTrackChanged(
-            context,
-            currentDomainTrack ?: return,
-            currentPlaybackPosition
-        )
     }
 
     internal fun onTransitionToArtist(

@@ -1,10 +1,8 @@
 package com.geckour.q.ui.main
 
 import android.Manifest
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
@@ -28,7 +26,6 @@ import androidx.preference.PreferenceManager
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkInfo
 import com.dropbox.core.DbxHost
 import com.dropbox.core.android.Auth
@@ -39,7 +36,6 @@ import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogSleepBinding
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.RequestedTransition
-import com.geckour.q.service.SleepTimerService
 import com.geckour.q.ui.easteregg.EasterEggFragment
 import com.geckour.q.ui.equalizer.EqualizerFragment
 import com.geckour.q.ui.library.album.AlbumListFragment
@@ -53,7 +49,6 @@ import com.geckour.q.ui.sheet.BottomSheetFragment
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.dbxRequestConfig
 import com.geckour.q.util.dropboxCredential
-import com.geckour.q.util.ducking
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.preferScreen
 import com.geckour.q.util.showFileMetadataUpdateDialog
@@ -63,8 +58,13 @@ import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toNightModeInt
 import com.geckour.q.util.updateFileMetadata
 import com.geckour.q.worker.DropboxMediaRetrieveWorker
+import com.geckour.q.worker.KEY_SYNCING_FINISHED
+import com.geckour.q.worker.KEY_SYNCING_PROGRESS_DENOMINATOR
+import com.geckour.q.worker.KEY_SYNCING_PROGRESS_NUMERATOR
+import com.geckour.q.worker.KEY_SYNCING_PROGRESS_PATH
 import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
+import com.geckour.q.worker.SleepTimerWorker
 import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.flow.collectLatest
@@ -79,34 +79,11 @@ import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
 
-    enum class RequestCode(val code: Int) {
-        RESULT_SETTING(333)
-    }
-
     companion object {
 
-        private const val ACTION_SYNCING = "action_syncing"
-        private const val EXTRA_SYNCING_PROGRESS_NUMERATOR = "extra_syncing_progress_numerator"
-        private const val EXTRA_SYNCING_PROGRESS_DENOMINATOR = "extra_syncing_progress_denominator"
-        private const val EXTRA_SYNCING_PROGRESS_PATH = "extra_syncing_progress_path"
-        private const val EXTRA_SYNCING_COMPLETE = "extra_syncing_complete"
         private const val STATE_KEY_REQUESTED_TRANSACTION = "state_key_requested_transaction"
 
         fun createIntent(context: Context): Intent = Intent(context, MainActivity::class.java)
-
-        fun createProgressIntent(
-            progressNumerator: Int,
-            progressDenominator: Int? = null,
-            progressPath: String? = null
-        ) = Intent(ACTION_SYNCING).apply {
-            putExtra(EXTRA_SYNCING_PROGRESS_NUMERATOR, progressNumerator)
-            putExtra(EXTRA_SYNCING_PROGRESS_DENOMINATOR, progressDenominator)
-            putExtra(EXTRA_SYNCING_PROGRESS_PATH, progressPath)
-        }
-
-        fun createSyncCompleteIntent(complete: Boolean) = Intent(ACTION_SYNCING).apply {
-            putExtra(EXTRA_SYNCING_COMPLETE, complete)
-        }
     }
 
     private val viewModel by viewModel<MainViewModel>()
@@ -152,37 +129,6 @@ class MainActivity : AppCompatActivity() {
     private var requestedTransition: RequestedTransition? = null
     private var paused = true
 
-    private val syncingProgressReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            intent?.extras?.let { extras ->
-                if (extras.getBoolean(EXTRA_SYNCING_COMPLETE, false)) {
-                    onCancelSync()
-                }
-                extras.getInt(EXTRA_SYNCING_PROGRESS_NUMERATOR, -1)
-                    .let progress@{ numerator ->
-                        if (numerator < 0) return@progress
-                        if (viewModel.workManager
-                                .getWorkInfosForUniqueWork(MEDIA_RETRIEVE_WORKER_NAME)
-                                .get()
-                                .all { it.state == WorkInfo.State.CANCELLED }
-                        ) {
-                            onCancelSync()
-                            return
-                        }
-
-                        val denominator = extras.getInt(EXTRA_SYNCING_PROGRESS_DENOMINATOR, -1)
-                        val path = extras.getString(EXTRA_SYNCING_PROGRESS_PATH)
-                        viewModel.syncing = true
-                        setLockingIndicator()
-                        binding.indicatorLocking.progressSync.text =
-                            if (denominator < 0) null
-                            else getString(R.string.progress_sync, numerator, denominator)
-                        binding.indicatorLocking.progressPath.text = path
-                    }
-            }
-        }
-    }
-
     private val onNavigationItemSelected: (MenuItem) -> Boolean = {
         when (it.itemId) {
             R.id.nav_artist -> ArtistListFragment.newInstance()
@@ -190,9 +136,7 @@ class MainActivity : AppCompatActivity() {
             R.id.nav_track -> TrackListFragment.newInstance()
             R.id.nav_genre -> GenreListFragment.newInstance()
             R.id.nav_setting -> {
-                startActivityForResult(
-                    SettingActivity.createIntent(this), RequestCode.RESULT_SETTING.code
-                )
+                startActivity(SettingActivity.createIntent(this))
                 null
             }
             R.id.nav_equalizer -> EqualizerFragment.newInstance()
@@ -266,7 +210,6 @@ class MainActivity : AppCompatActivity() {
         })
 
         observeEvents()
-        registerReceiver(syncingProgressReceiver, IntentFilter(ACTION_SYNCING))
 
         setSupportActionBar(binding.toolbar)
         setupDrawer()
@@ -327,12 +270,6 @@ class MainActivity : AppCompatActivity() {
         paused = true
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-
-        unregisterReceiver(syncingProgressReceiver)
-    }
-
     override fun onBackPressed() {
         when {
             viewModel.isSearchViewOpened -> {
@@ -346,21 +283,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        when (requestCode) {
-            RequestCode.RESULT_SETTING.code -> {
-                if (viewModel.player.value?.ducking != sharedPreferences.ducking) {
-                    viewModel.rebootPlayer()
-                }
-            }
-        }
-    }
-
     private fun onCancelSync() {
-        viewModel.syncing = false
-        setLockingIndicator()
+        setLockingIndicator(false, null)
         viewModel.forceLoad.postValue(Unit)
     }
 
@@ -398,7 +322,6 @@ class MainActivity : AppCompatActivity() {
                 MEDIA_RETRIEVE_WORKER_NAME,
                 ExistingWorkPolicy.KEEP,
                 OneTimeWorkRequestBuilder<LocalMediaRetrieveWorker>()
-                    .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                     .setInputData(
                         Data.Builder()
                             .putBoolean(LocalMediaRetrieveWorker.KEY_ONLY_ADDED, onlyAdded)
@@ -415,7 +338,6 @@ class MainActivity : AppCompatActivity() {
                 MEDIA_RETRIEVE_WORKER_NAME,
                 ExistingWorkPolicy.KEEP,
                 OneTimeWorkRequestBuilder<DropboxMediaRetrieveWorker>()
-                    .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
                     .setInputData(
                         Data.Builder()
                             .putString(DropboxMediaRetrieveWorker.KEY_ROOT_PATH, rootPath)
@@ -457,8 +379,10 @@ class MainActivity : AppCompatActivity() {
             supportActionBar?.title = title
         }
 
-        lifecycleScope.launch {
-            viewModel.loading.collectLatest { setLockingIndicator() }
+        lifecycleScope.launchWhenResumed {
+            viewModel.loading.collectLatest {
+                setLockingIndicator(false, it)
+            }
         }
 
         viewModel.selectedArtist.observe(this) {
@@ -495,7 +419,7 @@ class MainActivity : AppCompatActivity() {
             searchListAdapter.submitList(it)
         }
 
-        lifecycleScope.launch {
+        lifecycleScope.launchWhenResumed {
             viewModel.dropboxItemList.collectLatest {
                 (dropboxChooserDialog ?: run {
                     DropboxChooserDialog(
@@ -525,6 +449,26 @@ class MainActivity : AppCompatActivity() {
         viewModel.mediaRetrieveWorkInfoList.observe(this) { workInfoList ->
             if (workInfoList.none { it.state == WorkInfo.State.RUNNING }) {
                 onCancelSync()
+                return@observe
+            }
+
+            workInfoList.forEach { workInfo ->
+                workInfo.progress.also {
+                    it.getInt(KEY_SYNCING_PROGRESS_NUMERATOR, -1).let { numerator ->
+                        if (numerator < 0) return@let
+
+                        val denominator = it.getInt(KEY_SYNCING_PROGRESS_DENOMINATOR, -1)
+                        val path = it.getString(KEY_SYNCING_PROGRESS_PATH)
+                        setLockingIndicator(true, null)
+                        binding.indicatorLocking.progressSync.text =
+                            if (denominator < 0) null
+                            else getString(R.string.progress_sync, numerator, denominator)
+                        binding.indicatorLocking.progressPath.text = path
+                    }
+                }
+                if (workInfo.outputData.getBoolean(KEY_SYNCING_FINISHED, false)) {
+                    onCancelSync()
+                }
             }
         }
     }
@@ -545,14 +489,14 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
-    private fun setLockingIndicator() {
+    private fun setLockingIndicator(syncing: Boolean, loading: Pair<Boolean, (() -> Unit)?>?) {
         when {
-            viewModel.syncing -> {
+            syncing -> {
                 indicateSync()
                 toggleIndicateLock(true)
             }
-            viewModel.loading.value.first -> {
-                indicateLoad(viewModel.loading.value.second)
+            loading?.first == true -> {
+                indicateLoad(loading.second)
                 toggleIndicateLock(true)
             }
             else -> {
@@ -730,15 +674,24 @@ class MainActivity : AppCompatActivity() {
                             val toleranceValue = binding.toleranceValue!!
                             sharedPreferences.sleepTimerTime = timerValue
                             sharedPreferences.sleepTimerTolerance = toleranceValue
-                            SleepTimerService.start(
-                                this@MainActivity,
-                                it,
-                                viewModel.player.value
-                                    ?.playbackPositionFLow
-                                    ?.value ?: return@launch,
-                                System.currentTimeMillis() + timerValue * 60000,
-                                toleranceValue * 60000L
-                            )
+                            viewModel.workManager
+                                .beginUniqueWork(
+                                    SleepTimerWorker.NAME,
+                                    ExistingWorkPolicy.KEEP,
+                                    OneTimeWorkRequestBuilder<SleepTimerWorker>().setInputData(
+                                        SleepTimerWorker.createInputData(
+                                            it.duration,
+                                            viewModel.player.value
+                                                ?.playbackPositionFLow
+                                                ?.value
+                                                ?: return@launch,
+                                            System.currentTimeMillis() + timerValue * 60000,
+                                            toleranceValue * 60000L
+                                        )
+                                    )
+                                        .build()
+                                )
+                                .enqueue()
                         }
                 }
                 dialog.dismiss()

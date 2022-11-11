@@ -133,7 +133,6 @@ data class EqualizerSettings(
 
 var SharedPreferences.isNightMode by Pref.PrefBoolean("key_night-mode", false)
 var SharedPreferences.preferScreen by Pref.PrefEnum("key_prefer_screen", Pref.PrefEnum.screens[0])
-var SharedPreferences.ducking by Pref.PrefBoolean("key_ducking", false)
 var SharedPreferences.patternFormatShareText by NullablePref.PrefString(
     "key_pattern_format_share_text", "#NowPlaying TI - AR (AL)"
 )

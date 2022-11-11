@@ -7,8 +7,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
-import android.media.AudioFocusRequest
-import android.media.AudioManager
+import android.content.pm.ServiceInfo
 import android.media.audiofx.Equalizer
 import android.media.session.PlaybackState
 import android.os.Binder
@@ -17,6 +16,7 @@ import android.os.IBinder
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.view.KeyEvent
+import androidx.core.content.edit
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ServiceLifecycleDispatcher
@@ -38,7 +38,6 @@ import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.SettingCommand
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.currentSourcePaths
-import com.geckour.q.util.ducking
 import com.geckour.q.util.equalizerEnabled
 import com.geckour.q.util.equalizerParams
 import com.geckour.q.util.equalizerSettings
@@ -49,6 +48,7 @@ import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.verifyWithDropbox
+import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.DefaultRenderersFactory
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.PlaybackException
@@ -70,7 +70,6 @@ import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -206,7 +205,6 @@ class PlayerService : Service(), LifecycleOwner {
     }
 
     private val player: ExoPlayer by lazy {
-        ducking = sharedPreferences.ducking
         val trackSelector = DefaultTrackSelector(this)
         val renderersFactory = DefaultRenderersFactory(this)
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
@@ -216,7 +214,13 @@ class PlayerService : Service(), LifecycleOwner {
             .build()
             .apply {
                 addListener(listener)
-                setAudioAttributes(AudioAttributes.Builder().build(), ducking)
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(C.USAGE_MEDIA)
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                        .build(),
+                    true
+                )
                 addAnalyticsListener(object : EventLogger() {
                     override fun onLoadError(
                         eventTime: AnalyticsListener.EventTime,
@@ -250,18 +254,7 @@ class PlayerService : Service(), LifecycleOwner {
             }
     }
 
-    lateinit var mediaSession: MediaSessionCompat
-    private val playbackStateCompat = PlaybackStateCompat.Builder()
-        .setActions(
-            PlaybackStateCompat.ACTION_PLAY or
-                    PlaybackStateCompat.ACTION_PAUSE or
-                    PlaybackStateCompat.ACTION_PLAY_PAUSE or
-                    PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
-                    PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
-                    PlaybackStateCompat.ACTION_FAST_FORWARD or
-                    PlaybackStateCompat.ACTION_REWIND or
-                    PlaybackStateCompat.ACTION_SEEK_TO
-        )
+    private lateinit var mediaSession: MediaSessionCompat
     private val currentIndex
         get() =
             if (player.currentMediaItemIndex == -1 && source.size > 0) 0
@@ -274,12 +267,16 @@ class PlayerService : Service(), LifecycleOwner {
     private val cachedQueueOrder = mutableListOf<Long>()
     internal val sourcePathsFlow = MutableStateFlow(emptyList<String>())
     internal val currentIndexFlow = MutableStateFlow(0)
+
+    /**
+     * Pair: loading to onAbort
+     */
     internal val loadStateFlow = MutableStateFlow<Pair<Boolean, (() -> Unit)?>>(false to null)
     internal val playbackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
     internal val playbackPositionFLow = MutableStateFlow(0L)
     internal val repeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
     internal val equalizerStateFlow = MutableStateFlow(false)
-    internal val onDestroyFlow = MutableSharedFlow<Unit>()
+    internal val onDestroyFlow = MutableStateFlow(0L)
 
     private lateinit var mediaSourceFactory: ProgressiveMediaSource.Factory
     private var source = ConcatenatingMediaSource()
@@ -305,7 +302,7 @@ class PlayerService : Service(), LifecycleOwner {
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
             onSourcesChanged()
 
-            if (source.size < 1) {
+            if (source.size == 0) {
                 destroyNotification()
             }
         }
@@ -313,25 +310,12 @@ class PlayerService : Service(), LifecycleOwner {
         override fun onPlaybackStateChanged(playbackState: Int) {
             super.onPlaybackStateChanged(playbackState)
 
-            mediaSession.setPlaybackState(
-                PlaybackStateCompat.Builder()
-                    .setState(
-                        getPlaybackState(player.playWhenReady, playbackState),
-                        player.currentPosition,
-                        1f
-                    )
-                    .build()
-            )
+            mediaSession.setPlaybackState(getPlaybackState(player.playWhenReady, playbackState))
 
             if (currentIndex == source.size - 1 &&
                 playbackState == Player.STATE_ENDED
                 && player.repeatMode == Player.REPEAT_MODE_OFF
             ) stop()
-
-            if (playbackState == Player.STATE_READY) {
-                notificationUpdateJob.cancel()
-                notificationUpdateJob = showNotification()
-            }
 
             playbackInfoFlow.value = player.playWhenReady to playbackState
         }
@@ -339,16 +323,28 @@ class PlayerService : Service(), LifecycleOwner {
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             super.onPlayWhenReadyChanged(playWhenReady, reason)
 
+            mediaSession.setPlaybackState(getPlaybackState(playWhenReady, player.playbackState))
+
             playbackInfoFlow.value = playWhenReady to player.playbackState
+
+            notificationUpdateJob.cancel()
+            notificationUpdateJob = updateNotification()
+
+            storeState()
         }
 
         override fun onPlayerError(error: PlaybackException) {
             super.onPlayerError(error)
 
+            storeState()
+
             Timber.e(error)
             FirebaseCrashlytics.getInstance().recordException(error)
 
             verifyByCauseIfNeeded(error)
+
+            notificationUpdateJob.cancel()
+            notificationUpdateJob = updateNotification()
         }
     }
 
@@ -356,9 +352,6 @@ class PlayerService : Service(), LifecycleOwner {
     private var notifyPlaybackPositionJob: Job = Job()
     private var playbackCountIncreaseJob: Job = Job()
     private var seekJob: Job = Job()
-
-    var ducking: Boolean = false
-        private set
 
     private val sharedPreferences by inject<SharedPreferences>()
 
@@ -372,9 +365,11 @@ class PlayerService : Service(), LifecycleOwner {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         intent ?: return START_NOT_STICKY
+
         MediaButtonReceiver.handleIntent(mediaSession, intent)
-        onPlayerControlAction(intent)
+        onPlayerServiceControlAction(intent)
         onSettingAction(intent)
+
         return START_NOT_STICKY
     }
 
@@ -417,7 +412,7 @@ class PlayerService : Service(), LifecycleOwner {
         dispatcher.onServicePreSuperOnDestroy()
         player.release()
 
-        onDestroyFlow.tryEmit(Unit)
+        onDestroyFlow.value = System.currentTimeMillis()
 
         super.onDestroy()
     }
@@ -427,8 +422,9 @@ class PlayerService : Service(), LifecycleOwner {
         currentIndexFlow.value = currentIndex
         playbackPositionFLow.value = player.currentPosition
         notificationUpdateJob.cancel()
-        notificationUpdateJob = showNotification()
+        notificationUpdateJob = updateNotification()
         playbackCountIncreaseJob = increasePlaybackCount()
+        storeState()
     }
 
     private fun onStopServiceRequested() {
@@ -440,14 +436,23 @@ class PlayerService : Service(), LifecycleOwner {
     }
 
     private fun verifyByCauseIfNeeded(throwable: Throwable) {
-        if ((throwable as? HttpDataSource.InvalidResponseCodeException)?.responseCode == 410) {
+        val cause = when (throwable) {
+            is PlaybackException,
+            is IOException -> {
+                throwable.cause
+            }
+            else -> null
+        }
+        if ((cause as? HttpDataSource.InvalidResponseCodeException?)?.responseCode == 410) {
             lifecycleScope.launch {
                 source.currentSourcePaths[currentIndex]
                     .toDomainTrack(db)
                     ?.let { track ->
-                        dropboxClient?.let {
+                        val new = dropboxClient?.let {
                             track.verifyWithDropbox(this@PlayerService, it)
                         } ?: track
+
+                        track to new
                     }
                     ?.let { replace(it) }
             }
@@ -550,20 +555,6 @@ class PlayerService : Service(), LifecycleOwner {
 
     private fun play() {
         Timber.d("qgeck play invoked")
-        getSystemService(AudioManager::class.java)?.apply {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val audioFocusRequest =
-                    AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
-                        .build()
-                requestAudioFocus(audioFocusRequest)
-            } else {
-                requestAudioFocus(
-                    {},
-                    AudioManager.STREAM_MUSIC,
-                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
-                )
-            }
-        }
 
         resume()
     }
@@ -591,20 +582,8 @@ class PlayerService : Service(), LifecycleOwner {
     fun pause() {
         Timber.d("qgeck pause invoked")
 
-        if (player.playWhenReady) storeState()
-
         player.playWhenReady = false
         notifyPlaybackPositionJob.cancel()
-        getSystemService(AudioManager::class.java)?.apply {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val audioFocusRequest = AudioFocusRequest.Builder(
-                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
-                ).build()
-                abandonAudioFocusRequest(audioFocusRequest)
-            } else {
-                abandonAudioFocus {}
-            }
-        }
     }
 
     fun togglePlayPause() {
@@ -618,7 +597,6 @@ class PlayerService : Service(), LifecycleOwner {
     fun stop() {
         pause()
         forceIndex(0)
-        storeState()
     }
 
     fun clear(keepCurrentIfPlaying: Boolean = false) {
@@ -637,24 +615,34 @@ class PlayerService : Service(), LifecycleOwner {
             source.removeMediaSourceRange(0, positionToKeep)
             source.removeMediaSourceRange(1, source.size)
         }
-        storeState()
     }
 
-    private fun replace(with: DomainTrack) {
+    /**
+     * @param with: first: old, second: new
+     */
+    private fun replace(with: Pair<DomainTrack, DomainTrack>) {
         replace(listOf(with))
     }
 
-    private fun replace(with: List<DomainTrack>) {
+    private fun replace(with: List<Pair<DomainTrack, DomainTrack>>) {
         if (with.isEmpty()) return
 
         with.forEach { withTrack ->
-            val index = source.currentSourcePaths
-                .indexOfFirst {
-                    val path = withTrack.dropboxPath ?: withTrack.sourcePath
-                    it == path
-                }
+            val index = source.currentSourcePaths.indexOfFirst { it == withTrack.first.sourcePath }
+            Timber.d("qgeck source path: ${withTrack.first.sourcePath}")
+            Timber.d(
+                "qgeck source paths: ${
+                    source.currentSourcePaths.map { path ->
+                        path.replace(
+                            Regex("^.+/get/(.+)/file$"),
+                            "$1"
+                        ).let { "${it.take(8)}...${it.takeLast(8)}" }
+                    }
+                }"
+            )
+            Timber.d("qgeck index: $index")
             removeQueue(index)
-            source.addMediaSource(index, withTrack.getMediaSource(mediaSourceFactory))
+            source.addMediaSource(index, withTrack.second.getMediaSource(mediaSourceFactory))
         }
     }
 
@@ -797,18 +785,34 @@ class PlayerService : Service(), LifecycleOwner {
     }
 
     private fun getPlaybackState(playWhenReady: Boolean, playbackState: Int) =
-        when (playbackState) {
-            Player.STATE_BUFFERING -> PlaybackState.STATE_BUFFERING
-            Player.STATE_ENDED -> PlaybackState.STATE_STOPPED
-            Player.STATE_IDLE -> PlaybackState.STATE_NONE
-            Player.STATE_READY -> {
-                if (playWhenReady) PlaybackState.STATE_PLAYING
-                else PlaybackState.STATE_PAUSED
-            }
-            else -> PlaybackState.STATE_ERROR
-        }
+        PlaybackStateCompat.Builder()
+            .setActions(
+                PlaybackStateCompat.ACTION_PLAY or
+                        PlaybackStateCompat.ACTION_PAUSE or
+                        PlaybackStateCompat.ACTION_PLAY_PAUSE or
+                        PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
+                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
+                        PlaybackStateCompat.ACTION_FAST_FORWARD or
+                        PlaybackStateCompat.ACTION_REWIND or
+                        PlaybackStateCompat.ACTION_SEEK_TO
+            )
+            .setState(
+                when (playbackState) {
+                    Player.STATE_BUFFERING -> PlaybackState.STATE_BUFFERING
+                    Player.STATE_ENDED -> PlaybackState.STATE_STOPPED
+                    Player.STATE_IDLE -> PlaybackState.STATE_NONE
+                    Player.STATE_READY -> {
+                        if (playWhenReady) PlaybackState.STATE_PLAYING
+                        else PlaybackState.STATE_PAUSED
+                    }
+                    else -> PlaybackState.STATE_ERROR
+                },
+                player.currentPosition,
+                player.playbackParameters.speed
+            )
+            .build()
 
-    private fun onPlayerControlAction(intent: Intent) {
+    private fun onPlayerServiceControlAction(intent: Intent) {
         if (intent.hasExtra(ARGS_KEY_CONTROL_COMMAND)) {
             val key = intent.getIntExtra(ARGS_KEY_CONTROL_COMMAND, -1)
             when (PlayerControlCommand.values()[key]) {
@@ -848,7 +852,6 @@ class PlayerService : Service(), LifecycleOwner {
     private fun forceIndex(windowIndex: Int) {
         val index = player.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
         player.seekToDefaultPosition(index + windowIndex)
-        playbackPositionFLow.value = player.currentPosition
     }
 
     private fun increasePlaybackCount() = lifecycleScope.launch(Dispatchers.Main) {
@@ -908,25 +911,28 @@ class PlayerService : Service(), LifecycleOwner {
         }
     }
 
-    private fun storeState() {
-        cachedQueueOrder.apply {
-            clear()
-            lifecycleScope.launch {
-                val trackIds = source.currentSourcePaths.mapNotNull {
-                    it.toDomainTrack(db)?.id
-                }
-                addAll(trackIds)
-                val state = PlayerState(
-                    player.playWhenReady,
-                    trackIds,
-                    currentIndex,
-                    player.currentPosition,
-                    player.repeatMode
-                )
-                sharedPreferences.edit()
-                    .putString(PREF_KEY_PLAYER_STATE, Json.encodeToString(state))
-                    .apply()
-            }
+    private fun storeState(
+        playWhenReady: Boolean = player.playWhenReady,
+        currentIndex: Int = this.currentIndex,
+        duration: Long = player.duration,
+        progress: Long = player.currentPosition,
+        repeatMode: Int = player.repeatMode
+    ) = lifecycleScope.launch {
+        cachedQueueOrder.clear()
+        val trackIds = source.currentSourcePaths.mapNotNull {
+            it.toDomainTrack(db)?.id
+        }
+        cachedQueueOrder.addAll(trackIds)
+        val state = PlayerState(
+            playWhenReady,
+            trackIds,
+            currentIndex,
+            duration,
+            progress,
+            repeatMode
+        )
+        sharedPreferences.edit {
+            putString(PREF_KEY_PLAYER_STATE, Json.encodeToString(state))
         }
     }
 
@@ -938,16 +944,10 @@ class PlayerService : Service(), LifecycleOwner {
         }
     }
 
-    private fun showNotification() = lifecycleScope.launch(Dispatchers.Main) {
+    private fun updateNotification() = lifecycleScope.launch {
         val mediaMetadata = currentMediaSource?.toDomainTrack(db)
             ?.getMediaMetadata(this@PlayerService) ?: return@launch
-        mediaSession.setPlaybackState(
-            playbackStateCompat.setState(
-                player.playbackState.toPlaybackStateCompat,
-                player.currentPosition,
-                player.playbackParameters.speed
-            ).build()
-        )
+        mediaSession.setPlaybackState(getPlaybackState(player.playWhenReady, player.playbackState))
         mediaSession.setMetadata(mediaMetadata)
         mediaSession.isActive = true
         mediaSession.setSessionActivity(
@@ -966,13 +966,25 @@ class PlayerService : Service(), LifecycleOwner {
     }
 
     private fun Notification.show() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && player.isPlaying) {
-            Timber.d("qgeck starting foreground player service")
-            startForeground(NOTIFICATION_ID_PLAYER, this)
+        val isInForeground =
+            Build.VERSION.SDK_INT >= 29 && foregroundServiceType != ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE
+        if (isInForeground || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+            getSystemService(NotificationManager::class.java)?.notify(
+                NOTIFICATION_ID_PLAYER,
+                this
+            )
+            return
+        }
+
+        Timber.d("qgeck starting foreground player service")
+        if (Build.VERSION.SDK_INT >= 29) {
+            startForeground(
+                NOTIFICATION_ID_PLAYER,
+                this,
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+            )
         } else {
-            Timber.d("qgeck stopping foreground player service")
-            stopForeground(STOP_FOREGROUND_DETACH)
-            getSystemService(NotificationManager::class.java)?.notify(NOTIFICATION_ID_PLAYER, this)
+            startForeground(NOTIFICATION_ID_PLAYER, this)
         }
     }
 
@@ -982,15 +994,4 @@ class PlayerService : Service(), LifecycleOwner {
         stopForeground(STOP_FOREGROUND_REMOVE)
         getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID_PLAYER)
     }
-
-    private val Int.toPlaybackStateCompat
-        get() = when (this) {
-            Player.STATE_BUFFERING -> PlaybackStateCompat.STATE_BUFFERING
-            Player.STATE_READY -> {
-                if (player.playWhenReady) PlaybackStateCompat.STATE_PLAYING
-                else PlaybackStateCompat.STATE_PAUSED
-            }
-            Player.STATE_ENDED -> PlaybackStateCompat.STATE_STOPPED
-            else -> PlaybackState.STATE_NONE
-        }
 }

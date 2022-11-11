@@ -22,7 +22,6 @@ import com.geckour.q.databinding.DialogSpinnerBinding
 import com.geckour.q.ui.license.LicenseActivity
 import com.geckour.q.util.Pref
 import com.geckour.q.util.bundleArtwork
-import com.geckour.q.util.ducking
 import com.geckour.q.util.formatPattern
 import com.geckour.q.util.getColor
 import com.geckour.q.util.isNightMode
@@ -50,7 +49,6 @@ class SettingActivity : AppCompatActivity() {
         binding = DataBindingUtil.setContentView(this, R.layout.activity_setting)
         binding.itemChooseScreen.viewModel = chooseLaunchScreenViewModel
         binding.itemArtworkOnLockScreen.viewModel = artworkOnLockScreenViewModel
-        binding.itemDucking.viewModel = duckingViewModel
         binding.itemLicense.viewModel = licenseViewModel
         binding.itemFormatPattern.viewModel = formatPatternViewModel
         binding.itemBundleArtwork.viewModel = bundleArtworkViewModel
@@ -158,21 +156,6 @@ class SettingActivity : AppCompatActivity() {
                 summary = it.switchSummary
                 binding.itemArtworkOnLockScreen.viewModel = this
                 if (binding.itemArtworkOnLockScreen.state.isChecked != it) binding.itemArtworkOnLockScreen.state.isChecked =
-                    it
-            }).apply { switchState = state }
-    }
-
-    private val duckingViewModel: SettingItemViewModel by lazy {
-        val state = sharedPreferences.ducking
-        SettingItemViewModel(getString(R.string.setting_item_title_ducking),
-            getString(R.string.setting_item_desc_ducking),
-            state.switchSummary,
-            true,
-            onSwitchClick = {
-                sharedPreferences.ducking = it
-                summary = it.switchSummary
-                binding.itemDucking.viewModel = this
-                if (binding.itemDucking.state.isChecked != it) binding.itemDucking.state.isChecked =
                     it
             }).apply { switchState = state }
     }

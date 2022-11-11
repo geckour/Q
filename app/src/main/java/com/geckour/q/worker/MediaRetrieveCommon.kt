@@ -8,6 +8,7 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.PorterDuff
+import androidx.work.Data
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
@@ -29,6 +30,22 @@ import kotlin.random.Random
 internal const val NOTIFICATION_ID_RETRIEVE = 300
 
 internal const val MEDIA_RETRIEVE_WORKER_NAME = "MediaRetrieveWorker"
+
+internal const val KEY_SYNCING_PROGRESS_NUMERATOR = "key_syncing_progress_numerator"
+internal const val KEY_SYNCING_PROGRESS_DENOMINATOR = "key_syncing_progress_denominator"
+internal const val KEY_SYNCING_PROGRESS_PATH = "key_syncing_progress_path"
+internal const val KEY_SYNCING_FINISHED = "key_syncing_finished"
+
+internal fun createProgressData(
+    numerator: Int,
+    denominator: Int = -1,
+    path: String? = null
+): Data =
+    Data.Builder()
+        .putInt(KEY_SYNCING_PROGRESS_NUMERATOR, numerator)
+        .putInt(KEY_SYNCING_PROGRESS_DENOMINATOR, denominator)
+        .putString(KEY_SYNCING_PROGRESS_PATH, path)
+        .build()
 
 internal suspend fun File.storeMediaInfo(
     context: Context,

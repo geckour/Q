@@ -11,13 +11,13 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import androidx.work.CoroutineWorker
+import androidx.work.Data
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.ui.LauncherActivity
-import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.util.QNotificationChannel
 import com.geckour.q.util.getNotificationBuilder
 import kotlinx.coroutines.delay
@@ -52,6 +52,12 @@ class LocalMediaRetrieveWorker(
         if (Build.VERSION.SDK_INT >= 33
             || applicationContext.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         ) {
+            try {
+                setForeground(getForegroundInfo())
+            } catch (t: Throwable) {
+                return Result.failure(Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build())
+            }
+
             seed = System.currentTimeMillis()
             Timber.d("qgeck media retrieve service started")
             val db = DB.getInstance(applicationContext)
@@ -72,7 +78,11 @@ class LocalMediaRetrieveWorker(
                 )?.use { cursor ->
                     val newTrackMediaIds = mutableListOf<Long>()
                     while (cursor.moveToNext()) {
-                        if (isStopped) return Result.success()
+                        if (isStopped) {
+                            return Result.success(
+                                Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build()
+                            )
+                        }
 
                         currentProgressNumerator = cursor.position + 1
                         currentProgressDenominator = cursor.count
@@ -82,8 +92,8 @@ class LocalMediaRetrieveWorker(
                         val trackMediaId = cursor.getLong(
                             cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
                         )
-                        applicationContext.sendBroadcast(
-                            MainActivity.createProgressIntent(
+                        setProgress(
+                            createProgressData(
                                 currentProgressNumerator,
                                 currentProgressDenominator,
                                 trackPath
@@ -105,12 +115,11 @@ class LocalMediaRetrieveWorker(
 
             Timber.d("qgeck track in db count: ${runBlocking { db.trackDao().count() }}")
             delay(200)
-            applicationContext.sendBroadcast(MainActivity.createSyncCompleteIntent(true))
 
-            return Result.success()
+            return Result.success(Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build())
         }
 
-        return Result.failure()
+        return Result.failure(Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build())
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo =

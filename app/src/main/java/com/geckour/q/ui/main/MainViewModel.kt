@@ -67,7 +67,7 @@ class MainViewModel(
     internal val mediaRetrieveWorkInfoList =
         workManager.getWorkInfosForUniqueWorkLiveData(MEDIA_RETRIEVE_WORKER_NAME)
 
-    internal val player: MutableLiveData<PlayerService> = MutableLiveData()
+    internal val player: MutableStateFlow<PlayerService?> = MutableStateFlow(null)
 
     private var isBoundService = false
 
@@ -89,7 +89,6 @@ class MainViewModel(
         Channel<Pair<String, List<FolderMetadata>>>(capacity = Channel.CONFLATED)
     internal val dropboxItemList = dropboxItemListChannel.receiveAsFlow().distinctUntilChanged()
 
-    internal var syncing = false
     internal val loading = MutableStateFlow<Pair<Boolean, (() -> Unit)?>>(false to null)
     internal var isSearchViewOpened = false
 

@@ -32,8 +32,13 @@ class QueueListAdapter(
             override fun areItemsTheSame(oldItem: DomainTrack, newItem: DomainTrack): Boolean =
                 oldItem.id == newItem.id
 
-            override fun areContentsTheSame(oldItem: DomainTrack, newItem: DomainTrack): Boolean =
-                oldItem == newItem
+            override fun areContentsTheSame(oldItem: DomainTrack, newItem: DomainTrack): Boolean {
+                val dummyAlbum = Album(0, 0, "", "", null, false, 0, 0)
+                val dummyArtist = Artist(0, "", "", 0, 0, null)
+                val oldMockedItem = oldItem.copy(album = dummyAlbum, artist = dummyArtist)
+                val newMockedItem = newItem.copy(album = dummyAlbum, artist = dummyArtist)
+                return oldMockedItem == newMockedItem
+            }
         }
     }
 

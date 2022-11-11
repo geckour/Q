@@ -31,8 +31,8 @@ import com.geckour.q.util.setEqualizerLevel
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toggleDayNight
 import com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBar
-import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.sharedViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -102,13 +102,13 @@ class EqualizerFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        mainViewModel.player.observe(viewLifecycleOwner) { player ->
-            player ?: return@observe
+        mainViewModel.player.onEach { player ->
+            player ?: return@onEach
 
-            lifecycleScope.launch {
-                player.equalizerStateFlow.collectLatest { onEqualizerStateChanged(it) }
-            }
-        }
+            player.equalizerStateFlow
+                .onEach { onEqualizerStateChanged(it) }
+                .launchIn(lifecycleScope)
+        }.launchIn(lifecycleScope)
 
         viewModel.enabled.observe(viewLifecycleOwner) {
             it ?: return@observe

@@ -95,13 +95,12 @@
 
         <service
             android:name=".service.PlayerService"
-            android:exported="false">
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback">
             <intent-filter>
                 <action android:name="android.intent.action.MEDIA_BUTTON" />
             </intent-filter>
         </service>
-
-        <service android:name=".service.SleepTimerService" />
 
         <service android:name=".service.InstantPlayerService" />
 

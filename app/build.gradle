@@ -36,6 +36,18 @@ android {
         jniLibs.srcDir 'src/main/libs'
         // Disable the automatic ndk-build call by Android Studio.
     }
+    signingConfigs {
+        debug {
+            keyAlias "AndroidDebugKey"
+            keyPassword "android"
+            storeFile file("${project.rootDir}/app/signing/debug.keystore")
+            storePassword "android"
+        }
+        release {
+            def releaseSettingGradleFile = new File("${project.rootDir}/app/signing/release.gradle")
+            apply from: releaseSettingGradleFile, to: android
+        }
+    }
     buildTypes {
         debug {
             applicationIdSuffix '.debug'
@@ -43,6 +55,7 @@ android {
         release {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
     dataBinding.enabled = true
