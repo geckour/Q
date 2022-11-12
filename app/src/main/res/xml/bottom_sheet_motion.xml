@@ -130,6 +130,15 @@
             app:layout_constraintTop_toTopOf="@id/button_controller_center" />
 
         <Constraint
+            android:id="@+id/button_share"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginEnd="4dp"
+            app:layout_constraintBottom_toBottomOf="@id/button_toggle_visible_queue"
+            app:layout_constraintEnd_toStartOf="@id/button_toggle_visible_queue"
+            app:layout_constraintTop_toTopOf="@id/button_toggle_visible_queue" />
+
+        <Constraint
             android:id="@+id/button_toggle_visible_queue"
             android:layout_width="32dp"
             android:layout_height="32dp"
@@ -334,6 +343,15 @@
             app:layout_constraintBottom_toBottomOf="@id/button_controller_center"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintTop_toTopOf="@id/button_controller_center" />
+
+        <Constraint
+            android:id="@+id/button_share"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginEnd="4dp"
+            app:layout_constraintBottom_toBottomOf="@id/button_toggle_visible_queue"
+            app:layout_constraintEnd_toStartOf="@id/button_toggle_visible_queue"
+            app:layout_constraintTop_toTopOf="@id/button_toggle_visible_queue" />
 
         <Constraint
             android:id="@id/button_toggle_visible_queue"

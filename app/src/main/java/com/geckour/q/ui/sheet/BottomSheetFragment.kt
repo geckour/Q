@@ -40,9 +40,6 @@ import com.google.android.exoplayer2.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
@@ -281,6 +278,13 @@ class BottomSheetFragment : Fragment() {
         binding.buttonShuffle.apply {
             setOnClickListener { mainViewModel.onClickShuffleButton() }
             setOnLongClickListener { mainViewModel.onLongClickShuffleButton() }
+        }
+
+        binding.buttonShare.setOnClickListener {
+            viewModel.onClickShareButton(
+                requireContext(),
+                adapter.currentItem
+            )
         }
 
         binding.buttonToggleVisibleQueue.setOnClickListener { viewModel.onClickQueueButton() }

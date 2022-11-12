@@ -209,3 +209,4 @@ codeStyleConfig.xml
 kotlinc.xml
 */jarRepositories.xml
 secret.properties
+github.properties

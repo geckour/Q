@@ -1,12 +1,19 @@
 package com.geckour.q.ui.sheet
 
+import android.app.PendingIntent
+import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
+import androidx.core.net.toUri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.distinctUntilChanged
+import com.geckour.q.R
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.main.MainViewModel
+import com.geckour.q.util.formatPattern
+import com.geckour.q.util.getTempArtworkUriString
 import com.geckour.q.util.showCurrentRemain
 
 class BottomSheetViewModel(sharedPreferences: SharedPreferences) : ViewModel() {
@@ -24,6 +31,26 @@ class BottomSheetViewModel(sharedPreferences: SharedPreferences) : ViewModel() {
 
     init {
         _showCurrentRemain.value = sharedPreferences.showCurrentRemain
+    }
+
+    fun onClickShareButton(context: Context, domainTrack: DomainTrack?) {
+        domainTrack ?: return
+        val subject = domainTrack.toTrackInfo().getSharingSubject(context.formatPattern)
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            putExtra(Intent.EXTRA_TEXT, subject)
+            domainTrack.getTempArtworkUriString(context)
+                ?.toUri()
+                ?.let {
+                    putExtra(Intent.EXTRA_STREAM, it)
+                    setType("image/png")
+                } ?: run { setType("text/plain") }
+        }
+        PendingIntent.getActivity(
+            context,
+            0,
+            Intent.createChooser(intent, context.getString(R.string.share_chooser_title)),
+            PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        ).send()
     }
 
     fun onClickQueueButton() {

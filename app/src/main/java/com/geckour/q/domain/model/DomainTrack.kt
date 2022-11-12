@@ -1,6 +1,7 @@
 package com.geckour.q.domain.model
 
 import android.os.Parcelable
+import com.geckour.nowplayingsubjectbuilder.lib.model.TrackInfo
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.util.getTimeString
@@ -38,4 +39,12 @@ data class DomainTrack(
 ) : Parcelable, MediaItem {
 
     val durationString: String get() = duration.getTimeString()
+
+    fun toTrackInfo(): TrackInfo = TrackInfo(
+        title,
+        artist.title,
+        album.title,
+        composer,
+        null
+    )
 }
