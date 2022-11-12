@@ -310,6 +310,14 @@ class PlayerService : Service(), LifecycleOwner {
         override fun onPlaybackStateChanged(playbackState: Int) {
             super.onPlaybackStateChanged(playbackState)
 
+            Timber.d("qgeck player playback state: ${when(playbackState) {
+                Player.STATE_IDLE -> "STATE_IDLE"
+                Player.STATE_BUFFERING -> "STATE_BUFFERING"
+                Player.STATE_READY -> "STATE_READY"
+                Player.STATE_ENDED -> "STATE_ENDED"
+                else -> "UNKNOWN"
+            }}")
+
             mediaSession.setPlaybackState(getPlaybackState(player.playWhenReady, playbackState))
 
             if (currentIndex == source.size - 1 &&
@@ -497,31 +505,29 @@ class PlayerService : Service(), LifecycleOwner {
             InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> clear(force.not())
             else -> Unit
         }
-        val needToResetSource = when (queueInfo.metadata.actionType) {
+        val needToResetSource = source.size == 0
+        when (queueInfo.metadata.actionType) {
             InsertActionType.NEXT,
             InsertActionType.OVERRIDE,
             InsertActionType.SHUFFLE_NEXT,
             InsertActionType.SHUFFLE_OVERRIDE,
             InsertActionType.SHUFFLE_SIMPLE_NEXT,
             InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
-                val isEmpty = source.size == 0
                 val position = if (source.size < 1) 0 else currentIndex + 1
                 source.addMediaSources(position, newQueue)
-                isEmpty
             }
 
             InsertActionType.LAST,
             InsertActionType.SHUFFLE_LAST,
             InsertActionType.SHUFFLE_SIMPLE_LAST -> {
-                val isEmpty = source.size == 0
                 val position = source.size
                 source.addMediaSources(position, newQueue)
-                isEmpty
             }
         }
         if (needToResetSource) {
             player.setMediaSource(source)
             player.prepare()
+            stop()
         }
 
         loadStateFlow.value = false to null
@@ -588,10 +594,7 @@ class PlayerService : Service(), LifecycleOwner {
 
     fun togglePlayPause() {
         if (player.playWhenReady) pause()
-        else {
-            if (player.playbackState == Player.STATE_READY) resume()
-            else play()
-        }
+        else resume()
     }
 
     fun stop() {
@@ -609,7 +612,6 @@ class PlayerService : Service(), LifecycleOwner {
     private fun clear(positionToKeep: Int) {
         if (positionToKeep !in 0 until source.size) {
             pause()
-            destroyNotification()
             source.clear()
         } else {
             source.removeMediaSourceRange(0, positionToKeep)
@@ -630,16 +632,6 @@ class PlayerService : Service(), LifecycleOwner {
         with.forEach { withTrack ->
             val index = source.currentSourcePaths.indexOfFirst { it == withTrack.first.sourcePath }
             Timber.d("qgeck source path: ${withTrack.first.sourcePath}")
-            Timber.d(
-                "qgeck source paths: ${
-                    source.currentSourcePaths.map { path ->
-                        path.replace(
-                            Regex("^.+/get/(.+)/file$"),
-                            "$1"
-                        ).let { "${it.take(8)}...${it.takeLast(8)}" }
-                    }
-                }"
-            )
             Timber.d("qgeck index: $index")
             removeQueue(index)
             source.addMediaSource(index, withTrack.second.getMediaSource(mediaSourceFactory))
@@ -727,10 +719,12 @@ class PlayerService : Service(), LifecycleOwner {
     fun shuffle(actionType: ShuffleActionType = ShuffleActionType.SHUFFLE_SIMPLE) {
         lifecycleScope.launch {
             val currentQueue = source.currentSourcePaths.mapNotNull { it.toDomainTrack(db) }
-            if (source.size < 1 && source.size != currentQueue.size) return@launch
+            if (source.size < 1 || source.size != currentQueue.size) return@launch
 
             val shuffled = when (actionType) {
-                ShuffleActionType.SHUFFLE_SIMPLE -> currentQueue.map { it.id }.shuffled()
+                ShuffleActionType.SHUFFLE_SIMPLE -> {
+                    currentQueue.shuffled().map { it.id }
+                }
                 ShuffleActionType.SHUFFLE_ALBUM_ORIENTED -> {
                     currentQueue.groupBy { it.album.id }
                         .map { it.value }
@@ -739,7 +733,7 @@ class PlayerService : Service(), LifecycleOwner {
                         .map { it.id }
                 }
                 ShuffleActionType.SHUFFLE_ARTIST_ORIENTED -> {
-                    currentQueue.groupBy { it.artist }
+                    currentQueue.groupBy { it.artist.id }
                         .map { it.value }
                         .shuffled()
                         .flatten()
