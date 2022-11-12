@@ -2,13 +2,6 @@
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <data>
-
-        <variable
-            name="viewModel"
-            type="com.geckour.q.ui.pay.PaymentViewModel" />
-    </data>
-
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -22,39 +15,23 @@
             android:text="@string/payment_desc"
             android:textColor="?attr/colorTextSecondary"
             android:textSize="16sp"
-            app:layout_constraintBottom_toTopOf="@id/kyash_qr"
+            app:layout_constraintBottom_toTopOf="@id/pay"
             app:layout_constraintLeft_toLeftOf="parent"
             app:layout_constraintRight_toRightOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintVertical_chainStyle="packed" />
 
-        <ImageView
-            android:id="@+id/kyash_qr"
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/pay"
             android:layout_width="wrap_content"
-            android:layout_height="0dp"
-            android:layout_marginTop="8dp"
-            android:adjustViewBounds="true"
-            android:onClick="@{() -> viewModel.onClickQR(context)}"
-            android:src="@drawable/kyash_qr"
-            app:layout_constraintBottom_toTopOf="@id/button_save"
-            app:layout_constraintHeight_percent="0.35"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/desc_payment" />
-
-        <ImageView
-            android:id="@+id/button_save"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:layout_marginTop="8dp"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:onClick="@{() -> viewModel.onClickSave(context)}"
-            android:src="@drawable/ic_save"
-            android:tint="?attr/colorOption"
+            android:layout_marginTop="12dp"
+            android:layout_height="wrap_content"
+            android:text="@string/payment_action_pay"
+            android:textColor="?attr/colorTextPrimary"
             app:layout_constraintBottom_toTopOf="@id/guide_peek_height"
-            app:layout_constraintLeft_toLeftOf="parent"
-            app:layout_constraintRight_toRightOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/kyash_qr" />
+            app:layout_constraintEnd_toEndOf="@id/desc_payment"
+            app:layout_constraintStart_toStartOf="@id/desc_payment"
+            app:layout_constraintTop_toBottomOf="@id/desc_payment" />
 
         <androidx.constraintlayout.widget.Guideline
             android:id="@+id/guide_peek_height"

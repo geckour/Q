@@ -43,7 +43,6 @@ import com.geckour.q.ui.library.artist.ArtistListFragment
 import com.geckour.q.ui.library.genre.GenreListFragment
 import com.geckour.q.ui.library.track.TrackListFragment
 import com.geckour.q.ui.pay.PaymentFragment
-import com.geckour.q.ui.pay.PaymentViewModel
 import com.geckour.q.ui.setting.SettingActivity
 import com.geckour.q.ui.sheet.BottomSheetFragment
 import com.geckour.q.util.OrientedClassType
@@ -65,7 +64,6 @@ import com.geckour.q.worker.KEY_SYNCING_PROGRESS_PATH
 import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import com.geckour.q.worker.SleepTimerWorker
-import com.google.android.material.snackbar.Snackbar
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -87,7 +85,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val viewModel by viewModel<MainViewModel>()
-    private val paymentViewModel by viewModel<PaymentViewModel>()
 
     internal lateinit var binding: ActivityMainBinding
     private val sharedPreferences by inject<SharedPreferences>()
@@ -436,14 +433,6 @@ class MainActivity : AppCompatActivity() {
                     ).apply { dropboxChooserDialog = this }
                 }).show(it.first, it.second)
             }
-        }
-
-        paymentViewModel.saveSuccess.observe(this) {
-            if (it == null) return@observe
-            Snackbar.make(
-                binding.root, if (it) R.string.payment_save_success
-                else R.string.payment_save_failure, Snackbar.LENGTH_SHORT
-            ).show()
         }
 
         viewModel.mediaRetrieveWorkInfoList.observe(this) { workInfoList ->

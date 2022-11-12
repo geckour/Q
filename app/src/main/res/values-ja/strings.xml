@@ -126,9 +126,13 @@
     <string name="dialog_desc_dropbox_choose_folder">メディアを探索するルートフォルダを選択</string>
 
     <!-- Payment -->
-    <string name="payment_desc">Kyashを利用した投げ銭を受け付けています</string>
-    <string name="payment_save_success">保存しました</string>
-    <string name="payment_save_failure">エラー: 保存できませんでした</string>
+    <string name="payment_desc">投げ銭を受け付けています</string>
+    <string name="payment_action_pay">投げる</string>
+    <string name="payment_message_success">＼投げ銭に成功しました／</string>
+    <string name="payment_message_error_failed_to_start">エラー\n処理の開始に失敗しました</string>
+    <string name="payment_message_error_duplicated">エラー\n既に処理中の投げ銭があります</string>
+    <string name="payment_message_error_canceled">エラー\nキャンセルされました</string>
+    <string name="payment_message_error_failed">エラー\n処理に失敗しました</string>
 
     <!-- Chooser -->
     <string name="share_chooser_title">共有先を選択…</string>

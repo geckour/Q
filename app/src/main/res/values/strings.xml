@@ -137,9 +137,13 @@
     <string name="track_number_divider" translatable="false">|</string>
 
     <!-- Payment -->
-    <string name="payment_desc">Available donation with Kyash</string>
-    <string name="payment_save_success">Succeeded</string>
-    <string name="payment_save_failure">Failure to save</string>
+    <string name="payment_desc">Available donation</string>
+    <string name="payment_action_pay">Donate</string>
+    <string name="payment_message_success">Succeeded to donate</string>
+    <string name="payment_message_error_failed_to_start">Error\nFailed to start processing.</string>
+    <string name="payment_message_error_duplicated">Error\nFailed to donate since you already have purchased item.</string>
+    <string name="payment_message_error_canceled">Error\nFailed to donate since cancelled.</string>
+    <string name="payment_message_error_failed">Error\nFailed to donate.</string>
 
     <!-- Chooser -->
     <string name="share_chooser_title">Choose destination to share…</string>

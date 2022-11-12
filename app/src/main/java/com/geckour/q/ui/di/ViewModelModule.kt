@@ -8,7 +8,6 @@ import com.geckour.q.ui.library.album.AlbumListViewModel
 import com.geckour.q.ui.library.artist.ArtistListViewModel
 import com.geckour.q.ui.library.track.TrackListViewModel
 import com.geckour.q.ui.main.MainViewModel
-import com.geckour.q.ui.pay.PaymentViewModel
 import com.geckour.q.ui.setting.SettingViewModel
 import com.geckour.q.ui.sheet.BottomSheetViewModel
 import org.koin.android.ext.koin.androidApplication
@@ -36,9 +35,6 @@ val viewModelModule = module {
     }
     viewModel {
         ArtistListViewModel(db = get())
-    }
-    viewModel {
-        PaymentViewModel()
     }
     viewModel {
         SettingViewModel()

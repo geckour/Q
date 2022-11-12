@@ -170,6 +170,9 @@ dependencies {
 
     // Audio Metadata
     implementation 'net.jthink:jaudiotagger:3.0.1'
+
+    // Billing
+    implementation "com.android.billingclient:billing-ktx:5.1.0"
 }
 
 apply plugin: 'com.google.gms.google-services'
