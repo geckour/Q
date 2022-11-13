@@ -3,24 +3,32 @@ package com.geckour.q.service
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.ServiceInfo
 import android.media.audiofx.Equalizer
 import android.media.session.PlaybackState
+import android.net.Uri
 import android.os.Binder
 import android.os.Build
+import android.os.Bundle
 import android.os.IBinder
+import android.provider.MediaStore
+import android.support.v4.media.MediaBrowserCompat
+import android.support.v4.media.MediaDescriptionCompat
+import android.support.v4.media.RatingCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.view.KeyEvent
 import androidx.core.content.edit
+import androidx.core.net.toUri
+import androidx.core.os.bundleOf
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ServiceLifecycleDispatcher
 import androidx.lifecycle.lifecycleScope
+import androidx.media.MediaBrowserServiceCompat
 import androidx.media.session.MediaButtonReceiver
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.App
@@ -80,8 +88,9 @@ import kotlinx.serialization.json.Json
 import org.koin.android.ext.android.inject
 import timber.log.Timber
 import java.io.IOException
+import java.util.*
 
-class PlayerService : Service(), LifecycleOwner {
+class PlayerService : MediaBrowserServiceCompat(), LifecycleOwner {
 
     inner class PlayerBinder : Binder() {
         val service: PlayerService get() = this@PlayerService
@@ -98,11 +107,19 @@ class PlayerService : Service(), LifecycleOwner {
         const val ARGS_KEY_SETTING_COMMAND = "args_key_setting_command"
 
         const val PREF_KEY_PLAYER_STATE = "pref_key_player_state"
+
+        private const val BROWSABLE_ROOT = "/"
+        private const val RECENT_ROOT = "__RECENT__"
+
+        private val artistRootRegex = Regex("/(\\d+)")
+        private val albumRootRegex = Regex("/\\d+/(\\d+)")
+        private val trackRootRegex = Regex("/\\d+/\\d+/(\\d+)")
     }
 
     private val binder = PlayerBinder()
 
     private val mediaSessionCallback = object : MediaSessionCompat.Callback() {
+
         override fun onPlay() {
             super.onPlay()
             play()
@@ -136,6 +153,203 @@ class PlayerService : Service(), LifecycleOwner {
         override fun onSeekTo(pos: Long) {
             super.onSeekTo(pos)
             seek(pos)
+        }
+
+        override fun onPrepare() {
+            super.onPrepare()
+
+            if (currentMediaSource == null) {
+                val seed = Calendar.getInstance(TimeZone.getDefault())
+                    .let { it.get(Calendar.YEAR) * 1000L + it.get(Calendar.DAY_OF_YEAR) }
+                val random = Random(seed)
+
+                mediaPrepareJob = lifecycleScope.launchWhenStarted {
+                    val track = db.trackDao().getAll()
+                        .let { it[random.nextInt(it.size)].toDomainTrack() }
+                    submitQueue(
+                        QueueInfo(
+                            QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.TRACK),
+                            listOf(track)
+                        )
+                    )
+                }
+            }
+        }
+
+        override fun onPrepareFromSearch(query: String?, extras: Bundle?) {
+            super.onPrepareFromSearch(query, extras)
+
+            mediaPrepareJob = lifecycleScope.launchWhenStarted {
+                pause()
+                val items = db.trackDao().getAllByTitles(
+                    db,
+                    query,
+                    extras?.getString(MediaStore.EXTRA_MEDIA_ALBUM),
+                    extras?.getString(MediaStore.EXTRA_MEDIA_ARTIST)
+                ).map { it.toDomainTrack() }
+                if (items.isEmpty() && currentMediaSource == null) {
+                    val seed = Calendar.getInstance(TimeZone.getDefault())
+                        .let { it.get(Calendar.YEAR) * 1000L + it.get(Calendar.DAY_OF_YEAR) }
+                    val random = Random(seed)
+
+                    val track = db.trackDao().getAll()
+                        .let { it[random.nextInt(it.size)].toDomainTrack() }
+                    submitQueue(
+                        QueueInfo(
+                            QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.TRACK),
+                            listOf(track)
+                        )
+                    )
+                }
+                submitQueue(
+                    QueueInfo(
+                        QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.ARTIST),
+                        items
+                    )
+                )
+            }
+        }
+
+        override fun onPlayFromSearch(query: String?, extras: Bundle?) {
+            super.onPlayFromSearch(query, extras)
+
+            lifecycleScope.launchWhenStarted {
+                mediaPrepareJob.join()
+                play()
+            }
+        }
+
+        override fun onPrepareFromUri(uri: Uri?, extras: Bundle?) {
+            super.onPrepareFromUri(uri, extras)
+
+            val path = uri?.path ?: run {
+                if (currentMediaSource == null) {
+                    val seed = Calendar.getInstance(TimeZone.getDefault())
+                        .let { it.get(Calendar.YEAR) * 1000L + it.get(Calendar.DAY_OF_YEAR) }
+                    val random = Random(seed)
+
+                    mediaPrepareJob = lifecycleScope.launchWhenStarted {
+                        val track = db.trackDao().getAll()
+                            .let { it[random.nextInt(it.size)].toDomainTrack() }
+                        submitQueue(
+                            QueueInfo(
+                                QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.TRACK),
+                                listOf(track)
+                            )
+                        )
+                    }
+                }
+                return
+            }
+            mediaPrepareJob = lifecycleScope.launchWhenStarted {
+                val domainTrack =
+                    db.trackDao().getBySourcePath(path)?.toDomainTrack() ?: return@launchWhenStarted
+                pause()
+                submitQueue(
+                    QueueInfo(
+                        QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.TRACK),
+                        listOf(domainTrack)
+                    )
+                )
+            }
+        }
+
+        override fun onPlayFromUri(uri: Uri?, extras: Bundle?) {
+            super.onPlayFromUri(uri, extras)
+
+            lifecycleScope.launchWhenStarted {
+                mediaPrepareJob.join()
+                play()
+            }
+        }
+
+        override fun onPrepareFromMediaId(mediaId: String?, extras: Bundle?) {
+            super.onPrepareFromMediaId(mediaId, extras)
+
+            mediaId ?: run {
+                if (currentMediaSource == null) {
+                    val seed = Calendar.getInstance(TimeZone.getDefault())
+                        .let { it.get(Calendar.YEAR) * 1000L + it.get(Calendar.DAY_OF_YEAR) }
+                    val random = Random(seed)
+
+                    mediaPrepareJob = lifecycleScope.launchWhenStarted {
+                        val track = db.trackDao().getAll()
+                            .let { it[random.nextInt(it.size)].toDomainTrack() }
+                        submitQueue(
+                            QueueInfo(
+                                QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.TRACK),
+                                listOf(track)
+                            )
+                        )
+                    }
+                }
+                return
+            }
+
+            mediaPrepareJob = lifecycleScope.launchWhenStarted {
+                when {
+                    mediaId == BROWSABLE_ROOT -> {
+                        val tracks = db.trackDao().getAll().map { it.toDomainTrack() }
+
+                        pause()
+                        submitQueue(
+                            QueueInfo(
+                                QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.TRACK),
+                                tracks
+                            )
+                        )
+                    }
+                    artistRootRegex.matches(mediaId) -> {
+                        val tracks = db.trackDao().getAllByArtist(
+                            mediaId.replace(artistRootRegex, "$1").toLong()
+                        ).map { it.toDomainTrack() }
+
+                        pause()
+                        submitQueue(
+                            QueueInfo(
+                                QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.ARTIST),
+                                tracks
+                            )
+                        )
+                    }
+                    albumRootRegex.matches(mediaId) -> {
+                        val tracks = db.trackDao().getAllByAlbum(
+                            mediaId.replace(albumRootRegex, "$1").toLong()
+                        ).map { it.toDomainTrack() }
+
+                        pause()
+                        submitQueue(
+                            QueueInfo(
+                                QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.ALBUM),
+                                tracks
+                            )
+                        )
+                    }
+                    trackRootRegex.matches(mediaId) -> {
+                        val track = db.trackDao().get(
+                            mediaId.replace(trackRootRegex, "$1").toLong()
+                        )?.toDomainTrack() ?: return@launchWhenStarted
+
+                        pause()
+                        submitQueue(
+                            QueueInfo(
+                                QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.TRACK),
+                                listOf(track)
+                            )
+                        )
+                    }
+                    else -> throw IllegalArgumentException()
+                }
+            }
+        }
+
+        override fun onPlayFromMediaId(mediaId: String?, extras: Bundle?) {
+            super.onPlayFromMediaId(mediaId, extras)
+
+            lifecycleScope.launchWhenStarted {
+                mediaPrepareJob.join()
+                play()
+            }
         }
 
         override fun onMediaButtonEvent(mediaButtonEvent: Intent): Boolean {
@@ -310,13 +524,17 @@ class PlayerService : Service(), LifecycleOwner {
         override fun onPlaybackStateChanged(playbackState: Int) {
             super.onPlaybackStateChanged(playbackState)
 
-            Timber.d("qgeck player playback state: ${when(playbackState) {
-                Player.STATE_IDLE -> "STATE_IDLE"
-                Player.STATE_BUFFERING -> "STATE_BUFFERING"
-                Player.STATE_READY -> "STATE_READY"
-                Player.STATE_ENDED -> "STATE_ENDED"
-                else -> "UNKNOWN"
-            }}")
+            Timber.d(
+                "qgeck player playback state: ${
+                    when (playbackState) {
+                        Player.STATE_IDLE -> "STATE_IDLE"
+                        Player.STATE_BUFFERING -> "STATE_BUFFERING"
+                        Player.STATE_READY -> "STATE_READY"
+                        Player.STATE_ENDED -> "STATE_ENDED"
+                        else -> "UNKNOWN"
+                    }
+                }"
+            )
 
             mediaSession.setPlaybackState(getPlaybackState(player.playWhenReady, playbackState))
 
@@ -356,6 +574,7 @@ class PlayerService : Service(), LifecycleOwner {
         }
     }
 
+    private var mediaPrepareJob: Job = Job()
     private var notificationUpdateJob: Job = Job()
     private var notifyPlaybackPositionJob: Job = Job()
     private var playbackCountIncreaseJob: Job = Job()
@@ -369,6 +588,128 @@ class PlayerService : Service(), LifecycleOwner {
     override fun onBind(intent: Intent?): IBinder {
         dispatcher.onServicePreSuperOnBind()
         return binder
+    }
+
+    override fun onGetRoot(
+        clientPackageName: String,
+        clientUid: Int,
+        rootHints: Bundle?
+    ): BrowserRoot {
+        val rootId =
+            if (rootHints?.getBoolean(BrowserRoot.EXTRA_RECENT) == true) RECENT_ROOT
+            else BROWSABLE_ROOT
+        val extras = bundleOf(
+            "android.media.browse.SEARCH_SUPPORTED" to true,
+            "android.media.browse.CONTENT_STYLE_SUPPORTED" to true,
+            "android.media.browse.CONTENT_STYLE_BROWSABLE_HINT" to 2,
+            "android.media.browse.CONTENT_STYLE_PLAYABLE_HINT" to 1,
+        )
+
+        return BrowserRoot(rootId, extras)
+    }
+
+    override fun onLoadChildren(
+        parentId: String,
+        result: Result<MutableList<MediaBrowserCompat.MediaItem>>
+    ) {
+        when (parentId) {
+            RECENT_ROOT -> {
+                lifecycleScope.launchWhenStarted {
+                    val items = source.currentSourcePaths.mapNotNull {
+                        val track = db.trackDao().getBySourcePath(it) ?: return@mapNotNull null
+                        MediaBrowserCompat.MediaItem(
+                            MediaDescriptionCompat.Builder()
+                                .setMediaId(it)
+                                .setMediaUri(it.toUri())
+                                .setTitle(track.track.title)
+                                .setSubtitle(track.artist.title)
+                                .setIconUri(track.track.artworkUriString?.toUri())
+                                .build(),
+                            MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
+                        )
+                    }
+                    result.sendResult(items.toMutableList())
+                }
+            }
+            else -> {
+                lifecycleScope.launchWhenStarted {
+                    val items = when {
+                        parentId == BROWSABLE_ROOT -> {
+                            db.artistDao().getAll().map {
+                                MediaBrowserCompat.MediaItem(
+                                    MediaDescriptionCompat.Builder()
+                                        .setMediaId("/${it.id}")
+                                        .setTitle(it.title)
+                                        .setIconUri(it.artworkUriString?.toUri())
+                                        .build(),
+                                    MediaBrowserCompat.MediaItem.FLAG_BROWSABLE or MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
+                                )
+                            }
+                        }
+                        artistRootRegex.matches(parentId) -> {
+                            val artistId = parentId.replace(artistRootRegex, "$1").toLong()
+                            db.albumDao().getAllByArtistId(artistId).map {
+                                MediaBrowserCompat.MediaItem(
+                                    MediaDescriptionCompat.Builder()
+                                        .setMediaId("$parentId/${it.album.id}")
+                                        .setTitle(it.album.title)
+                                        .setIconUri(it.album.artworkUriString?.toUri())
+                                        .build(),
+                                    MediaBrowserCompat.MediaItem.FLAG_BROWSABLE or MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
+                                )
+                            }
+                        }
+                        albumRootRegex.matches(parentId) -> {
+                            val albumId = parentId.replace(albumRootRegex, "$1").toLong()
+                            db.trackDao().getAllByAlbum(albumId).map {
+                                MediaBrowserCompat.MediaItem(
+                                    MediaDescriptionCompat.Builder()
+                                        .setMediaId("$parentId/${it.track.id}")
+                                        .setTitle(it.track.title)
+                                        .setIconUri(it.track.artworkUriString?.toUri())
+                                        .build(),
+                                    MediaBrowserCompat.MediaItem.FLAG_BROWSABLE or MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
+                                )
+                            }
+                        }
+                        else -> throw IllegalArgumentException()
+                    }
+
+                    result.sendResult(items.toMutableList())
+                }
+            }
+        }
+    }
+
+    override fun onSearch(
+        query: String,
+        extras: Bundle?,
+        result: Result<MutableList<MediaBrowserCompat.MediaItem>>
+    ) {
+        super.onSearch(query, extras, result)
+
+        lifecycleScope.launchWhenStarted {
+            val items = db.trackDao().getAllByTitles(
+                db,
+                query,
+                extras?.getString(MediaStore.EXTRA_MEDIA_ALBUM),
+                extras?.getString(MediaStore.EXTRA_MEDIA_ARTIST)
+            ).map {
+                MediaBrowserCompat.MediaItem(
+                    MediaDescriptionCompat.Builder()
+                        .setMediaId(it.track.sourcePath)
+                        .setTitle(it.track.title)
+                        .setSubtitle(it.artist.title)
+                        .build(),
+                    MediaBrowserCompat.MediaItem.FLAG_PLAYABLE
+                )
+            }
+            if (items.isEmpty()) {
+                result.detach()
+                return@launchWhenStarted
+            }
+            result.sendResult(items.toMutableList())
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -788,7 +1129,10 @@ class PlayerService : Service(), LifecycleOwner {
                         PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
                         PlaybackStateCompat.ACTION_FAST_FORWARD or
                         PlaybackStateCompat.ACTION_REWIND or
-                        PlaybackStateCompat.ACTION_SEEK_TO
+                        PlaybackStateCompat.ACTION_SEEK_TO or
+                        PlaybackStateCompat.ACTION_PREPARE or
+                        PlaybackStateCompat.ACTION_PREPARE_FROM_SEARCH or
+                        PlaybackStateCompat.ACTION_PREPARE_FROM_URI
             )
             .setState(
                 when (playbackState) {
@@ -952,6 +1296,7 @@ class PlayerService : Service(), LifecycleOwner {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
         )
+        mediaSession.setRatingType(RatingCompat.RATING_NONE)
         getPlayerNotification(
             this@PlayerService,
             mediaSession,

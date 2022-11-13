@@ -10,6 +10,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.Track
+import com.geckour.q.util.searchTrackByFuzzyTitle
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -118,6 +119,47 @@ interface TrackDao {
 
     @Query("select lastModified from track order by lastModified desc limit 1")
     suspend fun getLatestModifiedEpochTime(): Long?
+
+    @Transaction
+    suspend fun getAllByTitles(
+        db: DB,
+        title: String?,
+        albumTitle: String?,
+        artistTitle: String?
+    ): List<JoinedTrack> {
+        val album = albumTitle?.let { db.albumDao().findByTitle(it) }?.album
+        val artist = artistTitle?.let { db.artistDao().findByTitle(it) }
+        return when {
+            artist != null -> {
+                when {
+                    album != null -> {
+                        if (title == null) {
+                            db.trackDao().getAllByArtist(artist.id)
+                                .filter { it.album.id == album.id }
+                        } else listOfNotNull(db.trackDao().getByTitles(title, album.id, artist.id))
+                    }
+                    title != null -> {
+                        db.trackDao().getAllByArtist(artist.id)
+                            .filter { it.track.title.contains(title) }
+                    }
+                    else -> {
+                        db.trackDao().getAllByArtist(artist.id)
+                    }
+                }
+            }
+            album != null -> {
+                if (title == null) {
+                    db.trackDao().getAllByAlbum(album.id)
+                } else {
+                    db.trackDao().getAllByAlbum(album.id).filter { it.track.title.contains(title) }
+                }
+            }
+            title != null -> {
+                db.searchTrackByFuzzyTitle(title)
+            }
+            else -> emptyList()
+        }
+    }
 
     @Transaction
     suspend fun deleteIncludingRootIfEmpty(db: DB, vararg trackIds: Long) {

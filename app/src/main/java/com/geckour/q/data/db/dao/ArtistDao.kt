@@ -34,6 +34,12 @@ interface ArtistDao {
     @Query("select * from artist where title = :title")
     suspend fun getByTitle(title: String): Artist?
 
+    @Query("select * from artist where title like :title")
+    suspend fun findByTitle(title: String): Artist?
+
+    @Query("select * from artist")
+    suspend fun getAll(): List<Artist>
+
     @Query("select * from artist where title = :title")
     suspend fun getAllByTitle(title: String): List<Artist>
 
