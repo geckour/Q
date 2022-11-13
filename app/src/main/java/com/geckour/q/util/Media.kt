@@ -445,21 +445,21 @@ suspend fun JoinedTrack.updateFileMetadata(
                         )
                     }
                 )
-                var albumId = album.id
-                if (newAlbumName.isNullOrBlank().not() || newAlbumNameSort.isNullOrBlank().not()) {
-                    albumId = db.albumDao().upsert(
+                val albumId = if (newAlbumName.isNullOrBlank().not()
+                    || newAlbumNameSort.isNullOrBlank().not()
+                ) {
+                    db.albumDao().upsert(
                         db,
                         album.let {
                             it.copy(
                                 title = newAlbumName ?: it.title,
                                 titleSort = newAlbumNameSort ?: it.titleSort,
                                 artistId = artistId,
-                                artworkUriString = artworkUriString
-                                    ?: it.artworkUriString
+                                artworkUriString = artworkUriString ?: it.artworkUriString
                             )
                         }
                     )
-                }
+                } else album.id
                 if (newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not()) {
                     db.trackDao().upsert(
                         track.copy(
@@ -471,13 +471,13 @@ suspend fun JoinedTrack.updateFileMetadata(
                             albumId = albumId
                         ),
                         albumId,
-                        artistId,
-                        track.duration
+                        artistId
                     )
                 }
             }
-            newAlbumName.isNullOrBlank().not() || newAlbumNameSort.isNullOrBlank()
-                .not() || newArtwork != null -> {
+            newAlbumName.isNullOrBlank().not()
+                    || newAlbumNameSort.isNullOrBlank().not()
+                    || newArtwork != null -> {
                 db.trackDao().getAllByAlbum(album.id)
                     .mapNotNull {
                         if (it.track.sourcePath.startsWith("http")) null

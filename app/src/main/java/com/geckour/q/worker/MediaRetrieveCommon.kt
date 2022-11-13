@@ -95,13 +95,6 @@ internal suspend fun File.storeMediaInfo(
             ?: cachedAlbumArtist?.titleSort
 
     val duration = header.trackLength.toLong() * 1000
-    val pastTrackDuration =
-        trackMediaId?.let { db.trackDao().getDurationWithMediaId(trackMediaId) ?: 0 }
-            ?: db.trackDao().getDurationWithTitles(
-                title,
-                albumTitle,
-                artistTitle
-            ) ?: 0
     val trackNum = catchAsNull {
         tag.getFirst(FieldKey.TRACK).let { if (it.isNullOrBlank()) null else it }?.toInt()
     }
@@ -130,10 +123,10 @@ internal suspend fun File.storeMediaInfo(
         title = artistTitle ?: UNKNOWN,
         titleSort = artistTitleSort ?: UNKNOWN,
         playbackCount = 0,
-        totalDuration = duration,
+        totalDuration = 0,
         artworkUriString = artworkUriString ?: cachedArtist?.artworkUriString
     )
-    val artistId = db.artistDao().upsert(db, artist, pastTrackDuration)
+    val artistId = db.artistDao().upsert(db, artist, duration)
     val albumArtistId =
         if (albumArtistTitle != null && albumArtistTitleSort != null) {
             val albumArtist = Artist(
@@ -141,10 +134,10 @@ internal suspend fun File.storeMediaInfo(
                 title = albumArtistTitle,
                 titleSort = albumArtistTitleSort,
                 playbackCount = 0,
-                totalDuration = duration,
+                totalDuration = 0,
                 artworkUriString = artworkUriString ?: cachedAlbumArtist?.artworkUriString
             )
-            db.artistDao().upsert(db, albumArtist, pastTrackDuration)
+            db.artistDao().upsert(db, albumArtist, duration)
         } else null
 
     val album = Album(
@@ -155,9 +148,9 @@ internal suspend fun File.storeMediaInfo(
         artworkUriString = artworkUriString,
         hasAlbumArtist = albumArtistId != null,
         playbackCount = 0,
-        totalDuration = duration
+        totalDuration = 0
     )
-    val albumId = db.albumDao().upsert(db, album, pastTrackDuration)
+    val albumId = db.albumDao().upsert(db, album, duration)
 
     val track = Track(
         id = 0,
@@ -187,7 +180,7 @@ internal suspend fun File.storeMediaInfo(
         playbackCount = 0
     )
 
-    return@withContext db.trackDao().upsert(track, albumId, artistId, pastTrackDuration)
+    return@withContext db.trackDao().upsert(track, albumId, artistId, duration)
 }
 
 internal fun Bitmap.drawProgressIcon(

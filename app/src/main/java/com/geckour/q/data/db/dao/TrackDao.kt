@@ -149,22 +149,24 @@ interface TrackDao {
         track: Track,
         albumId: Long,
         artistId: Long,
-        pastTrackDuration: Long
+        newDuration: Long? = null
     ): Long {
-        val existedTrack =
+        val existingTrack =
             if (track.mediaId < 0) get(track.id)
             else getByMediaId(track.mediaId)
-        val toInsert = existedTrack?.track?.let {
-            val duration = it.duration - pastTrackDuration + track.duration
-            track.copy(
-                id = it.id,
-                playbackCount = it.playbackCount,
-                ignored = it.ignored,
-                duration = duration
+        existingTrack?.track?.let {
+            update(
+                track.copy(
+                    id = it.id,
+                    playbackCount = it.playbackCount,
+                    ignored = it.ignored,
+                    duration = newDuration ?: it.duration,
+                    artworkUriString = track.artworkUriString ?: it.artworkUriString
+                )
             )
-        } ?: track
+        }
 
-        return insert(toInsert)
+        return existingTrack?.track?.id ?: insert(track)
     }
 
     @Transaction

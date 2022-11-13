@@ -91,41 +91,20 @@ interface AlbumDao {
     }
 
     @Transaction
-    suspend fun upsert(db: DB, album: Album, pastTrackDuration: Long = 0): Long {
-        val toInsert = getAllByTitleAndArtistId(album.title, album.artistId).let { albums ->
-            val firstAlbum = albums.firstOrNull() ?: return@let null
-            albums.drop(1).asSequence().forEach {
-                val duration =
-                    firstAlbum.album.totalDuration - pastTrackDuration + it.album.totalDuration
-                val target = it.album.copy(
-                    id = firstAlbum.album.id,
-                    totalDuration = duration,
-                    artworkUriString = it.album.artworkUriString
-                        ?: firstAlbum.album.artworkUriString
-                )
-                insert(target).apply {
-                    db.trackDao().getAllByAlbum(it.album.id).asSequence()
-                        .forEach { joinedTrack ->
-                            db.trackDao().update(joinedTrack.track.copy(albumId = this))
-                        }
-                    delete(it.album.id)
-                }
-            }
-            val duration = firstAlbum.album.totalDuration - pastTrackDuration + album.totalDuration
-            album.copy(
-                id = firstAlbum.album.id,
-                totalDuration = duration,
-                artworkUriString = album.artworkUriString ?: firstAlbum.album.artworkUriString
+    suspend fun upsert(db: DB, album: Album, durationToAdd: Long = 0): Long {
+        val existingAlbums = getAllByTitleAndArtistId(album.title, album.artistId)
+        existingAlbums.forEach {
+            val target = album.copy(
+                id = it.album.id,
+                playbackCount = it.album.playbackCount,
+                totalDuration = it.album.totalDuration + durationToAdd,
+                artworkUriString = album.artworkUriString ?: it.album.artworkUriString
             )
-        } ?: album
-
-        return insert(toInsert).apply {
-            if (album.id > 0 && this != album.id) {
-                db.trackDao().getAllByAlbum(album.id).asSequence().forEach {
-                    db.trackDao().update(it.track.copy(albumId = this))
-                }
-                delete(album.id)
-            }
+            update(target)
         }
+
+        return if (existingAlbums.isEmpty()) {
+            insert(album.copy(totalDuration = durationToAdd))
+        } else existingAlbums.first().album.id
     }
 }
