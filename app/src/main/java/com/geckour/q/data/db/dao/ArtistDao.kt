@@ -46,7 +46,7 @@ interface ArtistDao {
     @Query("select artworkUriString from album where artistId = :artistId and artworkUriString is not null order by playbackCount limit 1")
     suspend fun getThumbnailUriString(artistId: Long): String
 
-    @Query("update artist set playbackCount = (select playbackCount from artist where id = :artistId) + 1 where id = :artistId")
+    @Query("update artist set playbackCount = (select playbackCount from artist where id = :artistId) + 1, artworkUriString = (select artworkUriString from album where artistId = :artistId order by playbackCount desc limit 1) where id = :artistId")
     suspend fun increasePlaybackCount(artistId: Long)
 
     @Transaction

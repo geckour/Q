@@ -62,7 +62,7 @@ interface AlbumDao {
     @Query("select * from album where title like :title")
     suspend fun findAllByTitle(title: String): List<JoinedAlbum>
 
-    @Query("update album set playbackCount = (select playbackCount from album where id = :albumId) + 1 where id = :albumId")
+    @Query("update album set playbackCount = (select playbackCount from album where id = :albumId) + 1, artworkUriString = (select artworkUriString from track where albumId = :albumId order by playbackCount desc limit 1) where id = :albumId")
     suspend fun increasePlaybackCount(albumId: Long)
 
     @Transaction

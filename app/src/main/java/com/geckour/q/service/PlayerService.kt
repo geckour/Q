@@ -287,6 +287,8 @@ class PlayerService : Service(), LifecycleOwner {
 
     private val listener = object : Player.Listener {
 
+        var lastMediaSource = currentMediaSource
+
         override fun onTracksChanged(tracks: Tracks) {
             super.onTracksChanged(tracks)
 
@@ -339,6 +341,11 @@ class PlayerService : Service(), LifecycleOwner {
             notificationUpdateJob = updateNotification()
 
             storeState()
+
+            if (playWhenReady && currentMediaSource != lastMediaSource) {
+                lastMediaSource = currentMediaSource
+                playbackCountIncreaseJob = increasePlaybackCount()
+            }
         }
 
         override fun onPlayerError(error: PlaybackException) {
@@ -431,7 +438,6 @@ class PlayerService : Service(), LifecycleOwner {
         playbackPositionFLow.value = player.currentPosition
         notificationUpdateJob.cancel()
         notificationUpdateJob = updateNotification()
-        playbackCountIncreaseJob = increasePlaybackCount()
         storeState()
     }
 
