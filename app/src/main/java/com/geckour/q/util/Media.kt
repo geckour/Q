@@ -30,6 +30,7 @@ import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.apache.commons.io.FileUtils
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import org.jaudiotagger.tag.images.ArtworkFactory
@@ -369,7 +370,7 @@ fun InputStream.saveTempAudioFile(context: Context): File {
     if (file.exists()) file.delete()
     if (dir.exists().not()) dir.mkdir()
 
-    FileOutputStream(file).use { it.write(this.readBytes()) }
+    FileUtils.copyToFile(this, file)
 
     return file
 }

@@ -12,7 +12,6 @@ import android.net.Uri
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
-import androidx.lifecycle.MutableLiveData
 import com.geckour.q.domain.model.PlaybackButton
 import com.google.android.exoplayer2.DefaultRenderersFactory
 import com.google.android.exoplayer2.ExoPlayer
@@ -48,9 +47,6 @@ class InstantPlayerService : Service() {
             BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED
     }
 
-    val isPlaying = MutableLiveData(false)
-    val progress = MutableLiveData(0L to 0L)
-
     private val binder = PlayerBinder()
 
     private val eventListener = object : Player.Listener {
@@ -59,12 +55,14 @@ class InstantPlayerService : Service() {
             super.onPlaybackStateChanged(playbackState)
 
             if (playbackState == Player.STATE_ENDED) stop()
+
+            isPlayingListener?.invoke(player.playWhenReady && playbackState == Player.STATE_READY)
         }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             super.onPlayWhenReadyChanged(playWhenReady, reason)
 
-            isPlaying.value = playWhenReady && player.playbackState == Player.STATE_READY
+            isPlayingListener?.invoke(playWhenReady && player.playbackState == Player.STATE_READY)
         }
     }
 
@@ -105,6 +103,9 @@ class InstantPlayerService : Service() {
     private var seekJob: Job = Job()
     private var progressJob: Job = Job()
 
+    internal var isPlayingListener: ((Boolean) -> Unit)? = null
+    internal var progressListener: ((Pair<Long, Long>) -> Unit)? = null
+
     override fun onBind(intent: Intent?): IBinder = binder
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
@@ -126,9 +127,11 @@ class InstantPlayerService : Service() {
         progressJob = coroutineScope.launch {
             while (true) {
                 withContext(Dispatchers.Main) {
-                    progress.value = if (player.contentDuration > 0) {
-                        player.currentPosition to player.contentDuration
-                    } else 0L to 0L
+                    progressListener?.invoke(
+                        if (player.contentDuration > 0) {
+                            player.currentPosition to player.contentDuration
+                        } else 0L to 0L
+                    )
                 }
                 delay(100)
             }

@@ -83,10 +83,10 @@ class InstantPlayerActivity : AppCompatActivity() {
                 viewModel.onPlaybackButtonPressed(PlaybackButton.PLAY)
             }
 
-            player.isPlaying.observe(this) {
+            player.isPlayingListener = {
                 binding.isPlaying = it
             }
-            player.progress.observe(this) { (current, duration) ->
+            player.progressListener = { (current, duration) ->
                 binding.seekBar.progress =
                     (binding.seekBar.max * (current.toFloat() / duration)).toInt()
                 binding.timeLeft.text = current.getTimeString()
