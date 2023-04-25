@@ -91,20 +91,20 @@ interface AlbumDao {
     }
 
     @Transaction
-    suspend fun upsert(db: DB, album: Album, durationToAdd: Long = 0): Long {
-        val existingAlbums = getAllByTitleAndArtistId(album.title, album.artistId)
+    suspend fun upsert(db: DB, newAlbum: Album, durationToAdd: Long = 0): Long {
+        val existingAlbums = getAllByTitleAndArtistId(newAlbum.title, newAlbum.artistId)
         existingAlbums.forEach {
-            val target = album.copy(
+            val target = newAlbum.copy(
                 id = it.album.id,
                 playbackCount = it.album.playbackCount,
                 totalDuration = it.album.totalDuration + durationToAdd,
-                artworkUriString = album.artworkUriString ?: it.album.artworkUriString
+                artworkUriString = newAlbum.artworkUriString ?: it.album.artworkUriString
             )
             update(target)
         }
 
         return if (existingAlbums.isEmpty()) {
-            insert(album.copy(totalDuration = durationToAdd))
+            insert(newAlbum.copy(totalDuration = durationToAdd))
         } else existingAlbums.first().album.id
     }
 }

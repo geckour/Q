@@ -136,6 +136,7 @@ class MainActivity : AppCompatActivity() {
                 startActivity(SettingActivity.createIntent(this))
                 null
             }
+
             R.id.nav_equalizer -> EqualizerFragment.newInstance()
             R.id.nav_sync -> {
                 FirebaseAnalytics.getInstance(this)
@@ -148,6 +149,7 @@ class MainActivity : AppCompatActivity() {
                 retrieveMedia(false)
                 null
             }
+
             R.id.nav_dropbox_sync -> {
                 val credential = sharedPreferences.dropboxCredential
                 if (credential.isNullOrBlank()) {
@@ -163,6 +165,7 @@ class MainActivity : AppCompatActivity() {
                 }
                 null
             }
+
             R.id.nav_pay -> PaymentFragment.newInstance()
             else -> null
         }?.let {
@@ -262,9 +265,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onPause() {
-        super.onPause()
-
         paused = true
+
+        super.onPause()
     }
 
     override fun onBackPressed() {
@@ -273,9 +276,11 @@ class MainActivity : AppCompatActivity() {
                 viewModel.searchQueryListener.reset()
                 binding.contentSearch.root.visibility = View.GONE
             }
+
             binding.drawerLayout.isDrawerOpen(binding.navigationView) -> {
                 binding.drawerLayout.closeDrawer(binding.navigationView)
             }
+
             else -> super.onBackPressed()
         }
     }
@@ -484,10 +489,12 @@ class MainActivity : AppCompatActivity() {
                 indicateSync()
                 toggleIndicateLock(true)
             }
+
             loading?.first == true -> {
                 indicateLoad(loading.second)
                 toggleIndicateLock(true)
             }
+
             else -> {
                 toggleIndicateLock(false)
             }
@@ -547,6 +554,7 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                     }
+
                     RequestedTransition.Tag.ALBUM -> {
                         if (album != null) {
                             supportFragmentManager.commit {
@@ -559,6 +567,7 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                     }
+
                     RequestedTransition.Tag.GENRE -> {
                         if (genre != null) {
                             supportFragmentManager.commit {
@@ -571,6 +580,7 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
                     }
+
                     RequestedTransition.Tag.EASTER_EGG -> {
                         supportFragmentManager.commit {
                             replace(

@@ -156,35 +156,43 @@ class PlayerService : LifecycleService() {
                             onPlay()
                             true
                         }
+
                         KeyEvent.KEYCODE_MEDIA_PAUSE -> {
                             onPause()
                             true
                         }
+
                         KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
                             onPlayPause()
                             true
                         }
+
                         KeyEvent.KEYCODE_MEDIA_NEXT,
                         KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD -> {
                             onSkipToNext()
                             true
                         }
+
                         KeyEvent.KEYCODE_MEDIA_PREVIOUS,
                         KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD -> {
                             onSkipToPrevious()
                             true
                         }
+
                         KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
                             onFastForward()
                             true
                         }
+
                         KeyEvent.KEYCODE_MEDIA_REWIND -> {
                             onRewind()
                             true
                         }
+
                         else -> false
                     }
                 }
+
                 KeyEvent.ACTION_UP -> {
                     when (keyEvent.keyCode) {
                         KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,
@@ -193,9 +201,11 @@ class PlayerService : LifecycleService() {
                             stopFastSeek()
                             true
                         }
+
                         else -> false
                     }
                 }
+
                 else -> false
             }
         }
@@ -270,7 +280,7 @@ class PlayerService : LifecycleService() {
     internal val currentIndexFlow = MutableStateFlow(0)
 
     /**
-     * Pair: loading to onAbort
+     * Pair: isLoading to onAbort
      */
     internal val loadStateFlow = MutableStateFlow<Pair<Boolean, (() -> Unit)?>>(false to null)
     internal val playbackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
@@ -516,6 +526,7 @@ class PlayerService : LifecycleService() {
             InsertActionType.OVERRIDE,
             InsertActionType.SHUFFLE_OVERRIDE,
             InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> clear(force.not())
+
             else -> Unit
         }
         val needToResetSource = source.size == 0
@@ -544,7 +555,6 @@ class PlayerService : LifecycleService() {
         }
 
         loadStateFlow.value = false to null
-
         storeState()
     }
 
@@ -752,6 +762,7 @@ class PlayerService : LifecycleService() {
                     ShuffleActionType.SHUFFLE_SIMPLE -> {
                         currentQueue.shuffled().map { it.id }
                     }
+
                     ShuffleActionType.SHUFFLE_ALBUM_ORIENTED -> {
                         currentQueue.groupBy { it.album.id }
                             .map { it.value }
@@ -759,6 +770,7 @@ class PlayerService : LifecycleService() {
                             .flatten()
                             .map { it.id }
                     }
+
                     ShuffleActionType.SHUFFLE_ARTIST_ORIENTED -> {
                         currentQueue.groupBy { it.artist.id }
                             .map { it.value }
@@ -837,6 +849,7 @@ class PlayerService : LifecycleService() {
                         if (playWhenReady) PlaybackState.STATE_PLAYING
                         else PlaybackState.STATE_PAUSED
                     }
+
                     else -> PlaybackState.STATE_ERROR
                 },
                 player.currentPosition,
@@ -860,6 +873,7 @@ class PlayerService : LifecycleService() {
                 SettingCommand.SET_EQUALIZER -> {
                     player.audioSessionId.apply { setEqualizer(if (this != 0) this else null) }
                 }
+
                 SettingCommand.UNSET_EQUALIZER -> setEqualizer(null)
                 SettingCommand.REFLECT_EQUALIZER_SETTING -> reflectEqualizerSettings()
             }
@@ -871,9 +885,7 @@ class PlayerService : LifecycleService() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 val queueInfo = QueueInfo(
                     QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.TRACK),
-                    db.trackDao().let { trackDao ->
-                        trackIds.mapNotNull { trackDao.get(it)?.toDomainTrack() }
-                    }
+                    trackIds.mapNotNull { db.trackDao().get(it)?.toDomainTrack() }
                 )
                 submitQueue(queueInfo, true)
                 forceIndex(currentIndex)

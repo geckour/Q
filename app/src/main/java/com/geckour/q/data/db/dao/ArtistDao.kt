@@ -57,19 +57,23 @@ interface ArtistDao {
     }
 
     @Transaction
-    suspend fun upsert(db: DB, artist: Artist, durationToAdd: Long = 0): Long {
-        val existingArtist = getByTitle(artist.title)
-        existingArtist?.let {
+    suspend fun upsert(db: DB, newArtist: Artist, durationToAdd: Long = 0): Long {
+        val existingArtist = getByTitle(newArtist.title)
+        existingArtist?.let { existing ->
+            val artworkUriString = db.albumDao()
+                .getAllByArtistId(existingArtist.id)
+                .maxByOrNull { it.album.playbackCount }
+                ?.album
+                ?.artworkUriString
+                ?: newArtist.artworkUriString
             update(
-                artist.copy(
-                    id = it.id,
-                    playbackCount = it.playbackCount,
-                    totalDuration = it.totalDuration + durationToAdd,
-                    artworkUriString = artist.artworkUriString ?: it.artworkUriString
+                newArtist.copy(
+                    totalDuration = existing.totalDuration + durationToAdd,
+                    artworkUriString = artworkUriString
                 )
             )
         }
 
-        return existingArtist?.id ?: insert(artist.copy(totalDuration = durationToAdd))
+        return existingArtist?.id ?: insert(newArtist.copy(totalDuration = durationToAdd))
     }
 }
