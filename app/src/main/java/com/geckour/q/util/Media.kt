@@ -158,10 +158,12 @@ suspend fun List<String?>.getThumb(context: Context): Bitmap? {
     return bitmap
 }
 
-fun DomainTrack.getMediaSource(mediaSourceFactory: ProgressiveMediaSource.Factory): MediaSource =
-    mediaSourceFactory.createMediaSource(
-        MediaItem.fromUri(Uri.parse(sourcePath))
-    )
+fun DomainTrack.getMediaSource(
+    mediaSourceFactory: ProgressiveMediaSource.Factory,
+    httpMediaSourceFactory: ProgressiveMediaSource.Factory
+): MediaSource =
+    (if (this.dropboxPath != null) httpMediaSourceFactory else mediaSourceFactory)
+        .createMediaSource(MediaItem.fromUri(Uri.parse(sourcePath)))
 
 fun List<DomainTrack>.sortedByTrackOrder(
     classType: OrientedClassType,
@@ -565,13 +567,13 @@ suspend fun String.toDomainTrack(db: DB): DomainTrack? =
 /**
  * @return First value of `Pair` is the old (passed) sourcePath.
  */
-suspend fun DomainTrack.verifyWithDropbox(
+suspend fun DomainTrack.verifiedWithDropbox(
     context: Context,
     client: DbxClientV2,
     force: Boolean = false
-): DomainTrack =
+): DomainTrack? =
     withContext(Dispatchers.IO) {
-        dropboxPath ?: return@withContext this@verifyWithDropbox
+        dropboxPath ?: return@withContext null
 
         if (force || ((dropboxExpiredAt ?: 0) <= System.currentTimeMillis())) {
             val currentTime = System.currentTimeMillis()
@@ -594,7 +596,7 @@ suspend fun DomainTrack.verifyWithDropbox(
             )
         }
 
-        return@withContext this@verifyWithDropbox
+        return@withContext null
     }
 
 private fun Bitmap.toByteArray(): ByteArray =

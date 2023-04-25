@@ -3,6 +3,7 @@ package com.geckour.q.service
 import android.app.Notification
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -17,7 +18,8 @@ import android.support.v4.media.session.PlaybackStateCompat
 import android.view.KeyEvent
 import androidx.core.content.edit
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleService
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ServiceLifecycleDispatcher
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.media.session.MediaButtonReceiver
@@ -46,9 +48,10 @@ import com.geckour.q.util.getPlayerNotification
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
-import com.geckour.q.util.verifyWithDropbox
+import com.geckour.q.util.verifiedWithDropbox
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.DefaultRenderersFactory
+import com.google.android.exoplayer2.ExoPlaybackException
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.PlaybackException
 import com.google.android.exoplayer2.Player
@@ -63,6 +66,7 @@ import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.upstream.DefaultDataSource
+import com.google.android.exoplayer2.upstream.DefaultHttpDataSource
 import com.google.android.exoplayer2.upstream.HttpDataSource
 import com.google.android.exoplayer2.util.EventLogger
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -80,14 +84,13 @@ import org.koin.android.ext.android.inject
 import timber.log.Timber
 import java.io.IOException
 
-class PlayerService : LifecycleService() {
+class PlayerService : Service(), LifecycleOwner {
 
     inner class PlayerBinder : Binder() {
         val service: PlayerService get() = this@PlayerService
     }
 
     companion object {
-        fun createIntent(context: Context): Intent = Intent(context, PlayerService::class.java)
 
         private const val TAG: String = "com.geckour.q.service.PlayerService"
 
@@ -97,9 +100,22 @@ class PlayerService : LifecycleService() {
         const val ARGS_KEY_SETTING_COMMAND = "args_key_setting_command"
 
         const val PREF_KEY_PLAYER_STATE = "pref_key_player_state"
+
+        fun createIntent(context: Context): Intent = Intent(context, PlayerService::class.java)
+
+        fun destroy(context: Context) {
+            context.startService(
+                createIntent(context).putExtra(
+                    ARGS_KEY_CONTROL_COMMAND,
+                    PlayerControlCommand.DESTROY
+                )
+            )
+        }
     }
 
-    override fun getLifecycle(): Lifecycle = lifecycle
+    private val dispatcher = ServiceLifecycleDispatcher(this)
+    override val lifecycle: Lifecycle
+        get() = dispatcher.lifecycle
 
     private val binder = PlayerBinder()
 
@@ -247,11 +263,17 @@ class PlayerService : LifecycleService() {
                             error,
                             wasCanceled
                         )
+                        val shouldResume = player.playWhenReady
+                        pause()
 
                         Timber.e(error)
                         FirebaseCrashlytics.getInstance().recordException(error)
 
-                        verifyByCauseIfNeeded(error)
+                        if (verifyByCauseIfNeeded(error, shouldResume).not()) {
+                            player.prepare()
+                            stop()
+                            if (shouldResume) resume()
+                        }
                     }
 
                     override fun onAudioSessionIdChanged(
@@ -290,6 +312,7 @@ class PlayerService : LifecycleService() {
     internal val onDestroyFlow = MutableStateFlow(0L)
 
     private lateinit var mediaSourceFactory: ProgressiveMediaSource.Factory
+    private lateinit var httpMediaSourceFactory: ProgressiveMediaSource.Factory
     private var source = ConcatenatingMediaSource()
     internal val currentMediaSource: MediaSource?
         get() =
@@ -303,6 +326,8 @@ class PlayerService : LifecycleService() {
         override fun onTracksChanged(tracks: Tracks) {
             super.onTracksChanged(tracks)
 
+            Timber.d("qgeck player tracks changed: ${tracks.groups}")
+
             onSourcesChanged()
         }
 
@@ -313,6 +338,8 @@ class PlayerService : LifecycleService() {
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = Unit
 
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
+            Timber.d("qgeck player on timeline changed: $timeline, $reason")
+
             onSourcesChanged()
 
             if (timeline.isEmpty) {
@@ -335,9 +362,15 @@ class PlayerService : LifecycleService() {
                 }"
             )
 
-            mediaSession.setPlaybackState(getPlaybackState(player.playWhenReady, playbackState))
+            mediaSession.setPlaybackState(
+                getPlaybackState(
+                    player.isPlaying,
+                    playbackState,
+                    player.currentPosition
+                )
+            )
 
-            if (currentIndex == player.mediaItemCount - 1
+            if (currentIndex == source.size - 1
                 && playbackState == Player.STATE_ENDED
                 && player.repeatMode == Player.REPEAT_MODE_OFF
             ) {
@@ -346,12 +379,31 @@ class PlayerService : LifecycleService() {
             }
 
             playbackInfoFlow.value = player.playWhenReady to playbackState
+
+            notificationUpdateJob.cancel()
+            notificationUpdateJob = updateNotification()
+
+            if (playbackState == Player.STATE_READY &&
+                player.playWhenReady &&
+                currentMediaSource != lastMediaSource
+            ) {
+                lastMediaSource = currentMediaSource
+                playbackCountIncreaseJob = increasePlaybackCount()
+            }
         }
 
         override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
             super.onPlayWhenReadyChanged(playWhenReady, reason)
 
-            mediaSession.setPlaybackState(getPlaybackState(playWhenReady, player.playbackState))
+            Timber.d("qgeck player play when ready: $playWhenReady")
+
+            mediaSession.setPlaybackState(
+                getPlaybackState(
+                    player.isPlaying,
+                    player.playbackState,
+                    player.currentPosition
+                )
+            )
 
             playbackInfoFlow.value = playWhenReady to player.playbackState
 
@@ -360,7 +412,10 @@ class PlayerService : LifecycleService() {
 
             storeState()
 
-            if (playWhenReady && currentMediaSource != lastMediaSource) {
+            if (player.playbackState == Player.STATE_READY &&
+                playWhenReady &&
+                currentMediaSource != lastMediaSource
+            ) {
                 lastMediaSource = currentMediaSource
                 playbackCountIncreaseJob = increasePlaybackCount()
             }
@@ -369,12 +424,17 @@ class PlayerService : LifecycleService() {
         override fun onPlayerError(error: PlaybackException) {
             super.onPlayerError(error)
 
-            storeState()
+            val shouldResume = player.playWhenReady
+            pause()
 
             Timber.e(error)
             FirebaseCrashlytics.getInstance().recordException(error)
 
-            verifyByCauseIfNeeded(error)
+            if (verifyByCauseIfNeeded(error, shouldResume).not()) {
+                player.prepare()
+                stop()
+                if (shouldResume) resume()
+            }
 
             notificationUpdateJob.cancel()
             notificationUpdateJob = updateNotification()
@@ -392,14 +452,12 @@ class PlayerService : LifecycleService() {
         get() = obtainDbxClient(sharedPreferences)
 
     override fun onBind(intent: Intent): IBinder {
-        super.onBind(intent)
+        dispatcher.onServicePreSuperOnBind()
 
         return binder
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        super.onStartCommand(intent, flags, startId)
-
         intent ?: return START_NOT_STICKY
 
         MediaButtonReceiver.handleIntent(mediaSession, intent)
@@ -410,6 +468,8 @@ class PlayerService : LifecycleService() {
     }
 
     override fun onCreate() {
+        dispatcher.onServicePreSuperOnCreate()
+
         super.onCreate()
 
         db = DB.getInstance(this@PlayerService)
@@ -426,9 +486,9 @@ class PlayerService : LifecycleService() {
         mediaSourceFactory = ProgressiveMediaSource.Factory(
             DefaultDataSource.Factory(applicationContext)
         )
-
-        player.setMediaSource(source)
-        player.prepare()
+        httpMediaSourceFactory = ProgressiveMediaSource.Factory(
+            DefaultHttpDataSource.Factory()
+        )
 
         restoreState()
     }
@@ -440,6 +500,7 @@ class PlayerService : LifecycleService() {
         player.stop()
         player.clearMediaItems()
         destroyNotification()
+        dispatcher.onServicePreSuperOnDestroy()
         player.release()
 
         onDestroyFlow.value = System.currentTimeMillis()
@@ -457,37 +518,53 @@ class PlayerService : LifecycleService() {
     }
 
     private fun onStopServiceRequested() {
-        if (player.playWhenReady.not()) stopSelf()
+        if (player.playWhenReady.not()) {
+            stopSelf()
+            destroyNotification()
+        }
     }
 
     fun onMediaButtonEvent(event: KeyEvent) {
         mediaSession.controller?.dispatchMediaButtonEvent(event)
     }
 
-    private fun verifyByCauseIfNeeded(throwable: Throwable) {
+    private fun verifyByCauseIfNeeded(throwable: Throwable, shouldResume: Boolean): Boolean {
         val cause = when (throwable) {
+            is ExoPlaybackException,
             is PlaybackException,
             is IOException -> {
                 throwable.cause
             }
-            else -> null
+
+            else -> throwable
         }
         if ((cause as? HttpDataSource.InvalidResponseCodeException?)?.responseCode == 410) {
             lifecycleScope.launch {
                 repeatOnLifecycle(Lifecycle.State.STARTED) {
-                    source.currentSourcePaths[currentIndex]
-                        .toDomainTrack(db)
-                        ?.let { track ->
+                    var alive = true
+                    loadStateFlow.value = true to { alive = false }
+                    source.currentSourcePaths
+                        .forEach { path ->
+                            if (alive.not()) return@forEach
+                            val track = path.toDomainTrack(db) ?: return@forEach
                             val new = dropboxClient?.let {
-                                track.verifyWithDropbox(this@PlayerService, it)
-                            } ?: track
+                                track.verifiedWithDropbox(this@PlayerService, it)
+                            } ?: return@forEach
 
-                            track to new
+                            replace(track to new)
                         }
-                        ?.let { replace(it) }
+
+                    player.prepare()
+                    stop()
+
+                    loadStateFlow.value = false to null
+                    if (shouldResume) resume()
+                    storeState()
                 }
             }
+            return true
         }
+        return false
     }
 
     suspend fun submitQueue(
@@ -519,8 +596,8 @@ class PlayerService : LifecycleService() {
                     loadStateFlow.value = false to null
                     return
                 }
-                (dropboxClient?.let { track.verifyWithDropbox(this, it) } ?: track)
-                    .getMediaSource(mediaSourceFactory)
+                (dropboxClient?.let { track.verifiedWithDropbox(this, it) } ?: track)
+                    .getMediaSource(mediaSourceFactory, httpMediaSourceFactory)
             }
         when (queueInfo.metadata.actionType) {
             InsertActionType.OVERRIDE,
@@ -607,6 +684,9 @@ class PlayerService : LifecycleService() {
             }
         }
 
+        if (player.playbackState == Player.STATE_IDLE) {
+            player.prepare()
+        }
         if (player.playWhenReady.not()) {
             player.playWhenReady = true
         }
@@ -638,7 +718,6 @@ class PlayerService : LifecycleService() {
 
     private fun clear(positionToKeep: Int) {
         if (positionToKeep !in 0 until source.size) {
-            pause()
             source.clear()
         } else {
             source.removeMediaSourceRange(0, positionToKeep)
@@ -661,7 +740,10 @@ class PlayerService : LifecycleService() {
             Timber.d("qgeck source path: ${withTrack.first.sourcePath}")
             Timber.d("qgeck index: $index")
             removeQueue(index)
-            source.addMediaSource(index, withTrack.second.getMediaSource(mediaSourceFactory))
+            source.addMediaSource(
+                index,
+                withTrack.second.getMediaSource(mediaSourceFactory, httpMediaSourceFactory)
+            )
         }
     }
 
@@ -749,16 +831,24 @@ class PlayerService : LifecycleService() {
 
     fun seek(playbackPosition: Long) {
         player.seekTo(playbackPosition)
+        mediaSession.setPlaybackState(
+            getPlaybackState(
+                player.isPlaying,
+                player.playbackState,
+                playbackPosition
+            )
+        )
         playbackPositionFLow.value = playbackPosition
     }
 
-    fun shuffle(actionType: ShuffleActionType = ShuffleActionType.SHUFFLE_SIMPLE) {
+    fun shuffle(actionType: ShuffleActionType? = null) {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 val currentQueue = source.currentSourcePaths.mapNotNull { it.toDomainTrack(db) }
                 if (source.size < 1 || source.size != currentQueue.size) return@repeatOnLifecycle
 
                 val shuffled = when (actionType) {
+                    null,
                     ShuffleActionType.SHUFFLE_SIMPLE -> {
                         currentQueue.shuffled().map { it.id }
                     }
@@ -828,7 +918,7 @@ class PlayerService : LifecycleService() {
         }
     }
 
-    private fun getPlaybackState(playWhenReady: Boolean, playbackState: Int) =
+    private fun getPlaybackState(isPlaying: Boolean, playbackState: Int, playbackPosition: Long) =
         PlaybackStateCompat.Builder()
             .setActions(
                 PlaybackStateCompat.ACTION_PLAY or
@@ -846,21 +936,28 @@ class PlayerService : LifecycleService() {
                     Player.STATE_ENDED -> PlaybackState.STATE_STOPPED
                     Player.STATE_IDLE -> PlaybackState.STATE_NONE
                     Player.STATE_READY -> {
-                        if (playWhenReady) PlaybackState.STATE_PLAYING
+                        if (isPlaying) PlaybackState.STATE_PLAYING
                         else PlaybackState.STATE_PAUSED
                     }
 
                     else -> PlaybackState.STATE_ERROR
                 },
-                player.currentPosition,
+                playbackPosition,
                 player.playbackParameters.speed
             )
             .build()
 
     private fun onPlayerServiceControlAction(intent: Intent) {
         if (intent.hasExtra(ARGS_KEY_CONTROL_COMMAND)) {
-            val key = intent.getIntExtra(ARGS_KEY_CONTROL_COMMAND, -1)
-            when (PlayerControlCommand.values()[key]) {
+            val key = if (Build.VERSION.SDK_INT > 32) {
+                intent.getSerializableExtra(
+                    ARGS_KEY_CONTROL_COMMAND,
+                    PlayerControlCommand::class.java
+                )
+            } else {
+                intent.getSerializableExtra(ARGS_KEY_CONTROL_COMMAND)
+            }
+            when (key) {
                 PlayerControlCommand.DESTROY -> onStopServiceRequested()
             }
         }
@@ -1000,8 +1097,9 @@ class PlayerService : LifecycleService() {
                 ?.getMediaMetadata(this@PlayerService) ?: return@repeatOnLifecycle
             mediaSession.setPlaybackState(
                 getPlaybackState(
-                    player.playWhenReady,
-                    player.playbackState
+                    player.isPlaying,
+                    player.playbackState,
+                    player.currentPosition
                 )
             )
             mediaSession.setMetadata(mediaMetadata)
