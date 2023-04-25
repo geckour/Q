@@ -21,7 +21,9 @@ import androidx.core.view.GravityCompat
 import androidx.databinding.DataBindingUtil
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.fragment.app.commit
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.preference.PreferenceManager
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
@@ -36,6 +38,7 @@ import com.geckour.q.databinding.ActivityMainBinding
 import com.geckour.q.databinding.DialogSleepBinding
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.RequestedTransition
+import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.easteregg.EasterEggFragment
 import com.geckour.q.ui.equalizer.EqualizerFragment
 import com.geckour.q.ui.library.album.AlbumListFragment
@@ -98,16 +101,20 @@ class MainActivity : AppCompatActivity() {
             viewModel.onNewQueue(listOf(track), actionType, OrientedClassType.TRACK)
         },
         onEditMetadata = { track ->
-            lifecycleScope.launchWhenResumed {
-                viewModel.onLoadStateChanged(true)
-                val tracks = get<DB>().trackDao().get(track.id)?.let { listOf(it) }.orEmpty()
-                viewModel.onLoadStateChanged(false)
+            lifecycleScope.launch {
+                repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    viewModel.onLoadStateChanged(true)
+                    val tracks = get<DB>().trackDao().get(track.id)?.let { listOf(it) }.orEmpty()
+                    viewModel.onLoadStateChanged(false)
 
-                this@MainActivity.showFileMetadataUpdateDialog(tracks) { binding ->
-                    lifecycleScope.launchWhenResumed {
-                        viewModel.onLoadStateChanged(true)
-                        binding.updateFileMetadata(this@MainActivity, get(), tracks)
-                        viewModel.onLoadStateChanged(false)
+                    this@MainActivity.showFileMetadataUpdateDialog(tracks) { binding ->
+                        lifecycleScope.launch {
+                            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                                viewModel.onLoadStateChanged(true)
+                                binding.updateFileMetadata(this@MainActivity, get(), tracks)
+                                viewModel.onLoadStateChanged(false)
+                            }
+                        }
                     }
                 }
             }
@@ -381,9 +388,11 @@ class MainActivity : AppCompatActivity() {
             supportActionBar?.title = title
         }
 
-        lifecycleScope.launchWhenResumed {
-            viewModel.loading.collectLatest {
-                setLockingIndicator(false, it)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.loading.collectLatest {
+                    setLockingIndicator(false, it)
+                }
             }
         }
 
@@ -421,22 +430,24 @@ class MainActivity : AppCompatActivity() {
             searchListAdapter.submitList(it)
         }
 
-        lifecycleScope.launchWhenResumed {
-            viewModel.dropboxItemList.collectLatest {
-                (dropboxChooserDialog ?: run {
-                    DropboxChooserDialog(
-                        this@MainActivity,
-                        onClickItem = { metadata ->
-                            viewModel.showDropboxFolderChooser(metadata)
-                        },
-                        onPrev = { metadata ->
-                            viewModel.showDropboxFolderChooser(metadata)
-                        },
-                        onChoose = { path ->
-                            retrieveDropboxMedia(path)
-                        }
-                    ).apply { dropboxChooserDialog = this }
-                }).show(it.first, it.second)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                viewModel.dropboxItemList.collectLatest {
+                    (dropboxChooserDialog ?: run {
+                        DropboxChooserDialog(
+                            this@MainActivity,
+                            onClickItem = { metadata ->
+                                viewModel.showDropboxFolderChooser(metadata)
+                            },
+                            onPrev = { metadata ->
+                                viewModel.showDropboxFolderChooser(metadata)
+                            },
+                            onChoose = { path ->
+                                retrieveDropboxMedia(path)
+                            }
+                        ).apply { dropboxChooserDialog = this }
+                    }).show(it.first, it.second)
+                }
             }
         }
 
@@ -612,7 +623,7 @@ class MainActivity : AppCompatActivity() {
         ) {
             File(domainTrack.sourcePath).apply {
                 if (this.exists()) {
-                    viewModel.player.value?.removeQueue(domainTrack)
+                    viewModel.onRemoveQueueByTrack?.invoke(domainTrack)
                     this.delete()
                 }
             }
@@ -665,12 +676,11 @@ class MainActivity : AppCompatActivity() {
             .setMessage(R.string.dialog_desc_sleep_timer)
             .setPositiveButton(R.string.dialog_ok) { dialog, _ ->
                 lifecycleScope.launch {
-                    viewModel.player.value
-                        ?.currentMediaSource
+                    viewModel.currentSourcePath
                         ?.toDomainTrack(DB.getInstance(this@MainActivity))
                         ?.let {
-                            val timerValue = binding.timerValue!!
-                            val toleranceValue = binding.toleranceValue!!
+                            val timerValue = checkNotNull(binding.timerValue)
+                            val toleranceValue = checkNotNull(binding.toleranceValue)
                             sharedPreferences.sleepTimerTime = timerValue
                             sharedPreferences.sleepTimerTolerance = toleranceValue
                             viewModel.workManager
@@ -680,10 +690,7 @@ class MainActivity : AppCompatActivity() {
                                     OneTimeWorkRequestBuilder<SleepTimerWorker>().setInputData(
                                         SleepTimerWorker.createInputData(
                                             it.duration,
-                                            viewModel.player.value
-                                                ?.playbackPositionFLow
-                                                ?.value
-                                                ?: return@launch,
+                                            viewModel.currentPlaybackPositionFlow.value,
                                             System.currentTimeMillis() + timerValue * 60000,
                                             toleranceValue * 60000L
                                         )

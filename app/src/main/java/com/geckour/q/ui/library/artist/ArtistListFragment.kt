@@ -23,11 +23,9 @@ import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.showFileMetadataUpdateDialog
-import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toggleDayNight
 import com.geckour.q.util.updateFileMetadata
-import kotlinx.android.synthetic.main.fragment_easter_egg.*
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.get

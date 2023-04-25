@@ -46,6 +46,7 @@ import com.geckour.q.util.searchArtistByFuzzyTitle
 import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
+import com.google.android.exoplayer2.Player
 import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -67,11 +68,17 @@ class MainViewModel(
     internal val mediaRetrieveWorkInfoList =
         workManager.getWorkInfosForUniqueWorkLiveData(MEDIA_RETRIEVE_WORKER_NAME)
 
-    internal val player: MutableStateFlow<PlayerService?> = MutableStateFlow(null)
-
     private var isBoundService = false
 
     internal var isDropboxAuthOngoing = false
+
+    internal val currentSourcePathsFlow = MutableStateFlow(emptyList<String>())
+    internal val currentIndexFlow = MutableStateFlow(-1)
+    internal val currentSourcePath get() = currentSourcePathsFlow.value.getOrNull(currentIndexFlow.value)
+    internal val currentPlaybackPositionFlow = MutableStateFlow(0L)
+    internal val currentPlaybackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
+    internal val currentRepeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
+    internal val equalizerStateFlow = MutableStateFlow(false)
 
     internal val currentFragmentId = MutableLiveData<Int>()
     internal val selectedAlbum = MutableLiveData<Album?>()
@@ -96,6 +103,19 @@ class MainViewModel(
 
     internal lateinit var searchQueryListener: SearchQueryListener
 
+    private var onSubmitQueue: ((queueInfo: QueueInfo) -> Unit)? = null
+    private var onMoveQueuePosition: ((from: Int, to: Int) -> Unit)? = null
+    private var onRemoveQueueByIndex: ((index: Int) -> Unit)? = null
+    internal var onRemoveQueueByTrack: ((track: DomainTrack) -> Unit)? = null
+    private var onShuffleQueue: ((type: ShuffleActionType?) -> Unit)? = null
+    private var onResetQueueOrder: (() -> Unit)? = null
+    private var onClearQueue: ((keepCurrentIfPlaying: Boolean) -> Unit)? = null
+    private var onRotateRepeatMode: (() -> Unit)? = null
+    private var onPause: (() -> Unit)? = null
+    private var onResetQueuePosition: ((position: Int) -> Unit)? = null
+    private var onSeek: ((progress: Long) -> Unit)? = null
+    private var onNewMediaButton: ((event: KeyEvent) -> Unit)? = null
+
     private val serviceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             if (name == ComponentName(app, PlayerService::class.java)) {
@@ -109,30 +129,94 @@ class MainViewModel(
                     }
                 }
                 viewModelScope.launch {
-                    playerService.onDestroyFlow.collectLatest { onDestroyPlayer() }
+                    playerService.sourcePathsFlow.collectLatest {
+                        currentSourcePathsFlow.value = it
+                    }
+                }
+                viewModelScope.launch {
+                    playerService.currentIndexFlow.collectLatest {
+                        currentIndexFlow.value = it
+                    }
+                }
+                viewModelScope.launch {
+                    playerService.playbackPositionFLow.collectLatest {
+                        currentPlaybackPositionFlow.value = it
+                    }
+                }
+                viewModelScope.launch {
+                    playerService.playbackInfoFlow.collectLatest {
+                        currentPlaybackInfoFlow.value = it
+                    }
+                }
+                viewModelScope.launch {
+                    playerService.repeatModeFlow.collectLatest {
+                        currentRepeatModeFlow.value = it
+                    }
+                }
+                viewModelScope.launch {
+                    playerService.equalizerStateFlow.collectLatest {
+                        equalizerStateFlow.value = it
+                    }
+                }
+                viewModelScope.launch {
+                    playerService.onDestroyFlow.collectLatest { onPlayerDestroyed() }
                 }
 
-                player.value = playerService
+                onSubmitQueue = {
+                    viewModelScope.launch {
+                        playerService.submitQueue(it)
+                    }
+                }
+                onMoveQueuePosition = { from, to ->
+                    playerService.moveQueuePosition(from, to)
+                }
+                onRemoveQueueByIndex = {
+                    playerService.removeQueue(it)
+                }
+                onRemoveQueueByTrack = {
+                    playerService.removeQueue(it)
+                }
+                onShuffleQueue = {
+                    playerService.shuffle(it)
+                }
+                onResetQueueOrder = {
+                    playerService.resetQueueOrder()
+                }
+                onClearQueue = {
+                    playerService.clear(it)
+                }
+                onRotateRepeatMode = {
+                    playerService.rotateRepeatMode()
+                }
+                onPause = {
+                    playerService.pause()
+                }
+                onSeek = {
+                    playerService.seek(it)
+                }
+                onNewMediaButton = {
+                    playerService.onMediaButtonEvent(it)
+                }
             }
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
             if (name == ComponentName(app, PlayerService::class.java)) {
-                onDestroyPlayer()
+                onPlayerDestroyed()
             }
         }
 
         override fun onBindingDied(name: ComponentName?) {
             super.onBindingDied(name)
             if (name == ComponentName(app, PlayerService::class.java)) {
-                onDestroyPlayer()
+                onPlayerDestroyed()
             }
         }
 
         override fun onNullBinding(name: ComponentName?) {
             super.onNullBinding(name)
             if (name == ComponentName(app, PlayerService::class.java)) {
-                onDestroyPlayer()
+                onPlayerDestroyed()
             }
         }
     }
@@ -143,6 +227,7 @@ class MainViewModel(
 
     override fun onCleared() {
         unbindPlayer()
+        PlayerService.destroy(app)
 
         super.onCleared()
     }
@@ -172,16 +257,16 @@ class MainViewModel(
         classType: OrientedClassType
     ) {
         viewModelScope.launch {
-            player.value?.submitQueue(QueueInfo(QueueMetadata(actionType, classType), domainTracks))
+            onSubmitQueue?.invoke(QueueInfo(QueueMetadata(actionType, classType), domainTracks))
         }
     }
 
     fun onQueueMove(from: Int, to: Int) {
-        player.value?.moveQueuePosition(from, to)
+        onMoveQueuePosition?.invoke(from, to)
     }
 
     fun onQueueRemove(index: Int) {
-        player.value?.removeQueue(index)
+        onRemoveQueueByIndex?.invoke(index)
     }
 
     fun onToolbarClick() {
@@ -189,7 +274,7 @@ class MainViewModel(
     }
 
     fun onClickShuffleButton() {
-        player.value?.shuffle()
+        onShuffleQueue?.invoke(null)
     }
 
     fun onLongClickShuffleButton(): Boolean {
@@ -201,15 +286,15 @@ class MainViewModel(
 
         binding.apply {
             choiceReset.setOnClickListener {
-                player.value?.resetQueueOrder()
+                onResetQueueOrder?.invoke()
                 dialog.dismiss()
             }
             choiceShuffleOrientedAlbum.setOnClickListener {
-                player.value?.shuffle(ShuffleActionType.SHUFFLE_ALBUM_ORIENTED)
+                onShuffleQueue?.invoke(ShuffleActionType.SHUFFLE_ALBUM_ORIENTED)
                 dialog.dismiss()
             }
             choiceShuffleOrientedArtist.setOnClickListener {
-                player.value?.shuffle(ShuffleActionType.SHUFFLE_ARTIST_ORIENTED)
+                onShuffleQueue?.invoke(ShuffleActionType.SHUFFLE_ARTIST_ORIENTED)
                 dialog.dismiss()
             }
         }
@@ -239,11 +324,11 @@ class MainViewModel(
     }
 
     fun onClickClearQueueButton() {
-        player.value?.clear(true)
+        onClearQueue?.invoke(true)
     }
 
     fun onClickRepeatButton() {
-        player.value?.rotateRepeatMode()
+        onRotateRepeatMode?.invoke()
     }
 
     fun onEasterTapped(domainTrack: DomainTrack?) {
@@ -282,7 +367,9 @@ class MainViewModel(
     private fun bindPlayer() {
         if (isBoundService.not()) {
             app.bindService(
-                PlayerService.createIntent(app), serviceConnection, Context.BIND_AUTO_CREATE
+                PlayerService.createIntent(app),
+                serviceConnection,
+                Context.BIND_AUTO_CREATE
             )
         }
     }
@@ -296,12 +383,12 @@ class MainViewModel(
         if (isBoundService) app.unbindService(serviceConnection)
     }
 
-    internal fun onDestroyPlayer() {
+    internal fun onPlayerDestroyed() {
         isBoundService = false
     }
 
     internal fun rebootPlayer() {
-        player.value?.pause()
+        onPause?.invoke()
         unbindPlayer()
         bindPlayer()
     }
@@ -400,7 +487,7 @@ class MainViewModel(
     internal fun deleteTrack(domainTrack: DomainTrack) {
         viewModelScope.launch {
             trackToDelete.value = domainTrack
-            player.value?.removeQueue(domainTrack)
+            onRemoveQueueByTrack?.invoke(domainTrack)
 
             db.trackDao().deleteIncludingRootIfEmpty(db, domainTrack.id)
         }
@@ -431,15 +518,15 @@ class MainViewModel(
     }
 
     internal fun onChangeRequestedPositionInQueue(position: Int) {
-        player.value?.resetQueuePosition(position)
+        onResetQueuePosition?.invoke(position)
     }
 
     internal fun onNewSeekBarProgress(progress: Long) {
-        player.value?.seek(progress)
+        onSeek?.invoke(progress)
     }
 
     internal fun onNewPlaybackButton(playbackButton: PlaybackButton) {
-        player.value?.onMediaButtonEvent(
+        onNewMediaButton?.invoke(
             KeyEvent(
                 if (playbackButton == PlaybackButton.UNDEFINED) KeyEvent.ACTION_UP else KeyEvent.ACTION_DOWN,
                 when (playbackButton) {

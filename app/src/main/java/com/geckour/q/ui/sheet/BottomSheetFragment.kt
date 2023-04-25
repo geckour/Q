@@ -13,7 +13,9 @@ import android.widget.PopupMenu
 import android.widget.SeekBar
 import androidx.activity.OnBackPressedCallback
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
@@ -321,56 +323,56 @@ class BottomSheetFragment : Fragment() {
 
     @SuppressLint("ClickableViewAccessibility")
     private fun observeEvents() {
-        lifecycleScope.launchWhenResumed {
-            mainViewModel.player.collect { player ->
-                player ?: return@collect
-
-                lifecycleScope.launchWhenResumed {
-                    player.sourcePathsFlow.collect { sourcePaths ->
-                        val queue = sourcePaths.mapNotNull {
-                            DB.getInstance(requireContext())
-                                .trackDao()
-                                .getBySourcePath(it)
-                                ?.toDomainTrack()
-                        }
-                        onQueueChanged(queue)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                mainViewModel.currentSourcePathsFlow.collect { sourcePaths ->
+                    val queue = sourcePaths.mapNotNull {
+                        DB.getInstance(requireContext())
+                            .trackDao()
+                            .getBySourcePath(it)
+                            ?.toDomainTrack()
                     }
+                    onQueueChanged(queue)
                 }
-
-                lifecycleScope.launchWhenResumed {
-                    player.currentIndexFlow.collect {
-                        submitQueueWithCurrentIndex(currentIndex = it)
-                    }
+            }
+        }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                mainViewModel.currentIndexFlow.collect {
+                    submitQueueWithCurrentIndex(currentIndex = it)
                 }
-
-                lifecycleScope.launchWhenResumed {
-                    player.playbackInfoFlow.collect { (playWhenReady, playbackState) ->
-                        onPlayingChanged(
-                            when (playbackState) {
-                                Player.STATE_READY -> {
-                                    playWhenReady
-                                }
-                                else -> false
+            }
+        }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                mainViewModel.currentPlaybackInfoFlow.collect { (playWhenReady, playbackState) ->
+                    onPlayingChanged(
+                        when (playbackState) {
+                            Player.STATE_READY -> {
+                                playWhenReady
                             }
-                        )
-                        if (playWhenReady && playbackState == Player.STATE_BUFFERING) {
-                            centerControlButtonAnimator.start()
-                        } else {
-                            centerControlButtonAnimator.end()
+                            else -> false
                         }
+                    )
+                    if (playWhenReady && playbackState == Player.STATE_BUFFERING) {
+                        centerControlButtonAnimator.start()
+                    } else {
+                        centerControlButtonAnimator.end()
                     }
                 }
-
-                lifecycleScope.launchWhenResumed {
-                    player.playbackPositionFLow.collect {
-                        onPlaybackPositionChanged(it)
-                    }
+            }
+        }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                mainViewModel.currentPlaybackPositionFlow.collect {
+                    onPlaybackPositionChanged(it)
                 }
-
-                lifecycleScope.launchWhenResumed {
-                    player.repeatModeFlow.collect {
-                        onRepeatModeChanged(it)
-                    }
+            }
+        }
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                mainViewModel.currentRepeatModeFlow.collect {
+                    onRepeatModeChanged(it)
                 }
             }
         }
@@ -430,14 +432,15 @@ class BottomSheetFragment : Fragment() {
         currentIndex: Int? = null
     ) = lifecycleScope.launch {
         val newQueue = queue
-            ?: mainViewModel.player.value
-                ?.sourcePathsFlow
-                ?.value
-                ?.mapNotNull { it.toDomainTrack(DB.getInstance(requireContext())) }
-            ?: adapter.currentList
+            ?: mainViewModel.currentSourcePathsFlow.value
+                .mapNotNull { it.toDomainTrack(DB.getInstance(requireContext())) }
+                .ifEmpty { adapter.currentList }
         val newCurrentIndex = currentIndex
-            ?: mainViewModel.player.value?.currentIndexFlow?.value
-            ?: adapter.currentIndex.let { if (it in newQueue.indices) it else 0 }
+            ?: mainViewModel.currentIndexFlow.value.let { currentIndex ->
+                if (currentIndex < 0) {
+                    adapter.currentIndex.let { if (it in newQueue.indices) it else 0 }
+                } else currentIndex
+            }
         val indexChanged = adapter.currentIndex != newCurrentIndex
 
         adapter.submitList(newQueue.mapIndexed { index, domainTrack ->
@@ -466,7 +469,7 @@ class BottomSheetFragment : Fragment() {
                 }
             } else {
                 onPlaybackPositionChanged(
-                    mainViewModel.player.value?.playbackPositionFLow?.value ?: 0
+                    mainViewModel.currentPlaybackPositionFlow.value
                 )
             }
 

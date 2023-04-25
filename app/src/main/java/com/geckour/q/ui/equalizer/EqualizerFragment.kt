@@ -13,7 +13,9 @@ import android.view.ViewGroup
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentEqualizerBinding
 import com.geckour.q.databinding.LabelEqualizerBinding
@@ -31,8 +33,7 @@ import com.geckour.q.util.setEqualizerLevel
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toggleDayNight
 import com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBar
-import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.sharedViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -102,13 +103,13 @@ class EqualizerFragment : Fragment() {
     }
 
     private fun observeEvents() {
-        mainViewModel.player.onEach { player ->
-            player ?: return@onEach
-
-            player.equalizerStateFlow
-                .onEach { onEqualizerStateChanged(it) }
-                .launchIn(lifecycleScope)
-        }.launchIn(lifecycleScope)
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                mainViewModel.equalizerStateFlow.collect {
+                    onEqualizerStateChanged(it)
+                }
+            }
+        }
 
         viewModel.enabled.observe(viewLifecycleOwner) {
             it ?: return@observe
