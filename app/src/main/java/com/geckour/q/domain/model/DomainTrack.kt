@@ -45,6 +45,9 @@ data class DomainTrack(
         artist.title,
         album.title,
         composer,
+        null,
+        null,
+        null,
         null
     )
 }

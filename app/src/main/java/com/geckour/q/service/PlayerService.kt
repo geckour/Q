@@ -1023,8 +1023,8 @@ class PlayerService : LifecycleService() {
     }
 
     private fun Notification.show() {
-        val isInForeground =
-            Build.VERSION.SDK_INT >= 29 && foregroundServiceType != ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE
+        val isInForeground = Build.VERSION.SDK_INT >= 29
+                && foregroundServiceType != ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE
         if (isInForeground || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
             getSystemService(NotificationManager::class.java)?.notify(
                 NOTIFICATION_ID_PLAYER,

@@ -374,7 +374,6 @@ class BottomSheetFragment : Fragment() {
                 }
             }
         }
-
         viewModel.toggleSheetState.observe(viewLifecycleOwner) {
             behavior.state = when (val state = behavior.state) {
                 BottomSheetBehavior.STATE_COLLAPSED -> BottomSheetBehavior.STATE_EXPANDED
@@ -382,7 +381,6 @@ class BottomSheetFragment : Fragment() {
                 else -> BottomSheetBehavior.STATE_COLLAPSED
             }
         }
-
         viewModel.showCurrentRemain.observe(viewLifecycleOwner) { showCurrentRemain ->
             showCurrentRemain ?: return@observe
             sharedPreferences.showCurrentRemain = showCurrentRemain
@@ -391,7 +389,6 @@ class BottomSheetFragment : Fragment() {
             val elapsedTime = (track.duration * ratio).toLong()
             setTimeRightText(track, elapsedTime)
         }
-
         viewModel.scrollToCurrent.observe(viewLifecycleOwner) {
             if (it != true) return@observe
             scrollToCurrent()
