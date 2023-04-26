@@ -26,6 +26,7 @@ import androidx.media.session.MediaButtonReceiver
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.App
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Bool
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.ui.LauncherActivity
@@ -60,8 +61,6 @@ import com.google.android.exoplayer2.Tracks
 import com.google.android.exoplayer2.analytics.AnalyticsListener
 import com.google.android.exoplayer2.audio.AudioAttributes
 import com.google.android.exoplayer2.source.ConcatenatingMediaSource
-import com.google.android.exoplayer2.source.LoadEventInfo
-import com.google.android.exoplayer2.source.MediaLoadData
 import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
@@ -249,32 +248,6 @@ class PlayerService : Service(), LifecycleOwner {
                     true
                 )
                 addAnalyticsListener(object : EventLogger() {
-                    override fun onLoadError(
-                        eventTime: AnalyticsListener.EventTime,
-                        loadEventInfo: LoadEventInfo,
-                        mediaLoadData: MediaLoadData,
-                        error: IOException,
-                        wasCanceled: Boolean
-                    ) {
-                        super.onLoadError(
-                            eventTime,
-                            loadEventInfo,
-                            mediaLoadData,
-                            error,
-                            wasCanceled
-                        )
-                        val shouldResume = player.playWhenReady
-                        pause()
-
-                        Timber.e(error)
-                        FirebaseCrashlytics.getInstance().recordException(error)
-
-                        if (verifyByCauseIfNeeded(error, shouldResume).not()) {
-                            player.prepare()
-                            stop()
-                            if (shouldResume) resume()
-                        }
-                    }
 
                     override fun onAudioSessionIdChanged(
                         eventTime: AnalyticsListener.EventTime,
@@ -318,6 +291,7 @@ class PlayerService : Service(), LifecycleOwner {
         get() =
             if (source.size > 0 && currentIndex > -1) source.getMediaSource(currentIndex)
             else null
+    private var recentPlaybackState = false
 
     private val listener = object : Player.Listener {
 
@@ -424,16 +398,14 @@ class PlayerService : Service(), LifecycleOwner {
         override fun onPlayerError(error: PlaybackException) {
             super.onPlayerError(error)
 
-            val shouldResume = player.playWhenReady
-            pause()
-
             Timber.e(error)
             FirebaseCrashlytics.getInstance().recordException(error)
 
-            if (verifyByCauseIfNeeded(error, shouldResume).not()) {
+            if (verifyByCauseIfNeeded(error, recentPlaybackState).not()) {
+                storeState()
                 player.prepare()
-                stop()
-                if (shouldResume) resume()
+                restoreState()
+                if (recentPlaybackState) resume()
             }
 
             notificationUpdateJob.cancel()
@@ -554,12 +526,12 @@ class PlayerService : Service(), LifecycleOwner {
                             replace(track to new)
                         }
 
+                    storeState()
                     player.prepare()
-                    stop()
+                    restoreState()
 
                     loadStateFlow.value = false to null
                     if (shouldResume) resume()
-                    storeState()
                 }
             }
             return true
@@ -690,6 +662,7 @@ class PlayerService : Service(), LifecycleOwner {
         if (player.playWhenReady.not()) {
             player.playWhenReady = true
         }
+        recentPlaybackState = true
     }
 
     fun pause() {
@@ -697,6 +670,7 @@ class PlayerService : Service(), LifecycleOwner {
 
         player.playWhenReady = false
         notifyPlaybackPositionJob.cancel()
+        recentPlaybackState = false
     }
 
     fun togglePlayPause() {
