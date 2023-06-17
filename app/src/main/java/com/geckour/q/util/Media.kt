@@ -40,7 +40,7 @@ import java.io.FileOutputStream
 import java.io.InputStream
 import java.net.URLConnection
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Locale
 
 
 const val UNKNOWN: String = "UNKNOWN"
@@ -159,11 +159,8 @@ suspend fun List<String?>.getThumb(context: Context): Bitmap? {
 }
 
 fun DomainTrack.getMediaSource(
-    mediaSourceFactory: ProgressiveMediaSource.Factory,
-    httpMediaSourceFactory: ProgressiveMediaSource.Factory
-): MediaSource =
-    (if (this.dropboxPath != null) httpMediaSourceFactory else mediaSourceFactory)
-        .createMediaSource(MediaItem.fromUri(Uri.parse(sourcePath)))
+    mediaSourceFactory: ProgressiveMediaSource.Factory
+): MediaSource = mediaSourceFactory.createMediaSource(MediaItem.fromUri(Uri.parse(sourcePath)))
 
 fun List<DomainTrack>.sortedByTrackOrder(
     classType: OrientedClassType,
@@ -207,6 +204,7 @@ suspend fun DomainTrack.getMediaMetadata(context: Context): MediaMetadataCompat 
         .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist.title)
         .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album.title)
         .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer)
+        .putString(MediaMetadataCompat.METADATA_KEY_DATE, releaseDate)
         .apply {
             val artworkUriString = getTempArtworkUriString(context)
             val artwork = withContext(Dispatchers.IO) {
@@ -478,6 +476,7 @@ suspend fun JoinedTrack.updateFileMetadata(
                     )
                 }
             }
+
             newAlbumName.isNullOrBlank().not()
                     || newAlbumNameSort.isNullOrBlank().not()
                     || newArtwork != null -> {
@@ -525,6 +524,7 @@ suspend fun JoinedTrack.updateFileMetadata(
                     )
                 }
             }
+
             newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not() -> {
                 if (track.sourcePath.startsWith("http").not()) {
                     AudioFileIO.read(File(track.sourcePath))?.let { audioFile ->
@@ -553,16 +553,18 @@ suspend fun JoinedTrack.updateFileMetadata(
 }
 
 val ConcatenatingMediaSource.currentSourcePaths: List<String>
-    get() =
-        (0 until this.size).mapNotNull {
-            getMediaSource(it).mediaItem.localConfiguration?.uri?.toString()
-        }
+    get() = List(this.size) { index ->
+        getMediaSource(index).mediaItem.localConfiguration?.uri?.toString()
+    }.filterNotNull()
 
 suspend fun MediaSource.toDomainTrack(db: DB): DomainTrack? =
     mediaItem.localConfiguration?.uri?.toString()?.toDomainTrack(db)
 
 suspend fun String.toDomainTrack(db: DB): DomainTrack? =
     db.trackDao().getBySourcePath(this)?.toDomainTrack()
+
+suspend fun List<String>.toDomainTracks(db: DB): List<DomainTrack> =
+    db.trackDao().getAllBySourcePaths(this).map { it.toDomainTrack() }
 
 /**
  * @return First value of `Pair` is the old (passed) sourcePath.

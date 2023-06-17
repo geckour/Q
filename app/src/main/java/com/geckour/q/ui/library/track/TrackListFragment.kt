@@ -18,7 +18,6 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Bool
 import com.geckour.q.databinding.FragmentListLibraryBinding
 import com.geckour.q.domain.model.Genre
-import com.geckour.q.ui.library.album.AlbumListViewModel
 import com.geckour.q.ui.main.MainActivity
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.InsertActionType
@@ -105,10 +104,9 @@ class TrackListFragment : Fragment() {
         onToggleIgnored = { track ->
             lifecycleScope.launchWhenResumed {
                 get<DB>().trackDao().apply {
-                    val ignored = when (this.get(track.id)?.track?.ignored ?: Bool.FALSE) {
+                    val ignored = when (checkNotNull(this.get(track.id)).track.ignored) {
                         Bool.TRUE -> Bool.FALSE
-                        Bool.FALSE -> Bool.TRUE
-                        Bool.UNDEFINED -> Bool.UNDEFINED
+                        Bool.FALSE, Bool.UNDEFINED -> Bool.TRUE
                     }
                     setIgnored(track.id, ignored)
                 }

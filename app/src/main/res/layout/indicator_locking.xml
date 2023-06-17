@@ -32,13 +32,25 @@
             android:id="@+id/desc_locking"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="32dp"
+            android:layout_marginBottom="4dp"
             android:textColor="?attr/colorTextSecondary"
             android:textSize="14sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintBottom_toTopOf="@id/progress_sync"
+            app:layout_constraintBottom_toTopOf="@id/remaining"
             tools:text="Syncing library…" />
+
+        <TextView
+            android:id="@+id/remaining"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="32dp"
+            android:textColor="?attr/colorTextSecondary"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintBottom_toTopOf="@id/progress_sync"
+            tools:text="Remaining: 1:42:18" />
 
         <TextView
             android:id="@+id/progress_sync"

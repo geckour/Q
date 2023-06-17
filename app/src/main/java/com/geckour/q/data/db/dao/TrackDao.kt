@@ -40,6 +40,10 @@ interface TrackDao {
     suspend fun getBySourcePath(sourcePath: String): JoinedTrack?
 
     @Transaction
+    @Query("select * from track where sourcePath in (:sourcePaths)")
+    suspend fun getAllBySourcePaths(sourcePaths: List<String>): List<JoinedTrack>
+
+    @Transaction
     @Query("select * from track where dropboxPath = :dropboxPath")
     suspend fun getByDropboxPath(dropboxPath: String): JoinedTrack?
 
@@ -68,7 +72,6 @@ interface TrackDao {
     @Query("select mediaId from track where dropboxPath == null")
     suspend fun getAllLocalMediaIds(): List<Long>
 
-    @Transaction
     @Query("select * from track where ignored != :ignore order by titleSort collate nocase")
     fun getAllAsync(ignore: Bool = Bool.UNDEFINED): Flow<List<JoinedTrack>>
 

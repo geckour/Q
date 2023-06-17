@@ -26,7 +26,6 @@ import androidx.media.session.MediaButtonReceiver
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.App
 import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.Bool
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.ui.LauncherActivity
@@ -49,6 +48,7 @@ import com.geckour.q.util.getPlayerNotification
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
+import com.geckour.q.util.toDomainTracks
 import com.geckour.q.util.verifiedWithDropbox
 import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.DefaultRenderersFactory
@@ -65,7 +65,6 @@ import com.google.android.exoplayer2.source.MediaSource
 import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.upstream.DefaultDataSource
-import com.google.android.exoplayer2.upstream.DefaultHttpDataSource
 import com.google.android.exoplayer2.upstream.HttpDataSource
 import com.google.android.exoplayer2.util.EventLogger
 import com.google.firebase.crashlytics.FirebaseCrashlytics
@@ -285,7 +284,6 @@ class PlayerService : Service(), LifecycleOwner {
     internal val onDestroyFlow = MutableStateFlow(0L)
 
     private lateinit var mediaSourceFactory: ProgressiveMediaSource.Factory
-    private lateinit var httpMediaSourceFactory: ProgressiveMediaSource.Factory
     private var source = ConcatenatingMediaSource()
     internal val currentMediaSource: MediaSource?
         get() =
@@ -458,9 +456,6 @@ class PlayerService : Service(), LifecycleOwner {
         mediaSourceFactory = ProgressiveMediaSource.Factory(
             DefaultDataSource.Factory(applicationContext)
         )
-        httpMediaSourceFactory = ProgressiveMediaSource.Factory(
-            DefaultHttpDataSource.Factory()
-        )
 
         restoreState()
     }
@@ -569,7 +564,7 @@ class PlayerService : Service(), LifecycleOwner {
                     return
                 }
                 (dropboxClient?.let { track.verifiedWithDropbox(this, it) } ?: track)
-                    .getMediaSource(mediaSourceFactory, httpMediaSourceFactory)
+                    .getMediaSource(mediaSourceFactory)
             }
         when (queueInfo.metadata.actionType) {
             InsertActionType.OVERRIDE,
@@ -716,7 +711,7 @@ class PlayerService : Service(), LifecycleOwner {
             removeQueue(index)
             source.addMediaSource(
                 index,
-                withTrack.second.getMediaSource(mediaSourceFactory, httpMediaSourceFactory)
+                withTrack.second.getMediaSource(mediaSourceFactory)
             )
         }
     }
@@ -954,10 +949,12 @@ class PlayerService : Service(), LifecycleOwner {
     private fun PlayerState.set() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
+                loadStateFlow.value = true to {}
                 val queueInfo = QueueInfo(
                     QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.TRACK),
                     trackIds.mapNotNull { db.trackDao().get(it)?.toDomainTrack() }
                 )
+                loadStateFlow.value = false to {}
                 submitQueue(queueInfo, true)
                 forceIndex(currentIndex)
                 seek(progress)
@@ -1039,9 +1036,7 @@ class PlayerService : Service(), LifecycleOwner {
     ) = lifecycleScope.launch {
         repeatOnLifecycle(Lifecycle.State.STARTED) {
             cachedQueueOrder.clear()
-            val trackIds = source.currentSourcePaths.mapNotNull {
-                it.toDomainTrack(db)?.id
-            }
+            val trackIds = source.currentSourcePaths.toDomainTracks(db).map { it.id }
             cachedQueueOrder.addAll(trackIds)
             val state = PlayerState(
                 playWhenReady,

@@ -28,7 +28,7 @@ import com.geckour.q.util.SettingCommand
 import com.geckour.q.util.equalizerEnabled
 import com.geckour.q.util.equalizerParams
 import com.geckour.q.util.equalizerSettings
-import com.geckour.q.util.getReadableString
+import com.geckour.q.util.getReadableStringWithUnit
 import com.geckour.q.util.setEqualizerLevel
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.toggleDayNight
@@ -149,18 +149,18 @@ class EqualizerFragment : Fragment() {
 
         sharedPreferences.equalizerParams?.also { params ->
             binding.textScaleBottom.text = getString(
-                R.string.equalizer_scale_label, (params.levelRange.first / 100f).getReadableString()
+                R.string.equalizer_scale_label, (params.levelRange.first / 100f).getReadableStringWithUnit()
             )
             binding.textScaleLowerMiddle.text = getString(
-                R.string.equalizer_scale_label, (params.levelRange.first / 200f).getReadableString()
+                R.string.equalizer_scale_label, (params.levelRange.first / 200f).getReadableStringWithUnit()
             )
             binding.textScaleUpperMiddle.text = getString(
                 R.string.equalizer_scale_label,
-                (params.levelRange.second / 200f).getReadableString()
+                (params.levelRange.second / 200f).getReadableStringWithUnit()
             )
             binding.textScaleTop.text = getString(
                 R.string.equalizer_scale_label,
-                (params.levelRange.second / 100f).getReadableString()
+                (params.levelRange.second / 100f).getReadableStringWithUnit()
             )
 
             val levels = sharedPreferences.equalizerSettings?.levels
@@ -198,7 +198,7 @@ class EqualizerFragment : Fragment() {
                 ).apply {
                     seekBarLabel.text = getString(
                         R.string.equalizer_seek_bar_label,
-                        (band.centerFreq / 1000f).getReadableString()
+                        (band.centerFreq / 1000f).getReadableStringWithUnit()
                     )
                     binding.labelContainer?.addView(this.root)
                 }

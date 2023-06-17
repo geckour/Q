@@ -49,6 +49,9 @@ interface ArtistDao {
     @Query("update artist set playbackCount = (select playbackCount from artist where id = :artistId) + 1, artworkUriString = (select artworkUriString from album where artistId = :artistId order by playbackCount desc limit 1) where id = :artistId")
     suspend fun increasePlaybackCount(artistId: Long)
 
+    @Query("update artist set totalDuration = 0")
+    suspend fun resetTotalDurations()
+
     @Transaction
     suspend fun deleteRecursively(artistId: Long) {
         deleteTrackByArtist(artistId)
@@ -59,21 +62,31 @@ interface ArtistDao {
     @Transaction
     suspend fun upsert(db: DB, newArtist: Artist, durationToAdd: Long = 0): Long {
         val existingArtist = getByTitle(newArtist.title)
-        existingArtist?.let { existing ->
+        val id = existingArtist?.let { existing ->
             val artworkUriString = db.albumDao()
                 .getAllByArtistId(existingArtist.id)
                 .maxByOrNull { it.album.playbackCount }
                 ?.album
                 ?.artworkUriString
                 ?: newArtist.artworkUriString
-            update(
-                newArtist.copy(
-                    totalDuration = existing.totalDuration + durationToAdd,
-                    artworkUriString = artworkUriString
-                )
+            val target = newArtist.copy(
+                id = existing.id,
+                playbackCount = existing.playbackCount,
+                totalDuration = existing.totalDuration + durationToAdd,
+                artworkUriString = artworkUriString
             )
-        }
+            update(target)
+            existing.id
+        } ?: insert(newArtist.copy(totalDuration = durationToAdd))
 
-        return existingArtist?.id ?: insert(newArtist.copy(totalDuration = durationToAdd))
+        return id
+    }
+
+    @Transaction
+    suspend fun refreshTotalDurations(db: DB) {
+        resetTotalDurations()
+        db.trackDao().getAll().forEach {
+            upsert(db, it.artist, it.track.duration)
+        }
     }
 }

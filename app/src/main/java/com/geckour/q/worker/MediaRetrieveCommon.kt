@@ -34,17 +34,20 @@ internal const val MEDIA_RETRIEVE_WORKER_NAME = "MediaRetrieveWorker"
 internal const val KEY_SYNCING_PROGRESS_NUMERATOR = "key_syncing_progress_numerator"
 internal const val KEY_SYNCING_PROGRESS_DENOMINATOR = "key_syncing_progress_denominator"
 internal const val KEY_SYNCING_PROGRESS_PATH = "key_syncing_progress_path"
+internal const val KEY_SYNCING_REMAINING = "key_syncing_remaining"
 internal const val KEY_SYNCING_FINISHED = "key_syncing_finished"
 
 internal fun createProgressData(
     numerator: Int,
     denominator: Int = -1,
-    path: String? = null
+    path: String? = null,
+    remaining: Long = -1,
 ): Data =
     Data.Builder()
         .putInt(KEY_SYNCING_PROGRESS_NUMERATOR, numerator)
         .putInt(KEY_SYNCING_PROGRESS_DENOMINATOR, denominator)
         .putString(KEY_SYNCING_PROGRESS_PATH, path)
+        .putLong(KEY_SYNCING_REMAINING, remaining)
         .build()
 
 internal suspend fun File.storeMediaInfo(

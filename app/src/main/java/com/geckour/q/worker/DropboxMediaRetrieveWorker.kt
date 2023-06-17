@@ -48,6 +48,7 @@ class DropboxMediaRetrieveWorker(
     private var currentPath: String? = null
     private val notificationBitmap = Bitmap.createBitmap(1000, 1000, Bitmap.Config.ARGB_8888)
     private var seed: Long = -1
+    private var startTime: Long = 0
 
     override suspend fun doWork(): Result {
         if (Build.VERSION.SDK_INT >= 33
@@ -75,6 +76,7 @@ class DropboxMediaRetrieveWorker(
 
             files.clear()
             retrieveAudioFilePaths(rootPath, dbxClient)
+            startTime = System.currentTimeMillis()
             files.forEach {
                 if (isStopped) {
                     return Result.success(
@@ -82,7 +84,7 @@ class DropboxMediaRetrieveWorker(
                     )
                 }
 
-                it.storeMediaInfo(applicationContext, db, dbxClient)
+                it.storeMediaInfo(applicationContext, db, dbxClient, startTime)
             }
 
             Timber.d("qgeck track in db count: ${runBlocking { db.trackDao().count() }}")
@@ -115,6 +117,7 @@ class DropboxMediaRetrieveWorker(
                         retrieveAudioFilePaths(it.pathLower, client)
                         null
                     }
+
                     is FileMetadata -> it
                     else -> null
                 }
@@ -177,11 +180,25 @@ class DropboxMediaRetrieveWorker(
     private suspend fun FileMetadata.storeMediaInfo(
         context: Context,
         db: DB,
-        client: DbxClientV2
+        client: DbxClientV2,
+        startTime: Long
     ) {
         if (name.isAudioFilePath) {
             processedFilesCount++
-            setProgress(createProgressData(processedFilesCount, files.size, pathDisplay))
+            setProgress(
+                createProgressData(
+                    processedFilesCount,
+                    files.size,
+                    pathDisplay,
+                    if (processedFilesCount < 2) -1
+                    else run {
+                        val elapsedTime = System.currentTimeMillis() - startTime
+                        val processedSize = files.take(processedFilesCount - 1).sumOf { it.size }
+                        val remainingSize = files.drop(processedFilesCount - 1).sumOf { it.size }
+                        (remainingSize * elapsedTime.toDouble() / processedSize).toLong()
+                    }
+                )
+            )
             setForeground(getForegroundInfo())
             currentPath = this.pathDisplay
 
@@ -190,7 +207,7 @@ class DropboxMediaRetrieveWorker(
             }.onFailure { t ->
                 if (t is RateLimitException) {
                     Thread.sleep(t.backoffMillis)
-                    this.storeMediaInfo(context, db, client)
+                    this.storeMediaInfo(context, db, client, startTime)
                 } else {
                     Timber.e(t)
                     return
