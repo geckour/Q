@@ -64,8 +64,9 @@ internal suspend fun File.storeMediaInfo(
     val tag = audioFile.tag ?: throw IllegalArgumentException("No media metadata found.")
     val header = audioFile.audioHeader
 
+    val duration = header.trackLength.toLong() * 1000
     val codec = header.encodingType
-    val bitrate = header.bitRateAsNumber
+    val bitrate = audioFile.file.length() * 8 / (header.trackLength * 1000L)
     val sampleRate = header.sampleRateAsNumber
 
     val title = tag.getAll(FieldKey.TITLE).lastOrNull { it.isNotBlank() }
@@ -97,7 +98,6 @@ internal suspend fun File.storeMediaInfo(
             ?.hiraganized
             ?: cachedAlbumArtist?.titleSort
 
-    val duration = header.trackLength.toLong() * 1000
     val trackNum = catchAsNull {
         tag.getFirst(FieldKey.TRACK).let { if (it.isNullOrBlank()) null else it }?.toInt()
     }
