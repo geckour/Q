@@ -4,10 +4,10 @@ import android.Manifest
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.PointF
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
-import android.view.GestureDetector
 import android.view.LayoutInflater
 import android.view.MenuItem
 import android.view.MotionEvent
@@ -92,8 +92,6 @@ class MainActivity : AppCompatActivity() {
 
     internal lateinit var binding: ActivityMainBinding
     private val sharedPreferences by inject<SharedPreferences>()
-
-    private lateinit var gestureDetector: GestureDetector
 
     private lateinit var drawerToggle: ActionBarDrawerToggle
 
@@ -191,6 +189,9 @@ class MainActivity : AppCompatActivity() {
 
     private var dropboxChooserDialog: DropboxChooserDialog? = null
 
+    private var motionEventAtStart: PointF? = null
+    private var verticalScrolling = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -198,24 +199,6 @@ class MainActivity : AppCompatActivity() {
         binding.lifecycleOwner = this
         binding.viewModel = viewModel
         binding.contentSearch.recyclerView.adapter = searchListAdapter
-
-        gestureDetector = GestureDetector(this, object : GestureDetector.SimpleOnGestureListener() {
-
-            override fun onFling(
-                e1: MotionEvent,
-                e2: MotionEvent,
-                velocityX: Float,
-                velocityY: Float
-            ): Boolean {
-                return if (abs(velocityX) > abs(velocityY)) {
-                    binding.drawerLayout.apply {
-                        if (velocityX > 0) openDrawer(GravityCompat.START)
-                        else closeDrawer(GravityCompat.START)
-                    }
-                    true
-                } else false
-            }
-        })
 
         observeEvents()
 
@@ -261,7 +244,41 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        return if (gestureDetector.onTouchEvent(ev)) true else super.dispatchTouchEvent(ev)
+        return when (ev.action) {
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+                motionEventAtStart = PointF(ev.x, ev.y)
+                super.dispatchTouchEvent(ev)
+            }
+
+            MotionEvent.ACTION_MOVE -> {
+                val startEv = motionEventAtStart ?: return super.dispatchTouchEvent(ev)
+                val distanceX = startEv.x - ev.x
+                val distanceY = startEv.y - ev.y
+                return if (binding.drawerLayout.isOpen.not() &&
+                    verticalScrolling.not() &&
+                    distanceX < 0 && abs(distanceX) > abs(distanceY)
+                ) {
+                    super.dispatchTouchEvent(ev.apply { action = MotionEvent.ACTION_CANCEL })
+                    binding.drawerLayout.openDrawer(GravityCompat.START)
+                    true
+                } else {
+                    if (distanceX == 0f && distanceY == 0f) return true
+
+                    motionEventAtStart = null
+                    verticalScrolling = true
+                    super.dispatchTouchEvent(ev)
+                }
+            }
+
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
+                val result = motionEventAtStart != null
+                motionEventAtStart = null
+                verticalScrolling = false
+                result || super.dispatchTouchEvent(ev)
+            }
+
+            else -> super.dispatchTouchEvent(ev)
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
