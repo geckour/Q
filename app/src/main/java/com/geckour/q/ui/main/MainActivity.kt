@@ -271,10 +271,13 @@ class MainActivity : AppCompatActivity() {
             }
 
             MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
+                val startEv = motionEventAtStart ?: return super.dispatchTouchEvent(ev)
+                val distanceX = startEv.x - ev.x
+                val distanceY = startEv.y - ev.y
                 val result = motionEventAtStart != null
                 motionEventAtStart = null
                 verticalScrolling = false
-                result || super.dispatchTouchEvent(ev)
+                ((distanceX != 0f || distanceY != 0f) && result) || super.dispatchTouchEvent(ev)
             }
 
             else -> super.dispatchTouchEvent(ev)
