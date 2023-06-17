@@ -189,8 +189,7 @@ class MainActivity : AppCompatActivity() {
 
     private var dropboxChooserDialog: DropboxChooserDialog? = null
 
-    private var motionEventAtStart: PointF? = null
-    private var verticalScrolling = false
+    private var pointAtStart: PointF? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -246,38 +245,24 @@ class MainActivity : AppCompatActivity() {
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         return when (ev.action) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
-                motionEventAtStart = PointF(ev.x, ev.y)
+                pointAtStart = PointF(ev.x, ev.y)
                 super.dispatchTouchEvent(ev)
             }
 
-            MotionEvent.ACTION_MOVE -> {
-                val startEv = motionEventAtStart ?: return super.dispatchTouchEvent(ev)
-                val distanceX = startEv.x - ev.x
-                val distanceY = startEv.y - ev.y
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
+                val startPoint = pointAtStart ?: return super.dispatchTouchEvent(ev)
+                val distanceX = startPoint.x - ev.x
+                val distanceY = startPoint.y - ev.y
                 return if (binding.drawerLayout.isOpen.not() &&
-                    verticalScrolling.not() &&
-                    distanceX < 0 && abs(distanceX) > abs(distanceY)
+                    distanceX < 0 && abs(distanceX) / abs(distanceY) > 1.2
                 ) {
                     super.dispatchTouchEvent(ev.apply { action = MotionEvent.ACTION_CANCEL })
                     binding.drawerLayout.openDrawer(GravityCompat.START)
                     true
                 } else {
-                    if (distanceX == 0f && distanceY == 0f) return true
-
-                    motionEventAtStart = null
-                    verticalScrolling = true
+                    pointAtStart = null
                     super.dispatchTouchEvent(ev)
                 }
-            }
-
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
-                val startEv = motionEventAtStart ?: return super.dispatchTouchEvent(ev)
-                val distanceX = startEv.x - ev.x
-                val distanceY = startEv.y - ev.y
-                val result = motionEventAtStart != null
-                motionEventAtStart = null
-                verticalScrolling = false
-                ((distanceX != 0f || distanceY != 0f) && result) || super.dispatchTouchEvent(ev)
             }
 
             else -> super.dispatchTouchEvent(ev)
