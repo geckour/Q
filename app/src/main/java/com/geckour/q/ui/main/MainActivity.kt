@@ -64,6 +64,7 @@ import com.geckour.q.worker.KEY_SYNCING_FINISHED
 import com.geckour.q.worker.KEY_SYNCING_PROGRESS_DENOMINATOR
 import com.geckour.q.worker.KEY_SYNCING_PROGRESS_NUMERATOR
 import com.geckour.q.worker.KEY_SYNCING_PROGRESS_PATH
+import com.geckour.q.worker.KEY_SYNCING_PROGRESS_TOTAL_FILES
 import com.geckour.q.worker.KEY_SYNCING_REMAINING
 import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
@@ -469,12 +470,18 @@ class MainActivity : AppCompatActivity() {
                         if (numerator < 0) return@let
 
                         val denominator = it.getInt(KEY_SYNCING_PROGRESS_DENOMINATOR, -1)
+                        val totalFilesCount = it.getInt(KEY_SYNCING_PROGRESS_TOTAL_FILES, -1)
                         val path = it.getString(KEY_SYNCING_PROGRESS_PATH)
                         val remaining = it.getLong(KEY_SYNCING_REMAINING, -1)
                         setLockingIndicator(true, null)
                         binding.indicatorLocking.progressSync.text =
-                            if (denominator < 0) null
-                            else getString(R.string.progress_sync, numerator, denominator)
+                            if (denominator < 0 || totalFilesCount < 0) null
+                            else getString(
+                                R.string.progress_sync,
+                                numerator,
+                                denominator,
+                                totalFilesCount
+                            )
                         binding.indicatorLocking.progressPath.text = path
                         binding.indicatorLocking.remaining.text =
                             if (remaining > -1) getString(

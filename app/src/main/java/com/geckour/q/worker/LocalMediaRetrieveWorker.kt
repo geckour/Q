@@ -94,9 +94,9 @@ class LocalMediaRetrieveWorker(
                         )
                         setProgress(
                             createProgressData(
-                                currentProgressNumerator,
-                                currentProgressDenominator,
-                                trackPath
+                                numerator = currentProgressNumerator,
+                                denominator = currentProgressDenominator,
+                                path = trackPath
                             )
                         )
 

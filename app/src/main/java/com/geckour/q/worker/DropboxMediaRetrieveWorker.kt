@@ -45,6 +45,8 @@ class DropboxMediaRetrieveWorker(
 
     private var processedFilesCount = 0
     private val files = mutableListOf<FileMetadata>()
+    private var totalFilesCount = 0
+    private var wholeFilesSize = 0L
     private var currentPath: String? = null
     private val notificationBitmap = Bitmap.createBitmap(1000, 1000, Bitmap.Config.ARGB_8888)
     private var seed: Long = -1
@@ -75,7 +77,8 @@ class DropboxMediaRetrieveWorker(
             setProgress(createProgressData(0))
 
             files.clear()
-            retrieveAudioFilePaths(rootPath, dbxClient)
+            retrieveAudioFilePaths(db, rootPath, dbxClient)
+            wholeFilesSize = files.sumOf { it.size }
             startTime = System.currentTimeMillis()
             files.forEach {
                 if (isStopped) {
@@ -84,7 +87,7 @@ class DropboxMediaRetrieveWorker(
                     )
                 }
 
-                it.storeMediaInfo(applicationContext, db, dbxClient, startTime)
+                it.storeMediaInfo(applicationContext, dbxClient, startTime)
             }
 
             Timber.d("qgeck track in db count: ${runBlocking { db.trackDao().count() }}")
@@ -101,7 +104,7 @@ class DropboxMediaRetrieveWorker(
             getNotification(currentPath, processedFilesCount, files.size, seed, notificationBitmap)
         )
 
-    private suspend fun retrieveAudioFilePaths(root: String, client: DbxClientV2) {
+    private suspend fun retrieveAudioFilePaths(db: DB, root: String, client: DbxClientV2) {
         if (isStopped) return
         try {
             var fileAndFolders = client.files().listFolder(root)
@@ -111,27 +114,40 @@ class DropboxMediaRetrieveWorker(
                 fileAndFolders = client.files().listFolderContinue(fileAndFolders.cursor)
             }
 
-            fileAndFolders.entries.mapNotNull {
-                when (it) {
+            fileAndFolders.entries.mapNotNull { metadata ->
+                when (metadata) {
                     is FolderMetadata -> {
-                        retrieveAudioFilePaths(it.pathLower, client)
+                        retrieveAudioFilePaths(db, metadata.pathLower, client)
                         null
                     }
 
-                    is FileMetadata -> it
+                    is FileMetadata -> {
+                        totalFilesCount++
+                        if ((db.trackDao().getByDropboxPath(metadata.pathLower)?.track?.lastModified
+                                ?: 0) < metadata.serverModified.time
+                        ) metadata
+                        else null
+                    }
+
                     else -> null
                 }
             }.apply {
                 files.addAll(this)
-                setProgress(createProgressData(processedFilesCount, files.size))
+                setProgress(
+                    createProgressData(
+                        numerator = processedFilesCount,
+                        denominator = files.size,
+                        totalFiles = totalFilesCount
+                    )
+                )
                 setForeground(getForegroundInfo())
             }
         } catch (e: RateLimitException) {
             delay(e.backoffMillis)
-            retrieveAudioFilePaths(root, client)
+            retrieveAudioFilePaths(db, root, client)
         } catch (e: ServerException) {
             delay(3000)
-            retrieveAudioFilePaths(root, client)
+            retrieveAudioFilePaths(db, root, client)
         }
     }
 
@@ -179,7 +195,6 @@ class DropboxMediaRetrieveWorker(
 
     private suspend fun FileMetadata.storeMediaInfo(
         context: Context,
-        db: DB,
         client: DbxClientV2,
         startTime: Long
     ) {
@@ -187,14 +202,15 @@ class DropboxMediaRetrieveWorker(
             processedFilesCount++
             setProgress(
                 createProgressData(
-                    processedFilesCount,
-                    files.size,
-                    pathDisplay,
-                    if (processedFilesCount < 2) -1
+                    numerator = processedFilesCount,
+                    denominator = files.size,
+                    totalFiles = totalFilesCount,
+                    path = pathDisplay,
+                    remaining = if (processedFilesCount < 2) -1
                     else run {
                         val elapsedTime = System.currentTimeMillis() - startTime
                         val processedSize = files.take(processedFilesCount - 1).sumOf { it.size }
-                        val remainingSize = files.drop(processedFilesCount - 1).sumOf { it.size }
+                        val remainingSize = wholeFilesSize - processedSize
                         (remainingSize * elapsedTime.toDouble() / processedSize).toLong()
                     }
                 )
@@ -203,11 +219,11 @@ class DropboxMediaRetrieveWorker(
             currentPath = this.pathDisplay
 
             runCatching {
-                storeMediaInfo(context, db, client, this@storeMediaInfo)
+                storeMediaInfo(context, client, this@storeMediaInfo)
             }.onFailure { t ->
                 if (t is RateLimitException) {
                     Thread.sleep(t.backoffMillis)
-                    this.storeMediaInfo(context, db, client, startTime)
+                    this.storeMediaInfo(context, client, startTime)
                 } else {
                     Timber.e(t)
                     return
@@ -218,13 +234,9 @@ class DropboxMediaRetrieveWorker(
 
     private suspend fun storeMediaInfo(
         context: Context,
-        db: DB,
         client: DbxClientV2,
         dropboxMetadata: FileMetadata
     ): Long {
-        db.trackDao().getByDropboxPath(dropboxMetadata.pathLower)?.track?.let {
-            if (it.lastModified >= dropboxMetadata.serverModified.time) return it.id
-        }
         val url = client.files().getTemporaryLink(dropboxMetadata.pathLower).link
         val currentTime = System.currentTimeMillis()
 

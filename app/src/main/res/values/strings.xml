@@ -37,7 +37,7 @@
     <!-- Indicator -->
     <string name="syncing">Syncing library…</string>
     <string name="loading">Loading items…</string>
-    <string name="progress_sync" translatable="false">%1$d / %2$d</string>
+    <string name="progress_sync" translatable="false">%1$d / %2$d (%3$d)</string>
     <string name="remaining">Remaining: %s</string>
     <string name="button_apply">Apply</string>
     <string name="button_cancel">Cancel</string>
