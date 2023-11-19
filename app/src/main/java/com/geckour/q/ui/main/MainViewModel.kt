@@ -191,6 +191,9 @@ class MainViewModel(
                 onPause = {
                     playerService.pause()
                 }
+                onResetQueuePosition = { position ->
+                    playerService.resetQueuePosition(position)
+                }
                 onSeek = {
                     playerService.seek(it)
                 }
@@ -348,6 +351,7 @@ class MainViewModel(
                         selectedArtist.value = domainTrack?.artist
                         return@setOnMenuItemClickListener true
                     }
+
                     R.id.menu_transition_to_album -> {
                         selectedAlbum.value = domainTrack?.album
                         return@setOnMenuItemClickListener true
