@@ -4,13 +4,9 @@ import android.content.ComponentName
 import android.content.Context
 import android.content.ServiceConnection
 import android.content.SharedPreferences
-import android.os.Bundle
 import android.os.IBinder
-import android.view.Gravity
 import android.view.KeyEvent
 import android.view.LayoutInflater
-import android.view.View
-import android.widget.PopupMenu
 import android.widget.SearchView
 import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.MutableLiveData
@@ -47,7 +43,6 @@ import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import com.google.android.exoplayer2.Player
-import com.google.firebase.analytics.FirebaseAnalytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -332,36 +327,6 @@ class MainViewModel(
 
     fun onClickRepeatButton() {
         onRotateRepeatMode?.invoke()
-    }
-
-    fun onEasterTapped(domainTrack: DomainTrack?) {
-        FirebaseAnalytics.getInstance(app)
-            .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
-                putString(FirebaseAnalytics.Param.ITEM_NAME, "Tapped today's track")
-            })
-
-        domainTrack?.let { onNewQueue(listOf(it), InsertActionType.NEXT, OrientedClassType.TRACK) }
-    }
-
-    fun onEasterLongTapped(domainTrack: DomainTrack?, anchorView: View): Boolean {
-        PopupMenu(app, anchorView, Gravity.BOTTOM).apply {
-            setOnMenuItemClickListener { menuItem ->
-                when (menuItem.itemId) {
-                    R.id.menu_transition_to_artist -> {
-                        selectedArtist.value = domainTrack?.artist
-                        return@setOnMenuItemClickListener true
-                    }
-
-                    R.id.menu_transition_to_album -> {
-                        selectedAlbum.value = domainTrack?.album
-                        return@setOnMenuItemClickListener true
-                    }
-                }
-                return@setOnMenuItemClickListener false
-            }
-            inflate(R.menu.track_transition)
-        }.show()
-        return true
     }
 
     internal fun initSearchQueryListener(searchView: SearchView) {
