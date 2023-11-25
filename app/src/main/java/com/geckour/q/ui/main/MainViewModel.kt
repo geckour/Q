@@ -577,13 +577,14 @@ class MainViewModel(
 
         override fun onQueryTextChange(newText: String?): Boolean {
             search(newText)
-            isSearchViewOpened = true
+            isSearchViewOpened = newText.isNullOrBlank()
             return true
         }
 
         fun reset() {
             searchView.setQuery(null, false)
             searchView.onActionViewCollapsed()
+            isSearchViewOpened = false
         }
     }
 }
