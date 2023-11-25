@@ -1,12 +1,10 @@
-apply plugin: 'com.android.application'
-
-apply plugin: 'kotlin-android'
-
-apply plugin: 'kotlin-parcelize'
-
-apply plugin: 'kotlin-kapt'
-
-apply plugin: 'kotlinx-serialization'
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+    id 'kotlin-parcelize'
+    id 'kotlinx-serialization'
+    id 'com.google.devtools.ksp'
+}
 
 kotlin {
     jvmToolchain 17
@@ -145,7 +143,7 @@ dependencies {
     def aac_room_ver = '2.6.0'
     implementation "androidx.room:room-runtime:$aac_room_ver"
     implementation "androidx.room:room-ktx:$aac_room_ver"
-    kapt "androidx.room:room-compiler:$aac_room_ver"
+    ksp "androidx.room:room-compiler:$aac_room_ver"
     testImplementation "androidx.room:room-testing:$aac_room_ver"
 
     // AndroidX
@@ -165,7 +163,7 @@ dependencies {
 
     // Image processing
     implementation "com.github.bumptech.glide:glide:4.12.0"
-    kapt "com.github.bumptech.glide:compiler:4.12.0"
+    ksp "com.github.bumptech.glide:compiler:4.12.0"
 
     // Player
     implementation project(':exoplayer-library-core')
