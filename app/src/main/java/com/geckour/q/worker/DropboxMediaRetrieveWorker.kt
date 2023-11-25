@@ -5,6 +5,7 @@ import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.os.Build
 import android.webkit.MimeTypeMap
@@ -101,7 +102,8 @@ class DropboxMediaRetrieveWorker(
     override suspend fun getForegroundInfo(): ForegroundInfo =
         ForegroundInfo(
             NOTIFICATION_ID_RETRIEVE,
-            getNotification(currentPath, processedFilesCount, files.size, seed, notificationBitmap)
+            getNotification(currentPath, processedFilesCount, files.size, seed, notificationBitmap),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         )
 
     private suspend fun retrieveAudioFilePaths(db: DB, root: String, client: DbxClientV2) {

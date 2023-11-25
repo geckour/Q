@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.content.ContentUris
 import android.content.Context
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
@@ -131,7 +132,8 @@ class LocalMediaRetrieveWorker(
                 currentProgressDenominator,
                 seed,
                 notificationBitmap
-            )
+            ),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         )
 
     private fun getNotification(
