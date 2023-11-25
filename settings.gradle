@@ -1,4 +1,4 @@
 include ':app'
 
-gradle.ext.exoplayerModulePrefix = 'exoplayer-'
-apply from: file("/Users/geckour/develop/android/git/ExoPlayer/core_settings.gradle")
+gradle.ext.androidxMediaModulePrefix = 'media-'
+apply from: file("/Users/geckour/develop/android/git/media/core_settings.gradle")

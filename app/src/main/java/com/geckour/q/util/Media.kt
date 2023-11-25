@@ -14,6 +14,10 @@ import android.widget.ImageView
 import androidx.core.app.NotificationCompat
 import androidx.core.content.FileProvider
 import androidx.media.session.MediaButtonReceiver
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.source.ConcatenatingMediaSource
+import androidx.media3.exoplayer.source.MediaSource
+import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import com.bumptech.glide.Glide
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.BuildConfig
@@ -24,10 +28,6 @@ import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.databinding.DialogEditMetadataBinding
 import com.geckour.q.domain.model.DomainTrack
-import com.google.android.exoplayer2.MediaItem
-import com.google.android.exoplayer2.source.ConcatenatingMediaSource
-import com.google.android.exoplayer2.source.MediaSource
-import com.google.android.exoplayer2.source.ProgressiveMediaSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.commons.io.FileUtils
@@ -158,6 +158,7 @@ suspend fun List<String?>.getThumb(context: Context): Bitmap? {
     return bitmap
 }
 
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 fun DomainTrack.getMediaSource(
     mediaSourceFactory: ProgressiveMediaSource.Factory
 ): MediaSource = mediaSourceFactory.createMediaSource(MediaItem.fromUri(Uri.parse(sourcePath)))
@@ -553,10 +554,11 @@ suspend fun JoinedTrack.updateFileMetadata(
 }
 
 val ConcatenatingMediaSource.currentSourcePaths: List<String>
-    get() = List(this.size) { index ->
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class) get() = List(this.size) { index ->
         getMediaSource(index).mediaItem.localConfiguration?.uri?.toString()
     }.filterNotNull()
 
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 suspend fun MediaSource.toDomainTrack(db: DB): DomainTrack? =
     mediaItem.localConfiguration?.uri?.toString()?.toDomainTrack(db)
 

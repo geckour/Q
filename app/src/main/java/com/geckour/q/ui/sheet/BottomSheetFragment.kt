@@ -38,7 +38,7 @@ import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.updateFileMetadata
 import com.geckour.q.worker.SleepTimerWorker
-import com.google.android.exoplayer2.Player
+import androidx.media3.common.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay

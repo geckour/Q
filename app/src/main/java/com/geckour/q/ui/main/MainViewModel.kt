@@ -42,7 +42,7 @@ import com.geckour.q.util.searchArtistByFuzzyTitle
 import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
-import com.google.android.exoplayer2.Player
+import androidx.media3.common.Player
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
