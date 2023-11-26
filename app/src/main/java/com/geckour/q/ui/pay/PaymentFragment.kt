@@ -6,12 +6,15 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.geckour.q.R
 import com.geckour.q.data.BillingApiClient
 import com.geckour.q.databinding.FragmentPaymentBinding
 import com.geckour.q.ui.main.MainViewModel
 import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.launch
 import org.koin.androidx.viewmodel.ext.android.activityViewModel
 
 class PaymentFragment : Fragment() {
@@ -84,8 +87,13 @@ class PaymentFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         binding.pay.setOnClickListener {
-            lifecycleScope.launchWhenResumed {
-                billingApiClient.startBilling(requireActivity() as AppCompatActivity, emptyList())
+            lifecycleScope.launch {
+                viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    billingApiClient.startBilling(
+                        requireActivity() as AppCompatActivity,
+                        emptyList()
+                    )
+                }
             }
         }
     }

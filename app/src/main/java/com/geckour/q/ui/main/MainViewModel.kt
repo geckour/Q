@@ -12,6 +12,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.Player
 import androidx.work.WorkManager
 import com.dropbox.core.android.Auth
 import com.dropbox.core.v2.files.FolderMetadata
@@ -42,12 +43,10 @@ import com.geckour.q.util.searchArtistByFuzzyTitle
 import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
-import androidx.media3.common.Player
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
@@ -112,49 +111,58 @@ class MainViewModel(
     private var onNewMediaButton: ((event: KeyEvent) -> Unit)? = null
 
     private val serviceConnection = object : ServiceConnection {
+        private var loadStateJob: Job? = null
+        private var sourcePathsJob: Job? = null
+        private var currentIndexJob: Job? = null
+        private var playbackPositionJob: Job? = null
+        private var playbackInfoJob: Job? = null
+        private var currentRepeatModeJob: Job? = null
+        private var equalizerStateJob: Job? = null
+        private var onDestroyJob: Job? = null
+
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             if (name == ComponentName(app, PlayerService::class.java)) {
                 isBoundService = true
 
                 val playerService = (service as? PlayerService.PlayerBinder)?.service ?: return
 
-                viewModelScope.launch {
-                    playerService.loadStateFlow.collectLatest { (loading, onAbort) ->
+                loadStateJob = viewModelScope.launch {
+                    playerService.loadStateFlow.collect { (loading, onAbort) ->
                         onLoadStateChanged(loading, onAbort)
                     }
                 }
-                viewModelScope.launch {
-                    playerService.sourcePathsFlow.collectLatest {
+                sourcePathsJob = viewModelScope.launch {
+                    playerService.sourcePathsFlow.collect {
                         currentSourcePathsFlow.value = it
                     }
                 }
-                viewModelScope.launch {
-                    playerService.currentIndexFlow.collectLatest {
+                currentIndexJob = viewModelScope.launch {
+                    playerService.currentIndexFlow.collect {
                         currentIndexFlow.value = it
                     }
                 }
-                viewModelScope.launch {
-                    playerService.playbackPositionFLow.collectLatest {
+                playbackPositionJob = viewModelScope.launch {
+                    playerService.playbackPositionFLow.collect {
                         currentPlaybackPositionFlow.value = it
                     }
                 }
-                viewModelScope.launch {
-                    playerService.playbackInfoFlow.collectLatest {
+                playbackInfoJob = viewModelScope.launch {
+                    playerService.playbackInfoFlow.collect {
                         currentPlaybackInfoFlow.value = it
                     }
                 }
-                viewModelScope.launch {
-                    playerService.repeatModeFlow.collectLatest {
+                currentRepeatModeJob = viewModelScope.launch {
+                    playerService.repeatModeFlow.collect {
                         currentRepeatModeFlow.value = it
                     }
                 }
-                viewModelScope.launch {
-                    playerService.equalizerStateFlow.collectLatest {
+                equalizerStateJob = viewModelScope.launch {
+                    playerService.equalizerStateFlow.collect {
                         equalizerStateFlow.value = it
                     }
                 }
-                viewModelScope.launch {
-                    playerService.onDestroyFlow.collectLatest { onPlayerDestroyed() }
+                onDestroyJob = viewModelScope.launch {
+                    playerService.onDestroyFlow.collect { onPlayerDestroyed() }
                 }
 
                 onSubmitQueue = {
@@ -200,6 +208,7 @@ class MainViewModel(
 
         override fun onServiceDisconnected(name: ComponentName?) {
             if (name == ComponentName(app, PlayerService::class.java)) {
+                cancelJobs()
                 onPlayerDestroyed()
             }
         }
@@ -207,6 +216,7 @@ class MainViewModel(
         override fun onBindingDied(name: ComponentName?) {
             super.onBindingDied(name)
             if (name == ComponentName(app, PlayerService::class.java)) {
+                cancelJobs()
                 onPlayerDestroyed()
             }
         }
@@ -214,8 +224,20 @@ class MainViewModel(
         override fun onNullBinding(name: ComponentName?) {
             super.onNullBinding(name)
             if (name == ComponentName(app, PlayerService::class.java)) {
+                cancelJobs()
                 onPlayerDestroyed()
             }
+        }
+
+        private fun cancelJobs() {
+            loadStateJob?.cancel()
+            sourcePathsJob?.cancel()
+            currentIndexJob?.cancel()
+            playbackPositionJob?.cancel()
+            playbackInfoJob?.cancel()
+            currentRepeatModeJob?.cancel()
+            equalizerStateJob?.cancel()
+            onDestroyJob?.cancel()
         }
     }
 
