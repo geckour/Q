@@ -47,7 +47,6 @@ import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.activityViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
-import timber.log.Timber
 import java.io.File
 
 class BottomSheetFragment : Fragment() {
@@ -329,7 +328,6 @@ class BottomSheetFragment : Fragment() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 mainViewModel.currentSourcePathsFlow.collect { sourcePaths ->
-                    Timber.d("qgeck $sourcePaths")
                     val queue = sourcePaths.mapNotNull {
                         DB.getInstance(requireContext())
                             .trackDao()
