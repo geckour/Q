@@ -14,11 +14,8 @@ import android.os.Build
 import android.os.IBinder
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.ConcatenatingMediaSource
-import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.util.EventLogger
 import com.geckour.q.domain.model.PlaybackButton
@@ -80,9 +77,6 @@ class InstantPlayerService : Service() {
             }
     }
 
-    private lateinit var mediaSourceFactory: ProgressiveMediaSource.Factory
-    private var source = ConcatenatingMediaSource()
-
     private val headsetStateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
@@ -116,10 +110,6 @@ class InstantPlayerService : Service() {
     override fun onCreate() {
         super.onCreate()
 
-        mediaSourceFactory = ProgressiveMediaSource.Factory(
-            DefaultDataSource.Factory(applicationContext)
-        )
-
         registerReceiver(headsetStateReceiver, IntentFilter().apply {
             addAction(SOURCE_ACTION_WIRED_STATE)
             addAction(SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE)
@@ -152,11 +142,10 @@ class InstantPlayerService : Service() {
 
     fun submit(path: String) {
         Timber.d("qgeck path: $path")
-        source.clear()
-        source.addMediaSource(
-            mediaSourceFactory.createMediaSource(MediaItem.fromUri(Uri.fromFile(File(path))))
+        player.clearMediaItems()
+        player.addMediaItem(
+            MediaItem.fromUri(Uri.fromFile(File(path)))
         )
-        player.setMediaSource(source)
         player.prepare()
     }
 
