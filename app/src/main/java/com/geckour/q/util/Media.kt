@@ -15,9 +15,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.FileProvider
 import androidx.media.session.MediaButtonReceiver
 import androidx.media3.common.MediaItem
-import androidx.media3.exoplayer.source.ConcatenatingMediaSource
-import androidx.media3.exoplayer.source.MediaSource
-import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import androidx.media3.exoplayer.ExoPlayer
 import com.bumptech.glide.Glide
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.BuildConfig
@@ -159,9 +157,7 @@ suspend fun List<String?>.getThumb(context: Context): Bitmap? {
 }
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-fun DomainTrack.getMediaSource(
-    mediaSourceFactory: ProgressiveMediaSource.Factory
-): MediaSource = mediaSourceFactory.createMediaSource(MediaItem.fromUri(Uri.parse(sourcePath)))
+fun DomainTrack.getMediaItem(): MediaItem = MediaItem.fromUri(Uri.parse(sourcePath))
 
 fun List<DomainTrack>.sortedByTrackOrder(
     classType: OrientedClassType,
@@ -553,14 +549,14 @@ suspend fun JoinedTrack.updateFileMetadata(
     }
 }
 
-val ConcatenatingMediaSource.currentSourcePaths: List<String>
-    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class) get() = List(this.size) { index ->
-        getMediaSource(index).mediaItem.localConfiguration?.uri?.toString()
+val ExoPlayer.currentSourcePaths: List<String>
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class) get() = List(this.mediaItemCount) { index ->
+        this.getMediaItemAt(index).localConfiguration?.uri?.toString()
     }.filterNotNull()
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-suspend fun MediaSource.toDomainTrack(db: DB): DomainTrack? =
-    mediaItem.localConfiguration?.uri?.toString()?.toDomainTrack(db)
+suspend fun MediaItem.toDomainTrack(db: DB): DomainTrack? =
+    localConfiguration?.uri?.toString()?.toDomainTrack(db)
 
 suspend fun String.toDomainTrack(db: DB): DomainTrack? =
     db.trackDao().getBySourcePath(this)?.toDomainTrack()

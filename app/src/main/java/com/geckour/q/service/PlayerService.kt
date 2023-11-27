@@ -23,6 +23,20 @@ import androidx.lifecycle.ServiceLifecycleDispatcher
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.media.session.MediaButtonReceiver
+import androidx.media3.common.AudioAttributes
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.common.Timeline
+import androidx.media3.common.Tracks
+import androidx.media3.datasource.HttpDataSource
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.ExoPlaybackException
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import androidx.media3.exoplayer.util.EventLogger
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.App
 import com.geckour.q.data.db.DB
@@ -42,31 +56,14 @@ import com.geckour.q.util.currentSourcePaths
 import com.geckour.q.util.equalizerEnabled
 import com.geckour.q.util.equalizerParams
 import com.geckour.q.util.equalizerSettings
+import com.geckour.q.util.getMediaItem
 import com.geckour.q.util.getMediaMetadata
-import com.geckour.q.util.getMediaSource
 import com.geckour.q.util.getPlayerNotification
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toDomainTracks
 import com.geckour.q.util.verifiedWithDropbox
-import androidx.media3.common.C
-import androidx.media3.common.PlaybackException
-import androidx.media3.common.Player
-import androidx.media3.common.Timeline
-import androidx.media3.common.Tracks
-import androidx.media3.common.AudioAttributes
-import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.HttpDataSource
-import androidx.media3.exoplayer.DefaultRenderersFactory
-import androidx.media3.exoplayer.ExoPlaybackException
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.analytics.AnalyticsListener
-import androidx.media3.exoplayer.source.ConcatenatingMediaSource
-import androidx.media3.exoplayer.source.MediaSource
-import androidx.media3.exoplayer.source.ProgressiveMediaSource
-import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
-import androidx.media3.exoplayer.util.EventLogger
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -230,40 +227,12 @@ class PlayerService : Service(), LifecycleOwner {
         }
     }
 
-    private val player: ExoPlayer by lazy {
-        val trackSelector = DefaultTrackSelector(this)
-        val renderersFactory = DefaultRenderersFactory(this)
-            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
-        ExoPlayer.Builder(this, renderersFactory)
-            .setTrackSelector(trackSelector)
-            .setHandleAudioBecomingNoisy(true)
-            .build()
-            .apply {
-                addListener(listener)
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(C.USAGE_MEDIA)
-                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                        .build(),
-                    true
-                )
-                addAnalyticsListener(object : EventLogger() {
-
-                    override fun onAudioSessionIdChanged(
-                        eventTime: AnalyticsListener.EventTime,
-                        audioSessionId: Int
-                    ) {
-                        super.onAudioSessionIdChanged(eventTime, audioSessionId)
-                        setEqualizer(audioSessionId)
-                    }
-                })
-            }
-    }
+    private lateinit var player: ExoPlayer
 
     private lateinit var mediaSession: MediaSessionCompat
     private val currentIndex
         get() =
-            if (player.currentMediaItemIndex == -1 && source.size > 0) 0
+            if (player.currentMediaItemIndex == -1) 0
             else player.currentMediaItemIndex
 
     private var equalizer: Equalizer? = null
@@ -284,17 +253,11 @@ class PlayerService : Service(), LifecycleOwner {
     internal val equalizerStateFlow = MutableStateFlow(false)
     internal val onDestroyFlow = MutableStateFlow(0L)
 
-    private lateinit var mediaSourceFactory: ProgressiveMediaSource.Factory
-    private var source = ConcatenatingMediaSource()
-    internal val currentMediaSource: MediaSource?
-        get() =
-            if (source.size > 0 && currentIndex > -1) source.getMediaSource(currentIndex)
-            else null
     private var recentPlaybackState = false
 
     private val listener = object : Player.Listener {
 
-        var lastMediaSource = currentMediaSource
+        var lastMediaItem: MediaItem? = null
 
         override fun onTracksChanged(tracks: Tracks) {
             super.onTracksChanged(tracks)
@@ -343,7 +306,7 @@ class PlayerService : Service(), LifecycleOwner {
                 )
             )
 
-            if (currentIndex == source.size - 1
+            if (currentIndex == player.currentMediaItemIndex - 1
                 && playbackState == Player.STATE_ENDED
                 && player.repeatMode == Player.REPEAT_MODE_OFF
             ) {
@@ -358,9 +321,9 @@ class PlayerService : Service(), LifecycleOwner {
 
             if (playbackState == Player.STATE_READY &&
                 player.playWhenReady &&
-                currentMediaSource != lastMediaSource
+                player.currentMediaItem != lastMediaItem
             ) {
-                lastMediaSource = currentMediaSource
+                lastMediaItem = player.currentMediaItem
                 playbackCountIncreaseJob = increasePlaybackCount()
             }
         }
@@ -387,9 +350,9 @@ class PlayerService : Service(), LifecycleOwner {
 
             if (player.playbackState == Player.STATE_READY &&
                 playWhenReady &&
-                currentMediaSource != lastMediaSource
+                player.currentMediaItem != lastMediaItem
             ) {
-                lastMediaSource = currentMediaSource
+                lastMediaItem = player.currentMediaItem
                 playbackCountIncreaseJob = increasePlaybackCount()
             }
         }
@@ -454,9 +417,33 @@ class PlayerService : Service(), LifecycleOwner {
             isActive = false
         }
 
-        mediaSourceFactory = ProgressiveMediaSource.Factory(
-            DefaultDataSource.Factory(applicationContext)
-        )
+        val trackSelector = DefaultTrackSelector(this)
+        val renderersFactory = DefaultRenderersFactory(this)
+            .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+        player = ExoPlayer.Builder(this, renderersFactory)
+            .setTrackSelector(trackSelector)
+            .setHandleAudioBecomingNoisy(true)
+            .build()
+            .apply {
+                addListener(listener)
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(C.USAGE_MEDIA)
+                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+                        .build(),
+                    true
+                )
+                addAnalyticsListener(object : EventLogger() {
+
+                    override fun onAudioSessionIdChanged(
+                        eventTime: AnalyticsListener.EventTime,
+                        audioSessionId: Int
+                    ) {
+                        super.onAudioSessionIdChanged(eventTime, audioSessionId)
+                        setEqualizer(audioSessionId)
+                    }
+                })
+            }
 
         restoreState()
     }
@@ -477,7 +464,7 @@ class PlayerService : Service(), LifecycleOwner {
     }
 
     private fun onSourcesChanged() {
-        sourcePathsFlow.value = source.currentSourcePaths
+        sourcePathsFlow.value = player.currentSourcePaths
         currentIndexFlow.value = currentIndex
         playbackPositionFLow.value = player.currentPosition
         notificationUpdateJob.cancel()
@@ -511,7 +498,7 @@ class PlayerService : Service(), LifecycleOwner {
                 repeatOnLifecycle(Lifecycle.State.STARTED) {
                     var alive = true
                     loadStateFlow.value = true to { alive = false }
-                    source.currentSourcePaths
+                    player.currentSourcePaths
                         .forEach { path ->
                             if (alive.not()) return@forEach
                             val track = path.toDomainTrack(db) ?: return@forEach
@@ -565,7 +552,7 @@ class PlayerService : Service(), LifecycleOwner {
                     return
                 }
                 (dropboxClient?.let { track.verifiedWithDropbox(this, it) } ?: track)
-                    .getMediaSource(mediaSourceFactory)
+                    .getMediaItem()
             }
         when (queueInfo.metadata.actionType) {
             InsertActionType.OVERRIDE,
@@ -574,7 +561,6 @@ class PlayerService : Service(), LifecycleOwner {
 
             else -> Unit
         }
-        val needToResetSource = source.size == 0
         when (queueInfo.metadata.actionType) {
             InsertActionType.NEXT,
             InsertActionType.OVERRIDE,
@@ -582,21 +568,16 @@ class PlayerService : Service(), LifecycleOwner {
             InsertActionType.SHUFFLE_OVERRIDE,
             InsertActionType.SHUFFLE_SIMPLE_NEXT,
             InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
-                val position = if (source.size < 1) 0 else currentIndex + 1
-                source.addMediaSources(position, newQueue)
+                val position = if (player.mediaItemCount < 1) 0 else currentIndex + 1
+                player.addMediaItems(position, newQueue)
             }
 
             InsertActionType.LAST,
             InsertActionType.SHUFFLE_LAST,
             InsertActionType.SHUFFLE_SIMPLE_LAST -> {
-                val position = source.size
-                source.addMediaSources(position, newQueue)
+                val position = player.mediaItemCount
+                player.addMediaItems(position, newQueue)
             }
-        }
-        if (needToResetSource) {
-            player.setMediaSource(source)
-            player.prepare()
-            stop()
         }
 
         loadStateFlow.value = false to null
@@ -604,25 +585,25 @@ class PlayerService : Service(), LifecycleOwner {
     }
 
     fun moveQueuePosition(from: Int, to: Int) {
-        val sourceRange = 0 until source.size
+        val sourceRange = 0 until player.mediaItemCount
         if (from !in sourceRange || to !in sourceRange) return
-        source.moveMediaSource(from, to)
+        player.moveMediaItem(from, to)
     }
 
     fun removeQueue(position: Int) {
-        if (position !in 0 until source.size ||
+        if (position !in 0 until player.mediaItemCount ||
             player.playWhenReady
             && (player.playbackState == Player.STATE_READY || player.playbackState == Player.STATE_BUFFERING)
             && position == currentIndex
         ) return
 
-        source.removeMediaSource(position)
+        player.removeMediaItem(position)
     }
 
     fun removeQueue(track: DomainTrack) {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                val position = source.currentSourcePaths
+                val position = player.currentSourcePaths
                     .indexOfFirst { it.toDomainTrack(db)?.id == track.id }
                 removeQueue(position)
             }
@@ -687,11 +668,11 @@ class PlayerService : Service(), LifecycleOwner {
     }
 
     private fun clear(positionToKeep: Int) {
-        if (positionToKeep !in 0 until source.size) {
-            source.clear()
+        if (positionToKeep !in 0 until player.mediaItemCount) {
+            player.clearMediaItems()
         } else {
-            source.removeMediaSourceRange(0, positionToKeep)
-            source.removeMediaSourceRange(1, source.size)
+            player.removeMediaItems(0, positionToKeep)
+            player.removeMediaItems(1, player.mediaItemCount)
         }
     }
 
@@ -706,13 +687,13 @@ class PlayerService : Service(), LifecycleOwner {
         if (with.isEmpty()) return
 
         with.forEach { withTrack ->
-            val index = source.currentSourcePaths.indexOfFirst { it == withTrack.first.sourcePath }
+            val index = player.currentSourcePaths.indexOfFirst { it == withTrack.first.sourcePath }
             Timber.d("qgeck source path: ${withTrack.first.sourcePath}")
             Timber.d("qgeck index: $index")
             removeQueue(index)
-            source.addMediaSource(
+            player.addMediaItem(
                 index,
-                withTrack.second.getMediaSource(mediaSourceFactory)
+                withTrack.second.getMediaItem()
             )
         }
     }
@@ -720,7 +701,7 @@ class PlayerService : Service(), LifecycleOwner {
     fun next() {
         if (player.repeatMode != Player.REPEAT_MODE_OFF) seekToTail()
         else {
-            if (player.currentMediaItemIndex < source.size - 1) {
+            if (player.currentMediaItemIndex < player.mediaItemCount - 1) {
                 val index = player.currentMediaItemIndex + 1
                 forceIndex(index)
             } else stop()
@@ -735,7 +716,7 @@ class PlayerService : Service(), LifecycleOwner {
 
     fun fastForward() {
         lifecycleScope.launch {
-            currentMediaSource?.toDomainTrack(db)?.let { track ->
+            player.currentMediaItem?.toDomainTrack(db)?.let { track ->
                 seekJob.cancel()
                 seekJob = lifecycleScope.launch {
                     repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -755,7 +736,7 @@ class PlayerService : Service(), LifecycleOwner {
     }
 
     fun rewind() {
-        if (source.size > 0 && currentIndex > -1) {
+        if (player.mediaItemCount > 0 && currentIndex > -1) {
             seekJob.cancel()
             seekJob = lifecycleScope.launch {
                 repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -782,7 +763,7 @@ class PlayerService : Service(), LifecycleOwner {
     private fun seekToTail() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                currentMediaSource?.toDomainTrack(db)?.duration?.let { seek(it) }
+                player.currentMediaItem?.toDomainTrack(db)?.duration?.let { seek(it) }
             }
         }
     }
@@ -791,7 +772,7 @@ class PlayerService : Service(), LifecycleOwner {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 val currentDuration =
-                    currentMediaSource?.toDomainTrack(db)?.duration ?: return@repeatOnLifecycle
+                    player.currentMediaItem?.toDomainTrack(db)?.duration ?: return@repeatOnLifecycle
 
                 if (currentIndex > 0 && player.contentPosition < currentDuration / 100) prev()
                 else seekToHead()
@@ -814,8 +795,8 @@ class PlayerService : Service(), LifecycleOwner {
     fun shuffle(actionType: ShuffleActionType? = null) {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                val currentQueue = source.currentSourcePaths.mapNotNull { it.toDomainTrack(db) }
-                if (source.size < 1 || source.size != currentQueue.size) return@repeatOnLifecycle
+                val currentQueue = player.currentSourcePaths.mapNotNull { it.toDomainTrack(db) }
+                if (player.mediaItemCount < 1 || player.mediaItemCount != currentQueue.size) return@repeatOnLifecycle
 
                 val shuffled = when (actionType) {
                     null,
@@ -846,10 +827,10 @@ class PlayerService : Service(), LifecycleOwner {
     }
 
     fun resetQueueOrder() {
-        if (source.size < 1) return
+        if (player.mediaItemCount < 1) return
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                val currentIds = source.currentSourcePaths.mapNotNull { it.toDomainTrack(db)?.id }
+                val currentIds = player.currentSourcePaths.mapNotNull { it.toDomainTrack(db)?.id }
                 val isCacheValid =
                     currentIds.size == cachedQueueOrder.size && currentIds.containsAll(
                         cachedQueueOrder
@@ -865,10 +846,10 @@ class PlayerService : Service(), LifecycleOwner {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 order.forEachIndexed { i, id ->
-                    val currentIndex = source.currentSourcePaths
+                    val currentIndex = player.currentSourcePaths
                         .mapNotNull { it.toDomainTrack(db) }
                         .indexOfFirst { it.id == id }
-                    source.moveMediaSource(currentIndex, i)
+                    player.moveMediaItem(currentIndex, i)
                 }
             }
         }
@@ -971,7 +952,7 @@ class PlayerService : Service(), LifecycleOwner {
 
     private fun increasePlaybackCount() = lifecycleScope.launch {
         repeatOnLifecycle(Lifecycle.State.STARTED) {
-            currentMediaSource?.toDomainTrack(db)
+            player.currentMediaItem?.toDomainTrack(db)
                 ?.let { track ->
                     db.trackDao().increasePlaybackCount(track.id)
                     db.albumDao().increasePlaybackCount(track.album.id)
@@ -1037,7 +1018,7 @@ class PlayerService : Service(), LifecycleOwner {
     ) = lifecycleScope.launch {
         repeatOnLifecycle(Lifecycle.State.STARTED) {
             cachedQueueOrder.clear()
-            val trackIds = source.currentSourcePaths.toDomainTracks(db).map { it.id }
+            val trackIds = player.currentSourcePaths.toDomainTracks(db).map { it.id }
             cachedQueueOrder.addAll(trackIds)
             val state = PlayerState(
                 playWhenReady,
@@ -1063,7 +1044,7 @@ class PlayerService : Service(), LifecycleOwner {
 
     private fun updateNotification() = lifecycleScope.launch {
         repeatOnLifecycle(Lifecycle.State.STARTED) {
-            val mediaMetadata = currentMediaSource?.toDomainTrack(db)
+            val mediaMetadata = player.currentMediaItem?.toDomainTrack(db)
                 ?.getMediaMetadata(this@PlayerService) ?: return@repeatOnLifecycle
             mediaSession.setPlaybackState(
                 getPlaybackState(
