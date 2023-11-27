@@ -29,7 +29,6 @@ import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toggleDayNight
 import com.geckour.q.util.updateFileMetadata
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.get
 import org.koin.androidx.viewmodel.ext.android.sharedViewModel
@@ -246,7 +245,7 @@ class TrackListFragment : Fragment() {
     private fun observeAllTracks() {
         lifecycleScope.launch {
             get<DB>().trackDao().getAllAsync()
-                .collectLatest { joinedTracks ->
+                .collect { joinedTracks ->
                     adapter.submitList(joinedTracks.map { it.toDomainTrack() })
                 }
         }
@@ -256,7 +255,7 @@ class TrackListFragment : Fragment() {
         lifecycleScope.launch {
             get<DB>().trackDao()
                 .getAllByAlbumAsync(album.id)
-                .collectLatest { joinedTracks ->
+                .collect { joinedTracks ->
                     adapter.submitList(
                         joinedTracks.map { it.toDomainTrack() }
                             .sortedByTrackOrder(OrientedClassType.TRACK, InsertActionType.LAST)

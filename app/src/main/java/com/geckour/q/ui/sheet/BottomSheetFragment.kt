@@ -17,6 +17,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.Player
 import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.RecyclerView
 import androidx.work.WorkManager
@@ -38,7 +39,6 @@ import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.updateFileMetadata
 import com.geckour.q.worker.SleepTimerWorker
-import androidx.media3.common.Player
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -47,6 +47,7 @@ import kotlinx.coroutines.withContext
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.activityViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
+import timber.log.Timber
 import java.io.File
 
 class BottomSheetFragment : Fragment() {
@@ -248,10 +249,12 @@ class BottomSheetFragment : Fragment() {
                                 viewModel.onTransitionToArtist(mainViewModel, adapter.currentItem)
                                 true
                             }
+
                             R.id.menu_transition_to_album -> {
                                 viewModel.onTransitionToAlbum(mainViewModel, adapter.currentItem)
                                 true
                             }
+
                             else -> false
                         }.apply { behavior.state = BottomSheetBehavior.STATE_COLLAPSED }
                     }
@@ -326,6 +329,7 @@ class BottomSheetFragment : Fragment() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 mainViewModel.currentSourcePathsFlow.collect { sourcePaths ->
+                    Timber.d("qgeck $sourcePaths")
                     val queue = sourcePaths.mapNotNull {
                         DB.getInstance(requireContext())
                             .trackDao()
@@ -351,6 +355,7 @@ class BottomSheetFragment : Fragment() {
                             Player.STATE_READY -> {
                                 playWhenReady
                             }
+
                             else -> false
                         }
                     )

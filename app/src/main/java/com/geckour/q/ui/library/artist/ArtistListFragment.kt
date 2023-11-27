@@ -26,7 +26,6 @@ import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toggleDayNight
 import com.geckour.q.util.updateFileMetadata
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.get
 import org.koin.android.ext.android.inject
@@ -185,7 +184,7 @@ class ArtistListFragment : Fragment() {
 
     private fun observeEvents() {
         lifecycleScope.launch {
-            viewModel.artistListFlow.collectLatest {
+            viewModel.artistListFlow.collect {
                 adapter.submitList(it)
             }
         }

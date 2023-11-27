@@ -27,7 +27,6 @@ import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toggleDayNight
 import com.geckour.q.util.updateFileMetadata
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.get
 import org.koin.android.ext.android.inject
@@ -218,7 +217,7 @@ class AlbumListFragment : Fragment() {
 
     private fun observeAlbums() {
         lifecycleScope.launch {
-            viewModel.albumListFlow.collectLatest {
+            viewModel.albumListFlow.collect {
                 adapter.submitList(it)
             }
         }

@@ -70,7 +70,6 @@ import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import com.geckour.q.worker.SleepTimerWorker
 import com.google.firebase.analytics.FirebaseAnalytics
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.get
 import org.koin.android.ext.android.inject
@@ -96,11 +95,10 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var drawerToggle: ActionBarDrawerToggle
 
-    private val searchListAdapter: SearchListAdapter = SearchListAdapter(
-        onNewQueue = { actionType, track ->
+    private val searchListAdapter: SearchListAdapter =
+        SearchListAdapter(onNewQueue = { actionType, track ->
             viewModel.onNewQueue(listOf(track), actionType, OrientedClassType.TRACK)
-        },
-        onEditMetadata = { track ->
+        }, onEditMetadata = { track ->
             lifecycleScope.launch {
                 repeatOnLifecycle(Lifecycle.State.STARTED) {
                     viewModel.onLoadStateChanged(true)
@@ -118,17 +116,13 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-        },
-        onClickArtist = { artist ->
+        }, onClickArtist = { artist ->
             viewModel.selectedArtist.value = artist
-        },
-        onClickAlbum = { album ->
+        }, onClickAlbum = { album ->
             viewModel.selectedAlbum.value = album
-        },
-        onClickGenre = { genre ->
+        }, onClickGenre = { genre ->
             viewModel.selectedGenre.value = genre
-        }
-    )
+        })
 
     private var requestedTransition: RequestedTransition? = null
     private var paused = true
@@ -162,10 +156,7 @@ class MainActivity : AppCompatActivity() {
                 if (credential.isNullOrBlank()) {
                     viewModel.isDropboxAuthOngoing = true
                     Auth.startOAuth2PKCE(
-                        this,
-                        BuildConfig.DROPBOX_APP_KEY,
-                        dbxRequestConfig,
-                        DbxHost.DEFAULT
+                        this, BuildConfig.DROPBOX_APP_KEY, dbxRequestConfig, DbxHost.DEFAULT
                     )
                 } else {
                     viewModel.showDropboxFolderChooser()
@@ -212,15 +203,13 @@ class MainActivity : AppCompatActivity() {
             val navId = PreferenceManager.getDefaultSharedPreferences(this).preferScreen.value.navId
             onNavigationItemSelected(binding.navigationView.menu.findItem(navId))
         } else if (savedInstanceState.containsKey(STATE_KEY_REQUESTED_TRANSACTION)) {
-            requestedTransition =
-                if (Build.VERSION.SDK_INT < 33) {
-                    savedInstanceState.getParcelable(STATE_KEY_REQUESTED_TRANSACTION) as RequestedTransition?
-                } else {
-                    savedInstanceState.getParcelable(
-                        STATE_KEY_REQUESTED_TRANSACTION,
-                        RequestedTransition::class.java
-                    )
-                }
+            requestedTransition = if (Build.VERSION.SDK_INT < 33) {
+                savedInstanceState.getParcelable(STATE_KEY_REQUESTED_TRANSACTION) as RequestedTransition?
+            } else {
+                savedInstanceState.getParcelable(
+                    STATE_KEY_REQUESTED_TRANSACTION, RequestedTransition::class.java
+                )
+            }
         }
 
         supportFragmentManager.commit {
@@ -254,8 +243,9 @@ class MainActivity : AppCompatActivity() {
                 val startPoint = pointAtStart ?: return super.dispatchTouchEvent(ev)
                 val distanceX = startPoint.x - ev.x
                 val distanceY = startPoint.y - ev.y
-                return if (binding.drawerLayout.isOpen.not() &&
-                    distanceX < 0 && abs(distanceX) / abs(distanceY) > 1.2
+                return if (binding.drawerLayout.isOpen.not() && distanceX < 0 && abs(distanceX) / abs(
+                        distanceY
+                    ) > 1.2
                 ) {
                     super.dispatchTouchEvent(ev.apply { action = MotionEvent.ACTION_CANCEL })
                     binding.drawerLayout.openDrawer(GravityCompat.START)
@@ -333,35 +323,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun enqueueLocalRetrieveWorker(onlyAdded: Boolean) {
-        viewModel.workManager
-            .beginUniqueWork(
+        viewModel.workManager.beginUniqueWork(
                 MEDIA_RETRIEVE_WORKER_NAME,
                 ExistingWorkPolicy.KEEP,
-                OneTimeWorkRequestBuilder<LocalMediaRetrieveWorker>()
-                    .setInputData(
+                OneTimeWorkRequestBuilder<LocalMediaRetrieveWorker>().setInputData(
                         Data.Builder()
-                            .putBoolean(LocalMediaRetrieveWorker.KEY_ONLY_ADDED, onlyAdded)
-                            .build()
-                    )
-                    .build()
-            )
-            .enqueue()
+                            .putBoolean(LocalMediaRetrieveWorker.KEY_ONLY_ADDED, onlyAdded).build()
+                    ).build()
+            ).enqueue()
     }
 
     private fun enqueueDropboxRetrieveWorker(rootPath: String) {
-        viewModel.workManager
-            .beginUniqueWork(
+        viewModel.workManager.beginUniqueWork(
                 MEDIA_RETRIEVE_WORKER_NAME,
                 ExistingWorkPolicy.KEEP,
-                OneTimeWorkRequestBuilder<DropboxMediaRetrieveWorker>()
-                    .setInputData(
-                        Data.Builder()
-                            .putString(DropboxMediaRetrieveWorker.KEY_ROOT_PATH, rootPath)
+                OneTimeWorkRequestBuilder<DropboxMediaRetrieveWorker>().setInputData(
+                        Data.Builder().putString(DropboxMediaRetrieveWorker.KEY_ROOT_PATH, rootPath)
                             .build()
-                    )
-                    .build()
-            )
-            .enqueue()
+                    ).build()
+            ).enqueue()
     }
 
     private fun onReadExternalStorageDenied() {
@@ -397,7 +377,7 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.loading.collectLatest {
+                viewModel.loading.collect {
                     setLockingIndicator(false, it)
                 }
             }
@@ -439,20 +419,15 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.dropboxItemList.collectLatest {
+                viewModel.dropboxItemList.collect {
                     (dropboxChooserDialog ?: run {
-                        DropboxChooserDialog(
-                            this@MainActivity,
-                            onClickItem = { metadata ->
-                                viewModel.showDropboxFolderChooser(metadata)
-                            },
-                            onPrev = { metadata ->
-                                viewModel.showDropboxFolderChooser(metadata)
-                            },
-                            onChoose = { path ->
-                                retrieveDropboxMedia(path)
-                            }
-                        ).apply { dropboxChooserDialog = this }
+                        DropboxChooserDialog(this@MainActivity, onClickItem = { metadata ->
+                            viewModel.showDropboxFolderChooser(metadata)
+                        }, onPrev = { metadata ->
+                            viewModel.showDropboxFolderChooser(metadata)
+                        }, onChoose = { path ->
+                            retrieveDropboxMedia(path)
+                        }).apply { dropboxChooserDialog = this }
                     }).show(it.first, it.second)
                 }
             }
@@ -477,18 +452,13 @@ class MainActivity : AppCompatActivity() {
                         binding.indicatorLocking.progressSync.text =
                             if (denominator < 0 || totalFilesCount < 0) null
                             else getString(
-                                R.string.progress_sync,
-                                numerator,
-                                denominator,
-                                totalFilesCount
+                                R.string.progress_sync, numerator, denominator, totalFilesCount
                             )
                         binding.indicatorLocking.progressPath.text = path
-                        binding.indicatorLocking.remaining.text =
-                            if (remaining > -1) getString(
-                                R.string.remaining,
-                                remaining.getTimeString()
-                            )
-                            else ""
+                        binding.indicatorLocking.remaining.text = if (remaining > -1) getString(
+                            R.string.remaining, remaining.getTimeString()
+                        )
+                        else ""
                     }
                 }
                 if (workInfo.outputData.getBoolean(KEY_SYNCING_FINISHED, false)) {
@@ -505,8 +475,7 @@ class MainActivity : AppCompatActivity() {
         binding.drawerLayout.addDrawerListener(drawerToggle)
         drawerToggle.syncState()
         binding.navigationView.setNavigationItemSelectedListener(onNavigationItemSelected)
-        binding.navigationView.getHeaderView(0)
-            .findViewById<View>(R.id.drawer_head_icon)
+        binding.navigationView.getHeaderView(0).findViewById<View>(R.id.drawer_head_icon)
             ?.setOnLongClickListener {
                 requestedTransition = RequestedTransition(RequestedTransition.Tag.EASTER_EGG)
                 tryTransaction()
@@ -539,8 +508,7 @@ class MainActivity : AppCompatActivity() {
         binding.indicatorLocking.progressPath.visibility = View.VISIBLE
         binding.indicatorLocking.buttonCancel.apply {
             setOnClickListener {
-                viewModel.workManager
-                    .cancelUniqueWork(MEDIA_RETRIEVE_WORKER_NAME)
+                viewModel.workManager.cancelUniqueWork(MEDIA_RETRIEVE_WORKER_NAME)
             }
             visibility = View.VISIBLE
         }
@@ -616,8 +584,7 @@ class MainActivity : AppCompatActivity() {
                     RequestedTransition.Tag.EASTER_EGG -> {
                         supportFragmentManager.commit {
                             replace(
-                                R.id.content_main,
-                                EasterEggFragment.newInstance()
+                                R.id.content_main, EasterEggFragment.newInstance()
                             )
                             addToBackStack(null)
                         }
@@ -690,22 +657,18 @@ class MainActivity : AppCompatActivity() {
             })
         }
 
-        AlertDialog.Builder(this)
-            .setCancelable(true)
-            .setView(binding.root)
+        AlertDialog.Builder(this).setCancelable(true).setView(binding.root)
             .setTitle(R.string.dialog_title_sleep_timer)
             .setMessage(R.string.dialog_desc_sleep_timer)
             .setPositiveButton(R.string.dialog_ok) { dialog, _ ->
                 lifecycleScope.launch {
-                    viewModel.currentSourcePath
-                        ?.toDomainTrack(DB.getInstance(this@MainActivity))
+                    viewModel.currentSourcePath?.toDomainTrack(DB.getInstance(this@MainActivity))
                         ?.let {
                             val timerValue = checkNotNull(binding.timerValue)
                             val toleranceValue = checkNotNull(binding.toleranceValue)
                             sharedPreferences.sleepTimerTime = timerValue
                             sharedPreferences.sleepTimerTolerance = toleranceValue
-                            viewModel.workManager
-                                .beginUniqueWork(
+                            viewModel.workManager.beginUniqueWork(
                                     SleepTimerWorker.NAME,
                                     ExistingWorkPolicy.KEEP,
                                     OneTimeWorkRequestBuilder<SleepTimerWorker>().setInputData(
@@ -715,16 +678,12 @@ class MainActivity : AppCompatActivity() {
                                             System.currentTimeMillis() + timerValue * 60000,
                                             toleranceValue * 60000L
                                         )
-                                    )
-                                        .build()
-                                )
-                                .enqueue()
+                                    ).build()
+                                ).enqueue()
                         }
                 }
                 dialog.dismiss()
-            }
-            .setNegativeButton(R.string.dialog_ng) { dialog, _ -> dialog.dismiss() }
-            .show()
+            }.setNegativeButton(R.string.dialog_ng) { dialog, _ -> dialog.dismiss() }.show()
     }
 
     private fun onAuthDropboxCompleted() {

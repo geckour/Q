@@ -378,12 +378,6 @@ class MainViewModel(
         isBoundService = false
     }
 
-    internal fun rebootPlayer() {
-        onPause?.invoke()
-        unbindPlayer()
-        bindPlayer()
-    }
-
     internal fun search(query: String?) {
         if (query.isNullOrBlank()) {
             searchItems.value = emptyList()
