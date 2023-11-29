@@ -48,6 +48,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -66,9 +67,9 @@ class MainViewModel(
 
     internal var isDropboxAuthOngoing = false
 
-    internal val currentSourcePathsFlow = MutableStateFlow(emptyList<String>())
+    internal val currentQueueFlow = MutableStateFlow(emptyList<DomainTrack>())
     internal val currentIndexFlow = MutableStateFlow(-1)
-    internal val currentSourcePath get() = currentSourcePathsFlow.value.getOrNull(currentIndexFlow.value)
+    internal val currentDomainTrack get() = currentQueueFlow.value.getOrNull(currentIndexFlow.value)
     internal val currentPlaybackPositionFlow = MutableStateFlow(0L)
     internal val currentPlaybackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
     internal val currentRepeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
@@ -100,7 +101,7 @@ class MainViewModel(
     private var onSubmitQueue: ((queueInfo: QueueInfo) -> Unit)? = null
     private var onMoveQueuePosition: ((from: Int, to: Int) -> Unit)? = null
     private var onRemoveQueueByIndex: ((index: Int) -> Unit)? = null
-    internal var onRemoveQueueByTrack: ((track: DomainTrack) -> Unit)? = null
+    internal var onRemoveQueueByTrack: (suspend (track: DomainTrack) -> Unit)? = null
     private var onShuffleQueue: ((type: ShuffleActionType?) -> Unit)? = null
     private var onResetQueueOrder: (() -> Unit)? = null
     private var onClearQueue: ((keepCurrentIfPlaying: Boolean) -> Unit)? = null
@@ -111,57 +112,57 @@ class MainViewModel(
     private var onNewMediaButton: ((event: KeyEvent) -> Unit)? = null
 
     private val serviceConnection = object : ServiceConnection {
-        private var loadStateJob: Job? = null
-        private var sourcePathsJob: Job? = null
-        private var currentIndexJob: Job? = null
-        private var playbackPositionJob: Job? = null
-        private var playbackInfoJob: Job? = null
-        private var currentRepeatModeJob: Job? = null
-        private var equalizerStateJob: Job? = null
-        private var onDestroyJob: Job? = null
 
         override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
             if (name == ComponentName(app, PlayerService::class.java)) {
+                Timber.d("qgeck called onServiceConnected")
                 isBoundService = true
 
                 val playerService = (service as? PlayerService.PlayerBinder)?.service ?: return
 
-                loadStateJob = viewModelScope.launch {
+                viewModelScope.launch {
                     playerService.loadStateFlow.collect { (loading, onAbort) ->
                         onLoadStateChanged(loading, onAbort)
                     }
                 }
-                sourcePathsJob = viewModelScope.launch {
-                    playerService.sourcePathsFlow.collect {
-                        currentSourcePathsFlow.value = it
+                viewModelScope.launch {
+                    playerService.sourcePathsFlow.map { sourcePaths ->
+                        sourcePaths.mapNotNull {
+                            DB.getInstance(app)
+                                .trackDao()
+                                .getBySourcePath(it)
+                                ?.toDomainTrack()
+                        }
+                    }.collect {
+                        currentQueueFlow.value = it
                     }
                 }
-                currentIndexJob = viewModelScope.launch {
+                viewModelScope.launch {
                     playerService.currentIndexFlow.collect {
                         currentIndexFlow.value = it
                     }
                 }
-                playbackPositionJob = viewModelScope.launch {
+                viewModelScope.launch {
                     playerService.playbackPositionFLow.collect {
                         currentPlaybackPositionFlow.value = it
                     }
                 }
-                playbackInfoJob = viewModelScope.launch {
+                viewModelScope.launch {
                     playerService.playbackInfoFlow.collect {
                         currentPlaybackInfoFlow.value = it
                     }
                 }
-                currentRepeatModeJob = viewModelScope.launch {
+                viewModelScope.launch {
                     playerService.repeatModeFlow.collect {
                         currentRepeatModeFlow.value = it
                     }
                 }
-                equalizerStateJob = viewModelScope.launch {
+                viewModelScope.launch {
                     playerService.equalizerStateFlow.collect {
                         equalizerStateFlow.value = it
                     }
                 }
-                onDestroyJob = viewModelScope.launch {
+                viewModelScope.launch {
                     playerService.onDestroyFlow.collect { onPlayerDestroyed() }
                 }
 
@@ -208,7 +209,7 @@ class MainViewModel(
 
         override fun onServiceDisconnected(name: ComponentName?) {
             if (name == ComponentName(app, PlayerService::class.java)) {
-                cancelJobs()
+                Timber.d("qgeck called onServiceDisconnected")
                 onPlayerDestroyed()
             }
         }
@@ -216,7 +217,6 @@ class MainViewModel(
         override fun onBindingDied(name: ComponentName?) {
             super.onBindingDied(name)
             if (name == ComponentName(app, PlayerService::class.java)) {
-                cancelJobs()
                 onPlayerDestroyed()
             }
         }
@@ -224,20 +224,8 @@ class MainViewModel(
         override fun onNullBinding(name: ComponentName?) {
             super.onNullBinding(name)
             if (name == ComponentName(app, PlayerService::class.java)) {
-                cancelJobs()
                 onPlayerDestroyed()
             }
-        }
-
-        private fun cancelJobs() {
-            loadStateJob?.cancel()
-            sourcePathsJob?.cancel()
-            currentIndexJob?.cancel()
-            playbackPositionJob?.cancel()
-            playbackInfoJob?.cancel()
-            currentRepeatModeJob?.cancel()
-            equalizerStateJob?.cancel()
-            onDestroyJob?.cancel()
         }
     }
 
@@ -246,6 +234,8 @@ class MainViewModel(
     }
 
     override fun onCleared() {
+        Timber.d("qgeck MainViewModel is cleared")
+
         unbindPlayer()
         PlayerService.destroy(app)
 
@@ -285,7 +275,8 @@ class MainViewModel(
         onMoveQueuePosition?.invoke(from, to)
     }
 
-    fun onQueueRemove(index: Int) {
+    fun onRemoveTrackFromQueue(domainTrack: DomainTrack) {
+        val index = currentQueueFlow.value.indexOf(domainTrack)
         onRemoveQueueByIndex?.invoke(index)
     }
 
@@ -502,7 +493,8 @@ class MainViewModel(
         viewModelScope.launch { loading.emit(state to onAbort) }
     }
 
-    internal fun onChangeRequestedPositionInQueue(position: Int) {
+    internal fun onChangeRequestedTrackInQueue(domainTrack: DomainTrack) {
+        val position = currentQueueFlow.value.indexOf(domainTrack)
         onResetQueuePosition?.invoke(position)
     }
 

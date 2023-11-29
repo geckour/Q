@@ -69,6 +69,12 @@ android {
     kotlinOptions {
         freeCompilerArgs += ["-Xopt-in=kotlin.RequiresOptIn"]
     }
+    buildFeatures {
+        compose true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion "1.5.4"
+    }
     ndkVersion = "21.0.6113669"
     repositories {
         maven {
@@ -165,12 +171,20 @@ dependencies {
     // Image processing
     implementation "com.github.bumptech.glide:glide:4.12.0"
     ksp "com.github.bumptech.glide:compiler:4.12.0"
+    implementation "io.coil-kt:coil-compose:2.5.0"
 
     // Player
     implementation project(':media-lib-exoplayer')
     implementation project(':media-lib-decoder-ffmpeg')
     compileOnly 'org.checkerframework:checker-qual:3.13.0'
     compileOnly 'org.checkerframework:checker-compat-qual:2.5.5'
+
+    // Compose
+    implementation "androidx.compose.ui:ui:1.5.4"
+    implementation "androidx.compose.material:material:1.5.4"
+    implementation "androidx.compose.ui:ui-tooling-preview:1.5.4"
+    implementation "androidx.activity:activity-compose:1.8.1"
+    implementation "org.burnoutcrew.composereorderable:reorderable:0.9.6"
 
     // Vertical SeekBar
     implementation 'com.h6ah4i.android.widget.verticalseekbar:verticalseekbar:1.0.0'

@@ -56,7 +56,6 @@ import com.geckour.q.util.preferScreen
 import com.geckour.q.util.showFileMetadataUpdateDialog
 import com.geckour.q.util.sleepTimerTime
 import com.geckour.q.util.sleepTimerTolerance
-import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toNightModeInt
 import com.geckour.q.util.updateFileMetadata
 import com.geckour.q.worker.DropboxMediaRetrieveWorker
@@ -324,24 +323,24 @@ class MainActivity : AppCompatActivity() {
 
     private fun enqueueLocalRetrieveWorker(onlyAdded: Boolean) {
         viewModel.workManager.beginUniqueWork(
-                MEDIA_RETRIEVE_WORKER_NAME,
-                ExistingWorkPolicy.KEEP,
-                OneTimeWorkRequestBuilder<LocalMediaRetrieveWorker>().setInputData(
-                        Data.Builder()
-                            .putBoolean(LocalMediaRetrieveWorker.KEY_ONLY_ADDED, onlyAdded).build()
-                    ).build()
-            ).enqueue()
+            MEDIA_RETRIEVE_WORKER_NAME,
+            ExistingWorkPolicy.KEEP,
+            OneTimeWorkRequestBuilder<LocalMediaRetrieveWorker>().setInputData(
+                Data.Builder()
+                    .putBoolean(LocalMediaRetrieveWorker.KEY_ONLY_ADDED, onlyAdded).build()
+            ).build()
+        ).enqueue()
     }
 
     private fun enqueueDropboxRetrieveWorker(rootPath: String) {
         viewModel.workManager.beginUniqueWork(
-                MEDIA_RETRIEVE_WORKER_NAME,
-                ExistingWorkPolicy.KEEP,
-                OneTimeWorkRequestBuilder<DropboxMediaRetrieveWorker>().setInputData(
-                        Data.Builder().putString(DropboxMediaRetrieveWorker.KEY_ROOT_PATH, rootPath)
-                            .build()
-                    ).build()
-            ).enqueue()
+            MEDIA_RETRIEVE_WORKER_NAME,
+            ExistingWorkPolicy.KEEP,
+            OneTimeWorkRequestBuilder<DropboxMediaRetrieveWorker>().setInputData(
+                Data.Builder().putString(DropboxMediaRetrieveWorker.KEY_ROOT_PATH, rootPath)
+                    .build()
+            ).build()
+        ).enqueue()
     }
 
     private fun onReadExternalStorageDenied() {
@@ -609,10 +608,12 @@ class MainActivity : AppCompatActivity() {
         constructPermissionsRequest(
             Manifest.permission.WRITE_EXTERNAL_STORAGE
         ) {
-            File(domainTrack.sourcePath).apply {
-                if (this.exists()) {
-                    viewModel.onRemoveQueueByTrack?.invoke(domainTrack)
-                    this.delete()
+            File(domainTrack.sourcePath).also {
+                if (it.exists()) {
+                    lifecycleScope.launch {
+                        viewModel.onRemoveQueueByTrack?.invoke(domainTrack)
+                        it.delete()
+                    }
                 }
             }
             contentResolver.delete(
@@ -662,25 +663,24 @@ class MainActivity : AppCompatActivity() {
             .setMessage(R.string.dialog_desc_sleep_timer)
             .setPositiveButton(R.string.dialog_ok) { dialog, _ ->
                 lifecycleScope.launch {
-                    viewModel.currentSourcePath?.toDomainTrack(DB.getInstance(this@MainActivity))
-                        ?.let {
-                            val timerValue = checkNotNull(binding.timerValue)
-                            val toleranceValue = checkNotNull(binding.toleranceValue)
-                            sharedPreferences.sleepTimerTime = timerValue
-                            sharedPreferences.sleepTimerTolerance = toleranceValue
-                            viewModel.workManager.beginUniqueWork(
-                                    SleepTimerWorker.NAME,
-                                    ExistingWorkPolicy.KEEP,
-                                    OneTimeWorkRequestBuilder<SleepTimerWorker>().setInputData(
-                                        SleepTimerWorker.createInputData(
-                                            it.duration,
-                                            viewModel.currentPlaybackPositionFlow.value,
-                                            System.currentTimeMillis() + timerValue * 60000,
-                                            toleranceValue * 60000L
-                                        )
-                                    ).build()
-                                ).enqueue()
-                        }
+                    viewModel.currentDomainTrack?.let {
+                        val timerValue = checkNotNull(binding.timerValue)
+                        val toleranceValue = checkNotNull(binding.toleranceValue)
+                        sharedPreferences.sleepTimerTime = timerValue
+                        sharedPreferences.sleepTimerTolerance = toleranceValue
+                        viewModel.workManager.beginUniqueWork(
+                            SleepTimerWorker.NAME,
+                            ExistingWorkPolicy.KEEP,
+                            OneTimeWorkRequestBuilder<SleepTimerWorker>().setInputData(
+                                SleepTimerWorker.createInputData(
+                                    it.duration,
+                                    viewModel.currentPlaybackPositionFlow.value,
+                                    System.currentTimeMillis() + timerValue * 60000,
+                                    toleranceValue * 60000L
+                                )
+                            ).build()
+                        ).enqueue()
+                    }
                 }
                 dialog.dismiss()
             }.setNegativeButton(R.string.dialog_ng) { dialog, _ -> dialog.dismiss() }.show()

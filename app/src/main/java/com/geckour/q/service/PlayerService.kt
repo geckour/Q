@@ -600,14 +600,10 @@ class PlayerService : Service(), LifecycleOwner {
         player.removeMediaItem(position)
     }
 
-    fun removeQueue(track: DomainTrack) {
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                val position = player.currentSourcePaths
-                    .indexOfFirst { it.toDomainTrack(db)?.id == track.id }
-                removeQueue(position)
-            }
-        }
+    suspend fun removeQueue(track: DomainTrack) {
+        val position = player.currentSourcePaths
+            .indexOfFirst { it.toDomainTrack(db)?.id == track.id }
+        removeQueue(position)
     }
 
     private fun play() {
@@ -948,6 +944,7 @@ class PlayerService : Service(), LifecycleOwner {
     private fun forceIndex(windowIndex: Int) {
         val index = player.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
         player.seekToDefaultPosition(index + windowIndex)
+        currentIndexFlow.value = windowIndex
     }
 
     private fun increasePlaybackCount() = lifecycleScope.launch {

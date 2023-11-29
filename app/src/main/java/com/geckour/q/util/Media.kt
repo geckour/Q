@@ -11,6 +11,7 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.webkit.MimeTypeMap
 import android.widget.ImageView
+import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationCompat
 import androidx.core.content.FileProvider
 import androidx.media.session.MediaButtonReceiver
@@ -328,16 +329,22 @@ fun Long.getTimeString(): String {
     )
 }
 
-fun ImageView.loadOrDefault(uri: String?) {
+fun ImageView.loadOrDefault(
+    uri: String?,
+    @DrawableRes defaultResource: Int? = R.drawable.ic_empty
+) {
     uri?.let {
         Glide.with(this).load(File(uri)).into(this)
-    } ?: Glide.with(this).load(R.drawable.ic_empty).into(this)
+    } ?: Glide.with(this).load(defaultResource).into(this)
 }
 
-fun ImageView.loadOrDefault(bitmap: Bitmap?) {
+fun ImageView.loadOrDefault(
+    bitmap: Bitmap?,
+    @DrawableRes defaultResource: Int? = R.drawable.ic_empty
+) {
     bitmap?.let {
         catchAsNull { Glide.with(this).load(it).into(this) }
-    } ?: Glide.with(this).load(R.drawable.ic_empty).into(this)
+    } ?: Glide.with(this).load(defaultResource).into(this)
 }
 
 fun DbxClientV2.saveTempAudioFile(context: Context, pathLower: String): File {

@@ -228,7 +228,7 @@
             app:layout_constraintTop_toBottomOf="@id/guide_peek_height" />
 
         <Constraint
-            android:id="@+id/recycler_view"
+            android:id="@+id/queue"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_marginTop="8dp"
@@ -241,10 +241,10 @@
             android:id="@+id/touch_block_wall"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            app:layout_constraintBottom_toBottomOf="@id/recycler_view"
-            app:layout_constraintEnd_toEndOf="@id/recycler_view"
-            app:layout_constraintStart_toStartOf="@id/recycler_view"
-            app:layout_constraintTop_toTopOf="@id/recycler_view" />
+            app:layout_constraintBottom_toBottomOf="@id/queue"
+            app:layout_constraintEnd_toEndOf="@id/queue"
+            app:layout_constraintStart_toStartOf="@id/queue"
+            app:layout_constraintTop_toTopOf="@id/queue" />
     </ConstraintSet>
 
     <ConstraintSet android:id="@+id/motion_end">
@@ -437,7 +437,7 @@
             app:layout_constraintTop_toTopOf="@id/button_scroll_to_current" />
 
         <Constraint
-            android:id="@id/recycler_view"
+            android:id="@id/queue"
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:layout_marginTop="8dp"
@@ -450,9 +450,9 @@
             android:id="@id/touch_block_wall"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            app:layout_constraintBottom_toBottomOf="@id/recycler_view"
-            app:layout_constraintEnd_toEndOf="@id/recycler_view"
-            app:layout_constraintStart_toStartOf="@id/recycler_view"
-            app:layout_constraintTop_toTopOf="@id/recycler_view" />
+            app:layout_constraintBottom_toBottomOf="@id/queue"
+            app:layout_constraintEnd_toEndOf="@id/queue"
+            app:layout_constraintStart_toStartOf="@id/queue"
+            app:layout_constraintTop_toTopOf="@id/queue" />
     </ConstraintSet>
 </MotionScene>

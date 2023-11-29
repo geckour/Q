@@ -231,16 +231,11 @@
             app:tintAttr="@{currentDomainTrack != null ? R.attr.colorAccent : R.attr.colorInactive}"
             tools:tint="@color/colorAccent" />
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recycler_view"
+        <androidx.compose.ui.platform.ComposeView
+            android:id="@+id/queue"
             android:layout_width="0dp"
             android:layout_height="0dp"
-            android:clipToPadding="false"
-            android:orientation="vertical"
-            android:scrollbarStyle="outsideOverlay"
-            android:scrollbars="vertical"
-            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-            tools:listitem="@layout/item_track" />
+            android:clipToPadding="false" />
 
     </androidx.constraintlayout.motion.widget.MotionLayout>
 </layout>
