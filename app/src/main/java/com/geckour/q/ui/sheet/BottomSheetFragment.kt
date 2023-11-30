@@ -74,6 +74,7 @@ import com.geckour.q.worker.SleepTimerWorker
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.burnoutcrew.reorderable.ReorderableItem
@@ -149,6 +150,16 @@ class BottomSheetFragment : Fragment() {
             onMove = { from, to -> items = items.moved(from.index, to.index) },
             onDragEnd = { from, to -> mainViewModel.onQueueMove(from, to) }
         )
+        remember {
+            viewModel.scrollToCurrent.map {
+                if (it > -1) {
+                    reorderableState.listState.animateScrollToItem(
+                        mainViewModel.currentIndexFlow.value
+                    )
+                }
+            }
+        }.collectAsState(initial = -1)
+
         LazyColumn(
             state = reorderableState.listState,
             modifier = Modifier
@@ -552,11 +563,6 @@ class BottomSheetFragment : Fragment() {
             val elapsedTime = (track.duration * ratio).toLong()
             setTimeRightText(track, elapsedTime)
         }
-        viewModel.scrollToCurrent.observe(viewLifecycleOwner) {
-            if (it != true) return@observe
-            scrollToCurrent()
-            viewModel.onScrollToCurrentInvoked()
-        }
     }
 
     private fun resetMarquee() {
@@ -569,7 +575,7 @@ class BottomSheetFragment : Fragment() {
     }
 
     private fun scrollToCurrent() {
-        // TODO
+        viewModel.onClickScrollToCurrentButton()
     }
 
     @SuppressLint("ClickableViewAccessibility")

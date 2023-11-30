@@ -15,6 +15,8 @@ import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.formatPattern
 import com.geckour.q.util.getTempArtworkUriString
 import com.geckour.q.util.showCurrentRemain
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 class BottomSheetViewModel(sharedPreferences: SharedPreferences) : ViewModel() {
 
@@ -26,8 +28,8 @@ class BottomSheetViewModel(sharedPreferences: SharedPreferences) : ViewModel() {
     internal val toggleSheetState = MutableLiveData<Unit>()
     private val _showCurrentRemain = MutableLiveData<Boolean>()
     internal val showCurrentRemain: LiveData<Boolean> = _showCurrentRemain
-    private val _scrollToCurrent = MutableLiveData<Boolean>()
-    internal val scrollToCurrent: LiveData<Boolean> = _scrollToCurrent.distinctUntilChanged()
+    private val _scrollToCurrent = MutableStateFlow<Long>(-1)
+    internal val scrollToCurrent: StateFlow<Long> = _scrollToCurrent
 
     init {
         _showCurrentRemain.value = sharedPreferences.showCurrentRemain
@@ -62,7 +64,7 @@ class BottomSheetViewModel(sharedPreferences: SharedPreferences) : ViewModel() {
     }
 
     fun onClickScrollToCurrentButton() {
-        _scrollToCurrent.value = true
+        _scrollToCurrent.value = System.currentTimeMillis()
     }
 
     internal fun onTransitionToArtist(
@@ -77,9 +79,5 @@ class BottomSheetViewModel(sharedPreferences: SharedPreferences) : ViewModel() {
         currentDomainTrack: DomainTrack?
     ) {
         mainViewModel.selectedAlbum.value = currentDomainTrack?.album
-    }
-
-    internal fun onScrollToCurrentInvoked() {
-        _scrollToCurrent.value = false
     }
 }
