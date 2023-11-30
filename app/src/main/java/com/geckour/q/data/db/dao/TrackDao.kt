@@ -99,12 +99,20 @@ interface TrackDao {
     suspend fun getAllByGenreName(genreName: String): List<JoinedTrack>
 
     @Transaction
+    @Query("select * from track where genre = :genreName")
+    fun getAllByGenreNameAsync(genreName: String): Flow<List<JoinedTrack>>
+
+    @Transaction
     @Query("select * from track where artistId = :artistId and ignored != :ignore")
     suspend fun getAllByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
     @Transaction
     @Query("select distinct genre from track where genre is not null")
     suspend fun getAllGenre(): List<String>
+
+    @Transaction
+    @Query("select distinct genre from track where genre is not null")
+    fun getAllGenreAsync(): Flow<List<String>>
 
     @Transaction
     @Query("select distinct genre from track where genre is not null and genre like :name")

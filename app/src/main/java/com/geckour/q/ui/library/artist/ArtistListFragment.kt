@@ -131,10 +131,10 @@ class ArtistListFragment : Fragment() {
                 requireActivity().toggleDayNight(sharedPreferences)
                 return true
             }
-            if (item.itemId == R.id.menu_sleep) {
-                (requireActivity() as? MainActivity)?.showSleepTimerDialog()
-                return true
-            }
+//            if (item.itemId == R.id.menu_sleep) {
+//                (requireActivity() as? MainActivity)?.showSleepTimerDialog()
+//                return true
+//            }
             if (item.itemId == R.id.menu_edit_metadata) {
                 viewModel.viewModelScope.launch {
                     val db = DB.getInstance(context)

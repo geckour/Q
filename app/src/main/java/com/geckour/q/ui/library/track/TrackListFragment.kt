@@ -171,10 +171,10 @@ class TrackListFragment : Fragment() {
             requireActivity().toggleDayNight()
             return true
         }
-        if (item.itemId == R.id.menu_sleep) {
-            (requireActivity() as? MainActivity)?.showSleepTimerDialog()
-            return true
-        }
+//        if (item.itemId == R.id.menu_sleep) {
+//            (requireActivity() as? MainActivity)?.showSleepTimerDialog()
+//            return true
+//        }
         if (item.itemId == R.id.menu_edit_metadata) {
             mainViewModel.viewModelScope.launch {
                 val db = DB.getInstance(requireContext())

@@ -28,7 +28,6 @@ import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.getThumb
 import com.geckour.q.util.setIconTint
 import com.geckour.q.util.showFileMetadataUpdateDialog
-import com.geckour.q.util.takeOrFillNull
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toggleDayNight
 import com.geckour.q.util.updateFileMetadata
@@ -135,10 +134,10 @@ class GenreListFragment : Fragment() {
             requireActivity().toggleDayNight()
             return true
         }
-        if (item.itemId == R.id.menu_sleep) {
-            (requireActivity() as? MainActivity)?.showSleepTimerDialog()
-            return true
-        }
+//        if (item.itemId == R.id.menu_sleep) {
+//            (requireActivity() as? MainActivity)?.showSleepTimerDialog()
+//            return true
+//        }
 
         val actionType = when (item.itemId) {
             R.id.menu_insert_all_next -> InsertActionType.NEXT
@@ -195,7 +194,7 @@ class GenreListFragment : Fragment() {
 
     private suspend fun List<JoinedTrack>.getGenreThumb(context: Context): Bitmap? =
         this.distinctBy { it.album.id }
-            .takeOrFillNull(5)
-            .map { it?.album?.artworkUriString }
+            .take(5)
+            .mapNotNull { it.album.artworkUriString }
             .getThumb(context)
 }

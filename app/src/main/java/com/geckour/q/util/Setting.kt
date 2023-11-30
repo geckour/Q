@@ -7,10 +7,17 @@ import androidx.annotation.IdRes
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.edit
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.preferencesDataStore
 import androidx.preference.PreferenceManager
 import com.geckour.q.R
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlin.properties.ReadWriteProperty
 import kotlin.reflect.KProperty
 
@@ -130,6 +137,16 @@ data class EqualizerParams(
 data class EqualizerSettings(
     val levels: List<Int>
 )
+
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+val isNightModeKey = booleanPreferencesKey("key_night-mode")
+fun Context.getIsNightMode(): Flow<Boolean> = dataStore.data.map {
+    it[isNightModeKey] ?: false
+}
+
+suspend fun Context.setIsNightMode(isNightMode: Boolean) {
+    dataStore.edit { it[isNightModeKey] = isNightMode }
+}
 
 var SharedPreferences.isNightMode by Pref.PrefBoolean("key_night-mode", false)
 var SharedPreferences.preferScreen by Pref.PrefEnum("key_prefer_screen", Pref.PrefEnum.screens[0])

@@ -131,10 +131,7 @@ suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<JoinedAlbum> =
 suspend fun DB.searchTrackByFuzzyTitle(title: String): List<JoinedTrack> =
     this@searchTrackByFuzzyTitle.trackDao().getAllByTitle("%${title.escapeSql}%")
 
-fun <T> List<T>.takeOrFillNull(n: Int): List<T?> =
-    this.take(n).let { it + List(n - it.size) { null } }
-
-suspend fun List<String?>.getThumb(context: Context): Bitmap? {
+suspend fun List<String>.getThumb(context: Context): Bitmap? {
     if (this.isEmpty()) return null
     val unit = 100
     val bitmap = Bitmap.createBitmap(
@@ -142,7 +139,7 @@ suspend fun List<String?>.getThumb(context: Context): Bitmap? {
     )
     val canvas = Canvas(bitmap)
     withContext(Dispatchers.IO) {
-        this@getThumb.filterNotNull().reversed().forEachIndexed { i, uriString ->
+        this@getThumb.reversed().forEachIndexed { i, uriString ->
             val b = catchAsNull {
                 Glide.with(context).asBitmap().load(File(uriString)).submit().get()
             } ?: return@forEachIndexed
