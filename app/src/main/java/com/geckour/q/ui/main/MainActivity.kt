@@ -10,12 +10,18 @@ import android.os.Bundle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.BottomSheetScaffold
+import androidx.compose.material.Card
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.Text
 import androidx.compose.material.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -29,6 +35,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.media3.common.Player
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -40,15 +48,21 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.data.db.model.JoinedTrack
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.RequestedTransition
 import com.geckour.q.ui.compose.QTheme
+import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.getIsNightMode
 import com.geckour.q.util.getThumb
 import com.geckour.q.util.isNightMode
 import com.geckour.q.util.setIsNightMode
+import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toNightModeInt
 import com.geckour.q.worker.DropboxMediaRetrieveWorker
 import com.geckour.q.worker.LocalMediaRetrieveWorker
@@ -57,6 +71,7 @@ import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import permissions.dispatcher.ktx.constructPermissionsRequest
+import kotlin.math.sin
 
 class MainActivity : AppCompatActivity() {
 
@@ -171,6 +186,7 @@ class MainActivity : AppCompatActivity() {
             val context = LocalContext.current
             val isNightMode by context.getIsNightMode()
                 .collectAsState(initial = isSystemInDarkTheme())
+            val isLoading by viewModel.loading.collectAsState()
             val navController = rememberNavController()
             val scaffoldState = rememberBottomSheetScaffoldState()
             var topBarTitle by remember { mutableStateOf("") }
@@ -180,15 +196,32 @@ class MainActivity : AppCompatActivity() {
             val currentPlaybackInfo by viewModel.currentPlaybackInfoFlow.collectAsState()
             val currentRepeatMode by viewModel.currentRepeatModeFlow.collectAsState()
             var forceScrollToCurrent by remember { mutableLongStateOf(System.currentTimeMillis()) }
+            var showTrackDialog by remember { mutableStateOf(false) }
+            var showAlbumDialog by remember { mutableStateOf(false) }
+            var showArtistDialog by remember { mutableStateOf(false) }
+            var showDropboxDialog by remember { mutableStateOf(false) }
+            var selectedTrack by remember { mutableStateOf<DomainTrack?>(null) }
+            var selectedAlbum by remember { mutableStateOf<JoinedAlbum?>(null) }
+            var selectedArtist by remember { mutableStateOf<Artist?>(null) }
 
-            BackHandler(scaffoldState.drawerState.isOpen) {
-                coroutineScope.launch { scaffoldState.drawerState.close() }
+            val bottomSheetHeightAngle = remember { Animatable(0f) }
+            LaunchedEffect(queue) {
+                if (queue.isNotEmpty()) {
+                    bottomSheetHeightAngle.animateTo(
+                        bottomSheetHeightAngle.value + Math.PI.toFloat(),
+                        animationSpec = tween(400),
+                    )
+                }
             }
 
             QTheme(darkTheme = isNightMode) {
                 BottomSheetScaffold(
                     scaffoldState = scaffoldState,
-                    drawerContent = {},
+                    drawerContent = {
+                        BackHandler(scaffoldState.drawerState.isOpen) {
+                            coroutineScope.launch { scaffoldState.drawerState.close() }
+                        }
+                    },
                     drawerBackgroundColor = QTheme.colors.colorBackground,
                     drawerElevation = 8.dp,
                     topBar = {
@@ -204,9 +237,12 @@ class MainActivity : AppCompatActivity() {
                     },
                     backgroundColor = QTheme.colors.colorBackground,
                     sheetBackgroundColor = QTheme.colors.colorBackgroundBottomSheet,
-                    sheetPeekHeight = 144.dp,
+                    sheetPeekHeight = (144 + sin(bottomSheetHeightAngle.value) * 20).dp,
                     sheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
                     sheetContent = {
+                        BackHandler(scaffoldState.bottomSheetState.isExpanded && scaffoldState.drawerState.isClosed) {
+                            coroutineScope.launch { scaffoldState.bottomSheetState.collapse() }
+                        }
                         Controller(
                             currentTrack = queue.getOrNull(currentIndex),
                             progress = currentPlaybackPosition,
@@ -217,6 +253,7 @@ class MainActivity : AppCompatActivity() {
                                     - currentPlaybackPosition,
                             playbackInfo = currentPlaybackInfo,
                             repeatMode = currentRepeatMode,
+                            isLoading = isLoading.first,
                             onTogglePlayPause = {
                                 viewModel.onPlayOrPause(
                                     currentPlaybackInfo.first && currentPlaybackInfo.second == Player.STATE_READY
@@ -249,11 +286,24 @@ class MainActivity : AppCompatActivity() {
                         )
                     }
                 ) { paddingValues ->
-                    Box(modifier = Modifier.padding(paddingValues)) {
-                        NavHost(navController = navController, startDestination = "artists") {
+                    Box(
+                        modifier = Modifier
+                            .padding(paddingValues)
+                            .fillMaxSize()
+                    ) {
+                        NavHost(
+                            navController = navController,
+                            startDestination = "artists",
+                            modifier = Modifier.fillMaxSize()
+                        ) {
                             composable("artists") {
                                 topBarTitle = stringResource(id = R.string.nav_artist)
-                                Artists(navController = navController)
+                                Artists(
+                                    navController = navController, onSelectArtist = {
+                                        selectedArtist = it
+                                        showArtistDialog = true
+                                    }
+                                )
                             }
                             composable(
                                 "albums/{artistId}",
@@ -277,7 +327,11 @@ class MainActivity : AppCompatActivity() {
                                 Albums(
                                     navController = navController,
                                     artistId = backStackEntry.arguments?.getLong("artistId")
-                                        ?: -1
+                                        ?: -1,
+                                    onSelectAlbum = {
+                                        selectedAlbum = it
+                                        showAlbumDialog = true
+                                    }
                                 )
                             }
                             composable(
@@ -308,7 +362,11 @@ class MainActivity : AppCompatActivity() {
                                 }
                                 Tracks(
                                     albumId = albumId,
-                                    genreName = genreName
+                                    genreName = genreName,
+                                    onTrackSelected = {
+                                        selectedTrack = it
+                                        showTrackDialog = true
+                                    }
                                 )
                             }
                             composable("genres") {
@@ -334,20 +392,504 @@ class MainActivity : AppCompatActivity() {
                                 Genres(navController = navController, genres)
                             }
                         }
+                        if (showTrackDialog) {
+                            selectedTrack?.let { domainTrack ->
+                                Dialog(onDismissRequest = { showTrackDialog = false }) {
+                                    Card(backgroundColor = QTheme.colors.colorBackground) {
+                                        Column {
+                                            DialogListItem(
+                                                onClick = {
+                                                    viewModel.onNewQueue(
+                                                        listOf(domainTrack),
+                                                        actionType = InsertActionType.NEXT,
+                                                        classType = OrientedClassType.TRACK
+                                                    )
+                                                    showTrackDialog = false
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_next),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    viewModel.onNewQueue(
+                                                        listOf(domainTrack),
+                                                        actionType = InsertActionType.LAST,
+                                                        classType = OrientedClassType.TRACK
+                                                    )
+                                                    showTrackDialog = false
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_last),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    viewModel.onNewQueue(
+                                                        listOf(domainTrack),
+                                                        actionType = InsertActionType.OVERRIDE,
+                                                        classType = OrientedClassType.TRACK
+                                                    )
+                                                    showTrackDialog = false
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_override_all),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    navController.navigate("albums/${domainTrack.artist.id}")
+                                                    showTrackDialog = false
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_transition_to_artist),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    navController.navigate("tracks?albumId=${domainTrack.album.id}")
+                                                    showTrackDialog = false
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_transition_to_album),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    viewModel.deleteTrack(domainTrack)
+                                                    showTrackDialog = false
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_delete_from_device),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (showAlbumDialog) {
+                            selectedAlbum?.let { joinedAlbum ->
+                                Dialog(onDismissRequest = { showAlbumDialog = false }) {
+                                    Card(backgroundColor = QTheme.colors.colorBackground) {
+                                        Column {
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByAlbum(joinedAlbum.album.id)
+                                                                .map { it.toDomainTrack() }
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.NEXT,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        showAlbumDialog = false
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_next),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByAlbum(joinedAlbum.album.id)
+                                                                .map { it.toDomainTrack() }
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.LAST,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        showAlbumDialog = false
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_last),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByAlbum(joinedAlbum.album.id)
+                                                                .map { it.toDomainTrack() }
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.OVERRIDE,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        showAlbumDialog = false
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_override_all),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByAlbum(joinedAlbum.album.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_SIMPLE_NEXT,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        showAlbumDialog = false
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_simple_shuffle_next),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByAlbum(joinedAlbum.album.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_SIMPLE_LAST,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        showAlbumDialog = false
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_simple_shuffle_last),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByAlbum(joinedAlbum.album.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        showAlbumDialog = false
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_override_all_simple_shuffle),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        DB.getInstance(context).trackDao()
+                                                            .getAllByAlbum(joinedAlbum.album.id)
+                                                            .forEach {
+                                                                viewModel.deleteTrack(it.toDomainTrack())
+                                                                showAlbumDialog = false
+                                                            }
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_delete_from_device),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (showArtistDialog) {
+                            selectedArtist?.let { artist ->
+                                Dialog(onDismissRequest = { showArtistDialog = false }) {
+                                    Card(backgroundColor = QTheme.colors.colorBackground) {
+                                        Column {
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.NEXT,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        showArtistDialog = false
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_next),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.LAST,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        showArtistDialog = false
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_last),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.OVERRIDE,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        showArtistDialog = false
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_override_all),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_NEXT,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        showArtistDialog = false
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_albums_insert_all_shuffle_next),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_LAST,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        showArtistDialog = false
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_albums_insert_all_shuffle_last),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_OVERRIDE,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        showArtistDialog = false
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_albums_override_all_shuffle),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_SIMPLE_NEXT,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        showArtistDialog = false
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_simple_shuffle_next),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_SIMPLE_LAST,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        showArtistDialog = false
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_simple_shuffle_last),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        showArtistDialog = false
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_override_all_simple_shuffle),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        DB.getInstance(context).trackDao()
+                                                            .getAllByArtist(artist.id)
+                                                            .forEach {
+                                                                viewModel.deleteTrack(it.toDomainTrack())
+                                                                showArtistDialog = false
+                                                            }
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_delete_from_device),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (showDropboxDialog) {
+                            Dialog(onDismissRequest = { showDropboxDialog = false }) {
+
+                            }
+                        }
                     }
                 }
             }
         }
-
-//        binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
-//        binding.lifecycleOwner = this
-//        binding.viewModel = viewModel
-//        binding.contentSearch.recyclerView.adapter = searchListAdapter
-//
-//        observeEvents()
-//
-//        setSupportActionBar(binding.toolbar)
-//        setupDrawer()
 
         if (savedInstanceState == null) {
             viewModel.checkDBIsEmpty { retrieveMedia(false) }
@@ -364,10 +906,6 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         }
-
-//        supportFragmentManager.commit {
-//            add(R.id.bottom_sheet, BottomSheetFragment.newInstance())
-//        }
     }
 
     override fun onResume() {

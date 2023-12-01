@@ -1,8 +1,13 @@
 package com.geckour.q.ui.main
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -19,13 +24,16 @@ import androidx.compose.material.IconButton
 import androidx.compose.material.Slider
 import androidx.compose.material.SliderDefaults
 import androidx.compose.material.Text
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -53,6 +61,7 @@ fun Controller(
     queueRemainingDuration: Long,
     playbackInfo: Pair<Boolean, Int>,
     repeatMode: Int,
+    isLoading: Boolean,
     onTogglePlayPause: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
@@ -77,25 +86,69 @@ fun Controller(
                 Column(
                     modifier = Modifier
                         .padding(horizontal = 8.dp)
-                        .height(100.dp)
+                        .height(100.dp),
+                    verticalArrangement = Arrangement.Center
                 ) {
-                    Text(
-                        text = currentTrack?.title.orEmpty(),
-                        fontSize = 12.sp,
-                        color = QTheme.colors.colorTextPrimary,
-                        modifier = Modifier.padding(top = 4.dp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = currentTrack?.let { "${it.artist.title} - ${it.album.title}" }
-                            .orEmpty(),
-                        fontSize = 10.sp,
-                        color = QTheme.colors.colorTextPrimary,
-                        modifier = Modifier.padding(top = 2.dp),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row {
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
+                        ) {
+                            Text(
+                                text = currentTrack?.title.orEmpty(),
+                                fontSize = 12.sp,
+                                color = QTheme.colors.colorTextPrimary,
+                                modifier = Modifier.padding(top = 4.dp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = currentTrack?.let { "${it.artist.title} - ${it.album.title}" }
+                                    .orEmpty(),
+                                fontSize = 10.sp,
+                                color = QTheme.colors.colorTextPrimary,
+                                modifier = Modifier.padding(top = 2.dp),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Row(
+                            modifier = Modifier
+                                .width(84.dp)
+                                .alpha(if (isLoading) 1f else 0f),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            val infiniteTransition = rememberInfiniteTransition(label = "")
+                            val degree by infiniteTransition.animateFloat(
+                                initialValue = 0f,
+                                targetValue = 360f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(
+                                        1000,
+                                        easing = LinearEasing
+                                    )
+                                ),
+                                label = ""
+                            )
+                            Spacer(modifier = Modifier.width(24.dp))
+                            IconButton(
+                                onClick = shuffleQueue,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .graphicsLayer {
+                                        rotationZ = degree
+                                    }
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_empty),
+                                    contentDescription = null,
+                                    tint = QTheme.colors.colorTextPrimary
+                                )
+                            }
+                        }
+                    }
                     Row {
                         Row(
                             modifier = Modifier
@@ -104,6 +157,15 @@ fun Controller(
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            val rotation = remember { Animatable(360f) }
+                            LaunchedEffect(playbackInfo.second) {
+                                if (playbackInfo.second == Player.STATE_BUFFERING) {
+                                    rotation.animateTo(
+                                        0f,
+                                        animationSpec = infiniteRepeatable(tween(1000)),
+                                    )
+                                }
+                            }
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_backward),
                                 contentDescription = null,
@@ -124,6 +186,10 @@ fun Controller(
                                 onClick = {
                                     onTogglePlayPause()
                                     resetPlaybackButton()
+                                },
+                                modifier = Modifier.graphicsLayer {
+                                    rotationZ =
+                                        if (playbackInfo.second == Player.STATE_BUFFERING) rotation.value else 0f
                                 }
                             ) {
                                 Icon(
@@ -191,7 +257,7 @@ fun Controller(
                 val shouldShowCurrentRemain by context.getShouldShowCurrentRemain()
                     .collectAsState(initial = false)
                 Text(
-                    text = progress.getTimeString(),
+                    text = currentTrack?.let { progress.getTimeString() }.orEmpty(),
                     fontSize = 10.sp,
                     color = QTheme.colors.colorTextPrimary,
                     modifier = Modifier.width(60.dp),
@@ -221,10 +287,7 @@ fun Controller(
                     textAlign = TextAlign.Center,
                     modifier = Modifier
                         .width(60.dp)
-                        .clickable(
-                            interactionSource = MutableInteractionSource(),
-                            indication = rememberRipple()
-                        ) {
+                        .clickable {
                             coroutineScope.launch {
                                 context.setShouldShowCurrentRemain(shouldShowCurrentRemain.not())
                             }
@@ -287,7 +350,9 @@ fun Controller(
             }
             IconButton(
                 onClick = clearQueue,
-                modifier = Modifier.padding(end = 12.dp).size(20.dp)
+                modifier = Modifier
+                    .padding(end = 12.dp)
+                    .size(20.dp)
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_remove),

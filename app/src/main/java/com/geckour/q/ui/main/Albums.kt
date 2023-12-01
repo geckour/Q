@@ -1,5 +1,7 @@
 package com.geckour.q.ui.main
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -10,7 +12,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.Card
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
@@ -28,12 +29,17 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun Albums(navController: NavController, artistId: Long = -1) {
+fun Albums(
+    navController: NavController,
+    artistId: Long = -1,
+    onSelectAlbum: (item: JoinedAlbum) -> Unit
+) {
     val db = DB.getInstance(LocalContext.current)
     val joinedAlbums by (
             if (artistId < 1) db.albumDao().getAllAsync()
@@ -46,7 +52,10 @@ fun Albums(navController: NavController, artistId: Long = -1) {
                 shape = RectangleShape,
                 backgroundColor = QTheme.colors.colorBackground,
                 elevation = 0.dp,
-                onClick = { navController.navigate(route = "tracks?albumId=${joinedAlbum.album.id}") }
+                modifier = Modifier.combinedClickable(
+                    onClick = { navController.navigate(route = "tracks?albumId=${joinedAlbum.album.id}") },
+                    onLongClick = { onSelectAlbum(joinedAlbum) }
+                )
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -84,7 +93,7 @@ fun Albums(navController: NavController, artistId: Long = -1) {
                         modifier = Modifier.padding(horizontal = 4.dp)
                     )
                     IconButton(
-                        onClick = { /*TODO*/ },
+                        onClick = { onSelectAlbum(joinedAlbum) },
                         modifier = Modifier.padding(horizontal = 4.dp)
                     ) {
                         Icon(

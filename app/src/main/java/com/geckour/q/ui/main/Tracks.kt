@@ -27,12 +27,13 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.toDomainTrack
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun Tracks(albumId: Long = -1, genreName: String? = null) {
+fun Tracks(albumId: Long = -1, genreName: String? = null, onTrackSelected: (item: DomainTrack) -> Unit) {
     val db = DB.getInstance(LocalContext.current)
     val joinedTracks by (when {
         albumId > 0 -> db.trackDao().getAllByAlbumAsync(albumId)
@@ -108,7 +109,7 @@ fun Tracks(albumId: Long = -1, genreName: String? = null) {
                 shape = RectangleShape,
                 elevation = 0.dp,
                 backgroundColor = QTheme.colors.colorBackground,
-                onClick = { /* TODO */ }
+                onClick = { onTrackSelected(domainTrack) }
             ) {
                 Column(modifier = Modifier.padding(start = 16.dp, top = 16.dp)) {
                     Row(

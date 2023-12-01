@@ -1,5 +1,7 @@
 package com.geckour.q.ui.main
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
@@ -8,7 +10,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.Card
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
@@ -26,12 +27,13 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Artist
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun Artists(navController: NavController) {
+fun Artists(navController: NavController, onSelectArtist: (item: Artist) -> Unit) {
     val db = DB.getInstance(LocalContext.current)
     val artists by db.artistDao().getAllOrientedAlbumAsync().collectAsState(initial = emptyList())
 
@@ -41,7 +43,9 @@ fun Artists(navController: NavController) {
                 shape = RectangleShape,
                 backgroundColor = QTheme.colors.colorBackground,
                 elevation = 0.dp,
-                onClick = { navController.navigate(route = "albums/${artist.id}") }
+                modifier = Modifier.combinedClickable(
+                    onClick = { navController.navigate(route = "albums/${artist.id}") },
+                    onLongClick = { onSelectArtist(artist) }),
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -70,7 +74,7 @@ fun Artists(navController: NavController) {
                         modifier = Modifier.padding(horizontal = 4.dp)
                     )
                     IconButton(
-                        onClick = { /*TODO*/ },
+                        onClick = { onSelectArtist(artist) },
                         modifier = Modifier.padding(horizontal = 4.dp)
                     ) {
                         Icon(
