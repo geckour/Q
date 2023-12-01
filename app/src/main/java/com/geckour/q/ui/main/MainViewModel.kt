@@ -50,6 +50,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -58,10 +59,15 @@ class MainViewModel(
     private val sharedPreferences: SharedPreferences
 ) : ViewModel() {
 
+    companion object {
+
+        const val DROPBOX_PATH_ROOT = "/"
+    }
+
     private val db = DB.getInstance(app)
     internal val workManager = WorkManager.getInstance(app)
-    internal val mediaRetrieveWorkInfoList =
-        workManager.getWorkInfosForUniqueWorkLiveData(MEDIA_RETRIEVE_WORKER_NAME)
+    internal val mediaRetrieveWorkInfoListFlow =
+        workManager.getWorkInfosForUniqueWorkFlow(MEDIA_RETRIEVE_WORKER_NAME)
 
     private var isBoundService = false
 
@@ -89,7 +95,7 @@ class MainViewModel(
 
     private val dropboxItemListChannel =
         Channel<Pair<String, List<FolderMetadata>>>(capacity = Channel.CONFLATED)
-    internal val dropboxItemList = dropboxItemListChannel.receiveAsFlow().distinctUntilChanged()
+    internal val dropboxItemList = dropboxItemListChannel.receiveAsFlow()
 
     internal val loading = MutableStateFlow<Pair<Boolean, (() -> Unit)?>>(false to null)
     internal var isSearchViewOpened = false
@@ -537,6 +543,12 @@ class MainViewModel(
             val currentDirTitle = (dropboxMetadata?.name ?: "Root")
             dropboxItemListChannel.send(currentDirTitle to result.entries.filterIsInstance<FolderMetadata>())
         }
+
+    internal fun clearDropboxItemList() {
+        viewModelScope.launch {
+            dropboxItemListChannel.send("" to emptyList())
+        }
+    }
 
     inner class SearchQueryListener(private val searchView: SearchView) :
         SearchView.OnQueryTextListener {

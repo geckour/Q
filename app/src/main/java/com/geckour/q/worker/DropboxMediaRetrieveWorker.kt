@@ -41,6 +41,7 @@ class DropboxMediaRetrieveWorker(
 
     companion object {
 
+        const val TAG = "dropbox_media_retrieve_worker"
         const val KEY_ROOT_PATH = "key_root_path"
     }
 

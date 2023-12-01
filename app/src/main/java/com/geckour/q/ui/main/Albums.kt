@@ -16,6 +16,7 @@ import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -23,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -38,6 +40,7 @@ import com.geckour.q.util.getTimeString
 fun Albums(
     navController: NavController,
     artistId: Long = -1,
+    changeTopBarTitle: (title: String) -> Unit,
     onSelectAlbum: (item: JoinedAlbum) -> Unit
 ) {
     val db = DB.getInstance(LocalContext.current)
@@ -45,6 +48,13 @@ fun Albums(
             if (artistId < 1) db.albumDao().getAllAsync()
             else db.albumDao().getAllByArtistIdAsync(artistId)
             ).collectAsState(initial = emptyList())
+    val defaultTabBarTitle = stringResource(id = R.string.nav_album)
+    LaunchedEffect(joinedAlbums) {
+        changeTopBarTitle(
+            if (artistId > 0) db.artistDao().get(artistId)?.title ?: defaultTabBarTitle
+            else defaultTabBarTitle
+        )
+    }
 
     LazyColumn {
         items(joinedAlbums) { joinedAlbum ->

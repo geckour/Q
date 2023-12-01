@@ -14,9 +14,13 @@ import android.widget.ImageView
 import androidx.annotation.DrawableRes
 import androidx.core.app.NotificationCompat
 import androidx.core.content.FileProvider
+import androidx.core.graphics.drawable.toBitmap
 import androidx.media.session.MediaButtonReceiver
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
+import coil.Coil
+import coil.request.ImageRequest
+import coil.size.Scale
 import com.bumptech.glide.Glide
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.BuildConfig
@@ -134,14 +138,23 @@ suspend fun DB.searchTrackByFuzzyTitle(title: String): List<JoinedTrack> =
 suspend fun List<String>.getThumb(context: Context): Bitmap? {
     if (this.isEmpty()) return null
     val unit = 100
-    val bitmap = Bitmap.createBitmap(
-        ((this.size * 0.9 - 0.1) * unit).toInt(), unit, Bitmap.Config.ARGB_8888
-    )
+    val width = ((this.size * 0.9 - 0.1) * unit).toInt()
+    val bitmap = Bitmap.createBitmap(width, unit, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
     withContext(Dispatchers.IO) {
         this@getThumb.reversed().forEachIndexed { i, uriString ->
             val b = catchAsNull {
-                Glide.with(context).asBitmap().load(File(uriString)).submit().get()
+                Coil.imageLoader(context)
+                    .execute(
+                        ImageRequest.Builder(context)
+                            .data(uriString)
+                            .size(unit)
+                            .scale(Scale.FIT)
+                            .allowHardware(false)
+                            .build()
+                    )
+                    .drawable
+                    ?.toBitmap()
             } ?: return@forEachIndexed
             canvas.drawBitmap(
                 b,

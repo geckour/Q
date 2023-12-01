@@ -44,7 +44,7 @@ fun Artists(navController: NavController, onSelectArtist: (item: Artist) -> Unit
                 backgroundColor = QTheme.colors.colorBackground,
                 elevation = 0.dp,
                 modifier = Modifier.combinedClickable(
-                    onClick = { navController.navigate(route = "albums/${artist.id}") },
+                    onClick = { navController.navigate(route = "albums?artistId=${artist.id}") },
                     onLongClick = { onSelectArtist(artist) }),
             ) {
                 Row(

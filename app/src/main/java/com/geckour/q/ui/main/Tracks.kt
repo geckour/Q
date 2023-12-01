@@ -15,12 +15,14 @@ import androidx.compose.material.Card
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,78 +35,33 @@ import com.geckour.q.util.toDomainTrack
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun Tracks(albumId: Long = -1, genreName: String? = null, onTrackSelected: (item: DomainTrack) -> Unit) {
+fun Tracks(
+    albumId: Long = -1,
+    genreName: String? = null,
+    changeTopBarTitle: (title: String) -> Unit,
+    onTrackSelected: (item: DomainTrack) -> Unit
+) {
     val db = DB.getInstance(LocalContext.current)
     val joinedTracks by (when {
         albumId > 0 -> db.trackDao().getAllByAlbumAsync(albumId)
         genreName != null -> db.trackDao().getAllByGenreNameAsync(genreName)
         else -> db.trackDao().getAllAsync()
     }).collectAsState(initial = emptyList())
+    val defaultTabBarTitle = stringResource(id = R.string.nav_track)
+
+    LaunchedEffect(joinedTracks) {
+        changeTopBarTitle(
+            when {
+                albumId > 0 -> db.albumDao().get(albumId)?.album?.title ?: defaultTabBarTitle
+                genreName != null -> genreName
+                else -> defaultTabBarTitle
+            }
+        )
+    }
 
     LazyColumn {
         items(joinedTracks) { joinedTrack ->
             val domainTrack = joinedTrack.toDomainTrack()
-//        val popupMenu = PopupMenu(LocalContext.current, LocalView.current).apply {
-//            setOnMenuItemClickListener { menuItem ->
-//                when (menuItem.itemId) {
-//                    R.id.menu_transition_to_artist -> {
-//                        mainViewModel.onRequestNavigate(domainTrack.artist)
-//                    }
-//
-//                    R.id.menu_transition_to_album -> {
-//                        mainViewModel.onRequestNavigate(domainTrack.album)
-//                    }
-//
-//                    R.id.menu_insert_all_next,
-//                    R.id.menu_insert_all_last,
-//                    R.id.menu_override_all -> {
-//                        mainViewModel.onNewQueue(
-//                            listOf(domainTrack),
-//                            when (menuItem.itemId) {
-//                                R.id.menu_insert_all_next -> {
-//                                    InsertActionType.NEXT
-//                                }
-//
-//                                R.id.menu_insert_all_last -> {
-//                                    InsertActionType.LAST
-//                                }
-//
-//                                R.id.menu_override_all -> {
-//                                    InsertActionType.OVERRIDE
-//                                }
-//
-//                                else -> return@setOnMenuItemClickListener false
-//                            },
-//                            OrientedClassType.TRACK
-//                        )
-//                    }
-//
-//                    R.id.menu_edit_metadata -> {
-//                        lifecycleScope.launch {
-//                            val db = DB.getInstance(requireContext())
-//                            val tracks = mainViewModel.currentQueueFlow.value.mapNotNull {
-//                                db.trackDao().get(it.id)
-//                            }
-//                            requireContext().showFileMetadataUpdateDialog(
-//                                tracks,
-//                                onUpdate = { binding ->
-//                                    lifecycleScope.launch {
-//                                        binding.updateFileMetadata(requireContext(), db, tracks)
-//                                    }
-//                                }
-//                            )
-//                        }
-//                    }
-//
-//                    R.id.menu_delete_track -> {
-//                        mainViewModel.deleteTrack(domainTrack)
-//                    }
-//                }
-//
-//                return@setOnMenuItemClickListener true
-//            }
-//            inflate(R.menu.queue)
-//        }
             Card(
                 shape = RectangleShape,
                 elevation = 0.dp,

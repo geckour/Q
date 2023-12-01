@@ -33,6 +33,7 @@ class LocalMediaRetrieveWorker(
 
     companion object {
 
+        const val TAG = "local_media_retrieve_worker"
         const val KEY_ONLY_ADDED = "key_only_added"
 
         private val projection = arrayOf(

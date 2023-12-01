@@ -105,7 +105,7 @@ class SearchListAdapter(
 
                 return@setOnMenuItemClickListener true
             }
-            inflate(R.menu.track)
+//            inflate(R.menu.track)
         }
 
         fun onBind(item: SearchItem) {
