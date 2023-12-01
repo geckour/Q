@@ -28,8 +28,6 @@ class BottomSheetViewModel(sharedPreferences: SharedPreferences) : ViewModel() {
     internal val toggleSheetState = MutableLiveData<Unit>()
     private val _showCurrentRemain = MutableLiveData<Boolean>()
     internal val showCurrentRemain: LiveData<Boolean> = _showCurrentRemain
-    private val _scrollToCurrent = MutableStateFlow<Long>(-1)
-    internal val scrollToCurrent: StateFlow<Long> = _scrollToCurrent
 
     init {
         _showCurrentRemain.value = sharedPreferences.showCurrentRemain
@@ -61,10 +59,6 @@ class BottomSheetViewModel(sharedPreferences: SharedPreferences) : ViewModel() {
 
     fun onClickTimeRight() {
         _showCurrentRemain.value = _showCurrentRemain.value?.not()
-    }
-
-    fun onClickScrollToCurrentButton() {
-        _scrollToCurrent.value = System.currentTimeMillis()
     }
 
     internal fun onTransitionToArtist(

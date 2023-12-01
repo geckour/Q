@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -49,6 +50,8 @@ fun Queue(
     domainTracks: List<DomainTrack>,
     currentIndex: Int,
     scrollTo: Int = 0,
+    forceScrollToCurrent: Long,
+    isQueueVisible: Boolean,
     onQueueMove: (from: Int, to: Int) -> Unit,
     onChangeRequestedTrackInQueue: (domainTrack: DomainTrack) -> Unit,
     onRemoveTrackFromQueue: (domainTrack: DomainTrack) -> Unit
@@ -62,6 +65,11 @@ fun Queue(
         items = domainTracks
     }
     LaunchedEffect(scrollTo) {
+        if (isQueueVisible.not()) {
+            reorderableState.listState.animateScrollToItem(scrollTo)
+        }
+    }
+    LaunchedEffect(forceScrollToCurrent) {
         reorderableState.listState.animateScrollToItem(scrollTo)
     }
 
@@ -70,6 +78,7 @@ fun Queue(
         modifier = Modifier
             .reorderable(reorderableState)
             .detectReorderAfterLongPress(reorderableState)
+            .fillMaxHeight()
     ) {
         itemsIndexed(items, { _, item -> item.id }) { index, domainTrack ->
             ReorderableItem(

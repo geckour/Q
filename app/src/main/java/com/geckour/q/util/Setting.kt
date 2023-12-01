@@ -140,12 +140,22 @@ data class EqualizerSettings(
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 val isNightModeKey = booleanPreferencesKey("key_night-mode")
+val shouldShowCurrentRemainKey = booleanPreferencesKey("key_show_current_remain")
+
 fun Context.getIsNightMode(): Flow<Boolean> = dataStore.data.map {
     it[isNightModeKey] ?: false
 }
 
 suspend fun Context.setIsNightMode(isNightMode: Boolean) {
     dataStore.edit { it[isNightModeKey] = isNightMode }
+}
+
+fun Context.getShouldShowCurrentRemain(): Flow<Boolean> = dataStore.data.map {
+    it[shouldShowCurrentRemainKey] ?: false
+}
+
+suspend fun Context.setShouldShowCurrentRemain(shouldShowCurrentRemain: Boolean) {
+    dataStore.edit { it[shouldShowCurrentRemainKey] = shouldShowCurrentRemain }
 }
 
 var SharedPreferences.isNightMode by Pref.PrefBoolean("key_night-mode", false)

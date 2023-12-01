@@ -20,6 +20,7 @@ import androidx.compose.material.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -177,6 +178,8 @@ class MainActivity : AppCompatActivity() {
             val currentIndex by viewModel.currentIndexFlow.collectAsState()
             val currentPlaybackPosition by viewModel.currentPlaybackPositionFlow.collectAsState()
             val currentPlaybackInfo by viewModel.currentPlaybackInfoFlow.collectAsState()
+            val currentRepeatMode by viewModel.currentRepeatModeFlow.collectAsState()
+            var forceScrollToCurrent by remember { mutableLongStateOf(System.currentTimeMillis()) }
 
             BackHandler(scaffoldState.drawerState.isOpen) {
                 coroutineScope.launch { scaffoldState.drawerState.close() }
@@ -207,7 +210,13 @@ class MainActivity : AppCompatActivity() {
                         Controller(
                             currentTrack = queue.getOrNull(currentIndex),
                             progress = currentPlaybackPosition,
+                            queueTotalDuration = queue.sumOf { it.duration },
+                            queueRemainingDuration = queue.drop(currentIndex + 1)
+                                .sumOf { it.duration }
+                                    + (queue.getOrNull(currentIndex)?.duration ?: 0)
+                                    - currentPlaybackPosition,
                             playbackInfo = currentPlaybackInfo,
+                            repeatMode = currentRepeatMode,
                             onTogglePlayPause = {
                                 viewModel.onPlayOrPause(
                                     currentPlaybackInfo.first && currentPlaybackInfo.second == Player.STATE_READY
@@ -220,15 +229,23 @@ class MainActivity : AppCompatActivity() {
                             resetPlaybackButton = {
                                 viewModel.onNewPlaybackButton(PlaybackButton.UNDEFINED)
                             },
-                            onNewProgress = viewModel::onNewSeekBarProgress
+                            onNewProgress = viewModel::onNewSeekBarProgress,
+                            rotateRepeatMode = viewModel::onClickRepeatButton,
+                            shuffleQueue = viewModel::onClickShuffleButton,
+                            moveToCurrentIndex = {
+                                forceScrollToCurrent = System.currentTimeMillis()
+                            },
+                            clearQueue = viewModel::onClickClearQueueButton
                         )
                         Queue(
                             domainTracks = queue,
                             currentIndex = currentIndex,
                             scrollTo = currentIndex.coerceAtLeast(0),
+                            forceScrollToCurrent = forceScrollToCurrent,
+                            isQueueVisible = scaffoldState.bottomSheetState.isExpanded,
                             onQueueMove = viewModel::onQueueMove,
                             onChangeRequestedTrackInQueue = viewModel::onChangeRequestedTrackInQueue,
-                            onRemoveTrackFromQueue = viewModel::onRemoveTrackFromQueue
+                            onRemoveTrackFromQueue = viewModel::onRemoveTrackFromQueue,
                         )
                     }
                 ) { paddingValues ->

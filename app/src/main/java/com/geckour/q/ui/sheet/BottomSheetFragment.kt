@@ -78,7 +78,6 @@ class BottomSheetFragment : Fragment() {
                     else -> R.drawable.ic_queue
                 }
             )
-            if (state == BottomSheetBehavior.STATE_EXPANDED) scrollToCurrent()
             onBackPressedCallback.isEnabled = state == BottomSheetBehavior.STATE_EXPANDED
         }
     }
@@ -114,7 +113,8 @@ class BottomSheetFragment : Fragment() {
         binding.queue.setContent {
             val domainTracks by mainViewModel.currentQueueFlow.collectAsState()
             val currentIndex by mainViewModel.currentIndexFlow.collectAsState()
-            val isNightMode by LocalContext.current.getIsNightMode().collectAsState(initial = isSystemInDarkTheme())
+            val isNightMode by LocalContext.current.getIsNightMode()
+                .collectAsState(initial = isSystemInDarkTheme())
             QTheme(darkTheme = isNightMode) {
                 Surface(
                     color = QTheme.colors.colorBackgroundBottomSheet,
@@ -124,6 +124,8 @@ class BottomSheetFragment : Fragment() {
                         domainTracks = domainTracks,
                         currentIndex = currentIndex.coerceAtLeast(0),
                         scrollTo = currentIndex,
+                        forceScrollToCurrent = 0,
+                        isQueueVisible = true,
                         onQueueMove = mainViewModel::onQueueMove,
                         onChangeRequestedTrackInQueue = mainViewModel::onChangeRequestedTrackInQueue,
                         onRemoveTrackFromQueue = mainViewModel::onRemoveTrackFromQueue
@@ -221,10 +223,6 @@ class BottomSheetFragment : Fragment() {
         binding.buttonToggleVisibleQueue.setOnClickListener { viewModel.onClickQueueButton() }
 
         binding.textTimeRight.setOnClickListener { viewModel.onClickTimeRight() }
-
-        binding.buttonScrollToCurrent.setOnClickListener {
-            viewModel.onClickScrollToCurrentButton()
-        }
 
         binding.buttonTouchLock.setOnClickListener {
             changeTouchLocked(checkNotNull(binding.isTouchLocked).not())
@@ -332,10 +330,6 @@ class BottomSheetFragment : Fragment() {
             delay(1000)
             views.forEach { withContext(Dispatchers.Main) { it.isSelected = true } }
         }
-    }
-
-    private fun scrollToCurrent() {
-        viewModel.onClickScrollToCurrentButton()
     }
 
     @SuppressLint("ClickableViewAccessibility")
