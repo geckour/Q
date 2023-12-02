@@ -47,7 +47,7 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:orientation="horizontal"
-            app:layout_constraintGuide_begin="@dimen/bottom_sheet_peek_height" />
+            app:layout_constraintGuide_begin="144dp" />
 
         <Constraint
             android:id="@+id/guide_artwork_end"
@@ -254,7 +254,7 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:orientation="horizontal"
-            app:layout_constraintGuide_begin="@dimen/bottom_sheet_peek_height" />
+            app:layout_constraintGuide_begin="144dp" />
 
         <Constraint
             android:id="@id/guide_artwork_end"

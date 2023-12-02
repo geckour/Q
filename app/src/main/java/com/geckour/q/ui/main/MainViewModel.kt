@@ -24,8 +24,8 @@ import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.QueueInfo
 import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.ShuffleActionType
-import com.geckour.q.util.dropboxCredential
 import com.geckour.q.util.obtainDbxClient
+import com.geckour.q.util.setDropboxCredential
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +33,7 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.singleOrNull
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -62,7 +63,6 @@ class MainViewModel(
     internal val currentRepeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
     internal val equalizerStateFlow = MutableStateFlow(false)
 
-    internal val scrollToTop = MutableLiveData<Unit>()
     internal val forceLoad = MutableLiveData<Unit>()
 
     private val dropboxItemListChannel =
@@ -100,10 +100,10 @@ class MainViewModel(
                 }
                 viewModelScope.launch {
                     playerService.sourcePathsFlow.map { sourcePaths ->
-                        sourcePaths.mapIndexedNotNull { index, path ->
+                        sourcePaths.mapNotNull {
                             DB.getInstance(app)
                                 .trackDao()
-                                .getBySourcePath(path)
+                                .getBySourcePath(it)
                                 ?.toDomainTrack()
                         }
                     }.collect {
@@ -239,10 +239,6 @@ class MainViewModel(
         onRemoveQueueByIndex?.invoke(index)
     }
 
-    fun onToolbarClick() {
-        scrollToTop.postValue(Unit)
-    }
-
     fun onShuffle(actionType: ShuffleActionType? = null) {
         onShuffleQueue?.invoke(actionType)
     }
@@ -351,13 +347,15 @@ class MainViewModel(
 
     internal fun storeDropboxApiToken() {
         val credential = Auth.getDbxCredential() ?: return
-        sharedPreferences.dropboxCredential = credential.toString()
+        viewModelScope.launch {
+            app.setDropboxCredential(credential.toString())
+        }
         showDropboxFolderChooser()
     }
 
     internal fun showDropboxFolderChooser(dropboxMetadata: Metadata? = null) =
         viewModelScope.launch(Dispatchers.IO) {
-            val client = obtainDbxClient(sharedPreferences) ?: return@launch
+            val client = obtainDbxClient(app).singleOrNull() ?: return@launch
             var result = client.files().listFolder(dropboxMetadata?.pathLower.orEmpty())
             while (true) {
                 if (result.hasMore.not()) break

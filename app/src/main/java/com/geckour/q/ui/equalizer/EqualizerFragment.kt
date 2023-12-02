@@ -5,9 +5,6 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.LayoutInflater
-import android.view.Menu
-import android.view.MenuInflater
-import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.SeekBar
@@ -18,21 +15,10 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.geckour.q.R
 import com.geckour.q.databinding.FragmentEqualizerBinding
-import com.geckour.q.databinding.LabelEqualizerBinding
-import com.geckour.q.databinding.SeekBarEqualizerBinding
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.util.EqualizerParams
-import com.geckour.q.util.EqualizerSettings
 import com.geckour.q.util.SettingCommand
-import com.geckour.q.util.equalizerEnabled
-import com.geckour.q.util.equalizerParams
-import com.geckour.q.util.equalizerSettings
-import com.geckour.q.util.getReadableStringWithUnit
-import com.geckour.q.util.setEqualizerLevel
-import com.geckour.q.util.setIconTint
-import com.geckour.q.util.toggleDayNight
-import com.h6ah4i.android.widget.verticalseekbar.VerticalSeekBar
 import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.sharedViewModel
@@ -63,7 +49,7 @@ class EqualizerFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        initialStoredState = sharedPreferences.equalizerEnabled
+//        initialStoredState = sharedPreferences.equalizerEnabled
         if (initialStoredState) sendCommand(SettingCommand.SET_EQUALIZER)
 
         observeEvents()
@@ -72,18 +58,10 @@ class EqualizerFragment : Fragment() {
         binding.viewModel = viewModel
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.menu_toggle_daynight -> requireActivity().toggleDayNight(sharedPreferences)
-            else -> return false
-        }
-        return true
-    }
-
     override fun onStop() {
         super.onStop()
 
-        if (errorThrown) sharedPreferences.equalizerEnabled = initialStoredState
+//        if (errorThrown) sharedPreferences.equalizerEnabled = initialStoredState
     }
 
     private fun observeEvents() {
@@ -99,18 +77,18 @@ class EqualizerFragment : Fragment() {
             it ?: return@observe
 
             val changeTo = it.not()
-            sharedPreferences.equalizerEnabled = changeTo
+//            sharedPreferences.equalizerEnabled = changeTo
             sendCommand(
                 if (changeTo) SettingCommand.SET_EQUALIZER
                 else SettingCommand.UNSET_EQUALIZER
             )
         }
 
-        viewModel.flatten.observe(viewLifecycleOwner) { flatten() }
+//        viewModel.flatten.observe(viewLifecycleOwner) { flatten() }
     }
 
     private fun onEqualizerStateChanged(state: Boolean) {
-        errorThrown = sharedPreferences.equalizerEnabled && state.not()
+//        errorThrown = sharedPreferences.equalizerEnabled && state.not()
         if (errorThrown) {
             context?.let {
                 Toast.makeText(
@@ -127,79 +105,81 @@ class EqualizerFragment : Fragment() {
         }
     }
 
-    private fun inflateSeekBars() {
-        binding.seekBarContainer.removeAllViews()
-        binding.labelContainer?.removeAllViews()
+//    private fun inflateSeekBars() {
+//        binding.seekBarContainer.removeAllViews()
+//        binding.labelContainer?.removeAllViews()
+//
+//        sharedPreferences.equalizerParams?.also { params ->
+//            binding.textScaleBottom.text = getString(
+//                R.string.equalizer_scale_label,
+//                (params.levelRange.first / 100f).getReadableStringWithUnit()
+//            )
+//            binding.textScaleLowerMiddle.text = getString(
+//                R.string.equalizer_scale_label,
+//                (params.levelRange.first / 200f).getReadableStringWithUnit()
+//            )
+//            binding.textScaleUpperMiddle.text = getString(
+//                R.string.equalizer_scale_label,
+//                (params.levelRange.second / 200f).getReadableStringWithUnit()
+//            )
+//            binding.textScaleTop.text = getString(
+//                R.string.equalizer_scale_label,
+//                (params.levelRange.second / 100f).getReadableStringWithUnit()
+//            )
+//
+//            val levels = sharedPreferences.equalizerSettings?.levels
+//            params.bands.forEachIndexed { i, band ->
+//                SeekBarEqualizerBinding.inflate(
+//                    layoutInflater, binding.seekBarContainer, false
+//                ).apply {
+//                    seekBar.max = params.levelRange.let { it.second - it.first }
+//                    seekBar.progress = if (levels != null) seekBar.calcProgress(params, levels[i])
+//                    else seekBar.max / 2
+//                    seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+//                        override fun onProgressChanged(
+//                            seekBar: SeekBar, progress: Int, fromUser: Boolean
+//                        ) {
+//                            val level = params.normalizedLevel(progress.toFloat() / seekBar.max)
+//                            sharedPreferences.setEqualizerLevel(i, level)
+//                            sendCommand(SettingCommand.REFLECT_EQUALIZER_SETTING)
+//                        }
+//
+//                        override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+//
+//                        override fun onStopTrackingTouch(seekBar: SeekBar?) {
+//                            seekBar ?: return
+//                            val level =
+//                                params.normalizedLevel(seekBar.progress.toFloat() / seekBar.max)
+//                            seekBar.progress = seekBar.calcProgress(params, level)
+//                            sharedPreferences.setEqualizerLevel(i, level)
+//                            sendCommand(SettingCommand.REFLECT_EQUALIZER_SETTING)
+//                        }
+//                    })
+//                    binding.seekBarContainer.addView(this.root)
+//                }
+//                LabelEqualizerBinding.inflate(
+//                    layoutInflater, binding.labelContainer, false
+//                ).apply {
+//                    seekBarLabel.text = getString(
+//                        R.string.equalizer_seek_bar_label,
+//                        (band.centerFreq / 1000f).getReadableStringWithUnit()
+//                    )
+//                    binding.labelContainer?.addView(this.root)
+//                }
+//            }
+//        }
+//    }
 
-        sharedPreferences.equalizerParams?.also { params ->
-            binding.textScaleBottom.text = getString(
-                R.string.equalizer_scale_label, (params.levelRange.first / 100f).getReadableStringWithUnit()
-            )
-            binding.textScaleLowerMiddle.text = getString(
-                R.string.equalizer_scale_label, (params.levelRange.first / 200f).getReadableStringWithUnit()
-            )
-            binding.textScaleUpperMiddle.text = getString(
-                R.string.equalizer_scale_label,
-                (params.levelRange.second / 200f).getReadableStringWithUnit()
-            )
-            binding.textScaleTop.text = getString(
-                R.string.equalizer_scale_label,
-                (params.levelRange.second / 100f).getReadableStringWithUnit()
-            )
-
-            val levels = sharedPreferences.equalizerSettings?.levels
-            params.bands.forEachIndexed { i, band ->
-                SeekBarEqualizerBinding.inflate(
-                    layoutInflater, binding.seekBarContainer, false
-                ).apply {
-                    seekBar.max = params.levelRange.let { it.second - it.first }
-                    seekBar.progress = if (levels != null) seekBar.calcProgress(params, levels[i])
-                    else seekBar.max / 2
-                    seekBar.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                        override fun onProgressChanged(
-                            seekBar: SeekBar, progress: Int, fromUser: Boolean
-                        ) {
-                            val level = params.normalizedLevel(progress.toFloat() / seekBar.max)
-                            sharedPreferences.setEqualizerLevel(i, level)
-                            sendCommand(SettingCommand.REFLECT_EQUALIZER_SETTING)
-                        }
-
-                        override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
-
-                        override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                            seekBar ?: return
-                            val level =
-                                params.normalizedLevel(seekBar.progress.toFloat() / seekBar.max)
-                            seekBar.progress = seekBar.calcProgress(params, level)
-                            sharedPreferences.setEqualizerLevel(i, level)
-                            sendCommand(SettingCommand.REFLECT_EQUALIZER_SETTING)
-                        }
-                    })
-                    binding.seekBarContainer.addView(this.root)
-                }
-                LabelEqualizerBinding.inflate(
-                    layoutInflater, binding.labelContainer, false
-                ).apply {
-                    seekBarLabel.text = getString(
-                        R.string.equalizer_seek_bar_label,
-                        (band.centerFreq / 1000f).getReadableStringWithUnit()
-                    )
-                    binding.labelContainer?.addView(this.root)
-                }
-            }
-        }
-    }
-
-    private fun flatten() {
-        repeat(binding.seekBarContainer.childCount) {
-            binding.seekBarContainer
-                .getChildAt(it)
-                .findViewById<VerticalSeekBar>(R.id.seek_bar)
-                ?.apply { progress = max / 2 }
-        }
-        sharedPreferences.equalizerSettings =
-            EqualizerSettings(sharedPreferences.equalizerSettings?.levels?.map { 0 } ?: return)
-    }
+//    private fun flatten() {
+//        repeat(binding.seekBarContainer.childCount) {
+//            binding.seekBarContainer
+//                .getChildAt(it)
+//                .findViewById<VerticalSeekBar>(R.id.seek_bar)
+//                ?.apply { progress = max / 2 }
+//        }
+//        sharedPreferences.equalizerSettings =
+//            EqualizerSettings(sharedPreferences.equalizerSettings?.levels?.map { 0 } ?: return)
+//    }
 
     private fun sendCommand(command: SettingCommand) {
         activity?.let { it.startService(getCommandIntent(it, command)) }

@@ -40,24 +40,17 @@ import androidx.media3.exoplayer.util.EventLogger
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.App
 import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.Bool
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.ui.LauncherActivity
-import com.geckour.q.util.EqualizerParams
-import com.geckour.q.util.EqualizerSettings
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.PlayerControlCommand
 import com.geckour.q.util.QueueInfo
 import com.geckour.q.util.QueueMetadata
-import com.geckour.q.util.SettingCommand
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.catchAsNull
 import com.geckour.q.util.currentSourcePaths
-import com.geckour.q.util.equalizerEnabled
-import com.geckour.q.util.equalizerParams
-import com.geckour.q.util.equalizerSettings
 import com.geckour.q.util.getMediaItem
 import com.geckour.q.util.getMediaMetadata
 import com.geckour.q.util.getPlayerNotification
@@ -65,12 +58,15 @@ import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.removedAt
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
+import com.geckour.q.util.toDomainTracks
 import com.geckour.q.util.verifiedWithDropbox
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.singleOrNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -384,9 +380,6 @@ class PlayerService : Service(), LifecycleOwner {
 
     private val sharedPreferences by inject<SharedPreferences>()
 
-    private val dropboxClient: DbxClientV2?
-        get() = obtainDbxClient(sharedPreferences)
-
     override fun onBind(intent: Intent): IBinder {
         dispatcher.onServicePreSuperOnBind()
 
@@ -398,7 +391,7 @@ class PlayerService : Service(), LifecycleOwner {
 
         MediaButtonReceiver.handleIntent(mediaSession, intent)
         onPlayerServiceControlAction(intent)
-        onSettingAction(intent)
+//        onSettingAction(intent)
 
         return START_NOT_STICKY
     }
@@ -442,7 +435,7 @@ class PlayerService : Service(), LifecycleOwner {
                         audioSessionId: Int
                     ) {
                         super.onAudioSessionIdChanged(eventTime, audioSessionId)
-                        setEqualizer(audioSessionId)
+//                        setEqualizer(audioSessionId)
                     }
                 })
             }
@@ -504,7 +497,7 @@ class PlayerService : Service(), LifecycleOwner {
                         .forEach { path ->
                             if (alive.not()) return@forEach
                             val track = path.toDomainTrack(db) ?: return@forEach
-                            val new = dropboxClient?.let {
+                            val new = obtainDbxClient(this@PlayerService).singleOrNull()?.let {
                                 track.verifiedWithDropbox(this@PlayerService, it)
                             } ?: return@forEach
 
@@ -546,6 +539,7 @@ class PlayerService : Service(), LifecycleOwner {
                         queueInfo.metadata.classType,
                         queueInfo.metadata.actionType
                     )
+
                     else -> it
                 }
             }
@@ -554,7 +548,9 @@ class PlayerService : Service(), LifecycleOwner {
                     loadStateFlow.value = false to null
                     return
                 }
-                (dropboxClient?.let { track.verifiedWithDropbox(this, it) } ?: track)
+                (obtainDbxClient(this).singleOrNull()?.let {
+                    track.verifiedWithDropbox(this, it)
+                } ?: track)
                     .getMediaItem()
             }
         when (queueInfo.metadata.actionType) {
@@ -808,7 +804,7 @@ class PlayerService : Service(), LifecycleOwner {
                     }
 
                     ShuffleActionType.SHUFFLE_ALBUM_ORIENTED -> {
-                        currentQueue.mapNotNull { it.toDomainTrack(db) }
+                        currentQueue.toDomainTracks(db)
                             .groupBy { it.album.id }
                             .map { it.value }
                             .shuffled()
@@ -817,7 +813,7 @@ class PlayerService : Service(), LifecycleOwner {
                     }
 
                     ShuffleActionType.SHUFFLE_ARTIST_ORIENTED -> {
-                        currentQueue.mapNotNull { it.toDomainTrack(db) }
+                        currentQueue.toDomainTracks(db)
                             .groupBy { it.artist.id }
                             .map { it.value }
                             .shuffled()
@@ -850,18 +846,16 @@ class PlayerService : Service(), LifecycleOwner {
     private fun reorderQueue(newSourcePaths: List<String>) {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                Timber.d("qgeck albums: ${newSourcePaths.map { it.toDomainTrack(db)?.album?.title }}")
                 val targetIndex = newSourcePaths.indexOfFirst {
                     it == player.currentSourcePaths.getOrNull(currentIndex)
                 }.coerceAtLeast(0)
-                Timber.d("qgeck currentIndex: $currentIndex, targetIndex: $targetIndex")
                 submitQueue(
                     QueueInfo(
                         QueueMetadata(
                             InsertActionType.OVERRIDE,
                             OrientedClassType.TRACK
                         ),
-                        newSourcePaths.removedAt(targetIndex).mapNotNull { it.toDomainTrack(db) }
+                        newSourcePaths.removedAt(targetIndex).toDomainTracks(db)
                     ),
                     currentIndex
                 )
@@ -929,19 +923,19 @@ class PlayerService : Service(), LifecycleOwner {
         }
     }
 
-    private fun onSettingAction(intent: Intent) {
-        if (intent.hasExtra(ARGS_KEY_SETTING_COMMAND)) {
-            val key = intent.getIntExtra(ARGS_KEY_SETTING_COMMAND, -1)
-            when (SettingCommand.values()[key]) {
-                SettingCommand.SET_EQUALIZER -> {
-                    player.audioSessionId.apply { setEqualizer(if (this != 0) this else null) }
-                }
-
-                SettingCommand.UNSET_EQUALIZER -> setEqualizer(null)
-                SettingCommand.REFLECT_EQUALIZER_SETTING -> reflectEqualizerSettings()
-            }
-        }
-    }
+//    private fun onSettingAction(intent: Intent) {
+//        if (intent.hasExtra(ARGS_KEY_SETTING_COMMAND)) {
+//            val key = intent.getIntExtra(ARGS_KEY_SETTING_COMMAND, -1)
+//            when (SettingCommand.values()[key]) {
+//                SettingCommand.SET_EQUALIZER -> {
+//                    player.audioSessionId.apply { setEqualizer(if (this != 0) this else null) }
+//                }
+//
+//                SettingCommand.UNSET_EQUALIZER -> setEqualizer(null)
+//                SettingCommand.REFLECT_EQUALIZER_SETTING -> reflectEqualizerSettings()
+//            }
+//        }
+//    }
 
     private fun PlayerState.set() {
         lifecycleScope.launch {
@@ -977,53 +971,53 @@ class PlayerService : Service(), LifecycleOwner {
         }
     }
 
-    private fun setEqualizer(audioSessionId: Int?) {
-        if (audioSessionId != null) {
-            if (equalizer == null) {
-                try {
-                    equalizer = Equalizer(0, audioSessionId).apply {
-                        val params = EqualizerParams(bandLevelRange.let { range ->
-                            range.first().toInt() to range.last().toInt()
-                        }, (0 until numberOfBands).map { index ->
-                            val short = index.toShort()
-                            EqualizerParams.Band(
-                                getBandFreqRange(short).let { it.first() to it.last() },
-                                getCenterFreq(short)
-                            )
-                        })
-                        sharedPreferences.equalizerParams = params
-                        if (sharedPreferences.equalizerSettings == null) {
-                            sharedPreferences.equalizerSettings =
-                                EqualizerSettings(params.bands.map { 0 })
-                        }
-                    }
-                } catch (t: Throwable) {
-                    Timber.e(t)
-                }
-            }
-            if (sharedPreferences.equalizerEnabled) {
-                reflectEqualizerSettings()
-                equalizer?.enabled = true
-            }
-        } else {
-            equalizer?.enabled = false
-            equalizer = null
-        }
+//    private fun setEqualizer(audioSessionId: Int?) {
+//        if (audioSessionId != null) {
+//            if (equalizer == null) {
+//                try {
+//                    equalizer = Equalizer(0, audioSessionId).apply {
+//                        val params = EqualizerParams(bandLevelRange.let { range ->
+//                            range.first().toInt() to range.last().toInt()
+//                        }, (0 until numberOfBands).map { index ->
+//                            val short = index.toShort()
+//                            EqualizerParams.Band(
+//                                getBandFreqRange(short).let { it.first() to it.last() },
+//                                getCenterFreq(short)
+//                            )
+//                        })
+//                        sharedPreferences.equalizerParams = params
+//                        if (sharedPreferences.equalizerSettings == null) {
+//                            sharedPreferences.equalizerSettings =
+//                                EqualizerSettings(params.bands.map { 0 })
+//                        }
+//                    }
+//                } catch (t: Throwable) {
+//                    Timber.e(t)
+//                }
+//            }
+//            if (sharedPreferences.equalizerEnabled) {
+//                reflectEqualizerSettings()
+//                equalizer?.enabled = true
+//            }
+//        } else {
+//            equalizer?.enabled = false
+//            equalizer = null
+//        }
+//
+//        equalizerStateFlow.value = equalizer?.enabled == true
+//    }
 
-        equalizerStateFlow.value = equalizer?.enabled == true
-    }
-
-    private fun reflectEqualizerSettings() {
-        sharedPreferences.equalizerSettings?.apply {
-            levels.forEachIndexed { i, level ->
-                try {
-                    equalizer?.setBandLevel(i.toShort(), level.toShort())
-                } catch (t: Throwable) {
-                    Timber.e(t)
-                }
-            }
-        }
-    }
+//    private fun reflectEqualizerSettings() {
+//        sharedPreferences.equalizerSettings?.apply {
+//            levels.forEachIndexed { i, level ->
+//                try {
+//                    equalizer?.setBandLevel(i.toShort(), level.toShort())
+//                } catch (t: Throwable) {
+//                    Timber.e(t)
+//                }
+//            }
+//        }
+//    }
 
     private fun storeState(
         playWhenReady: Boolean = player.playWhenReady,

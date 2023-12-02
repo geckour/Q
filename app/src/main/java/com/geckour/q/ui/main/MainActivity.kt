@@ -84,11 +84,11 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.dbxRequestConfig
-import com.geckour.q.util.dropboxCredential
-import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlertKey
+import com.geckour.q.util.getDropboxCredential
+import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.getIsNightMode
 import com.geckour.q.util.getTimeString
-import com.geckour.q.util.setHasAlreadyShownDropboxSyncAlertKey
+import com.geckour.q.util.setHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.setIsNightMode
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.worker.DropboxMediaRetrieveWorker
@@ -150,7 +150,7 @@ class MainActivity : AppCompatActivity() {
                 .collectAsState(initial = emptyList())
             var progressMessage by remember { mutableStateOf<String?>(null) }
             var finishedWorkIdSet by remember { mutableStateOf(emptySet<UUID>()) }
-            val hasAlreadyShownDropboxSyncAlert by context.getHasAlreadyShownDropboxSyncAlertKey()
+            val hasAlreadyShownDropboxSyncAlert by context.getHasAlreadyShownDropboxSyncAlert()
                 .collectAsState(initial = false)
 
             val bottomSheetHeightAngle = remember { Animatable(0f) }
@@ -502,11 +502,11 @@ class MainActivity : AppCompatActivity() {
                                     topBarTitle = stringResource(id = R.string.nav_fortune)
                                     Qzi(
                                         onClick = {
-                                                viewModel.onNewQueue(
-                                                    domainTracks = listOf(it.toDomainTrack()),
-                                                    actionType = InsertActionType.NEXT,
-                                                    classType = OrientedClassType.TRACK
-                                                )
+                                            viewModel.onNewQueue(
+                                                domainTracks = listOf(it.toDomainTrack()),
+                                                actionType = InsertActionType.NEXT,
+                                                classType = OrientedClassType.TRACK
+                                            )
                                         }
                                     )
                                 }
@@ -1156,7 +1156,8 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                             if (showDropboxDialog) {
-                                val credential = sharedPreferences.dropboxCredential
+                                val credential by context.getDropboxCredential()
+                                    .collectAsState(initial = null)
                                 if (hasAlreadyShownDropboxSyncAlert) {
                                     if (credential.isNullOrBlank()) {
                                         viewModel.isDropboxAuthOngoing = true
@@ -1328,7 +1329,7 @@ class MainActivity : AppCompatActivity() {
                                                     TextButton(
                                                         onClick = {
                                                             coroutineScope.launch {
-                                                                context.setHasAlreadyShownDropboxSyncAlertKey(
+                                                                context.setHasAlreadyShownDropboxSyncAlert(
                                                                     true
                                                                 )
                                                             }

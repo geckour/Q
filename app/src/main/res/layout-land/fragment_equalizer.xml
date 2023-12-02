@@ -194,7 +194,6 @@
             android:onClick="@{() -> viewModel.onToggleEnabled()}"
             android:text="@{viewModel.enabled ? @string/setting_switch_on : @string/setting_switch_off}"
             android:textColor="@android:color/white"
-            app:backgroundTintAttr="@{viewModel.enabled ? R.attr.colorAccent : R.attr.colorOption}"
             app:cornerRadius="32dp"
             app:layout_constraintBottom_toBottomOf="@id/guide_peek_height"
             app:layout_constraintEnd_toEndOf="parent"
@@ -206,6 +205,6 @@
             android:layout_width="0dp"
             android:layout_height="0dp"
             android:orientation="horizontal"
-            app:layout_constraintGuide_end="@dimen/bottom_sheet_peek_height" />
+            app:layout_constraintGuide_end="144dp" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </layout>

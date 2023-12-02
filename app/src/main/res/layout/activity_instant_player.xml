@@ -98,7 +98,6 @@
                     app:layout_constraintLeft_toRightOf="@id/time_left"
                     app:layout_constraintRight_toLeftOf="@id/time_right"
                     app:layout_constraintTop_toBottomOf="@id/action_play_pause"
-                    app:thumbTintAttr="@{R.attr.colorButtonNormal}"
                     tools:progress="2000" />
 
                 <TextView

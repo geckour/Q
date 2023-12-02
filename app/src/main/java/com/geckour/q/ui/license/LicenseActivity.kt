@@ -4,17 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.view.Menu
-import android.view.MenuItem
 import androidx.appcompat.app.AppCompatActivity
 import androidx.databinding.DataBindingUtil
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivityLicenseBinding
 import com.geckour.q.domain.model.LicenseItem
-import com.geckour.q.util.isNightMode
-import com.geckour.q.util.setIconTint
-import com.geckour.q.util.toNightModeInt
-import com.geckour.q.util.toggleDayNight
 import org.koin.android.ext.android.inject
 
 class LicenseActivity : AppCompatActivity() {
@@ -28,8 +22,6 @@ class LicenseActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        delegate.localNightMode = sharedPreferences.isNightMode.toNightModeInt
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_license)
         binding.recyclerView.adapter = LicenseListAdapter(
@@ -86,13 +78,5 @@ class LicenseActivity : AppCompatActivity() {
         binding.toolbar.setOnClickListener { binding.recyclerView.smoothScrollToPosition(0) }
 
         setSupportActionBar(binding.toolbar)
-    }
-
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            R.id.menu_toggle_daynight -> toggleDayNight(sharedPreferences)
-            else -> return false
-        }
-        return true
     }
 }

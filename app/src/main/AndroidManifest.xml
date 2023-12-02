@@ -48,8 +48,6 @@
 
         <activity android:name=".ui.main.MainActivity" />
 
-        <activity android:name=".ui.setting.SettingActivity" />
-
         <activity android:name=".ui.license.LicenseActivity" />
 
         <activity
