@@ -56,7 +56,7 @@ class MainViewModel(
     internal var isDropboxAuthOngoing = false
 
     internal val currentQueueFlow = MutableStateFlow(emptyList<DomainTrack>())
-    internal val currentIndexFlow = MutableStateFlow(-1)
+    internal val currentIndexFlow = MutableStateFlow(0)
     internal val currentPlaybackPositionFlow = MutableStateFlow(0L)
     internal val currentPlaybackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
     internal val currentRepeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
@@ -100,19 +100,24 @@ class MainViewModel(
                 }
                 viewModelScope.launch {
                     playerService.sourcePathsFlow.map { sourcePaths ->
-                        sourcePaths.mapNotNull {
+                        sourcePaths.mapIndexedNotNull { index, path ->
                             DB.getInstance(app)
                                 .trackDao()
-                                .getBySourcePath(it)
+                                .getBySourcePath(path)
                                 ?.toDomainTrack()
                         }
                     }.collect {
-                        currentQueueFlow.value = it
+                        currentQueueFlow.value = it.mapIndexed { i, item ->
+                            item.copy(nowPlaying = i == currentIndexFlow.value)
+                        }
                     }
                 }
                 viewModelScope.launch {
-                    playerService.currentIndexFlow.collect {
-                        currentIndexFlow.value = it
+                    playerService.currentIndexFlow.collect { index ->
+                        currentIndexFlow.value = index
+                        currentQueueFlow.value = currentQueueFlow.value.mapIndexed { i, item ->
+                            item.copy(nowPlaying = i == index)
+                        }
                     }
                 }
                 viewModelScope.launch {

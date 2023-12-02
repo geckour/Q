@@ -232,7 +232,12 @@ class MainActivity : AppCompatActivity() {
                                 coroutineScope.launch { scaffoldState.drawerState.close() }
                             }
 
-                            DrawerHeader()
+                            DrawerHeader(
+                                openQzi = {
+                                    navController.navigate("qzi")
+                                    coroutineScope.launch { scaffoldState.drawerState.close() }
+                                }
+                            )
                             DrawerSectionHeader(title = stringResource(id = R.string.nav_category_library))
                             DrawerItem(
                                 iconResId = R.drawable.ic_artist,
@@ -361,7 +366,7 @@ class MainActivity : AppCompatActivity() {
                     sheetBackgroundColor = QTheme.colors.colorBackgroundBottomSheet,
                     sheetPeekHeight = (144 + abs(sin(bottomSheetHeightAngle.value)) * 20).dp,
                     sheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
-                    sheetElevation = 20.dp,
+                    sheetElevation = 8.dp,
                     sheetContent = {
                         BackHandler(scaffoldState.bottomSheetState.isExpanded && scaffoldState.drawerState.isClosed) {
                             coroutineScope.launch { scaffoldState.bottomSheetState.collapse() }
@@ -403,10 +408,7 @@ class MainActivity : AppCompatActivity() {
                         )
                         Queue(
                             domainTracks = queue,
-                            currentIndex = currentIndex,
-                            scrollTo = currentIndex.coerceAtLeast(0),
                             forceScrollToCurrent = forceScrollToCurrent,
-                            isQueueVisible = scaffoldState.bottomSheetState.isExpanded,
                             onQueueMove = viewModel::onQueueMove,
                             onChangeRequestedTrackInQueue = viewModel::onChangeRequestedTrackInQueue,
                             onRemoveTrackFromQueue = viewModel::onRemoveTrackFromQueue,
@@ -493,6 +495,18 @@ class MainActivity : AppCompatActivity() {
                                         navController = navController,
                                         onSelectGenre = {
                                             selectedGenre = it
+                                        }
+                                    )
+                                }
+                                composable("qzi") {
+                                    topBarTitle = stringResource(id = R.string.nav_fortune)
+                                    Qzi(
+                                        onClick = {
+                                                viewModel.onNewQueue(
+                                                    domainTracks = listOf(it.toDomainTrack()),
+                                                    actionType = InsertActionType.NEXT,
+                                                    classType = OrientedClassType.TRACK
+                                                )
                                         }
                                     )
                                 }

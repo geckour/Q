@@ -14,10 +14,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material.Card
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
+import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,7 +29,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -48,10 +47,7 @@ import org.burnoutcrew.reorderable.reorderable
 @Composable
 fun Queue(
     domainTracks: List<DomainTrack>,
-    currentIndex: Int,
-    scrollTo: Int = 0,
     forceScrollToCurrent: Long,
-    isQueueVisible: Boolean,
     onQueueMove: (from: Int, to: Int) -> Unit,
     onChangeRequestedTrackInQueue: (domainTrack: DomainTrack) -> Unit,
     onRemoveTrackFromQueue: (domainTrack: DomainTrack) -> Unit
@@ -61,16 +57,11 @@ fun Queue(
         onMove = { from, to -> items = items.moved(from.index, to.index) },
         onDragEnd = { from, to -> onQueueMove(from, to) }
     )
-    SideEffect {
+    LaunchedEffect(domainTracks) {
         items = domainTracks
     }
-    LaunchedEffect(scrollTo) {
-        if (isQueueVisible.not()) {
-            reorderableState.listState.animateScrollToItem(scrollTo)
-        }
-    }
     LaunchedEffect(forceScrollToCurrent) {
-        reorderableState.listState.animateScrollToItem(scrollTo)
+        reorderableState.listState.animateScrollToItem(domainTracks.indexOfFirst { it.nowPlaying }.coerceAtLeast(0))
     }
 
     LazyColumn(
@@ -80,15 +71,14 @@ fun Queue(
             .detectReorderAfterLongPress(reorderableState)
             .fillMaxHeight()
     ) {
-        itemsIndexed(items, { _, item -> item.id }) { index, domainTrack ->
+        itemsIndexed(items, { _, item -> item.key }) { index, domainTrack ->
             ReorderableItem(
                 reorderableState = reorderableState,
-                key = domainTrack.id
+                key = domainTrack.key
             ) { isDragging ->
                 QueueItem(
                     domainTrack = domainTrack,
                     index = index,
-                    currentIndex = currentIndex,
                     isDragging = isDragging,
                     onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
                     onRemoveTrackFromQueue = onRemoveTrackFromQueue
@@ -104,22 +94,20 @@ fun QueueItem(
     modifier: Modifier = Modifier,
     domainTrack: DomainTrack,
     index: Int,
-    currentIndex: Int,
     isDragging: Boolean,
     onChangeRequestedTrackInQueue: (domainTrack: DomainTrack) -> Unit,
     onRemoveTrackFromQueue: (domainTrack: DomainTrack) -> Unit
 ) {
-    val elevation by animateDpAsState(targetValue = if (isDragging) 8.dp else 0.dp, label = "")
+    val elevation by animateDpAsState(targetValue = if (isDragging) 16.dp else 0.dp, label = "")
 
-    Card(
-        shape = RectangleShape,
+    Surface(
         elevation = elevation,
-        backgroundColor = if (index == currentIndex) QTheme.colors.colorWeekAccent else QTheme.colors.colorBackgroundBottomSheet,
+        color = if (domainTrack.nowPlaying) QTheme.colors.colorWeekAccent else QTheme.colors.colorBackgroundBottomSheet,
         onClick = { onChangeRequestedTrackInQueue(domainTrack) },
         modifier = modifier
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (index == currentIndex) {
+            if (domainTrack.nowPlaying) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_spectrum),
                     contentDescription = null,

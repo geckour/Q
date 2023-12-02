@@ -1,9 +1,12 @@
 package com.geckour.q.ui.main
 
 import androidx.annotation.DrawableRes
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,8 +31,9 @@ import com.geckour.q.R
 import com.geckour.q.ui.compose.ColorStrong
 import com.geckour.q.ui.compose.QTheme
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun DrawerHeader() {
+fun DrawerHeader(openQzi: () -> Unit) {
     val fontProvider = GoogleFont.Provider(
         providerAuthority = "com.google.android.gms.fonts",
         providerPackage = "com.google.android.gms",
@@ -45,6 +50,12 @@ fun DrawerHeader() {
             painter = painterResource(id = R.drawable.head_icon),
             contentDescription = null,
             modifier = Modifier
+                .combinedClickable(
+                    onClick = {},
+                    onLongClick = openQzi,
+                    interactionSource = MutableInteractionSource(),
+                    indication = rememberRipple(bounded = false)
+                )
                 .weight(1f)
                 .fillMaxWidth()
         )

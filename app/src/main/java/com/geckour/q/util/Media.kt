@@ -44,11 +44,14 @@ import java.io.InputStream
 import java.net.URLConnection
 import java.text.SimpleDateFormat
 import java.util.Locale
+import kotlin.random.Random
 
 
 const val UNKNOWN: String = "UNKNOWN"
 
 const val DROPBOX_EXPIRES_IN = 14400000L
+
+private val random = Random(System.currentTimeMillis())
 
 enum class InsertActionType {
     NEXT,
@@ -99,6 +102,7 @@ fun JoinedTrack.toDomainTrack(
     trackNum: Int? = null
 ): DomainTrack {
     return DomainTrack(
+        "${random.nextLong()}-${track.id}",
         track.id,
         track.mediaId,
         track.codec.uppercase(Locale.getDefault()),

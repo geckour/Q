@@ -127,6 +127,9 @@ interface TrackDao {
     @Query("select count(*) from track")
     suspend fun count(): Int
 
+    @Query("select count(*) from track")
+    fun countAsync(): Flow<Int>
+
     @Query("select lastModified from track order by lastModified desc limit 1")
     suspend fun getLatestModifiedEpochTime(): Long?
 

@@ -100,7 +100,7 @@ fun Controller(
                         .height(100.dp),
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Row {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(
                             modifier = Modifier
                                 .weight(1f)

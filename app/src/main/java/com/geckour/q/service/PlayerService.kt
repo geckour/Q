@@ -40,6 +40,7 @@ import androidx.media3.exoplayer.util.EventLogger
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.App
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Bool
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.ui.LauncherActivity
@@ -525,7 +526,8 @@ class PlayerService : Service(), LifecycleOwner {
 
     suspend fun submitQueue(
         queueInfo: QueueInfo,
-        positionToKeep: Int? = null
+        positionToKeep: Int? = null,
+        needSorted: Boolean = true,
     ) {
         var alive = true
         loadStateFlow.value = true to { alive = false }
@@ -538,13 +540,13 @@ class PlayerService : Service(), LifecycleOwner {
 
         val newQueue = queueInfo.queue
             .let {
-                if (shuffleSimple) {
-                    it.shuffled()
-                } else {
-                    it.sortedByTrackOrder(
+                when {
+                    shuffleSimple -> it.shuffled()
+                    needSorted -> it.sortedByTrackOrder(
                         queueInfo.metadata.classType,
                         queueInfo.metadata.actionType
                     )
+                    else -> it
                 }
             }
             .map { track ->
@@ -950,7 +952,7 @@ class PlayerService : Service(), LifecycleOwner {
                     sourcePaths.mapNotNull { it.toDomainTrack(db) }
                 )
                 loadStateFlow.value = false to {}
-                submitQueue(queueInfo)
+                submitQueue(queueInfo, needSorted = false)
                 forceIndex(currentIndex)
                 seek(progress)
                 player.repeatMode = repeatMode
