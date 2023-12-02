@@ -70,12 +70,14 @@ import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.BuildConfig
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.PlaybackButton
+import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.ui.main.MainViewModel.Companion.DROPBOX_PATH_ROOT
 import com.geckour.q.util.InsertActionType
@@ -302,6 +304,55 @@ class MainActivity : AppCompatActivity() {
                             onToggleTheme = {
                                 coroutineScope.launch {
                                     context.setIsNightMode(isNightMode.not())
+                                }
+                            },
+                            onSearchItemClicked = { item ->
+                                when (item.type) {
+                                    SearchItem.SearchItemType.TRACK -> {
+                                        viewModel.onNewQueue(
+                                            domainTracks = listOf(item.data as DomainTrack),
+                                            actionType = InsertActionType.NEXT,
+                                            classType = OrientedClassType.TRACK
+                                        )
+                                    }
+
+                                    SearchItem.SearchItemType.ALBUM -> {
+                                        coroutineScope.launch {
+                                            val tracks = DB.getInstance(context).trackDao()
+                                                .getAllByAlbum((item.data as Album).id)
+                                            viewModel.onNewQueue(
+                                                domainTracks = tracks.map { it.toDomainTrack() },
+                                                actionType = InsertActionType.NEXT,
+                                                classType = OrientedClassType.ALBUM
+                                            )
+                                        }
+                                    }
+
+                                    SearchItem.SearchItemType.ARTIST -> {
+                                        coroutineScope.launch {
+                                            val tracks = DB.getInstance(context).trackDao()
+                                                .getAllByArtist((item.data as Artist).id)
+                                            viewModel.onNewQueue(
+                                                domainTracks = tracks.map { it.toDomainTrack() },
+                                                actionType = InsertActionType.NEXT,
+                                                classType = OrientedClassType.ALBUM
+                                            )
+                                        }
+                                    }
+
+                                    SearchItem.SearchItemType.GENRE -> {
+                                        coroutineScope.launch {
+                                            val tracks = DB.getInstance(context).trackDao()
+                                                .getAllByGenreName((item.data as Genre).name)
+                                            viewModel.onNewQueue(
+                                                domainTracks = tracks.map { it.toDomainTrack() },
+                                                actionType = InsertActionType.NEXT,
+                                                classType = OrientedClassType.ALBUM
+                                            )
+                                        }
+                                    }
+
+                                    else -> Unit
                                 }
                             }
                         )

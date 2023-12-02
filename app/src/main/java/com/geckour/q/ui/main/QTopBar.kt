@@ -6,8 +6,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.BottomSheetScaffoldState
 import androidx.compose.material.DrawerValue
 import androidx.compose.material.ExperimentalMaterialApi
@@ -29,9 +34,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -51,11 +58,19 @@ import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.toDomainTrack
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class,
+    ExperimentalComposeUiApi::class
+)
 @Composable
-fun QTopBar(title: String, scaffoldState: BottomSheetScaffoldState, onToggleTheme: () -> Unit) {
+fun QTopBar(
+    title: String,
+    scaffoldState: BottomSheetScaffoldState,
+    onToggleTheme: () -> Unit,
+    onSearchItemClicked: (item: SearchItem) -> Unit
+) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
+    val keyboardController = LocalSoftwareKeyboardController.current
     var query by remember { mutableStateOf("") }
     var active by remember { mutableStateOf(false) }
     var result by remember { mutableStateOf(emptyList<SearchItem>()) }
@@ -92,22 +107,25 @@ fun QTopBar(title: String, scaffoldState: BottomSheetScaffoldState, onToggleThem
                 query = q
                 coroutineScope.launch { result = search(context, q) }
             },
-            onSearch = { q -> coroutineScope.launch { result = search(context, q) } },
+            onSearch = { keyboardController?.hide() },
             active = active,
             onActiveChange = { newActive -> active = newActive },
             colors = SearchBarDefaults.colors(
                 containerColor = QTheme.colors.colorBackgroundBottomSheet,
                 dividerColor = Color.Transparent,
-                inputFieldColors = TextFieldDefaults.colors(cursorColor = QTheme.colors.colorTextPrimary)
+                inputFieldColors = TextFieldDefaults.colors(
+                    cursorColor = QTheme.colors.colorTextPrimary,
+                    focusedTextColor = QTheme.colors.colorTextPrimary,
+                    unfocusedTextColor = QTheme.colors.colorTextPrimary
+                )
             ),
             leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null) }
-
         ) {
-            Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
-                result.map {
+            LazyColumn(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+                items(result) {
                     when (it.type) {
                         SearchItem.SearchItemType.CATEGORY -> SearchResultSectionHeader(title = it.title)
-                        else -> SearchResultItem(item = it, onClick = {  })
+                        else -> SearchResultItem(item = it, onClick = onSearchItemClicked)
                     }
                 }
             }
@@ -117,7 +135,7 @@ fun QTopBar(title: String, scaffoldState: BottomSheetScaffoldState, onToggleThem
 
 @Composable
 private fun SearchResultSectionHeader(title: String) {
-    Row(modifier = Modifier.padding(vertical = 8.dp)) {
+    Row(modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)) {
         Text(text = title, color = QTheme.colors.colorAccent, fontSize = 20.sp)
     }
 }
@@ -125,8 +143,10 @@ private fun SearchResultSectionHeader(title: String) {
 @Composable
 private fun SearchResultItem(item: SearchItem, onClick: (item: SearchItem) -> Unit) {
     Row(
-        modifier = Modifier.clickable { onClick(item) }.padding(vertical = 8.dp),
-        horizontalArrangement = Arrangement.Center
+        modifier = Modifier
+            .clickable { onClick(item) }
+            .padding(vertical = 8.dp)
+            .fillMaxWidth()
     ) {
         val artworkUriString = when (val data = item.data) {
             is DomainTrack -> data.artworkUriString
@@ -139,6 +159,7 @@ private fun SearchResultItem(item: SearchItem, onClick: (item: SearchItem) -> Un
             contentDescription = null,
             modifier = Modifier.size(24.dp)
         )
+        Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = item.title,
             color = QTheme.colors.colorTextPrimary,
