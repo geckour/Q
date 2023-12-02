@@ -37,7 +37,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.util.EventLogger
-import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.App
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.DomainTrack
@@ -64,9 +63,10 @@ import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.singleOrNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -497,7 +497,7 @@ class PlayerService : Service(), LifecycleOwner {
                         .forEach { path ->
                             if (alive.not()) return@forEach
                             val track = path.toDomainTrack(db) ?: return@forEach
-                            val new = obtainDbxClient(this@PlayerService).singleOrNull()?.let {
+                            val new = obtainDbxClient(this@PlayerService).firstOrNull()?.let {
                                 track.verifiedWithDropbox(this@PlayerService, it)
                             } ?: return@forEach
 
@@ -548,7 +548,7 @@ class PlayerService : Service(), LifecycleOwner {
                     loadStateFlow.value = false to null
                     return
                 }
-                (obtainDbxClient(this).singleOrNull()?.let {
+                (obtainDbxClient(this).firstOrNull()?.let {
                     track.verifiedWithDropbox(this, it)
                 } ?: track)
                     .getMediaItem()

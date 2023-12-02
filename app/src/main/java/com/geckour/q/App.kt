@@ -33,6 +33,8 @@ class App : Application() {
             androidContext(this@App)
             modules(viewModelModule, dataModule)
         }
+
+
     }
 
     @RequiresApi(Build.VERSION_CODES.O)

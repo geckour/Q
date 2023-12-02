@@ -3,7 +3,6 @@ package com.geckour.q.ui.main
 import android.content.ComponentName
 import android.content.Context
 import android.content.ServiceConnection
-import android.content.SharedPreferences
 import android.os.IBinder
 import android.view.KeyEvent
 import androidx.lifecycle.MutableLiveData
@@ -31,16 +30,14 @@ import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.singleOrNull
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-class MainViewModel(
-    private val app: App,
-    private val sharedPreferences: SharedPreferences
-) : ViewModel() {
+class MainViewModel(private val app: App) : ViewModel() {
 
     companion object {
 
@@ -345,17 +342,15 @@ class MainViewModel(
         )
     }
 
-    internal fun storeDropboxApiToken() {
+    internal suspend fun storeDropboxApiToken() {
         val credential = Auth.getDbxCredential() ?: return
-        viewModelScope.launch {
-            app.setDropboxCredential(credential.toString())
-        }
+        app.setDropboxCredential(credential.toString())
         showDropboxFolderChooser()
     }
 
     internal fun showDropboxFolderChooser(dropboxMetadata: Metadata? = null) =
         viewModelScope.launch(Dispatchers.IO) {
-            val client = obtainDbxClient(app).singleOrNull() ?: return@launch
+            val client = obtainDbxClient(app).firstOrNull() ?: return@launch
             var result = client.files().listFolder(dropboxMetadata?.pathLower.orEmpty())
             while (true) {
                 if (result.hasMore.not()) break

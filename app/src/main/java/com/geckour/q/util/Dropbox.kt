@@ -11,10 +11,12 @@ import kotlinx.coroutines.flow.map
 
 internal fun obtainDbxClient(context: Context): Flow<DbxClientV2?> =
     context.getDropboxCredential().map { credential ->
-        DbxClientV2(
-            dbxRequestConfig,
-            DbxCredential.Reader.readFully(credential)
-        )
+        credential?.let {
+            DbxClientV2(
+                dbxRequestConfig,
+                DbxCredential.Reader.readFully(it)
+            )
+        }
     }
 
 internal val dbxRequestConfig =

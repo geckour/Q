@@ -29,6 +29,8 @@ import com.geckour.q.util.getNotificationBuilder
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.saveTempAudioFile
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.flow.singleOrNull
 import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
@@ -58,7 +60,7 @@ class DropboxMediaRetrieveWorker(
         if (Build.VERSION.SDK_INT >= 33
             || applicationContext.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
         ) {
-            val dbxClient = obtainDbxClient(applicationContext).singleOrNull()
+            val dbxClient = obtainDbxClient(applicationContext).firstOrNull()
                 ?: return Result.failure(
                     Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build()
                 )

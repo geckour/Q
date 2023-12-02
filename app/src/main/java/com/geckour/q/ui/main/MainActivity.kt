@@ -3,7 +3,6 @@ package com.geckour.q.ui.main
 import android.Manifest
 import android.content.Context
 import android.content.Intent
-import android.content.SharedPreferences
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.BackHandler
@@ -38,6 +37,7 @@ import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.material.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
@@ -53,6 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.Player
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -100,10 +101,14 @@ import com.geckour.q.worker.KEY_SYNCING_PROGRESS_TOTAL_FILES
 import com.geckour.q.worker.KEY_SYNCING_REMAINING
 import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.launch
-import org.koin.android.ext.android.inject
+import kotlinx.coroutines.runBlocking
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import permissions.dispatcher.ktx.constructPermissionsRequest
+import timber.log.Timber
 import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.sin
@@ -116,7 +121,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val viewModel by viewModel<MainViewModel>()
-    private val sharedPreferences by inject<SharedPreferences>()
     private var onAuthDropboxCompleted: (() -> Unit)? = null
     private var onCancelProgress: (() -> Unit)? = null
 
@@ -217,7 +221,9 @@ class MainActivity : AppCompatActivity() {
                 }
             }
 
-            onAuthDropboxCompleted = { showDropboxDialog = true }
+            SideEffect {
+                onAuthDropboxCompleted = { showDropboxDialog = true }
+            }
 
             QTheme(darkTheme = isNightMode) {
                 BottomSheetScaffold(
@@ -1156,8 +1162,9 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                             if (showDropboxDialog) {
-                                val credential by context.getDropboxCredential()
-                                    .collectAsState(initial = null)
+                                val credential = runBlocking {
+                                    context.getDropboxCredential().firstOrNull()
+                                }
                                 if (hasAlreadyShownDropboxSyncAlert) {
                                     if (credential.isNullOrBlank()) {
                                         viewModel.isDropboxAuthOngoing = true
@@ -1435,8 +1442,10 @@ class MainActivity : AppCompatActivity() {
 
         if (viewModel.isDropboxAuthOngoing) {
             viewModel.isDropboxAuthOngoing = false
-            viewModel.storeDropboxApiToken()
-            onAuthDropboxCompleted?.invoke()
+            lifecycleScope.launch {
+                viewModel.storeDropboxApiToken()
+                onAuthDropboxCompleted?.invoke()
+            }
         }
     }
 
