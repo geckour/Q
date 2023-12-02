@@ -80,6 +80,7 @@ import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.ui.main.MainViewModel.Companion.DROPBOX_PATH_ROOT
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.dbxRequestConfig
 import com.geckour.q.util.dropboxCredential
 import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlertKey
@@ -137,6 +138,7 @@ class MainActivity : AppCompatActivity() {
             val currentRepeatMode by viewModel.currentRepeatModeFlow.collectAsState()
             var forceScrollToCurrent by remember { mutableLongStateOf(System.currentTimeMillis()) }
             var showDropboxDialog by remember { mutableStateOf(false) }
+            var showResetShuffleDialog by remember { mutableStateOf(false) }
             var selectedTrack by remember { mutableStateOf<DomainTrack?>(null) }
             var selectedAlbum by remember { mutableStateOf<JoinedAlbum?>(null) }
             var selectedArtist by remember { mutableStateOf<Artist?>(null) }
@@ -337,7 +339,8 @@ class MainActivity : AppCompatActivity() {
                             },
                             onNewProgress = viewModel::onNewSeekBarProgress,
                             rotateRepeatMode = viewModel::onClickRepeatButton,
-                            shuffleQueue = viewModel::onClickShuffleButton,
+                            shuffleQueue = viewModel::onShuffle,
+                            resetShuffleQueue = { showResetShuffleDialog = true },
                             moveToCurrentIndex = {
                                 forceScrollToCurrent = System.currentTimeMillis()
                             },
@@ -1272,6 +1275,50 @@ class MainActivity : AppCompatActivity() {
                                                         )
                                                     }
                                                 }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (showResetShuffleDialog) {
+                                Dialog(onDismissRequest = { showResetShuffleDialog = false }) {
+                                    Card(backgroundColor = QTheme.colors.colorBackground) {
+                                        Column {
+                                            DialogListItem(
+                                                onClick = {
+                                                    viewModel.onResetShuffle()
+                                                    showResetShuffleDialog = false
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.dialog_choice_reset_shuffle),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    viewModel.onShuffle(ShuffleActionType.SHUFFLE_ALBUM_ORIENTED)
+                                                    showResetShuffleDialog = false
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.dialog_choice_album_oriented_shuffle),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    viewModel.onShuffle(ShuffleActionType.SHUFFLE_ARTIST_ORIENTED)
+                                                    showResetShuffleDialog = false
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.dialog_choice_artist_oriented_shuffle),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
                                             }
                                         }
                                     }

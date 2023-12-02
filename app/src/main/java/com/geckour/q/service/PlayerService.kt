@@ -52,6 +52,7 @@ import com.geckour.q.util.QueueInfo
 import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.SettingCommand
 import com.geckour.q.util.ShuffleActionType
+import com.geckour.q.util.catchAsNull
 import com.geckour.q.util.currentSourcePaths
 import com.geckour.q.util.equalizerEnabled
 import com.geckour.q.util.equalizerParams
@@ -60,9 +61,9 @@ import com.geckour.q.util.getMediaItem
 import com.geckour.q.util.getMediaMetadata
 import com.geckour.q.util.getPlayerNotification
 import com.geckour.q.util.obtainDbxClient
+import com.geckour.q.util.removedAt
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
-import com.geckour.q.util.toDomainTracks
 import com.geckour.q.util.verifiedWithDropbox
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.Dispatchers
@@ -239,7 +240,7 @@ class PlayerService : Service(), LifecycleOwner {
 
     private lateinit var db: DB
 
-    private val cachedQueueOrder = mutableListOf<Long>()
+    private val cachedSourcePaths = mutableListOf<String>()
     internal val sourcePathsFlow = MutableStateFlow(emptyList<String>())
     internal val currentIndexFlow = MutableStateFlow(0)
 
@@ -524,7 +525,7 @@ class PlayerService : Service(), LifecycleOwner {
 
     suspend fun submitQueue(
         queueInfo: QueueInfo,
-        force: Boolean = false
+        positionToKeep: Int? = null
     ) {
         var alive = true
         loadStateFlow.value = true to { alive = false }
@@ -557,7 +558,10 @@ class PlayerService : Service(), LifecycleOwner {
         when (queueInfo.metadata.actionType) {
             InsertActionType.OVERRIDE,
             InsertActionType.SHUFFLE_OVERRIDE,
-            InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> clear(force.not())
+            InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
+                if (positionToKeep == null) clear()
+                else clear(positionToKeep)
+            }
 
             else -> Unit
         }
@@ -585,6 +589,7 @@ class PlayerService : Service(), LifecycleOwner {
     }
 
     fun moveQueuePosition(from: Int, to: Int) {
+        if (from == to) return
         val sourceRange = 0 until player.mediaItemCount
         if (from !in sourceRange || to !in sourceRange) return
         player.moveMediaItem(from, to)
@@ -791,29 +796,31 @@ class PlayerService : Service(), LifecycleOwner {
     fun shuffle(actionType: ShuffleActionType? = null) {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                val currentQueue = player.currentSourcePaths.mapNotNull { it.toDomainTrack(db) }
+                val currentQueue = player.currentSourcePaths
                 if (player.mediaItemCount < 1 || player.mediaItemCount != currentQueue.size) return@repeatOnLifecycle
 
                 val shuffled = when (actionType) {
                     null,
                     ShuffleActionType.SHUFFLE_SIMPLE -> {
-                        currentQueue.shuffled().map { it.id }
+                        currentQueue.shuffled()
                     }
 
                     ShuffleActionType.SHUFFLE_ALBUM_ORIENTED -> {
-                        currentQueue.groupBy { it.album.id }
+                        currentQueue.mapNotNull { it.toDomainTrack(db) }
+                            .groupBy { it.album.id }
                             .map { it.value }
                             .shuffled()
                             .flatten()
-                            .map { it.id }
+                            .map { it.sourcePath }
                     }
 
                     ShuffleActionType.SHUFFLE_ARTIST_ORIENTED -> {
-                        currentQueue.groupBy { it.artist.id }
+                        currentQueue.mapNotNull { it.toDomainTrack(db) }
+                            .groupBy { it.artist.id }
                             .map { it.value }
                             .shuffled()
                             .flatten()
-                            .map { it.id }
+                            .map { it.sourcePath }
                     }
                 }
 
@@ -826,27 +833,37 @@ class PlayerService : Service(), LifecycleOwner {
         if (player.mediaItemCount < 1) return
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                val currentIds = player.currentSourcePaths.mapNotNull { it.toDomainTrack(db)?.id }
+                val sourcePaths = player.currentSourcePaths
                 val isCacheValid =
-                    currentIds.size == cachedQueueOrder.size && currentIds.containsAll(
-                        cachedQueueOrder
+                    sourcePaths.size == cachedSourcePaths.size && sourcePaths.containsAll(
+                        cachedSourcePaths
                     )
                 if (isCacheValid.not()) return@repeatOnLifecycle
 
-                reorderQueue(cachedQueueOrder)
+                reorderQueue(cachedSourcePaths)
             }
         }
     }
 
-    private fun reorderQueue(order: List<Long>) {
+    private fun reorderQueue(newSourcePaths: List<String>) {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                order.forEachIndexed { i, id ->
-                    val currentIndex = player.currentSourcePaths
-                        .mapNotNull { it.toDomainTrack(db) }
-                        .indexOfFirst { it.id == id }
-                    player.moveMediaItem(currentIndex, i)
-                }
+                Timber.d("qgeck albums: ${newSourcePaths.map { it.toDomainTrack(db)?.album?.title }}")
+                val targetIndex = newSourcePaths.indexOfFirst {
+                    it == player.currentSourcePaths.getOrNull(currentIndex)
+                }.coerceAtLeast(0)
+                Timber.d("qgeck currentIndex: $currentIndex, targetIndex: $targetIndex")
+                submitQueue(
+                    QueueInfo(
+                        QueueMetadata(
+                            InsertActionType.OVERRIDE,
+                            OrientedClassType.TRACK
+                        ),
+                        newSourcePaths.removedAt(targetIndex).mapNotNull { it.toDomainTrack(db) }
+                    ),
+                    currentIndex
+                )
+                moveQueuePosition(currentIndex, targetIndex)
             }
         }
     }
@@ -930,10 +947,10 @@ class PlayerService : Service(), LifecycleOwner {
                 loadStateFlow.value = true to {}
                 val queueInfo = QueueInfo(
                     QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.TRACK),
-                    trackIds.mapNotNull { db.trackDao().get(it)?.toDomainTrack() }
+                    sourcePaths.mapNotNull { it.toDomainTrack(db) }
                 )
                 loadStateFlow.value = false to {}
-                submitQueue(queueInfo, true)
+                submitQueue(queueInfo)
                 forceIndex(currentIndex)
                 seek(progress)
                 player.repeatMode = repeatMode
@@ -1014,12 +1031,12 @@ class PlayerService : Service(), LifecycleOwner {
         repeatMode: Int = player.repeatMode
     ) = lifecycleScope.launch {
         repeatOnLifecycle(Lifecycle.State.STARTED) {
-            cachedQueueOrder.clear()
-            val trackIds = player.currentSourcePaths.toDomainTracks(db).map { it.id }
-            cachedQueueOrder.addAll(trackIds)
+            cachedSourcePaths.clear()
+            val sourcePaths = player.currentSourcePaths
+            cachedSourcePaths.addAll(sourcePaths)
             val state = PlayerState(
                 playWhenReady,
-                trackIds,
+                sourcePaths,
                 currentIndex,
                 duration,
                 progress,
@@ -1034,7 +1051,7 @@ class PlayerService : Service(), LifecycleOwner {
     private fun restoreState() {
         if (player.playWhenReady.not()) {
             sharedPreferences.getString(PREF_KEY_PLAYER_STATE, null)
-                ?.let { Json.decodeFromString<PlayerState>(it) }
+                ?.let { catchAsNull { Json.decodeFromString<PlayerState>(it) } }
                 ?.set()
         }
     }

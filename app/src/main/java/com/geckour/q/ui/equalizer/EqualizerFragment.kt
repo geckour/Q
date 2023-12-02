@@ -72,14 +72,6 @@ class EqualizerFragment : Fragment() {
         binding.viewModel = viewModel
     }
 
-    override fun onResume() {
-        super.onResume()
-
-        mainViewModel.currentFragmentId.value = R.id.nav_equalizer
-
-        inflateSeekBars()
-    }
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_toggle_daynight -> requireActivity().toggleDayNight(sharedPreferences)

@@ -88,7 +88,7 @@ interface TrackDao {
     suspend fun getAllByAlbumSorted(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
     @Transaction
-    @Query("select * from track where albumId = :albumId and ignored != :ignore")
+    @Query("select * from track where albumId = :albumId and ignored != :ignore order by discNum, trackNum")
     fun getAllByAlbumAsync(
         albumId: Long,
         ignore: Bool = Bool.UNDEFINED

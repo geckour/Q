@@ -58,12 +58,6 @@ class EasterEggFragment : Fragment() {
         observeEvents()
     }
 
-    override fun onResume() {
-        super.onResume()
-
-        mainViewModel.currentFragmentId.value = R.layout.fragment_easter_egg
-    }
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_toggle_daynight -> requireActivity().toggleDayNight()

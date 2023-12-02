@@ -6,9 +6,6 @@ import android.content.ServiceConnection
 import android.content.SharedPreferences
 import android.os.IBinder
 import android.view.KeyEvent
-import android.view.LayoutInflater
-import android.widget.SearchView
-import androidx.appcompat.app.AlertDialog
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,39 +15,24 @@ import com.dropbox.core.android.Auth
 import com.dropbox.core.v2.files.FolderMetadata
 import com.dropbox.core.v2.files.Metadata
 import com.geckour.q.App
-import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.Album
-import com.geckour.q.data.db.model.Artist
-import com.geckour.q.databinding.DialogShuffleMenuBinding
 import com.geckour.q.domain.model.DomainTrack
-import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.PlaybackButton
-import com.geckour.q.domain.model.SearchCategory
-import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.service.PlayerService
-import com.geckour.q.util.BoolConverter
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.QueueInfo
 import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.dropboxCredential
-import com.geckour.q.util.ignoringEnabled
 import com.geckour.q.util.obtainDbxClient
-import com.geckour.q.util.searchAlbumByFuzzyTitle
-import com.geckour.q.util.searchArtistByFuzzyTitle
-import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -75,20 +57,10 @@ class MainViewModel(
 
     internal val currentQueueFlow = MutableStateFlow(emptyList<DomainTrack>())
     internal val currentIndexFlow = MutableStateFlow(-1)
-    internal val currentDomainTrack get() = currentQueueFlow.value.getOrNull(currentIndexFlow.value)
     internal val currentPlaybackPositionFlow = MutableStateFlow(0L)
     internal val currentPlaybackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
     internal val currentRepeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
     internal val equalizerStateFlow = MutableStateFlow(false)
-
-    internal val currentFragmentId = MutableLiveData<Int>()
-    internal val selectedAlbum = MutableLiveData<Album?>()
-    internal val selectedArtist = MutableLiveData<Artist?>()
-    internal val selectedGenre = MutableLiveData<Genre?>()
-
-    internal val trackToDelete = MutableLiveData<DomainTrack>()
-
-    internal val searchItems = MutableLiveData<List<SearchItem>>()
 
     internal val scrollToTop = MutableLiveData<Unit>()
     internal val forceLoad = MutableLiveData<Unit>()
@@ -98,11 +70,6 @@ class MainViewModel(
     internal val dropboxItemList = dropboxItemListChannel.receiveAsFlow()
 
     internal val loading = MutableStateFlow<Pair<Boolean, (() -> Unit)?>>(false to null)
-    internal var isSearchViewOpened = false
-
-    private var searchJob: Job = Job()
-
-    internal lateinit var searchQueryListener: SearchQueryListener
 
     private var onSubmitQueue: ((queueInfo: QueueInfo) -> Unit)? = null
     private var onMoveQueuePosition: ((from: Int, to: Int) -> Unit)? = null
@@ -248,25 +215,6 @@ class MainViewModel(
         super.onCleared()
     }
 
-    fun onRequestNavigate(artist: Artist) {
-        clearSelections()
-        selectedArtist.value = artist
-    }
-
-    fun onRequestNavigate(album: Album) {
-        clearSelections()
-        selectedAlbum.value = album
-    }
-
-    fun onRequestNavigate() {
-        clearSelections()
-    }
-
-    fun onRequestNavigate(genre: Genre) {
-        clearSelections()
-        selectedGenre.value = genre
-    }
-
     fun onNewQueue(
         domainTracks: List<DomainTrack>,
         actionType: InsertActionType,
@@ -290,32 +238,12 @@ class MainViewModel(
         scrollToTop.postValue(Unit)
     }
 
-    fun onClickShuffleButton() {
-        onShuffleQueue?.invoke(null)
+    fun onShuffle(actionType: ShuffleActionType? = null) {
+        onShuffleQueue?.invoke(actionType)
     }
 
-    fun onLongClickShuffleButton(): Boolean {
-        val binding = DialogShuffleMenuBinding.inflate(LayoutInflater.from(app))
-        val dialog = AlertDialog.Builder(app)
-            .setView(binding.root)
-            .setCancelable(true)
-            .show()
-
-        binding.apply {
-            choiceReset.setOnClickListener {
-                onResetQueueOrder?.invoke()
-                dialog.dismiss()
-            }
-            choiceShuffleOrientedAlbum.setOnClickListener {
-                onShuffleQueue?.invoke(ShuffleActionType.SHUFFLE_ALBUM_ORIENTED)
-                dialog.dismiss()
-            }
-            choiceShuffleOrientedArtist.setOnClickListener {
-                onShuffleQueue?.invoke(ShuffleActionType.SHUFFLE_ARTIST_ORIENTED)
-                dialog.dismiss()
-            }
-        }
-        return true
+    fun onResetShuffle() {
+        onResetQueueOrder?.invoke()
     }
 
     fun onPlayOrPause(playing: Boolean?) {
@@ -348,10 +276,6 @@ class MainViewModel(
         onRotateRepeatMode?.invoke()
     }
 
-    internal fun initSearchQueryListener(searchView: SearchView) {
-        searchQueryListener = SearchQueryListener(searchView)
-    }
-
     private fun bindPlayer() {
         if (isBoundService.not()) {
             app.bindService(
@@ -375,90 +299,6 @@ class MainViewModel(
         isBoundService = false
     }
 
-    internal fun search(query: String?) {
-        if (query.isNullOrBlank()) {
-            searchItems.value = emptyList()
-            return
-        }
-
-        searchJob.cancel()
-        searchJob = viewModelScope.launch {
-            val items = mutableListOf<SearchItem>()
-
-            val tracks = db.searchTrackByFuzzyTitle(query).take(3).map {
-                SearchItem(
-                    it.track.title,
-                    it.toDomainTrack(),
-                    SearchItem.SearchItemType.TRACK
-                )
-            }
-            if (tracks.isNotEmpty()) {
-                items.add(
-                    SearchItem(
-                        app.getString(R.string.search_category_track),
-                        SearchCategory(),
-                        SearchItem.SearchItemType.CATEGORY
-                    )
-                )
-                items.addAll(tracks)
-            }
-
-            val albums = db.searchAlbumByFuzzyTitle(query).take(3).map {
-                SearchItem(it.album.title, it.album, SearchItem.SearchItemType.ALBUM)
-            }
-            if (albums.isNotEmpty()) {
-                items.add(
-                    SearchItem(
-                        app.getString(R.string.search_category_album),
-                        SearchCategory(),
-                        SearchItem.SearchItemType.CATEGORY
-                    )
-                )
-                items.addAll(albums)
-            }
-
-            val artists = db.searchArtistByFuzzyTitle(query).take(3).map {
-                SearchItem(it.title, it, SearchItem.SearchItemType.ARTIST)
-            }
-            if (artists.isNotEmpty()) {
-                items.add(
-                    SearchItem(
-                        app.getString(R.string.search_category_artist),
-                        SearchCategory(),
-                        SearchItem.SearchItemType.CATEGORY
-                    )
-                )
-                items.addAll(artists)
-            }
-
-            val genres = db.trackDao().getAllGenreByName(query)
-                .take(3)
-                .map {
-                    val totalDuration =
-                        db.trackDao().getAllByGenreName(it).sumOf { it.track.duration }
-                    SearchItem(it, Genre(null, it, totalDuration), SearchItem.SearchItemType.GENRE)
-                }
-            if (genres.isNotEmpty()) {
-                items.add(
-                    SearchItem(
-                        app.getString(R.string.search_category_genre),
-                        SearchCategory(),
-                        SearchItem.SearchItemType.CATEGORY
-                    )
-                )
-                items.addAll(genres)
-            }
-
-            searchItems.postValue(items)
-        }
-    }
-
-    private fun clearSelections() {
-        selectedArtist.value = null
-        selectedAlbum.value = null
-        selectedGenre.value = null
-    }
-
     internal fun checkDBIsEmpty(onEmpty: () -> Unit) {
         viewModelScope.launch {
             val trackCount = db.trackDao().count()
@@ -468,30 +308,9 @@ class MainViewModel(
 
     internal fun deleteTrack(domainTrack: DomainTrack) {
         viewModelScope.launch {
-            trackToDelete.value = domainTrack
             onRemoveQueueByTrack?.invoke(domainTrack)
 
             db.trackDao().deleteIncludingRootIfEmpty(db, domainTrack.id)
-        }
-    }
-
-    internal fun onTrackMenuAction(
-        actionType: InsertActionType, album: Album
-    ) {
-        viewModelScope.launch {
-            var enabled = true
-            loading.emit(true to { enabled = false })
-            val tracks = db.trackDao()
-                .getAllByAlbum(
-                    album.id, BoolConverter().fromBoolean(sharedPreferences.ignoringEnabled)
-                )
-                .map {
-                    if (enabled.not()) return@launch
-                    it.toDomainTrack()
-                }
-                .apply { loading.emit(false to null) }
-
-            onNewQueue(tracks, actionType, OrientedClassType.TRACK)
         }
     }
 
@@ -547,29 +366,6 @@ class MainViewModel(
     internal fun clearDropboxItemList() {
         viewModelScope.launch {
             dropboxItemListChannel.send("" to emptyList())
-        }
-    }
-
-    inner class SearchQueryListener(private val searchView: SearchView) :
-        SearchView.OnQueryTextListener {
-
-        override fun onQueryTextSubmit(query: String?): Boolean {
-            search(query)
-            searchView.clearFocus()
-            isSearchViewOpened = true
-            return true
-        }
-
-        override fun onQueryTextChange(newText: String?): Boolean {
-            search(newText)
-            isSearchViewOpened = newText.isNullOrBlank()
-            return true
-        }
-
-        fun reset() {
-            searchView.setQuery(null, false)
-            searchView.onActionViewCollapsed()
-            isSearchViewOpened = false
         }
     }
 }

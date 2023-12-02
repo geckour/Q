@@ -26,6 +26,7 @@ import androidx.compose.material.IconButton
 import androidx.compose.material.Slider
 import androidx.compose.material.SliderDefaults
 import androidx.compose.material.Text
+import androidx.compose.material.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -74,6 +75,7 @@ fun Controller(
     onNewProgress: (newProgress: Long) -> Unit,
     rotateRepeatMode: () -> Unit,
     shuffleQueue: () -> Unit,
+    resetShuffleQueue: () -> Unit,
     moveToCurrentIndex: () -> Unit,
     clearQueue: () -> Unit,
     onTrackSelected: (item: DomainTrack) -> Unit
@@ -85,7 +87,8 @@ fun Controller(
                     model = currentTrack?.artworkUriString,
                     contentDescription = null,
                     contentScale = ContentScale.Inside,
-                    modifier = Modifier.size(84.dp)
+                    modifier = Modifier
+                        .size(84.dp)
                         .combinedClickable(
                             onClick = {},
                             onLongClick = { currentTrack?.let { onTrackSelected(it) } }
@@ -133,6 +136,7 @@ fun Controller(
                                 tint = QTheme.colors.colorTextPrimary,
                                 modifier = Modifier
                                     .size(24.dp)
+                                    .minimumInteractiveComponentSize()
                                     .alpha(if (currentTrack?.dropboxPath != null) 1f else 0f)
                             )
                             val infiniteTransition = rememberInfiniteTransition(label = "")
@@ -153,6 +157,7 @@ fun Controller(
                                 tint = QTheme.colors.colorTextPrimary,
                                 modifier = Modifier
                                     .size(24.dp)
+                                    .minimumInteractiveComponentSize()
                                     .alpha(if (isLoading) 1f else 0f)
                                     .graphicsLayer {
                                         rotationZ = degree
@@ -246,13 +251,17 @@ fun Controller(
                                     tint = QTheme.colors.colorButtonNormal
                                 )
                             }
-                            IconButton(onClick = shuffleQueue) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_shuffle),
-                                    contentDescription = null,
-                                    tint = QTheme.colors.colorButtonNormal
-                                )
-                            }
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_shuffle),
+                                contentDescription = null,
+                                tint = QTheme.colors.colorButtonNormal,
+                                modifier = Modifier
+                                    .minimumInteractiveComponentSize()
+                                    .combinedClickable(
+                                        onClick = shuffleQueue,
+                                        onLongClick = resetShuffleQueue
+                                    )
+                            )
                         }
                     }
                 }
