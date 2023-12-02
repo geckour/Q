@@ -73,6 +73,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.ui.compose.QTheme
@@ -138,8 +139,10 @@ class MainActivity : AppCompatActivity() {
             var showTrackDialog by remember { mutableStateOf(false) }
             var showAlbumDialog by remember { mutableStateOf(false) }
             var showArtistDialog by remember { mutableStateOf(false) }
+            var showGenreDialog by remember { mutableStateOf(false) }
             var showDropboxDialog by remember { mutableStateOf(false) }
             var selectedTrack by remember { mutableStateOf<DomainTrack?>(null) }
+            var selectedGenre by remember { mutableStateOf<Genre?>(null) }
             var selectedAlbum by remember { mutableStateOf<JoinedAlbum?>(null) }
             var selectedArtist by remember { mutableStateOf<Artist?>(null) }
             var selectedNav by remember { mutableStateOf<Nav?>(null) }
@@ -435,7 +438,13 @@ class MainActivity : AppCompatActivity() {
                                 composable("genres") {
                                     topBarTitle = stringResource(id = R.string.nav_genre)
                                     selectedNav = Nav.GENRE
-                                    Genres(navController = navController)
+                                    Genres(
+                                        navController = navController,
+                                        onSelectGenre = {
+                                            selectedGenre = it
+                                            showGenreDialog = true
+                                        }
+                                    )
                                 }
                             }
                             if (showTrackDialog) {
@@ -912,6 +921,169 @@ class MainActivity : AppCompatActivity() {
                                                                 .forEach {
                                                                     viewModel.deleteTrack(it.toDomainTrack())
                                                                     showArtistDialog = false
+                                                                }
+                                                        }
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(id = R.string.menu_delete_from_device),
+                                                        fontSize = 14.sp,
+                                                        color = QTheme.colors.colorTextPrimary
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (showGenreDialog) {
+                                selectedGenre?.let { genre ->
+                                    Dialog(onDismissRequest = { showGenreDialog = false }) {
+                                        Card(backgroundColor = QTheme.colors.colorBackground) {
+                                            Column {
+                                                DialogListItem(
+                                                    onClick = {
+                                                        coroutineScope.launch {
+                                                            val tracks =
+                                                                DB.getInstance(context).trackDao()
+                                                                    .getAllByGenreName(genre.name)
+                                                                    .map { it.toDomainTrack() }
+                                                            viewModel.onNewQueue(
+                                                                tracks,
+                                                                actionType = InsertActionType.NEXT,
+                                                                classType = OrientedClassType.ALBUM
+                                                            )
+                                                            showGenreDialog = false
+                                                        }
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(id = R.string.menu_insert_all_next),
+                                                        fontSize = 14.sp,
+                                                        color = QTheme.colors.colorTextPrimary
+                                                    )
+                                                }
+                                                DialogListItem(
+                                                    onClick = {
+                                                        coroutineScope.launch {
+                                                            val tracks =
+                                                                DB.getInstance(context).trackDao()
+                                                                    .getAllByGenreName(genre.name)
+                                                                    .map { it.toDomainTrack() }
+                                                            viewModel.onNewQueue(
+                                                                tracks,
+                                                                actionType = InsertActionType.LAST,
+                                                                classType = OrientedClassType.ALBUM
+                                                            )
+                                                            showGenreDialog = false
+                                                        }
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(id = R.string.menu_insert_all_last),
+                                                        fontSize = 14.sp,
+                                                        color = QTheme.colors.colorTextPrimary
+                                                    )
+                                                }
+                                                DialogListItem(
+                                                    onClick = {
+                                                        coroutineScope.launch {
+                                                            val tracks =
+                                                                DB.getInstance(context).trackDao()
+                                                                    .getAllByGenreName(genre.name)
+                                                                    .map { it.toDomainTrack() }
+                                                            viewModel.onNewQueue(
+                                                                tracks,
+                                                                actionType = InsertActionType.OVERRIDE,
+                                                                classType = OrientedClassType.ALBUM
+                                                            )
+                                                            showGenreDialog = false
+                                                        }
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(id = R.string.menu_override_all),
+                                                        fontSize = 14.sp,
+                                                        color = QTheme.colors.colorTextPrimary
+                                                    )
+                                                }
+                                                DialogListItem(
+                                                    onClick = {
+                                                        coroutineScope.launch {
+                                                            val tracks =
+                                                                DB.getInstance(context).trackDao()
+                                                                    .getAllByGenreName(genre.name)
+                                                                    .map { it.toDomainTrack() }
+                                                                    .shuffled()
+                                                            viewModel.onNewQueue(
+                                                                tracks,
+                                                                actionType = InsertActionType.SHUFFLE_SIMPLE_NEXT,
+                                                                classType = OrientedClassType.ALBUM
+                                                            )
+                                                            showGenreDialog = false
+                                                        }
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(id = R.string.menu_insert_all_simple_shuffle_next),
+                                                        fontSize = 14.sp,
+                                                        color = QTheme.colors.colorTextPrimary
+                                                    )
+                                                }
+                                                DialogListItem(
+                                                    onClick = {
+                                                        coroutineScope.launch {
+                                                            val tracks =
+                                                                DB.getInstance(context).trackDao()
+                                                                    .getAllByGenreName(genre.name)
+                                                                    .map { it.toDomainTrack() }
+                                                                    .shuffled()
+                                                            viewModel.onNewQueue(
+                                                                tracks,
+                                                                actionType = InsertActionType.SHUFFLE_SIMPLE_LAST,
+                                                                classType = OrientedClassType.ALBUM
+                                                            )
+                                                            showGenreDialog = false
+                                                        }
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(id = R.string.menu_insert_all_simple_shuffle_last),
+                                                        fontSize = 14.sp,
+                                                        color = QTheme.colors.colorTextPrimary
+                                                    )
+                                                }
+                                                DialogListItem(
+                                                    onClick = {
+                                                        coroutineScope.launch {
+                                                            val tracks =
+                                                                DB.getInstance(context).trackDao()
+                                                                    .getAllByGenreName(genre.name)
+                                                                    .map { it.toDomainTrack() }
+                                                                    .shuffled()
+                                                            viewModel.onNewQueue(
+                                                                tracks,
+                                                                actionType = InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
+                                                                classType = OrientedClassType.ALBUM
+                                                            )
+                                                            showGenreDialog = false
+                                                        }
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(id = R.string.menu_override_all_simple_shuffle),
+                                                        fontSize = 14.sp,
+                                                        color = QTheme.colors.colorTextPrimary
+                                                    )
+                                                }
+                                                DialogListItem(
+                                                    onClick = {
+                                                        coroutineScope.launch {
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByGenreName(genre.name)
+                                                                .forEach {
+                                                                    viewModel.deleteTrack(it.toDomainTrack())
+                                                                    showGenreDialog = false
                                                                 }
                                                         }
                                                     }

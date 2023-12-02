@@ -2,8 +2,9 @@ package com.geckour.q.ui.main
 
 import android.content.Context
 import android.graphics.Bitmap
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,7 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.Divider
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
@@ -43,9 +43,9 @@ import com.geckour.q.util.getTimeString
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun Genres(navController: NavController) {
+fun Genres(navController: NavController, onSelectGenre: (item: Genre) -> Unit) {
     val context = LocalContext.current
     val db = DB.getInstance(context)
     val genreNames by db.trackDao()
@@ -70,7 +70,10 @@ fun Genres(navController: NavController) {
             Timber.d("qgeck genre: $genre")
             Column(
                 modifier = Modifier
-                    .clickable { navController.navigate(route = "tracks?genreName=${genre.name}") }
+                    .combinedClickable(
+                        onClick = { navController.navigate(route = "tracks?genreName=${genre.name}") },
+                        onLongClick = { onSelectGenre(genre) }
+                    )
                     .background(color = QTheme.colors.colorBackground)
                     .padding(top = 16.dp, bottom = 8.dp)
             ) {
@@ -103,7 +106,7 @@ fun Genres(navController: NavController) {
                         modifier = Modifier.padding(horizontal = 4.dp)
                     )
                     IconButton(
-                        onClick = { /*TODO*/ },
+                        onClick = { onSelectGenre(genre) },
                         modifier = Modifier.padding(horizontal = 4.dp)
                     ) {
                         Icon(
