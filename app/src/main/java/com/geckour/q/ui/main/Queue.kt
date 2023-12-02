@@ -109,68 +109,6 @@ fun QueueItem(
     onChangeRequestedTrackInQueue: (domainTrack: DomainTrack) -> Unit,
     onRemoveTrackFromQueue: (domainTrack: DomainTrack) -> Unit
 ) {
-//        val popupMenu = PopupMenu(LocalContext.current, LocalView.current).apply {
-//            setOnMenuItemClickListener { menuItem ->
-//                when (menuItem.itemId) {
-//                    R.id.menu_transition_to_artist -> {
-//                        mainViewModel.onRequestNavigate(domainTrack.artist)
-//                    }
-//
-//                    R.id.menu_transition_to_album -> {
-//                        mainViewModel.onRequestNavigate(domainTrack.album)
-//                    }
-//
-//                    R.id.menu_insert_all_next,
-//                    R.id.menu_insert_all_last,
-//                    R.id.menu_override_all -> {
-//                        mainViewModel.onNewQueue(
-//                            listOf(domainTrack),
-//                            when (menuItem.itemId) {
-//                                R.id.menu_insert_all_next -> {
-//                                    InsertActionType.NEXT
-//                                }
-//
-//                                R.id.menu_insert_all_last -> {
-//                                    InsertActionType.LAST
-//                                }
-//
-//                                R.id.menu_override_all -> {
-//                                    InsertActionType.OVERRIDE
-//                                }
-//
-//                                else -> return@setOnMenuItemClickListener false
-//                            },
-//                            OrientedClassType.TRACK
-//                        )
-//                    }
-//
-//                    R.id.menu_edit_metadata -> {
-//                        lifecycleScope.launch {
-//                            val db = DB.getInstance(requireContext())
-//                            val tracks = mainViewModel.currentQueueFlow.value.mapNotNull {
-//                                db.trackDao().get(it.id)
-//                            }
-//                            requireContext().showFileMetadataUpdateDialog(
-//                                tracks,
-//                                onUpdate = { binding ->
-//                                    lifecycleScope.launch {
-//                                        binding.updateFileMetadata(requireContext(), db, tracks)
-//                                    }
-//                                }
-//                            )
-//                        }
-//                    }
-//
-//                    R.id.menu_delete_track -> {
-//                        mainViewModel.deleteTrack(domainTrack)
-//                    }
-//                }
-//
-//                return@setOnMenuItemClickListener true
-//            }
-//            inflate(R.menu.queue)
-//        }
-
     val elevation by animateDpAsState(targetValue = if (isDragging) 8.dp else 0.dp, label = "")
 
     Card(

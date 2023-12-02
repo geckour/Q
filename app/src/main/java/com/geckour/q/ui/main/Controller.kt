@@ -6,7 +6,9 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -53,6 +55,7 @@ import com.geckour.q.util.getTimeString
 import com.geckour.q.util.setShouldShowCurrentRemain
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Controller(
     currentTrack: DomainTrack?,
@@ -73,6 +76,7 @@ fun Controller(
     shuffleQueue: () -> Unit,
     moveToCurrentIndex: () -> Unit,
     clearQueue: () -> Unit,
+    onTrackSelected: (item: DomainTrack) -> Unit
 ) {
     Column {
         Column(modifier = Modifier.height(144.dp)) {
@@ -82,6 +86,10 @@ fun Controller(
                     contentDescription = null,
                     contentScale = ContentScale.Inside,
                     modifier = Modifier.size(84.dp)
+                        .combinedClickable(
+                            onClick = {},
+                            onLongClick = { currentTrack?.let { onTrackSelected(it) } }
+                        )
                 )
                 Column(
                     modifier = Modifier
