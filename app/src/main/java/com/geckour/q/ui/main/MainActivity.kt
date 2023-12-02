@@ -101,6 +101,7 @@ import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import permissions.dispatcher.ktx.constructPermissionsRequest
 import java.util.UUID
+import kotlin.math.abs
 import kotlin.math.sin
 
 class MainActivity : AppCompatActivity() {
@@ -306,7 +307,7 @@ class MainActivity : AppCompatActivity() {
                     },
                     backgroundColor = QTheme.colors.colorBackground,
                     sheetBackgroundColor = QTheme.colors.colorBackgroundBottomSheet,
-                    sheetPeekHeight = (144 + sin(bottomSheetHeightAngle.value) * 20).dp,
+                    sheetPeekHeight = (144 + abs(sin(bottomSheetHeightAngle.value)) * 20).dp,
                     sheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
                     sheetContent = {
                         BackHandler(scaffoldState.bottomSheetState.isExpanded && scaffoldState.drawerState.isClosed) {

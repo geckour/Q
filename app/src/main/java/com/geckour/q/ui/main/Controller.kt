@@ -115,11 +115,18 @@ fun Controller(
                         }
                         Row(
                             modifier = Modifier
-                                .width(84.dp)
-                                .alpha(if (isLoading) 1f else 0f),
+                                .width(84.dp),
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_dropbox),
+                                contentDescription = null,
+                                tint = QTheme.colors.colorTextPrimary,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .alpha(if (currentTrack?.dropboxPath != null) 1f else 0f)
+                            )
                             val infiniteTransition = rememberInfiniteTransition(label = "")
                             val degree by infiniteTransition.animateFloat(
                                 initialValue = 0f,
@@ -132,21 +139,17 @@ fun Controller(
                                 ),
                                 label = ""
                             )
-                            Spacer(modifier = Modifier.width(24.dp))
-                            IconButton(
-                                onClick = shuffleQueue,
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_empty),
+                                contentDescription = null,
+                                tint = QTheme.colors.colorTextPrimary,
                                 modifier = Modifier
                                     .size(24.dp)
+                                    .alpha(if (isLoading) 1f else 0f)
                                     .graphicsLayer {
                                         rotationZ = degree
                                     }
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_empty),
-                                    contentDescription = null,
-                                    tint = QTheme.colors.colorTextPrimary
-                                )
-                            }
+                            )
                         }
                     }
                     Row {
