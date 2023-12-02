@@ -4,9 +4,6 @@ import com.geckour.q.App
 import com.geckour.q.ui.easteregg.EasterEggViewModel
 import com.geckour.q.ui.equalizer.EqualizerViewModel
 import com.geckour.q.ui.instant.InstantPlayerViewModel
-import com.geckour.q.ui.library.album.AlbumListViewModel
-import com.geckour.q.ui.library.artist.ArtistListViewModel
-import com.geckour.q.ui.library.track.TrackListViewModel
 import com.geckour.q.ui.main.MainViewModel
 import com.geckour.q.ui.setting.SettingViewModel
 import com.geckour.q.ui.sheet.BottomSheetViewModel
@@ -26,15 +23,6 @@ val viewModelModule = module {
     }
     viewModel {
         InstantPlayerViewModel(app = androidApplication() as App)
-    }
-    viewModel {
-        TrackListViewModel(db = get())
-    }
-    viewModel { params ->
-        AlbumListViewModel(db = get(), params.getOrNull())
-    }
-    viewModel {
-        ArtistListViewModel(db = get())
     }
     viewModel {
         SettingViewModel()

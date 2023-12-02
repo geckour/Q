@@ -80,14 +80,6 @@ class EqualizerFragment : Fragment() {
         inflateSeekBars()
     }
 
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        super.onCreateOptionsMenu(menu, inflater)
-
-        inflater.inflate(R.menu.toggle_theme_toolbar, menu)
-
-        menu.setIconTint()
-    }
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_toggle_daynight -> requireActivity().toggleDayNight(sharedPreferences)

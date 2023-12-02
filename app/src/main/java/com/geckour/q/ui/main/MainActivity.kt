@@ -15,6 +15,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -38,12 +40,12 @@ import androidx.compose.material.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -71,6 +73,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.ui.main.MainViewModel.Companion.DROPBOX_PATH_ROOT
@@ -78,8 +81,10 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.dbxRequestConfig
 import com.geckour.q.util.dropboxCredential
+import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlertKey
 import com.geckour.q.util.getIsNightMode
 import com.geckour.q.util.getTimeString
+import com.geckour.q.util.setHasAlreadyShownDropboxSyncAlertKey
 import com.geckour.q.util.setIsNightMode
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.worker.DropboxMediaRetrieveWorker
@@ -95,7 +100,6 @@ import kotlinx.coroutines.launch
 import org.koin.android.ext.android.inject
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import permissions.dispatcher.ktx.constructPermissionsRequest
-import timber.log.Timber
 import java.util.UUID
 import kotlin.math.sin
 
@@ -108,23 +112,8 @@ class MainActivity : AppCompatActivity() {
 
     private val viewModel by viewModel<MainViewModel>()
     private val sharedPreferences by inject<SharedPreferences>()
-
-//    private val onNavigationItemSelected: (MenuItem) -> Boolean = {
-//        when (it.itemId) {
-//            R.id.nav_sync -> {
-//                FirebaseAnalytics.getInstance(this)
-//                    .logEvent(FirebaseAnalytics.Event.SELECT_CONTENT, Bundle().apply {
-//                        putString(
-//                            FirebaseAnalytics.Param.ITEM_NAME, "Invoked force sync"
-//                        )
-//                    })
-//
-//                retrieveMedia(false)
-//                null
-//            }
-//        }
-//        true
-//    }
+    private var onAuthDropboxCompleted: (() -> Unit)? = null
+    private var onCancelProgress: (() -> Unit)? = null
 
     @OptIn(ExperimentalMaterialApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -152,11 +141,13 @@ class MainActivity : AppCompatActivity() {
             var selectedTrack by remember { mutableStateOf<DomainTrack?>(null) }
             var selectedAlbum by remember { mutableStateOf<JoinedAlbum?>(null) }
             var selectedArtist by remember { mutableStateOf<Artist?>(null) }
-            var selectedDrawerItemId by remember { mutableIntStateOf(R.id.nav_artist) }
+            var selectedNav by remember { mutableStateOf<Nav?>(null) }
             val mediaRetrieveWorkInfoList by viewModel.mediaRetrieveWorkInfoListFlow
                 .collectAsState(initial = emptyList())
             var progressMessage by remember { mutableStateOf<String?>(null) }
             var finishedWorkIdSet by remember { mutableStateOf(emptySet<UUID>()) }
+            val hasAlreadyShownDropboxSyncAlert by context.getHasAlreadyShownDropboxSyncAlertKey()
+                .collectAsState(initial = false)
 
             val bottomSheetHeightAngle = remember { Animatable(0f) }
             LaunchedEffect(queue) {
@@ -178,7 +169,6 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 mediaRetrieveWorkInfoList.forEach { workInfo ->
-                    Timber.d("qgeck work id: ${workInfo.id}, state: ${workInfo.state}")
                     workInfo.progress.also { progress ->
                         progress.getInt(KEY_SYNCING_PROGRESS_NUMERATOR, -1).let { numerator ->
                             if (numerator < 0) return@let
@@ -198,20 +188,23 @@ class MainActivity : AppCompatActivity() {
                                     totalFilesCount
                                 )
                             val remainingText =
-                                if (remaining > -1) getString(
-                                    R.string.remaining,
-                                    remaining.getTimeString()
-                                )
-                                else ""
+                                if (remaining < 0) ""
+                                else getString(R.string.remaining, remaining.getTimeString())
 
                             if (progressText.isNotEmpty() || remainingText.isNotEmpty() || path.isNotEmpty()) {
                                 progressMessage =
                                     "${getString(R.string.syncing)}\n$progressText $remainingText\n$path"
+                                onCancelProgress = {
+                                    val workManager = WorkManager.getInstance(context)
+                                    workInfo.tags.forEach {
+                                        workManager.cancelAllWorkByTag(it)
+                                    }
+                                }
                             }
                         }
                     }
-                    if (finishedWorkIdSet.contains(workInfo.id)
-                            .not() && workInfo.outputData.getBoolean(KEY_SYNCING_FINISHED, false)
+                    if (finishedWorkIdSet.contains(workInfo.id).not()
+                        && workInfo.outputData.getBoolean(KEY_SYNCING_FINISHED, false)
                     ) {
                         finishedWorkIdSet += workInfo.id
                         viewModel.forceLoad.value = Unit
@@ -219,6 +212,8 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+
+            onAuthDropboxCompleted = { showDropboxDialog = true }
 
             QTheme(darkTheme = isNightMode) {
                 BottomSheetScaffold(
@@ -238,40 +233,40 @@ class MainActivity : AppCompatActivity() {
                             DrawerItem(
                                 iconResId = R.drawable.ic_artist,
                                 title = stringResource(id = R.string.nav_artist),
-                                isSelected = selectedDrawerItemId == R.id.nav_artist,
+                                isSelected = selectedNav == Nav.ARTIST,
                                 onClick = {
                                     navController.navigate("artists")
-                                    selectedDrawerItemId = R.id.nav_artist
+                                    selectedNav = Nav.ARTIST
                                     coroutineScope.launch { scaffoldState.drawerState.close() }
                                 }
                             )
                             DrawerItem(
                                 iconResId = R.drawable.ic_album,
                                 title = stringResource(id = R.string.nav_album),
-                                isSelected = selectedDrawerItemId == R.id.nav_album,
+                                isSelected = selectedNav == Nav.ALBUM,
                                 onClick = {
                                     navController.navigate("albums")
-                                    selectedDrawerItemId = R.id.nav_album
+                                    selectedNav = Nav.ALBUM
                                     coroutineScope.launch { scaffoldState.drawerState.close() }
                                 }
                             )
                             DrawerItem(
                                 iconResId = R.drawable.ic_track,
                                 title = stringResource(id = R.string.nav_track),
-                                isSelected = selectedDrawerItemId == R.id.nav_track,
+                                isSelected = selectedNav == Nav.TRACK,
                                 onClick = {
                                     navController.navigate("tracks")
-                                    selectedDrawerItemId = R.id.nav_track
+                                    selectedNav = Nav.TRACK
                                     coroutineScope.launch { scaffoldState.drawerState.close() }
                                 }
                             )
                             DrawerItem(
                                 iconResId = R.drawable.ic_genre,
                                 title = stringResource(id = R.string.nav_genre),
-                                isSelected = selectedDrawerItemId == R.id.nav_genre,
+                                isSelected = selectedNav == Nav.GENRE,
                                 onClick = {
                                     navController.navigate("genres")
-                                    selectedDrawerItemId = R.id.nav_genre
+                                    selectedNav = Nav.GENRE
                                     coroutineScope.launch { scaffoldState.drawerState.close() }
                                 }
                             )
@@ -280,22 +275,18 @@ class MainActivity : AppCompatActivity() {
                             DrawerItem(
                                 iconResId = R.drawable.ic_dropbox,
                                 title = stringResource(id = R.string.nav_dropbox_sync),
-                                isSelected = selectedDrawerItemId == R.id.nav_dropbox_sync,
+                                isSelected = selectedNav == Nav.DROPBOX_SYNC,
                                 onClick = {
-                                    val credential = sharedPreferences.dropboxCredential
-                                    if (credential.isNullOrBlank()) {
-                                        viewModel.isDropboxAuthOngoing = true
-                                        Auth.startOAuth2PKCE(
-                                            context,
-                                            BuildConfig.DROPBOX_APP_KEY,
-                                            dbxRequestConfig,
-                                            DbxHost.DEFAULT
-                                        )
-                                    } else {
-                                        viewModel.showDropboxFolderChooser()
-                                        showDropboxDialog = true
-                                    }
-                                    selectedDrawerItemId = R.id.nav_dropbox_sync
+                                    showDropboxDialog = true
+                                    coroutineScope.launch { scaffoldState.drawerState.close() }
+                                }
+                            )
+                            DrawerItem(
+                                iconResId = R.drawable.ic_sync,
+                                title = stringResource(id = R.string.nav_sync),
+                                isSelected = selectedNav == Nav.SYNC,
+                                onClick = {
+                                    retrieveMedia(false)
                                     coroutineScope.launch { scaffoldState.drawerState.close() }
                                 }
                             )
@@ -380,7 +371,7 @@ class MainActivity : AppCompatActivity() {
                                     .fillMaxSize()
                             ) {
                                 composable("artists") {
-                                    selectedDrawerItemId = R.id.nav_artist
+                                    selectedNav = Nav.ARTIST
                                     topBarTitle = stringResource(id = R.string.nav_artist)
                                     Artists(
                                         navController = navController, onSelectArtist = {
@@ -398,7 +389,7 @@ class MainActivity : AppCompatActivity() {
                                         }
                                     )
                                 ) { backStackEntry ->
-                                    selectedDrawerItemId = R.id.nav_album
+                                    selectedNav = Nav.ALBUM
                                     Albums(
                                         navController = navController,
                                         artistId = backStackEntry.arguments?.getLong("artistId")
@@ -425,7 +416,7 @@ class MainActivity : AppCompatActivity() {
                                         }
                                     )
                                 ) { backStackEntry ->
-                                    selectedDrawerItemId = R.id.nav_track
+                                    selectedNav = Nav.TRACK
                                     val albumId = backStackEntry.arguments?.getLong("albumId") ?: -1
                                     val genreName = backStackEntry.arguments?.getString("genreName")
                                     Tracks(
@@ -442,7 +433,7 @@ class MainActivity : AppCompatActivity() {
                                 }
                                 composable("genres") {
                                     topBarTitle = stringResource(id = R.string.nav_genre)
-                                    selectedDrawerItemId = R.id.nav_genre
+                                    selectedNav = Nav.GENRE
                                     Genres(navController = navController)
                                 }
                             }
@@ -936,104 +927,190 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                             if (showDropboxDialog) {
-                                val currentDropboxItemList by viewModel.dropboxItemList.collectAsState(
-                                    initial = "" to emptyList()
-                                )
-                                var selectedHistory by remember { mutableStateOf(emptyList<FolderMetadata>()) }
-                                Dialog(onDismissRequest = { showDropboxDialog = false }) {
-                                    Card(
-                                        backgroundColor = QTheme.colors.colorBackground,
-                                        modifier = Modifier.heightIn(max = 800.dp)
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.padding(
-                                                horizontal = 12.dp,
-                                                vertical = 8.dp
-                                            )
-                                        ) {
-                                            Text(
-                                                text = currentDropboxItemList.first,
-                                                fontSize = 22.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = QTheme.colors.colorAccent
-                                            )
-                                            LazyColumn(
-                                                modifier = Modifier
-                                                    .weight(1f)
-                                                    .fillMaxHeight()
+                                val credential = sharedPreferences.dropboxCredential
+                                if (hasAlreadyShownDropboxSyncAlert) {
+                                    if (credential.isNullOrBlank()) {
+                                        viewModel.isDropboxAuthOngoing = true
+                                        Auth.startOAuth2PKCE(
+                                            context,
+                                            BuildConfig.DROPBOX_APP_KEY,
+                                            dbxRequestConfig,
+                                            DbxHost.DEFAULT
+                                        )
+                                        showDropboxDialog = false
+                                    } else {
+                                        viewModel.showDropboxFolderChooser()
+
+                                        val currentDropboxItemList by viewModel.dropboxItemList.collectAsState(
+                                            initial = "" to emptyList()
+                                        )
+                                        var selectedHistory by remember { mutableStateOf(emptyList<FolderMetadata>()) }
+                                        Dialog(onDismissRequest = { showDropboxDialog = false }) {
+                                            Card(
+                                                backgroundColor = QTheme.colors.colorBackground,
+                                                modifier = Modifier.heightIn(max = 800.dp)
                                             ) {
-                                                items(currentDropboxItemList.second) {
-                                                    Text(
-                                                        text = it.name,
-                                                        fontSize = 20.sp,
-                                                        color = QTheme.colors.colorTextPrimary,
-                                                        modifier = Modifier
-                                                            .clickable {
-                                                                selectedHistory += it
-                                                                viewModel.showDropboxFolderChooser(
-                                                                    it
-                                                                )
-                                                            }
-                                                            .padding(
-                                                                horizontal = 8.dp,
-                                                                vertical = 12.dp
-                                                            )
-                                                            .fillMaxWidth()
+                                                Column(
+                                                    modifier = Modifier.padding(
+                                                        horizontal = 12.dp,
+                                                        vertical = 8.dp
                                                     )
-                                                }
-                                            }
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth()
-                                            ) {
-                                                if (selectedHistory.isNotEmpty()) {
-                                                    TextButton(
-                                                        onClick = {
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(id = R.string.dialog_title_dropbox_choose_folder),
+                                                        fontSize = 28.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = QTheme.colors.colorAccent
+                                                    )
+                                                    Spacer(modifier = Modifier.height(8.dp))
+                                                    Text(
+                                                        text = stringResource(id = R.string.dialog_desc_dropbox_choose_folder),
+                                                        fontSize = 18.sp,
+                                                        color = QTheme.colors.colorTextPrimary,
+                                                    )
+                                                    Text(
+                                                        text = currentDropboxItemList.first,
+                                                        fontSize = 22.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = QTheme.colors.colorAccent
+                                                    )
+                                                    LazyColumn(
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .fillMaxHeight()
+                                                    ) {
+                                                        items(currentDropboxItemList.second) {
+                                                            Text(
+                                                                text = it.name,
+                                                                fontSize = 20.sp,
+                                                                color = QTheme.colors.colorTextPrimary,
+                                                                modifier = Modifier
+                                                                    .clickable {
+                                                                        selectedHistory += it
+                                                                        viewModel.showDropboxFolderChooser(
+                                                                            it
+                                                                        )
+                                                                    }
+                                                                    .padding(
+                                                                        horizontal = 8.dp,
+                                                                        vertical = 12.dp
+                                                                    )
+                                                                    .fillMaxWidth()
+                                                            )
+                                                        }
+                                                    }
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    ) {
+                                                        val prev = {
                                                             selectedHistory =
                                                                 selectedHistory.dropLast(1)
                                                             viewModel.showDropboxFolderChooser(
                                                                 selectedHistory.lastOrNull()
                                                             )
                                                         }
+                                                        BackHandler(selectedHistory.isNotEmpty()) {
+                                                            prev()
+                                                        }
+                                                        if (selectedHistory.isNotEmpty()) {
+                                                            TextButton(onClick = { prev() }) {
+                                                                Text(
+                                                                    text = stringResource(R.string.dialog_prev),
+                                                                    fontSize = 16.sp,
+                                                                    color = QTheme.colors.colorTextPrimary
+                                                                )
+                                                            }
+                                                        }
+                                                        Spacer(
+                                                            modifier = Modifier
+                                                                .weight(1f)
+                                                                .fillMaxWidth()
+                                                        )
+                                                        TextButton(
+                                                            onClick = {
+                                                                viewModel.clearDropboxItemList()
+                                                                showDropboxDialog = false
+                                                            }
+                                                        ) {
+                                                            Text(
+                                                                text = stringResource(R.string.dialog_ng),
+                                                                fontSize = 16.sp,
+                                                                color = QTheme.colors.colorTextPrimary
+                                                            )
+                                                        }
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        TextButton(
+                                                            onClick = {
+                                                                retrieveDropboxMedia(
+                                                                    selectedHistory.lastOrNull()?.pathLower
+                                                                        ?: DROPBOX_PATH_ROOT
+                                                                )
+                                                                showDropboxDialog = false
+                                                            }
+                                                        ) {
+                                                            Text(
+                                                                text = stringResource(R.string.dialog_ok),
+                                                                fontSize = 16.sp,
+                                                                color = QTheme.colors.colorAccent
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    Dialog(onDismissRequest = { showDropboxDialog = false }) {
+                                        Card(backgroundColor = QTheme.colors.colorBackground) {
+                                            Column(
+                                                modifier = Modifier.padding(
+                                                    horizontal = 12.dp,
+                                                    vertical = 8.dp
+                                                )
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.dialog_title_dropbox_sync_caution),
+                                                    fontSize = 28.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = QTheme.colors.colorAccent
+                                                )
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Text(
+                                                    text = stringResource(id = R.string.dialog_desc_dropbox_sync_caution),
+                                                    fontSize = 18.sp,
+                                                    color = QTheme.colors.colorTextPrimary,
+                                                )
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.End
+                                                ) {
+                                                    TextButton(
+                                                        onClick = {
+                                                            showDropboxDialog = false
+                                                        }
                                                     ) {
                                                         Text(
-                                                            text = stringResource(R.string.dialog_prev),
+                                                            text = stringResource(R.string.dialog_ng),
                                                             fontSize = 16.sp,
                                                             color = QTheme.colors.colorTextPrimary
                                                         )
                                                     }
-                                                }
-                                                Spacer(
-                                                    modifier = Modifier
-                                                        .weight(1f)
-                                                        .fillMaxWidth()
-                                                )
-                                                TextButton(
-                                                    onClick = {
-                                                        viewModel.clearDropboxItemList()
-                                                        showDropboxDialog = false
-                                                    }
-                                                ) {
-                                                    Text(
-                                                        text = stringResource(R.string.dialog_ng),
-                                                        fontSize = 16.sp,
-                                                        color = QTheme.colors.colorTextPrimary
-                                                    )
-                                                }
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                TextButton(
-                                                    onClick = {
-                                                        retrieveDropboxMedia(
-                                                            selectedHistory.lastOrNull()?.pathLower
-                                                                ?: DROPBOX_PATH_ROOT
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    TextButton(
+                                                        onClick = {
+                                                            coroutineScope.launch {
+                                                                context.setHasAlreadyShownDropboxSyncAlertKey(
+                                                                    true
+                                                                )
+                                                            }
+                                                        }
+                                                    ) {
+                                                        Text(
+                                                            text = stringResource(R.string.dialog_ok),
+                                                            fontSize = 16.sp,
+                                                            color = QTheme.colors.colorAccent
                                                         )
-                                                        showDropboxDialog = false
                                                     }
-                                                ) {
-                                                    Text(
-                                                        text = stringResource(R.string.dialog_ok),
-                                                        fontSize = 16.sp,
-                                                        color = QTheme.colors.colorAccent
-                                                    )
                                                 }
                                             }
                                         }
@@ -1041,15 +1118,31 @@ class MainActivity : AppCompatActivity() {
                                 }
                             }
                             AnimatedVisibility(visible = progressMessage != null) {
-                                Text(
-                                    text = progressMessage.orEmpty(),
+                                Row(
                                     modifier = Modifier
                                         .background(color = QTheme.colors.colorBackgroundProgress)
                                         .fillMaxWidth()
                                         .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    fontSize = 16.sp,
-                                    color = QTheme.colors.colorTextPrimary
-                                )
+                                    verticalAlignment = Alignment.Bottom
+                                ) {
+                                    Text(
+                                        text = progressMessage.orEmpty(),
+                                        fontSize = 16.sp,
+                                        color = QTheme.colors.colorTextPrimary,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxWidth()
+                                    )
+                                    onCancelProgress?.let {
+                                        TextButton(onClick = it) {
+                                            Text(
+                                                text = stringResource(R.string.button_cancel),
+                                                fontSize = 16.sp,
+                                                color = QTheme.colors.colorAccent
+                                            )
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
@@ -1068,7 +1161,8 @@ class MainActivity : AppCompatActivity() {
 
         if (viewModel.isDropboxAuthOngoing) {
             viewModel.isDropboxAuthOngoing = false
-            onAuthDropboxCompleted()
+            viewModel.storeDropboxApiToken()
+            onAuthDropboxCompleted?.invoke()
         }
     }
 
@@ -1136,61 +1230,5 @@ class MainActivity : AppCompatActivity() {
 
     private fun onReadExternalStorageDenied() {
         retrieveMedia(false)
-    }
-
-//    private fun observeEvents() {
-//        lifecycleScope.launch {
-//            repeatOnLifecycle(Lifecycle.State.STARTED) {
-//                viewModel.dropboxItemList.collect {
-//                    (dropboxChooserDialog ?: run {
-//                        DropboxChooserDialog(this@MainActivity, onClickItem = { metadata ->
-//                            viewModel.showDropboxFolderChooser(metadata)
-//                        }, onPrev = { metadata ->
-//                            viewModel.showDropboxFolderChooser(metadata)
-//                        }, onChoose = { path ->
-//                            retrieveDropboxMedia(path)
-//                        }).apply { dropboxChooserDialog = this }
-//                    }).show(it.first, it.second)
-//                }
-//            }
-//        }
-//
-//        viewModel.mediaRetrieveWorkInfoList.observe(this) { workInfoList ->
-//            if (workInfoList.none { it.state == WorkInfo.State.RUNNING }) {
-//                onCancelSync()
-//                return@observe
-//            }
-//
-//            workInfoList.forEach { workInfo ->
-//                workInfo.progress.also {
-//                    it.getInt(KEY_SYNCING_PROGRESS_NUMERATOR, -1).let { numerator ->
-//                        if (numerator < 0) return@let
-//
-//                        val denominator = it.getInt(KEY_SYNCING_PROGRESS_DENOMINATOR, -1)
-//                        val totalFilesCount = it.getInt(KEY_SYNCING_PROGRESS_TOTAL_FILES, -1)
-//                        val path = it.getString(KEY_SYNCING_PROGRESS_PATH)
-//                        val remaining = it.getLong(KEY_SYNCING_REMAINING, -1)
-//                        setLockingIndicator(true, null)
-//                        binding.indicatorLocking.progressSync.text =
-//                            if (denominator < 0 || totalFilesCount < 0) null
-//                            else getString(
-//                                R.string.progress_sync, numerator, denominator, totalFilesCount
-//                            )
-//                        binding.indicatorLocking.progressPath.text = path
-//                        binding.indicatorLocking.remaining.text = if (remaining > -1) getString(
-//                            R.string.remaining, remaining.getTimeString()
-//                        )
-//                        else ""
-//                    }
-//                }
-//                if (workInfo.outputData.getBoolean(KEY_SYNCING_FINISHED, false)) {
-//                    onCancelSync()
-//                }
-//            }
-//        }
-//    }
-
-    private fun onAuthDropboxCompleted() {
-        viewModel.storeDropboxApiToken()
     }
 }

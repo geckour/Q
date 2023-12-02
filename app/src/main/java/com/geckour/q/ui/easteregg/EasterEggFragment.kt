@@ -64,14 +64,6 @@ class EasterEggFragment : Fragment() {
         mainViewModel.currentFragmentId.value = R.layout.fragment_easter_egg
     }
 
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
-        super.onCreateOptionsMenu(menu, inflater)
-
-        inflater.inflate(R.menu.toggle_theme_toolbar, menu)
-
-        menu.setIconTint()
-    }
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_toggle_daynight -> requireActivity().toggleDayNight()
@@ -94,26 +86,26 @@ class EasterEggFragment : Fragment() {
                 )
             }
 
-            binding.tapArea?.setOnLongClickListener {
-                PopupMenu(requireContext(), binding.artwork, Gravity.BOTTOM).apply {
-                    setOnMenuItemClickListener {
-                        return@setOnMenuItemClickListener when (it.itemId) {
-                            R.id.menu_transition_to_artist -> {
-                                mainViewModel.selectedArtist.value = track.artist
-                                true
-                            }
-                            R.id.menu_transition_to_album -> {
-                                mainViewModel.selectedAlbum.value = track.album
-                                true
-                            }
-                            else -> false
-                        }
-                    }
-                    inflate(R.menu.track_transition)
-                }.show()
-
-                return@setOnLongClickListener true
-            }
+//            binding.tapArea?.setOnLongClickListener {
+//                PopupMenu(requireContext(), binding.artwork, Gravity.BOTTOM).apply {
+//                    setOnMenuItemClickListener {
+//                        return@setOnMenuItemClickListener when (it.itemId) {
+//                            R.id.menu_transition_to_artist -> {
+//                                mainViewModel.selectedArtist.value = track.artist
+//                                true
+//                            }
+//                            R.id.menu_transition_to_album -> {
+//                                mainViewModel.selectedAlbum.value = track.album
+//                                true
+//                            }
+//                            else -> false
+//                        }
+//                    }
+//                    inflate(R.menu.track_transition)
+//                }.show()
+//
+//                return@setOnLongClickListener true
+//            }
 
             binding.artwork.loadOrDefault(track.thumbUriString)
         }.launchIn(lifecycleScope)

@@ -139,8 +139,9 @@ data class EqualizerSettings(
 )
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
-val isNightModeKey = booleanPreferencesKey("key_night-mode")
-val shouldShowCurrentRemainKey = booleanPreferencesKey("key_show_current_remain")
+private val isNightModeKey = booleanPreferencesKey("key_night-mode")
+private val shouldShowCurrentRemainKey = booleanPreferencesKey("key_show_current_remain")
+private val hasAlreadyShownDropboxSyncAlertKey = booleanPreferencesKey("key_has_already_shown_dropbox_sync_alert")
 
 fun Context.getIsNightMode(): Flow<Boolean> = dataStore.data.map {
     it[isNightModeKey] ?: false
@@ -156,6 +157,14 @@ fun Context.getShouldShowCurrentRemain(): Flow<Boolean> = dataStore.data.map {
 
 suspend fun Context.setShouldShowCurrentRemain(shouldShowCurrentRemain: Boolean) {
     dataStore.edit { it[shouldShowCurrentRemainKey] = shouldShowCurrentRemain }
+}
+
+fun Context.getHasAlreadyShownDropboxSyncAlertKey(): Flow<Boolean> = dataStore.data.map {
+    it[hasAlreadyShownDropboxSyncAlertKey] ?: false
+}
+
+suspend fun Context.setHasAlreadyShownDropboxSyncAlertKey(shouldShowCurrentRemain: Boolean) {
+    dataStore.edit { it[hasAlreadyShownDropboxSyncAlertKey] = shouldShowCurrentRemain }
 }
 
 var SharedPreferences.isNightMode by Pref.PrefBoolean("key_night-mode", false)

@@ -162,35 +162,35 @@ class BottomSheetFragment : Fragment() {
             }
         }
 
-        binding.artwork.setOnLongClickListener {
-            return@setOnLongClickListener context?.let { context ->
-                PopupMenu(context, binding.artwork).apply {
-                    setOnMenuItemClickListener {
-                        return@setOnMenuItemClickListener when (it.itemId) {
-                            R.id.menu_transition_to_artist -> {
-                                viewModel.onTransitionToArtist(
-                                    mainViewModel,
-                                    mainViewModel.currentDomainTrack
-                                )
-                                true
-                            }
-
-                            R.id.menu_transition_to_album -> {
-                                viewModel.onTransitionToAlbum(
-                                    mainViewModel,
-                                    mainViewModel.currentDomainTrack
-                                )
-                                true
-                            }
-
-                            else -> false
-                        }//.apply { behavior.state = BottomSheetBehavior.STATE_COLLAPSED }
-                    }
-                    inflate(R.menu.track_transition)
-                }.show()
-                true
-            } ?: false
-        }
+//        binding.artwork.setOnLongClickListener {
+//            return@setOnLongClickListener context?.let { context ->
+//                PopupMenu(context, binding.artwork).apply {
+//                    setOnMenuItemClickListener {
+//                        return@setOnMenuItemClickListener when (it.itemId) {
+//                            R.id.menu_transition_to_artist -> {
+//                                viewModel.onTransitionToArtist(
+//                                    mainViewModel,
+//                                    mainViewModel.currentDomainTrack
+//                                )
+//                                true
+//                            }
+//
+//                            R.id.menu_transition_to_album -> {
+//                                viewModel.onTransitionToAlbum(
+//                                    mainViewModel,
+//                                    mainViewModel.currentDomainTrack
+//                                )
+//                                true
+//                            }
+//
+//                            else -> false
+//                        }//.apply { behavior.state = BottomSheetBehavior.STATE_COLLAPSED }
+//                    }
+//                    inflate(R.menu.track_transition)
+//                }.show()
+//                true
+//            } ?: false
+//        }
 
         binding.buttonControllerLeft.apply {
             setOnClickListener { mainViewModel.onPrev() }

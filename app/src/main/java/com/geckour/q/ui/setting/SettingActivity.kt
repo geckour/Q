@@ -64,12 +64,6 @@ class SettingActivity : AppCompatActivity() {
         delegate.localNightMode = sharedPreferences.isNightMode.toNightModeInt
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.toggle_theme_toolbar, menu)
-        menu.setIconTint()
-        return super.onCreateOptionsMenu(menu)
-    }
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             R.id.menu_toggle_daynight -> toggleDayNight(sharedPreferences)
