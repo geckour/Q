@@ -23,6 +23,7 @@ private val lightColorPalette = QColors(
     colorTextSettingNormal = ColorPrimary,
     colorBackgroundBottomSheet = ColorBackgroundBottomSheet,
     colorBackgroundProgress = ColorBackgroundProgress,
+    colorBackgroundSearch = ColorBackgroundSearch,
     isLight = true
 )
 
@@ -39,6 +40,7 @@ private val darkColorPalette = QColors(
     colorTextSettingNormal = ColorTextStrong,
     colorBackgroundBottomSheet = ColorBackgroundBottomSheetInverse,
     colorBackgroundProgress = ColorBackgroundProgressInverse,
+    colorBackgroundSearch = ColorBackgroundSearchInverse,
     isLight = false
 )
 
@@ -56,6 +58,7 @@ data class QColors(
     val colorTextSettingNormal: Color,
     val colorBackgroundBottomSheet: Color,
     val colorBackgroundProgress: Color,
+    val colorBackgroundSearch: Color,
     val isLight: Boolean,
 ) {
 
@@ -90,6 +93,7 @@ val LocalQColors = staticCompositionLocalOf {
         colorTextSettingNormal = Color.Unspecified,
         colorBackgroundBottomSheet = Color.Unspecified,
         colorBackgroundProgress = Color.Unspecified,
+        colorBackgroundSearch = Color.Unspecified,
         isLight = true
     )
 }

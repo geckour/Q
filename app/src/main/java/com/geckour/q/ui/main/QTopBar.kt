@@ -3,13 +3,16 @@ package com.geckour.q.ui.main
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -38,6 +41,8 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -58,7 +63,8 @@ import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.toDomainTrack
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class,
+@OptIn(
+    ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class,
     ExperimentalComposeUiApi::class
 )
 @Composable
@@ -105,13 +111,14 @@ fun QTopBar(
             query = query,
             onQueryChange = { q ->
                 query = q
-                coroutineScope.launch { result = search(context, q) }
+                if (q.isEmpty()) result = emptyList()
+                else coroutineScope.launch { result = search(context, q) }
             },
             onSearch = { keyboardController?.hide() },
             active = active,
             onActiveChange = { newActive -> active = newActive },
             colors = SearchBarDefaults.colors(
-                containerColor = QTheme.colors.colorBackgroundBottomSheet,
+                containerColor = QTheme.colors.colorBackgroundSearch,
                 dividerColor = Color.Transparent,
                 inputFieldColors = TextFieldDefaults.colors(
                     cursorColor = QTheme.colors.colorTextPrimary,
@@ -121,7 +128,11 @@ fun QTopBar(
             ),
             leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null) }
         ) {
-            LazyColumn(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+            LazyColumn(
+                modifier = Modifier
+                    .padding(bottom = 144.dp)
+                    .fillMaxSize()
+            ) {
                 items(result) {
                     when (it.type) {
                         SearchItem.SearchItemType.CATEGORY -> SearchResultSectionHeader(title = it.title)
@@ -135,7 +146,7 @@ fun QTopBar(
 
 @Composable
 private fun SearchResultSectionHeader(title: String) {
-    Row(modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)) {
+    Row(modifier = Modifier.padding(start = 28.dp, top = 20.dp, bottom = 8.dp)) {
         Text(text = title, color = QTheme.colors.colorAccent, fontSize = 20.sp)
     }
 }
@@ -145,7 +156,7 @@ private fun SearchResultItem(item: SearchItem, onClick: (item: SearchItem) -> Un
     Row(
         modifier = Modifier
             .clickable { onClick(item) }
-            .padding(vertical = 8.dp)
+            .padding(horizontal = 20.dp, vertical = 8.dp)
             .fillMaxWidth()
     ) {
         val artworkUriString = when (val data = item.data) {

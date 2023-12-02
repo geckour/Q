@@ -361,6 +361,7 @@ class MainActivity : AppCompatActivity() {
                     sheetBackgroundColor = QTheme.colors.colorBackgroundBottomSheet,
                     sheetPeekHeight = (144 + abs(sin(bottomSheetHeightAngle.value)) * 20).dp,
                     sheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
+                    sheetElevation = 20.dp,
                     sheetContent = {
                         BackHandler(scaffoldState.bottomSheetState.isExpanded && scaffoldState.drawerState.isClosed) {
                             coroutineScope.launch { scaffoldState.bottomSheetState.collapse() }
