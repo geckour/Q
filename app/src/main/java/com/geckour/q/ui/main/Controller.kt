@@ -3,6 +3,7 @@ package com.geckour.q.ui.main
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -130,15 +131,6 @@ fun Controller(
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_dropbox),
-                                contentDescription = null,
-                                tint = QTheme.colors.colorTextPrimary,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .minimumInteractiveComponentSize()
-                                    .alpha(if (currentTrack?.dropboxPath != null) 1f else 0f)
-                            )
                             val infiniteTransition = rememberInfiniteTransition(label = "")
                             val degree by infiniteTransition.animateFloat(
                                 initialValue = 0f,
@@ -151,6 +143,25 @@ fun Controller(
                                 ),
                                 label = ""
                             )
+                            val queueStateIndicatorAlpha by animateFloatAsState(
+                                targetValue = if (isLoading) 1f else 0f,
+                                animationSpec = tween(200),
+                                label = ""
+                            )
+                            val dropboxIndicatorAlpha by animateFloatAsState(
+                                targetValue = if (currentTrack?.dropboxPath != null) 1f else 0f,
+                                animationSpec = tween(200),
+                                label = ""
+                            )
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_dropbox),
+                                contentDescription = null,
+                                tint = QTheme.colors.colorTextPrimary,
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .minimumInteractiveComponentSize()
+                                    .alpha(dropboxIndicatorAlpha)
+                            )
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_empty),
                                 contentDescription = null,
@@ -158,7 +169,7 @@ fun Controller(
                                 modifier = Modifier
                                     .size(24.dp)
                                     .minimumInteractiveComponentSize()
-                                    .alpha(if (isLoading) 1f else 0f)
+                                    .alpha(queueStateIndicatorAlpha)
                                     .graphicsLayer {
                                         rotationZ = degree
                                     }
