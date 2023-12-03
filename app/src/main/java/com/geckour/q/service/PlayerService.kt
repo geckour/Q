@@ -304,7 +304,7 @@ class PlayerService : Service(), LifecycleOwner {
                 )
             )
 
-            if (currentIndex == player.currentMediaItemIndex - 1
+            if (currentIndex == player.currentMediaItemIndex
                 && playbackState == Player.STATE_ENDED
                 && player.repeatMode == Player.REPEAT_MODE_OFF
             ) {
@@ -1021,6 +1021,7 @@ class PlayerService : Service(), LifecycleOwner {
 
     private fun storeState(
         playWhenReady: Boolean = player.playWhenReady,
+        sourcePaths: List<String> = player.currentSourcePaths,
         currentIndex: Int = this.currentIndex,
         duration: Long = player.duration,
         progress: Long = player.currentPosition,
@@ -1028,7 +1029,6 @@ class PlayerService : Service(), LifecycleOwner {
     ) = lifecycleScope.launch {
         repeatOnLifecycle(Lifecycle.State.STARTED) {
             cachedSourcePaths.clear()
-            val sourcePaths = player.currentSourcePaths
             cachedSourcePaths.addAll(sourcePaths)
             val state = PlayerState(
                 playWhenReady,
