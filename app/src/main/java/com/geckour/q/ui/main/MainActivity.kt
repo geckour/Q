@@ -146,7 +146,7 @@ class MainActivity : AppCompatActivity() {
             var showDropboxDialog by remember { mutableStateOf(false) }
             var showResetShuffleDialog by remember { mutableStateOf(false) }
             var selectedTrack by remember { mutableStateOf<DomainTrack?>(null) }
-            var selectedAlbum by remember { mutableStateOf<JoinedAlbum?>(null) }
+            var selectedAlbum by remember { mutableStateOf<Album?>(null) }
             var selectedArtist by remember { mutableStateOf<Artist?>(null) }
             var selectedGenre by remember { mutableStateOf<Genre?>(null) }
             var selectedNav by remember { mutableStateOf<Nav?>(null) }
@@ -320,47 +320,40 @@ class MainActivity : AppCompatActivity() {
                             onSearchItemClicked = { item ->
                                 when (item.type) {
                                     SearchItem.SearchItemType.TRACK -> {
-                                        viewModel.onNewQueue(
-                                            domainTracks = listOf(item.data as DomainTrack),
-                                            actionType = InsertActionType.NEXT,
-                                            classType = OrientedClassType.TRACK
-                                        )
+                                        selectedTrack = item.data as DomainTrack
                                     }
 
                                     SearchItem.SearchItemType.ALBUM -> {
-                                        coroutineScope.launch {
-                                            val tracks = DB.getInstance(context).trackDao()
-                                                .getAllByAlbum((item.data as Album).id)
-                                            viewModel.onNewQueue(
-                                                domainTracks = tracks.map { it.toDomainTrack() },
-                                                actionType = InsertActionType.NEXT,
-                                                classType = OrientedClassType.ALBUM
-                                            )
-                                        }
+                                        navController.navigate("tracks?albumId=${(item.data as Album).id}")
                                     }
 
                                     SearchItem.SearchItemType.ARTIST -> {
-                                        coroutineScope.launch {
-                                            val tracks = DB.getInstance(context).trackDao()
-                                                .getAllByArtist((item.data as Artist).id)
-                                            viewModel.onNewQueue(
-                                                domainTracks = tracks.map { it.toDomainTrack() },
-                                                actionType = InsertActionType.NEXT,
-                                                classType = OrientedClassType.ALBUM
-                                            )
-                                        }
+                                        navController.navigate("albums?artistId=${(item.data as Artist).id}")
                                     }
 
                                     SearchItem.SearchItemType.GENRE -> {
-                                        coroutineScope.launch {
-                                            val tracks = DB.getInstance(context).trackDao()
-                                                .getAllByGenreName((item.data as Genre).name)
-                                            viewModel.onNewQueue(
-                                                domainTracks = tracks.map { it.toDomainTrack() },
-                                                actionType = InsertActionType.NEXT,
-                                                classType = OrientedClassType.ALBUM
-                                            )
-                                        }
+                                        navController.navigate("tracks?genreName=${(item.data as Genre).name}")
+                                    }
+
+                                    else -> Unit
+                                }
+                            },
+                            onSearchItemLongClicked = { item ->
+                                when (item.type) {
+                                    SearchItem.SearchItemType.TRACK -> {
+                                        selectedTrack = item.data as DomainTrack
+                                    }
+
+                                    SearchItem.SearchItemType.ALBUM -> {
+                                        selectedAlbum = item.data as Album
+                                    }
+
+                                    SearchItem.SearchItemType.ARTIST -> {
+                                        selectedArtist = item.data as Artist
+                                    }
+
+                                    SearchItem.SearchItemType.GENRE -> {
+                                        selectedGenre = item.data as Genre
                                     }
 
                                     else -> Unit
@@ -463,7 +456,7 @@ class MainActivity : AppCompatActivity() {
                                             topBarTitle = it
                                         },
                                         onSelectAlbum = {
-                                            selectedAlbum = it
+                                            selectedAlbum = it.album
                                         }
                                     )
                                 }
@@ -495,8 +488,8 @@ class MainActivity : AppCompatActivity() {
                                     )
                                 }
                                 composable("genres") {
-                                    topBarTitle = stringResource(id = R.string.nav_genre)
                                     selectedNav = Nav.GENRE
+                                    topBarTitle = stringResource(id = R.string.nav_genre)
                                     Genres(
                                         navController = navController,
                                         onSelectGenre = {
@@ -505,6 +498,7 @@ class MainActivity : AppCompatActivity() {
                                     )
                                 }
                                 composable("qzi") {
+                                    selectedNav = null
                                     topBarTitle = stringResource(id = R.string.nav_fortune)
                                     Qzi(
                                         onClick = {
@@ -609,7 +603,7 @@ class MainActivity : AppCompatActivity() {
                                     }
                                 }
                             }
-                            selectedAlbum?.let { joinedAlbum ->
+                            selectedAlbum?.let { album ->
                                 Dialog(onDismissRequest = { selectedAlbum = null }) {
                                     Card(backgroundColor = QTheme.colors.colorBackground) {
                                         Column {
@@ -618,7 +612,7 @@ class MainActivity : AppCompatActivity() {
                                                     coroutineScope.launch {
                                                         val tracks =
                                                             DB.getInstance(context).trackDao()
-                                                                .getAllByAlbum(joinedAlbum.album.id)
+                                                                .getAllByAlbum(album.id)
                                                                 .map { it.toDomainTrack() }
                                                         viewModel.onNewQueue(
                                                             tracks,
@@ -640,7 +634,7 @@ class MainActivity : AppCompatActivity() {
                                                     coroutineScope.launch {
                                                         val tracks =
                                                             DB.getInstance(context).trackDao()
-                                                                .getAllByAlbum(joinedAlbum.album.id)
+                                                                .getAllByAlbum(album.id)
                                                                 .map { it.toDomainTrack() }
                                                         viewModel.onNewQueue(
                                                             tracks,
@@ -662,7 +656,7 @@ class MainActivity : AppCompatActivity() {
                                                     coroutineScope.launch {
                                                         val tracks =
                                                             DB.getInstance(context).trackDao()
-                                                                .getAllByAlbum(joinedAlbum.album.id)
+                                                                .getAllByAlbum(album.id)
                                                                 .map { it.toDomainTrack() }
                                                         viewModel.onNewQueue(
                                                             tracks,
@@ -684,7 +678,7 @@ class MainActivity : AppCompatActivity() {
                                                     coroutineScope.launch {
                                                         val tracks =
                                                             DB.getInstance(context).trackDao()
-                                                                .getAllByAlbum(joinedAlbum.album.id)
+                                                                .getAllByAlbum(album.id)
                                                                 .map { it.toDomainTrack() }
                                                                 .shuffled()
                                                         viewModel.onNewQueue(
@@ -707,7 +701,7 @@ class MainActivity : AppCompatActivity() {
                                                     coroutineScope.launch {
                                                         val tracks =
                                                             DB.getInstance(context).trackDao()
-                                                                .getAllByAlbum(joinedAlbum.album.id)
+                                                                .getAllByAlbum(album.id)
                                                                 .map { it.toDomainTrack() }
                                                                 .shuffled()
                                                         viewModel.onNewQueue(
@@ -730,7 +724,7 @@ class MainActivity : AppCompatActivity() {
                                                     coroutineScope.launch {
                                                         val tracks =
                                                             DB.getInstance(context).trackDao()
-                                                                .getAllByAlbum(joinedAlbum.album.id)
+                                                                .getAllByAlbum(album.id)
                                                                 .map { it.toDomainTrack() }
                                                                 .shuffled()
                                                         viewModel.onNewQueue(
@@ -752,7 +746,7 @@ class MainActivity : AppCompatActivity() {
                                                 onClick = {
                                                     coroutineScope.launch {
                                                         DB.getInstance(context).trackDao()
-                                                            .getAllByAlbum(joinedAlbum.album.id)
+                                                            .getAllByAlbum(album.id)
                                                             .forEach {
                                                                 viewModel.deleteTrack(it.toDomainTrack())
                                                                 selectedAlbum = null
