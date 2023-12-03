@@ -8,7 +8,6 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -18,7 +17,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -30,7 +28,8 @@ import androidx.compose.material.IconButton
 import androidx.compose.material.Slider
 import androidx.compose.material.SliderDefaults
 import androidx.compose.material.Text
-import androidx.compose.material.minimumInteractiveComponentSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.DownloadForOffline
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -41,7 +40,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -57,8 +55,10 @@ import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.compose.QTheme
+import com.geckour.q.util.dropboxUrlPattern
 import com.geckour.q.util.getShouldShowCurrentRemain
 import com.geckour.q.util.getTimeString
+import com.geckour.q.util.isDownloaded
 import com.geckour.q.util.setShouldShowCurrentRemain
 import kotlinx.coroutines.launch
 
@@ -90,7 +90,7 @@ fun Controller(
         Column(modifier = Modifier.height(144.dp)) {
             Row {
                 AsyncImage(
-                    model = currentTrack?.artworkUriString,
+                    model = currentTrack?.artworkUriString ?: R.drawable.ic_empty,
                     contentDescription = null,
                     contentScale = ContentScale.Inside,
                     modifier = Modifier
@@ -157,14 +157,25 @@ fun Controller(
                                 animationSpec = tween(200),
                                 label = ""
                             )
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_dropbox),
-                                contentDescription = null,
-                                tint = QTheme.colors.colorTextPrimary,
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .alpha(dropboxIndicatorAlpha)
-                            )
+                            if (currentTrack?.isDownloaded == true) {
+                                Icon(
+                                    imageVector = Icons.Outlined.DownloadForOffline,
+                                    contentDescription = null,
+                                    tint = QTheme.colors.colorTextPrimary,
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .alpha(dropboxIndicatorAlpha)
+                                )
+                            } else {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_dropbox),
+                                    contentDescription = null,
+                                    tint = QTheme.colors.colorTextPrimary,
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .alpha(dropboxIndicatorAlpha)
+                                )
+                            }
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_empty),
                                 contentDescription = null,
@@ -179,7 +190,12 @@ fun Controller(
                         }
                     }
                     Spacer(modifier = Modifier.height(4.dp))
-                    Row(modifier = Modifier.weight(1f).fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         Row(
                             modifier = Modifier
                                 .weight(1f)
@@ -256,7 +272,10 @@ fun Controller(
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = rotateRepeatMode, modifier = Modifier.size(24.dp)) {
+                            IconButton(
+                                onClick = rotateRepeatMode,
+                                modifier = Modifier.size(24.dp)
+                            ) {
                                 Icon(
                                     painter = painterResource(
                                         id = when (repeatMode) {

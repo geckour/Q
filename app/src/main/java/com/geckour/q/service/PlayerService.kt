@@ -32,11 +32,8 @@ import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
-import androidx.media3.exoplayer.ExoPlaybackException
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
-import androidx.media3.exoplayer.util.EventLogger
 import com.geckour.q.App
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.DomainTrack
@@ -50,6 +47,7 @@ import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.catchAsNull
 import com.geckour.q.util.currentSourcePaths
+import com.geckour.q.util.dropboxCachePathPattern
 import com.geckour.q.util.getMediaItem
 import com.geckour.q.util.getMediaMetadata
 import com.geckour.q.util.getPlayerNotification
@@ -73,7 +71,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.koin.android.ext.android.inject
 import timber.log.Timber
-import java.io.IOException
+import java.io.FileNotFoundException
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class PlayerService : Service(), LifecycleOwner {
@@ -249,8 +247,6 @@ class PlayerService : Service(), LifecycleOwner {
     internal val equalizerStateFlow = MutableStateFlow(false)
     internal val onDestroyFlow = MutableStateFlow(0L)
 
-    private var recentPlaybackState = false
-
     private val listener = object : Player.Listener {
 
         var lastMediaItem: MediaItem? = null
@@ -359,12 +355,12 @@ class PlayerService : Service(), LifecycleOwner {
             Timber.e(error)
             FirebaseCrashlytics.getInstance().recordException(error)
 
-            if (verifyByCauseIfNeeded(error, recentPlaybackState).not()) {
-                storeState()
-                player.prepare()
-                restoreState()
-                if (recentPlaybackState) resume()
+            val currentPlayWhenReady = player.playWhenReady
+            pause()
+            if (verifyByCauseIfNeeded(error).not()) {
+                removeQueue(currentIndex)
             }
+            if (currentPlayWhenReady) resume()
 
             notificationUpdateJob.cancel()
             notificationUpdateJob = updateNotification()
@@ -426,16 +422,16 @@ class PlayerService : Service(), LifecycleOwner {
                         .build(),
                     true
                 )
-                addAnalyticsListener(object : EventLogger() {
-
-                    override fun onAudioSessionIdChanged(
-                        eventTime: AnalyticsListener.EventTime,
-                        audioSessionId: Int
-                    ) {
-                        super.onAudioSessionIdChanged(eventTime, audioSessionId)
+//                addAnalyticsListener(object : EventLogger() {
+//
+//                    override fun onAudioSessionIdChanged(
+//                        eventTime: AnalyticsListener.EventTime,
+//                        audioSessionId: Int
+//                    ) {
+//                        super.onAudioSessionIdChanged(eventTime, audioSessionId)
 //                        setEqualizer(audioSessionId)
-                    }
-                })
+//                    }
+//                })
             }
 
         restoreState()
@@ -476,24 +472,28 @@ class PlayerService : Service(), LifecycleOwner {
         mediaSession.controller?.dispatchMediaButtonEvent(event)
     }
 
-    private fun verifyByCauseIfNeeded(throwable: Throwable, shouldResume: Boolean): Boolean {
-        val cause = when (throwable) {
-            is ExoPlaybackException,
-            is PlaybackException,
-            is IOException -> {
-                throwable.cause
-            }
+    private fun Throwable.getCausesRecursively(initial: List<Throwable> = emptyList()): List<Throwable> {
+        return cause?.let { it.getCausesRecursively(initial + it) } ?: initial
+    }
 
-            else -> throwable
-        }
-        if ((cause as? HttpDataSource.InvalidResponseCodeException?)?.responseCode == 410) {
+    private fun verifyByCauseIfNeeded(throwable: Throwable): Boolean {
+        val isTarget =
+            throwable.getCausesRecursively().apply { Timber.d("qgeck causes: $this") }.any {
+                (it as? HttpDataSource.InvalidResponseCodeException?)?.responseCode == 410 ||
+                        (it is FileNotFoundException &&
+                                player.currentSourcePaths
+                                    .getOrNull(currentIndex)
+                                    .apply { Timber.d("qgeck source path: $this") }
+                                    ?.matches(dropboxCachePathPattern) == true)
+            }
+        if (isTarget) {
             lifecycleScope.launch {
                 repeatOnLifecycle(Lifecycle.State.STARTED) {
-                    var alive = true
-                    loadStateFlow.value = true to { alive = false }
+                    loadStateFlow.value = true to null
+                    val index = currentIndex
+                    val position = player.currentPosition
                     player.currentSourcePaths
                         .forEach { path ->
-                            if (alive.not()) return@forEach
                             val track = path.toDomainTrack(db) ?: return@forEach
                             val new = obtainDbxClient(this@PlayerService).firstOrNull()?.let {
                                 track.verifiedWithDropbox(this@PlayerService, it)
@@ -502,12 +502,10 @@ class PlayerService : Service(), LifecycleOwner {
                             replace(track to new)
                         }
 
-                    storeState()
-                    player.prepare()
-                    restoreState()
+                    forceIndex(index)
+                    seek(position)
 
                     loadStateFlow.value = false to null
-                    if (shouldResume) resume()
                 }
             }
             return true
@@ -636,7 +634,6 @@ class PlayerService : Service(), LifecycleOwner {
         if (player.playWhenReady.not()) {
             player.playWhenReady = true
         }
-        recentPlaybackState = true
     }
 
     fun pause() {
@@ -644,7 +641,6 @@ class PlayerService : Service(), LifecycleOwner {
 
         player.playWhenReady = false
         notifyPlaybackPositionJob.cancel()
-        recentPlaybackState = false
     }
 
     fun togglePlayPause() {

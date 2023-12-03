@@ -59,6 +59,15 @@ interface ArtistDao {
         delete(artistId)
     }
 
+    @Query("select exists(select 1 from track where (artistId = :artistId or albumArtistId = :artistId) and dropboxPath is not null)")
+    fun containDropboxContent(artistId: Long): Flow<Boolean>
+
+    @Query("select dropboxPath from track where (artistId = :artistId or albumArtistId = :artistId) and dropboxPath is not null and (sourcePath is '' or sourcePath like 'https://%.dl.dropboxusercontent.com/%')")
+    fun downloadableDropboxPaths(artistId: Long): Flow<List<String>>
+
+    @Query("select id from track where (artistId = :artistId or albumArtistId = :artistId)")
+    suspend fun getContainTrackIds(artistId: Long): List<Long>
+
     @Transaction
     suspend fun upsert(db: DB, newArtist: Artist, durationToAdd: Long = 0): Long {
         val existingArtist = getByTitle(newArtist.title)

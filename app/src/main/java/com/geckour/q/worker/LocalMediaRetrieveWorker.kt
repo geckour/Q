@@ -57,11 +57,11 @@ class LocalMediaRetrieveWorker(
             try {
                 setForeground(getForegroundInfo())
             } catch (t: Throwable) {
-                return Result.failure(Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build())
+                return Result.failure(Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build())
             }
 
             seed = System.currentTimeMillis()
-            Timber.d("qgeck media retrieve service started")
+            Timber.d("qgeck media retrieve worker started")
             val db = DB.getInstance(applicationContext)
             val onlyAdded = inputData.getBoolean(KEY_ONLY_ADDED, false)
             val selection =
@@ -82,7 +82,7 @@ class LocalMediaRetrieveWorker(
                     while (cursor.moveToNext()) {
                         if (isStopped) {
                             return Result.success(
-                                Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build()
+                                Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build()
                             )
                         }
 
@@ -96,6 +96,7 @@ class LocalMediaRetrieveWorker(
                         )
                         setProgress(
                             createProgressData(
+                                title = applicationContext.getString(R.string.progress_title_retrieve_media),
                                 numerator = currentProgressNumerator,
                                 denominator = currentProgressDenominator,
                                 path = trackPath
@@ -118,10 +119,10 @@ class LocalMediaRetrieveWorker(
             Timber.d("qgeck track in db count: ${runBlocking { db.trackDao().count() }}")
             delay(200)
 
-            return Result.success(Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build())
+            return Result.success(Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build())
         }
 
-        return Result.failure(Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build())
+        return Result.failure(Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build())
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo =
@@ -200,13 +201,15 @@ class LocalMediaRetrieveWorker(
             }
 
             val lastModified = file.lastModified()
-            trackDao().getByMediaId(trackMediaId)?.let {
+            val existingTrack = trackDao().getByMediaId(trackMediaId)
+            existingTrack?.let {
                 if (it.track.lastModified >= lastModified) return@runBlocking it.track.id
             }
 
             file.storeMediaInfo(
                 context,
                 Uri.fromFile(file).toString(),
+                existingTrack?.track?.id,
                 trackMediaId,
                 null,
                 null,

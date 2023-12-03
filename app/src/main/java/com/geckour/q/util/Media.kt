@@ -13,13 +13,13 @@ import android.webkit.MimeTypeMap
 import androidx.core.app.NotificationCompat
 import androidx.core.content.FileProvider
 import androidx.core.graphics.drawable.toBitmap
+import androidx.core.net.toFile
 import androidx.media.session.MediaButtonReceiver
 import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import coil.Coil
 import coil.request.ImageRequest
 import coil.size.Scale
-import com.bumptech.glide.Glide
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.BuildConfig
 import com.geckour.q.R
@@ -27,6 +27,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.data.db.model.JoinedTrack
+import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.DialogEditMetadataBinding
 import com.geckour.q.domain.model.DomainTrack
 import kotlinx.coroutines.Dispatchers
@@ -50,6 +51,9 @@ const val UNKNOWN: String = "UNKNOWN"
 const val DROPBOX_EXPIRES_IN = 14400000L
 
 private val random = Random(System.currentTimeMillis())
+
+val dropboxUrlPattern = Regex("^https://.+\\.dl\\.dropboxusercontent\\.com/.+$")
+val dropboxCachePathPattern = Regex("^.*/com\\.geckour\\.q.*/cache/audio/id%3A.+$")
 
 enum class InsertActionType {
     NEXT,
@@ -129,6 +133,14 @@ fun JoinedTrack.toDomainTrack(
         nowPlaying
     )
 }
+
+val DomainTrack.isDownloaded
+    get() = dropboxPath != null && sourcePath.isNotBlank() && sourcePath.matches(dropboxUrlPattern)
+        .not()
+
+val Track.isDownloaded
+    get() = dropboxPath != null && sourcePath.isNotBlank() && sourcePath.matches(dropboxUrlPattern)
+        .not()
 
 suspend fun DB.searchArtistByFuzzyTitle(title: String): List<Artist> =
     this@searchArtistByFuzzyTitle.artistDao().findAllByTitle("%${title.escapeSql}%")
@@ -221,7 +233,10 @@ suspend fun DomainTrack.getMediaMetadata(context: Context): MediaMetadataCompat 
             val artworkUriString = getTempArtworkUriString(context)
             val artwork = withContext(Dispatchers.IO) {
                 album.artworkUriString?.let {
-                    Glide.with(context).asBitmap().load(it).submit().get()
+                    Coil.imageLoader(context)
+                        .execute(ImageRequest.Builder(context).data(it).build())
+                        .drawable
+                        ?.toBitmap()
                 }
             }
             putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, artwork)
@@ -348,6 +363,19 @@ fun DbxClientV2.saveTempAudioFile(context: Context, pathLower: String): File {
     val fileName = "temp_audio.${pathLower.getExtension()}"
     val dir = File(context.cacheDir, dirName)
     val file = File(dir, fileName)
+
+    if (file.exists()) file.delete()
+    if (dir.exists().not()) dir.mkdir()
+
+    FileOutputStream(file).use { files().download(pathLower).download(it) }
+
+    return file
+}
+
+fun DbxClientV2.saveAudioFile(context: Context, id: String, pathLower: String): File {
+    val dirName = "audio"
+    val dir = File(context.cacheDir, dirName)
+    val file = File(dir, "$id.${pathLower.getExtension()}")
 
     if (file.exists()) file.delete()
     if (dir.exists().not()) dir.mkdir()
@@ -578,7 +606,13 @@ suspend fun DomainTrack.verifiedWithDropbox(
     withContext(Dispatchers.IO) {
         dropboxPath ?: return@withContext null
 
-        if (force || ((dropboxExpiredAt ?: 0) <= System.currentTimeMillis())) {
+        if (force
+            || sourcePath.isBlank()
+            || (sourcePath.matches(dropboxUrlPattern)
+                    && (dropboxExpiredAt ?: 0) <= System.currentTimeMillis())
+            || (sourcePath.matches(dropboxUrlPattern).not()
+                    && Uri.parse(sourcePath).toFile().exists().not())
+        ) {
             val currentTime = System.currentTimeMillis()
             val url = client.files().getTemporaryLink(dropboxPath).link
             val expiredAt = currentTime + DROPBOX_EXPIRES_IN

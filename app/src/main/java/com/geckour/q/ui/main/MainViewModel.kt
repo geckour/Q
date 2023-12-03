@@ -3,8 +3,10 @@ package com.geckour.q.ui.main
 import android.content.ComponentName
 import android.content.Context
 import android.content.ServiceConnection
+import android.net.Uri
 import android.os.IBinder
 import android.view.KeyEvent
+import androidx.core.net.toFile
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -26,14 +28,17 @@ import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.setDropboxCredential
 import com.geckour.q.util.toDomainTrack
+import com.geckour.q.worker.DROPBOX_DOWNLOAD_WORKER_NAME
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.io.File
 
 class MainViewModel(private val app: App) : ViewModel() {
 
@@ -44,8 +49,11 @@ class MainViewModel(private val app: App) : ViewModel() {
 
     private val db = DB.getInstance(app)
     internal val workManager = WorkManager.getInstance(app)
-    internal val mediaRetrieveWorkInfoListFlow =
+    internal val workInfoListFlow =
         workManager.getWorkInfosForUniqueWorkFlow(MEDIA_RETRIEVE_WORKER_NAME)
+            .combine(workManager.getWorkInfosForUniqueWorkFlow(DROPBOX_DOWNLOAD_WORKER_NAME)) { mediaRetrieveWorkInfo, downloadWorkInfo ->
+                mediaRetrieveWorkInfo + downloadWorkInfo
+            }
 
     private var isBoundService = false
 
@@ -310,6 +318,24 @@ class MainViewModel(private val app: App) : ViewModel() {
         }
     }
 
+    internal fun invalidateDownloaded(targetIds: List<Long>) {
+        viewModelScope.launch {
+            if (targetIds.contains(currentQueueFlow.value.getOrNull(currentIndexFlow.value)?.id)) {
+                onPause?.invoke()
+            }
+            currentQueueFlow.value.filter { track -> targetIds.any { it == track.id } }.forEach {
+                onRemoveQueueByTrack?.invoke(it)
+            }
+            db.trackDao().getAllSourcePathsByIds(targetIds).forEach {
+                val file = Uri.parse(it).toFile()
+                if (file.exists()) {
+                    file.delete()
+                }
+            }
+            db.trackDao().clearAllSourcePaths(targetIds)
+        }
+    }
+
     internal fun onLoadStateChanged(state: Boolean, onAbort: (() -> Unit)? = null) {
         viewModelScope.launch { loading.emit(state to onAbort) }
     }
@@ -356,7 +382,10 @@ class MainViewModel(private val app: App) : ViewModel() {
                 result = client.files().listFolderContinue(result.cursor)
             }
             val currentDirTitle = (dropboxMetadata?.name ?: "Root")
-            dropboxItemListChannel.send(currentDirTitle to result.entries.filterIsInstance<FolderMetadata>())
+            dropboxItemListChannel.send(
+                currentDirTitle to result.entries.filterIsInstance<FolderMetadata>()
+                    .sortedBy { it.name.lowercase() }
+            )
         }
 
     internal fun clearDropboxItemList() {

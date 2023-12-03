@@ -15,6 +15,9 @@ import androidx.compose.material.Card
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.DownloadForOffline
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -41,7 +44,9 @@ fun Albums(
     navController: NavController,
     artistId: Long = -1,
     changeTopBarTitle: (title: String) -> Unit,
-    onSelectAlbum: (item: JoinedAlbum) -> Unit
+    onSelectAlbum: (item: JoinedAlbum) -> Unit,
+    onDownload: (dropboxPaths: List<String>) -> Unit,
+    onInvalidateDownloaded: (albumId: Long) -> Unit
 ) {
     val db = DB.getInstance(LocalContext.current)
     val joinedAlbums by (
@@ -58,6 +63,12 @@ fun Albums(
 
     LazyColumn {
         items(joinedAlbums) { joinedAlbum ->
+            val containDropboxContent by db.albumDao()
+                .containDropboxContent(joinedAlbum.album.id)
+                .collectAsState(initial = false)
+            val downloadableDropboxPaths by db.albumDao()
+                .downloadableDropboxPaths(joinedAlbum.album.id)
+                .collectAsState(emptyList())
             Card(
                 shape = RectangleShape,
                 backgroundColor = QTheme.colors.colorBackground,
@@ -102,9 +113,28 @@ fun Albums(
                         color = QTheme.colors.colorTextPrimary,
                         modifier = Modifier.padding(horizontal = 4.dp)
                     )
+                    if (containDropboxContent) {
+                        IconButton(
+                            onClick = {
+                                if (downloadableDropboxPaths.isEmpty()) onInvalidateDownloaded(
+                                    joinedAlbum.album.id
+                                )
+                                else onDownload(downloadableDropboxPaths)
+                            },
+                            Modifier.padding(horizontal = 4.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (downloadableDropboxPaths.isNotEmpty()) Icons.Outlined.Download else Icons.Outlined.DownloadForOffline,
+                                contentDescription = null,
+                                tint = QTheme.colors.colorTextPrimary
+                            )
+                        }
+                    }
                     IconButton(
                         onClick = { onSelectAlbum(joinedAlbum) },
-                        modifier = Modifier.padding(horizontal = 4.dp)
+                        modifier = Modifier
+                            .padding(horizontal = 4.dp)
+                            .size(24.dp)
                     ) {
                         Icon(
                             painter = painterResource(id = R.drawable.ic_option),

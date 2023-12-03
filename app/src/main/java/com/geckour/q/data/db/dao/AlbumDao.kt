@@ -84,6 +84,15 @@ interface AlbumDao {
         }
     }
 
+    @Query("select exists(select 1 from track where albumId = :albumId and dropboxPath is not null)")
+    fun containDropboxContent(albumId: Long): Flow<Boolean>
+
+    @Query("select dropboxPath from track where albumId = :albumId and dropboxPath is not null and (sourcePath is '' or sourcePath like 'https://%.dl.dropboxusercontent.com/%')")
+    fun downloadableDropboxPaths(albumId: Long): Flow<List<String>>
+
+    @Query("select id from track where albumId = :albumId")
+    suspend fun getContainTrackIds(albumId: Long): List<Long>
+
     @Transaction
     suspend fun deleteRecursively(db: DB, albumId: Long) {
         deleteTrackByAlbum(albumId)

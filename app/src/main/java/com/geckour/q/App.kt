@@ -6,12 +6,14 @@ import android.app.NotificationManager
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.geckour.q.data.dataModule
+import com.geckour.q.data.db.DB
 import com.geckour.q.ui.di.viewModelModule
 import com.geckour.q.util.QNotificationChannel
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
 import timber.log.Timber
+import java.io.File
 
 class App : Application() {
 
@@ -33,8 +35,6 @@ class App : Application() {
             androidContext(this@App)
             modules(viewModelModule, dataModule)
         }
-
-
     }
 
     @RequiresApi(Build.VERSION_CODES.O)

@@ -36,6 +36,8 @@
 
     <!-- Indicator -->
     <string name="syncing">Syncing library…</string>
+    <string name="progress_title_retrieve_media">@string/syncing</string>
+    <string name="progress_title_download_dropbox">@string/syncing</string>
     <string name="loading">Loading items…</string>
     <string name="progress_sync" translatable="false">%1$d / %2$d (%3$d)</string>
     <string name="remaining">Remaining: %s</string>
@@ -134,6 +136,14 @@
 
     <string name="dialog_title_dropbox_sync_caution">Caution</string>
     <string name="dialog_desc_dropbox_sync_caution">Dropbox sync feature will download all target tracks temporary and delete it after the task is done.\nTherefore it may take a lot of time and cause large amount of download.\nAre you sure?</string>
+
+    <string name="dialog_switch_need_downloaded">Save to device</string>
+
+    <string name="dialog_title_dropbox_download">Download</string>
+    <string name="dialog_desc_dropbox_download">Save files into the device?</string>
+
+    <string name="dialog_title_dropbox_invalidate_downloaded">Purge</string>
+    <string name="dialog_desc_dropbox_invalidate_downloaded">Remove downloaded file from the device?</string>
 
     <!-- Track -->
     <string name="track_item_artist_and_album" translatable="false">%1$s - %2$s</string>

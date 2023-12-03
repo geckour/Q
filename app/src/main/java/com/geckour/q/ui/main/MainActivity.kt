@@ -33,6 +33,7 @@ import androidx.compose.material.BottomSheetScaffold
 import androidx.compose.material.Card
 import androidx.compose.material.Divider
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.material.rememberBottomSheetScaffoldState
@@ -73,7 +74,6 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
-import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.Nav
@@ -92,23 +92,24 @@ import com.geckour.q.util.getTimeString
 import com.geckour.q.util.setHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.setIsNightMode
 import com.geckour.q.util.toDomainTrack
+import com.geckour.q.worker.DROPBOX_DOWNLOAD_WORKER_NAME
+import com.geckour.q.worker.DropboxDownloadWorker
 import com.geckour.q.worker.DropboxMediaRetrieveWorker
-import com.geckour.q.worker.KEY_SYNCING_FINISHED
-import com.geckour.q.worker.KEY_SYNCING_PROGRESS_DENOMINATOR
-import com.geckour.q.worker.KEY_SYNCING_PROGRESS_NUMERATOR
-import com.geckour.q.worker.KEY_SYNCING_PROGRESS_PATH
-import com.geckour.q.worker.KEY_SYNCING_PROGRESS_TOTAL_FILES
-import com.geckour.q.worker.KEY_SYNCING_REMAINING
+import com.geckour.q.worker.KEY_PROGRESS_FINISHED
+import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_DENOMINATOR
+import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_NUMERATOR
+import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_PATH
+import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_TOTAL_FILES
+import com.geckour.q.worker.KEY_PROGRESS_REMAINING
+import com.geckour.q.worker.KEY_PROGRESS_TITLE
 import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import permissions.dispatcher.ktx.constructPermissionsRequest
-import timber.log.Timber
+import java.io.File
 import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.sin
@@ -151,12 +152,14 @@ class MainActivity : AppCompatActivity() {
             var selectedArtist by remember { mutableStateOf<Artist?>(null) }
             var selectedGenre by remember { mutableStateOf<Genre?>(null) }
             var selectedNav by remember { mutableStateOf<Nav?>(null) }
-            val mediaRetrieveWorkInfoList by viewModel.mediaRetrieveWorkInfoListFlow
+            val workInfoList by viewModel.workInfoListFlow
                 .collectAsState(initial = emptyList())
             var progressMessage by remember { mutableStateOf<String?>(null) }
             var finishedWorkIdSet by remember { mutableStateOf(emptySet<UUID>()) }
             val hasAlreadyShownDropboxSyncAlert by context.getHasAlreadyShownDropboxSyncAlert()
                 .collectAsState(initial = false)
+            var downloadTargets by remember { mutableStateOf(emptyList<String>()) }
+            var invalidateDownloadedTargets by remember { mutableStateOf(emptyList<Long>()) }
 
             val bottomSheetHeightAngle = remember { Animatable(0f) }
             LaunchedEffect(sourcePaths) {
@@ -169,24 +172,27 @@ class MainActivity : AppCompatActivity() {
             }
 
             LaunchedEffect(
-                mediaRetrieveWorkInfoList.map { it.progress },
-                mediaRetrieveWorkInfoList.map { it.state }) {
-                if (mediaRetrieveWorkInfoList.none { it.state == WorkInfo.State.RUNNING }) {
+                workInfoList.map { it.progress },
+                workInfoList.map { it.state }) {
+                if (workInfoList.none { it.state == WorkInfo.State.RUNNING }) {
                     viewModel.forceLoad.value = Unit
                     progressMessage = null
                     return@LaunchedEffect
                 }
 
-                mediaRetrieveWorkInfoList.forEach { workInfo ->
+                workInfoList.forEach { workInfo ->
                     workInfo.progress.also { progress ->
-                        progress.getInt(KEY_SYNCING_PROGRESS_NUMERATOR, -1).let { numerator ->
+                        progress.getInt(KEY_PROGRESS_PROGRESS_NUMERATOR, -1).let { numerator ->
                             if (numerator < 0) return@let
 
-                            val denominator = progress.getInt(KEY_SYNCING_PROGRESS_DENOMINATOR, -1)
+                            val title = progress.getString(KEY_PROGRESS_TITLE)
+                                ?: getString(R.string.progress_title_retrieve_media)
+
+                            val denominator = progress.getInt(KEY_PROGRESS_PROGRESS_DENOMINATOR, -1)
                             val totalFilesCount =
-                                progress.getInt(KEY_SYNCING_PROGRESS_TOTAL_FILES, -1)
-                            val path = progress.getString(KEY_SYNCING_PROGRESS_PATH).orEmpty()
-                            val remaining = progress.getLong(KEY_SYNCING_REMAINING, -1)
+                                progress.getInt(KEY_PROGRESS_PROGRESS_TOTAL_FILES, -1)
+                            val path = progress.getString(KEY_PROGRESS_PROGRESS_PATH).orEmpty()
+                            val remaining = progress.getLong(KEY_PROGRESS_REMAINING, -1)
 
                             val progressText =
                                 if (denominator < 0 || totalFilesCount < 0) ""
@@ -202,7 +208,7 @@ class MainActivity : AppCompatActivity() {
 
                             if (progressText.isNotEmpty() || remainingText.isNotEmpty() || path.isNotEmpty()) {
                                 progressMessage =
-                                    "${getString(R.string.syncing)}\n$progressText $remainingText\n$path"
+                                    "$title\n$progressText $remainingText\n$path"
                                 onCancelProgress = {
                                     val workManager = WorkManager.getInstance(context)
                                     workInfo.tags.forEach {
@@ -213,7 +219,7 @@ class MainActivity : AppCompatActivity() {
                         }
                     }
                     if (finishedWorkIdSet.contains(workInfo.id).not()
-                        && workInfo.outputData.getBoolean(KEY_SYNCING_FINISHED, false)
+                        && workInfo.outputData.getBoolean(KEY_PROGRESS_FINISHED, false)
                     ) {
                         finishedWorkIdSet += workInfo.id
                         viewModel.forceLoad.value = Unit
@@ -411,7 +417,7 @@ class MainActivity : AppCompatActivity() {
                             forceScrollToCurrent = forceScrollToCurrent,
                             onQueueMove = viewModel::onQueueMove,
                             onChangeRequestedTrackInQueue = viewModel::onChangeRequestedTrackInQueue,
-                            onRemoveTrackFromQueue = viewModel::onRemoveTrackFromQueue,
+                            onRemoveTrackFromQueue = viewModel::onRemoveTrackFromQueue
                         )
                     }
                 ) { paddingValues ->
@@ -436,6 +442,17 @@ class MainActivity : AppCompatActivity() {
                                     Artists(
                                         navController = navController, onSelectArtist = {
                                             selectedArtist = it
+                                        },
+                                        onDownload = {
+                                            downloadTargets = it
+                                        },
+                                        onInvalidateDownloaded = {
+                                            coroutineScope.launch {
+                                                invalidateDownloadedTargets =
+                                                    DB.getInstance(context)
+                                                        .artistDao()
+                                                        .getContainTrackIds(it)
+                                            }
                                         }
                                     )
                                 }
@@ -458,6 +475,17 @@ class MainActivity : AppCompatActivity() {
                                         },
                                         onSelectAlbum = {
                                             selectedAlbum = it.album
+                                        },
+                                        onDownload = {
+                                            downloadTargets = it
+                                        },
+                                        onInvalidateDownloaded = {
+                                            coroutineScope.launch {
+                                                invalidateDownloadedTargets =
+                                                    DB.getInstance(context)
+                                                        .albumDao()
+                                                        .getContainTrackIds(it)
+                                            }
                                         }
                                     )
                                 }
@@ -485,6 +513,12 @@ class MainActivity : AppCompatActivity() {
                                         },
                                         onTrackSelected = {
                                             selectedTrack = it
+                                        },
+                                        onDownload = {
+                                            downloadTargets = listOfNotNull(it.dropboxPath)
+                                        },
+                                        onInvalidateDownloaded = {
+                                            invalidateDownloadedTargets = listOf(it.id)
                                         }
                                     )
                                 }
@@ -503,11 +537,7 @@ class MainActivity : AppCompatActivity() {
                                     topBarTitle = stringResource(id = R.string.nav_fortune)
                                     Qzi(
                                         onClick = {
-                                            viewModel.onNewQueue(
-                                                domainTracks = listOf(it.toDomainTrack()),
-                                                actionType = InsertActionType.NEXT,
-                                                classType = OrientedClassType.TRACK
-                                            )
+                                            selectedTrack = it.toDomainTrack()
                                         }
                                     )
                                 }
@@ -1178,6 +1208,7 @@ class MainActivity : AppCompatActivity() {
                                         )
                                         var selectedHistory by remember { mutableStateOf(emptyList<FolderMetadata>()) }
                                         Dialog(onDismissRequest = { showDropboxDialog = false }) {
+                                            var needDownloaded by remember { mutableStateOf(false) }
                                             Card(
                                                 backgroundColor = QTheme.colors.colorBackground,
                                                 modifier = Modifier.heightIn(max = 800.dp)
@@ -1200,6 +1231,24 @@ class MainActivity : AppCompatActivity() {
                                                         fontSize = 18.sp,
                                                         color = QTheme.colors.colorTextPrimary,
                                                     )
+                                                    Spacer(modifier = Modifier.height(4.dp))
+                                                    Row(
+                                                        horizontalArrangement = Arrangement.End,
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Text(
+                                                            text = stringResource(id = R.string.dialog_switch_need_downloaded),
+                                                            fontSize = 18.sp,
+                                                            color = QTheme.colors.colorTextPrimary,
+                                                        )
+                                                        Switch(
+                                                            checked = needDownloaded,
+                                                            onCheckedChange = {
+                                                                needDownloaded =
+                                                                    needDownloaded.not()
+                                                            })
+                                                    }
                                                     Text(
                                                         text = currentDropboxItemList.first,
                                                         fontSize = 22.sp,
@@ -1275,7 +1324,8 @@ class MainActivity : AppCompatActivity() {
                                                             onClick = {
                                                                 retrieveDropboxMedia(
                                                                     selectedHistory.lastOrNull()?.pathLower
-                                                                        ?: DROPBOX_PATH_ROOT
+                                                                        ?: DROPBOX_PATH_ROOT,
+                                                                    needDownloaded
                                                                 )
                                                                 showDropboxDialog = false
                                                             }
@@ -1393,6 +1443,118 @@ class MainActivity : AppCompatActivity() {
                                     }
                                 }
                             }
+                            if (downloadTargets.isNotEmpty()) {
+                                Dialog(onDismissRequest = { downloadTargets = emptyList() }) {
+                                    Card(backgroundColor = QTheme.colors.colorBackground) {
+                                        Column(
+                                            modifier = Modifier.padding(
+                                                horizontal = 12.dp,
+                                                vertical = 8.dp
+                                            )
+                                        ) {
+                                            Text(
+                                                text = stringResource(id = R.string.dialog_title_dropbox_download),
+                                                fontSize = 28.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = QTheme.colors.colorAccent
+                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text(
+                                                text = stringResource(id = R.string.dialog_desc_dropbox_download),
+                                                fontSize = 18.sp,
+                                                color = QTheme.colors.colorTextPrimary,
+                                            )
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.End
+                                            ) {
+                                                TextButton(
+                                                    onClick = {
+                                                        downloadTargets = emptyList()
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(R.string.dialog_ng),
+                                                        fontSize = 16.sp,
+                                                        color = QTheme.colors.colorTextPrimary
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                TextButton(
+                                                    onClick = {
+                                                        enqueueDropboxDownloadWorker(downloadTargets)
+                                                        downloadTargets = emptyList()
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(R.string.dialog_ok),
+                                                        fontSize = 16.sp,
+                                                        color = QTheme.colors.colorAccent
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (invalidateDownloadedTargets.isNotEmpty()) {
+                                Dialog(onDismissRequest = {
+                                    invalidateDownloadedTargets = emptyList()
+                                }) {
+                                    Card(backgroundColor = QTheme.colors.colorBackground) {
+                                        Column(
+                                            modifier = Modifier.padding(
+                                                horizontal = 12.dp,
+                                                vertical = 8.dp
+                                            )
+                                        ) {
+                                            Text(
+                                                text = stringResource(id = R.string.dialog_title_dropbox_invalidate_downloaded),
+                                                fontSize = 28.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = QTheme.colors.colorAccent
+                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text(
+                                                text = stringResource(id = R.string.dialog_desc_dropbox_invalidate_downloaded),
+                                                fontSize = 18.sp,
+                                                color = QTheme.colors.colorTextPrimary,
+                                            )
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.End
+                                            ) {
+                                                TextButton(
+                                                    onClick = {
+                                                        invalidateDownloadedTargets = emptyList()
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(R.string.dialog_ng),
+                                                        fontSize = 16.sp,
+                                                        color = QTheme.colors.colorTextPrimary
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                TextButton(
+                                                    onClick = {
+                                                        viewModel.invalidateDownloaded(
+                                                            invalidateDownloadedTargets
+                                                        )
+                                                        invalidateDownloadedTargets = emptyList()
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(R.string.dialog_ok),
+                                                        fontSize = 16.sp,
+                                                        color = QTheme.colors.colorAccent
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                             AnimatedVisibility(visible = progressMessage != null) {
                                 Row(
                                     modifier = Modifier
@@ -1442,6 +1604,16 @@ class MainActivity : AppCompatActivity() {
                 onAuthDropboxCompleted?.invoke()
             }
         }
+
+        if (cacheDir.getDirSize() == 0L) {
+            lifecycleScope.launch {
+                viewModel.invalidateDownloaded(
+                    DB.getInstance(this@MainActivity)
+                        .trackDao()
+                        .getAllDownloadedIds()
+                )
+            }
+        }
     }
 
     private fun retrieveMedia(onlyAdded: Boolean) {
@@ -1460,7 +1632,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun retrieveDropboxMedia(rootPath: String) {
+    private fun retrieveDropboxMedia(rootPath: String, needDownloaded: Boolean) {
         WorkManager.getInstance(this)
             .cancelAllWorkByTag(DropboxMediaRetrieveWorker.TAG)
         if (Build.VERSION.SDK_INT < 33) {
@@ -1469,10 +1641,10 @@ class MainActivity : AppCompatActivity() {
                 Manifest.permission.WRITE_EXTERNAL_STORAGE,
                 onPermissionDenied = ::onReadExternalStorageDenied
             ) {
-                enqueueDropboxRetrieveWorker(rootPath)
+                enqueueDropboxRetrieveWorker(rootPath, needDownloaded)
             }.launch()
         } else {
-            enqueueDropboxRetrieveWorker(rootPath)
+            enqueueDropboxRetrieveWorker(rootPath, needDownloaded)
         }
     }
 
@@ -1491,7 +1663,7 @@ class MainActivity : AppCompatActivity() {
         ).enqueue()
     }
 
-    private fun enqueueDropboxRetrieveWorker(rootPath: String) {
+    private fun enqueueDropboxRetrieveWorker(rootPath: String, needDownloaded: Boolean) {
         viewModel.workManager.beginUniqueWork(
             MEDIA_RETRIEVE_WORKER_NAME,
             ExistingWorkPolicy.KEEP,
@@ -1499,6 +1671,7 @@ class MainActivity : AppCompatActivity() {
                 .setInputData(
                     Data.Builder()
                         .putString(DropboxMediaRetrieveWorker.KEY_ROOT_PATH, rootPath)
+                        .putBoolean(DropboxMediaRetrieveWorker.KEY_NEED_DOWNLOADED, needDownloaded)
                         .build()
                 )
                 .addTag(DropboxMediaRetrieveWorker.TAG)
@@ -1506,7 +1679,29 @@ class MainActivity : AppCompatActivity() {
         ).enqueue()
     }
 
+    private fun enqueueDropboxDownloadWorker(targetPaths: List<String>) {
+        viewModel.workManager.beginUniqueWork(
+            DROPBOX_DOWNLOAD_WORKER_NAME,
+            ExistingWorkPolicy.KEEP,
+            OneTimeWorkRequestBuilder<DropboxDownloadWorker>()
+                .setInputData(
+                    Data.Builder()
+                        .putStringArray(
+                            DropboxDownloadWorker.KEY_TARGET_PATHS,
+                            targetPaths.toTypedArray()
+                        )
+                        .build()
+                )
+                .addTag(DropboxDownloadWorker.TAG)
+                .build()
+        ).enqueue()
+    }
+
     private fun onReadExternalStorageDenied() {
         retrieveMedia(false)
     }
+
+    private fun File.getDirSize(initialSize: Long = 0): Long =
+        if (isFile) initialSize + length()
+        else listFiles()?.sumOf { it.getDirSize(initialSize) } ?: initialSize
 }

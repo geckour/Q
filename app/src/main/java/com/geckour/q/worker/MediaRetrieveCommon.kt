@@ -31,14 +31,16 @@ internal const val NOTIFICATION_ID_RETRIEVE = 300
 
 internal const val MEDIA_RETRIEVE_WORKER_NAME = "MediaRetrieveWorker"
 
-internal const val KEY_SYNCING_PROGRESS_NUMERATOR = "key_syncing_progress_numerator"
-internal const val KEY_SYNCING_PROGRESS_DENOMINATOR = "key_syncing_progress_denominator"
-internal const val KEY_SYNCING_PROGRESS_TOTAL_FILES = "key_syncing_progress_total_files"
-internal const val KEY_SYNCING_PROGRESS_PATH = "key_syncing_progress_path"
-internal const val KEY_SYNCING_REMAINING = "key_syncing_remaining"
-internal const val KEY_SYNCING_FINISHED = "key_syncing_finished"
+internal const val KEY_PROGRESS_TITLE = "key_progress_title"
+internal const val KEY_PROGRESS_PROGRESS_NUMERATOR = "key_progress_progress_numerator"
+internal const val KEY_PROGRESS_PROGRESS_DENOMINATOR = "key_progress_progress_denominator"
+internal const val KEY_PROGRESS_PROGRESS_TOTAL_FILES = "key_progress_progress_total_files"
+internal const val KEY_PROGRESS_PROGRESS_PATH = "key_progress_progress_path"
+internal const val KEY_PROGRESS_REMAINING = "key_progress_remaining"
+internal const val KEY_PROGRESS_FINISHED = "key_progress_finished"
 
 internal fun createProgressData(
+    title: String,
     numerator: Int,
     denominator: Int = -1,
     totalFiles: Int = -1,
@@ -46,16 +48,18 @@ internal fun createProgressData(
     remaining: Long = -1,
 ): Data =
     Data.Builder()
-        .putInt(KEY_SYNCING_PROGRESS_NUMERATOR, numerator)
-        .putInt(KEY_SYNCING_PROGRESS_DENOMINATOR, denominator)
-        .putInt(KEY_SYNCING_PROGRESS_TOTAL_FILES, totalFiles)
-        .putString(KEY_SYNCING_PROGRESS_PATH, path)
-        .putLong(KEY_SYNCING_REMAINING, remaining)
+        .putString(KEY_PROGRESS_TITLE, title)
+        .putInt(KEY_PROGRESS_PROGRESS_NUMERATOR, numerator)
+        .putInt(KEY_PROGRESS_PROGRESS_DENOMINATOR, denominator)
+        .putInt(KEY_PROGRESS_PROGRESS_TOTAL_FILES, totalFiles)
+        .putString(KEY_PROGRESS_PROGRESS_PATH, path)
+        .putLong(KEY_PROGRESS_REMAINING, remaining)
         .build()
 
 internal suspend fun File.storeMediaInfo(
     context: Context,
     trackPath: String,
+    trackId: Long?,
     trackMediaId: Long?,
     dropboxPath: String?,
     dropboxExpiredAt: Long?,
@@ -159,7 +163,7 @@ internal suspend fun File.storeMediaInfo(
     val albumId = db.albumDao().upsert(db, album, duration)
 
     val track = Track(
-        id = 0,
+        id = trackId ?: 0,
         mediaId = trackMediaId ?: -1,
         codec = codec,
         bitrate = bitrate,

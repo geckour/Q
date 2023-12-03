@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Build
 import android.webkit.MimeTypeMap
 import androidx.work.CoroutineWorker
@@ -27,11 +28,10 @@ import com.geckour.q.util.QNotificationChannel
 import com.geckour.q.util.getExtension
 import com.geckour.q.util.getNotificationBuilder
 import com.geckour.q.util.obtainDbxClient
+import com.geckour.q.util.saveAudioFile
 import com.geckour.q.util.saveTempAudioFile
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.lastOrNull
-import kotlinx.coroutines.flow.singleOrNull
 import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 import timber.log.Timber
@@ -45,8 +45,10 @@ class DropboxMediaRetrieveWorker(
 
         const val TAG = "dropbox_media_retrieve_worker"
         const val KEY_ROOT_PATH = "key_root_path"
+        const val KEY_NEED_DOWNLOADED = "key_need_downloaded"
     }
 
+    private val db = DB.getInstance(context)
     private var processedFilesCount = 0
     private val files = mutableListOf<FileMetadata>()
     private var totalFilesCount = 0
@@ -62,44 +64,51 @@ class DropboxMediaRetrieveWorker(
         ) {
             val dbxClient = obtainDbxClient(applicationContext).firstOrNull()
                 ?: return Result.failure(
-                    Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build()
+                    Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build()
                 )
 
             try {
                 setForeground(getForegroundInfo())
             } catch (t: Throwable) {
-                return Result.failure(Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build())
+                return Result.failure(
+                    Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build()
+                )
             }
 
             seed = System.currentTimeMillis()
-            Timber.d("qgeck Dropbox media retrieve service started")
-            val db = DB.getInstance(applicationContext)
+            Timber.d("qgeck Dropbox media retrieve worker started")
 
             val rootPath = requireNotNull(inputData.getString(KEY_ROOT_PATH))
             Timber.d("qgeck rootPath: $rootPath")
+            val needDownloaded = requireNotNull(inputData.getBoolean(KEY_NEED_DOWNLOADED, false))
 
-            setProgress(createProgressData(0))
+            setProgress(
+                createProgressData(
+                    title = applicationContext.getString(R.string.progress_title_retrieve_media),
+                    numerator = 0
+                )
+            )
 
             files.clear()
-            retrieveAudioFilePaths(db, rootPath, dbxClient)
+            retrieveAudioFilePaths(rootPath, dbxClient, needDownloaded)
             wholeFilesSize = files.sumOf { it.size }
             startTime = System.currentTimeMillis()
             files.forEach {
                 if (isStopped) {
                     return Result.success(
-                        Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build()
+                        Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build()
                     )
                 }
 
-                it.storeMediaInfo(applicationContext, dbxClient, startTime)
+                it.storeMediaInfo(dbxClient, startTime, needDownloaded)
             }
 
             Timber.d("qgeck track in db count: ${runBlocking { db.trackDao().count() }}")
             delay(200)
-            return Result.success(Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build())
+            return Result.success(Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build())
         }
 
-        return Result.failure(Data.Builder().putBoolean(KEY_SYNCING_FINISHED, true).build())
+        return Result.failure(Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build())
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo =
@@ -109,7 +118,11 @@ class DropboxMediaRetrieveWorker(
             ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         )
 
-    private suspend fun retrieveAudioFilePaths(db: DB, root: String, client: DbxClientV2) {
+    private suspend fun retrieveAudioFilePaths(
+        root: String,
+        client: DbxClientV2,
+        needDownloaded: Boolean
+    ) {
         if (isStopped) return
         try {
             var fileAndFolders = client.files().listFolder(root)
@@ -122,13 +135,14 @@ class DropboxMediaRetrieveWorker(
             fileAndFolders.entries.mapNotNull { metadata ->
                 when (metadata) {
                     is FolderMetadata -> {
-                        retrieveAudioFilePaths(db, metadata.pathLower, client)
+                        retrieveAudioFilePaths(metadata.pathLower, client, needDownloaded)
                         null
                     }
 
                     is FileMetadata -> {
                         totalFilesCount++
-                        if ((db.trackDao().getByDropboxPath(metadata.pathLower)?.track?.lastModified
+                        if (needDownloaded || (db.trackDao()
+                                .getByDropboxPath(metadata.pathLower)?.track?.lastModified
                                 ?: 0) < metadata.serverModified.time
                         ) metadata
                         else null
@@ -140,6 +154,7 @@ class DropboxMediaRetrieveWorker(
                 files.addAll(this)
                 setProgress(
                     createProgressData(
+                        title = applicationContext.getString(R.string.progress_title_retrieve_media),
                         numerator = processedFilesCount,
                         denominator = files.size,
                         totalFiles = totalFilesCount
@@ -149,10 +164,10 @@ class DropboxMediaRetrieveWorker(
             }
         } catch (e: RateLimitException) {
             delay(e.backoffMillis)
-            retrieveAudioFilePaths(db, root, client)
+            retrieveAudioFilePaths(root, client, needDownloaded)
         } catch (e: ServerException) {
             delay(3000)
-            retrieveAudioFilePaths(db, root, client)
+            retrieveAudioFilePaths(root, client, needDownloaded)
         }
     }
 
@@ -199,14 +214,15 @@ class DropboxMediaRetrieveWorker(
             .build()
 
     private suspend fun FileMetadata.storeMediaInfo(
-        context: Context,
         client: DbxClientV2,
-        startTime: Long
+        startTime: Long,
+        needDownloaded: Boolean
     ) {
         if (name.isAudioFilePath) {
             processedFilesCount++
             setProgress(
                 createProgressData(
+                    title = applicationContext.getString(R.string.progress_title_retrieve_media),
                     numerator = processedFilesCount,
                     denominator = files.size,
                     totalFiles = totalFilesCount,
@@ -224,11 +240,11 @@ class DropboxMediaRetrieveWorker(
             currentPath = this.pathDisplay
 
             runCatching {
-                storeMediaInfo(context, client, this@storeMediaInfo)
+                storeMediaInfo(client, this@storeMediaInfo, needDownloaded)
             }.onFailure { t ->
                 if (t is RateLimitException) {
                     Thread.sleep(t.backoffMillis)
-                    this.storeMediaInfo(context, client, startTime)
+                    this.storeMediaInfo(client, startTime, needDownloaded)
                 } else {
                     Timber.e(t)
                     return
@@ -238,21 +254,28 @@ class DropboxMediaRetrieveWorker(
     }
 
     private suspend fun storeMediaInfo(
-        context: Context,
         client: DbxClientV2,
-        dropboxMetadata: FileMetadata
+        dropboxMetadata: FileMetadata,
+        needDownloaded: Boolean
     ): Long {
         val url = client.files().getTemporaryLink(dropboxMetadata.pathLower).link
         val currentTime = System.currentTimeMillis()
 
-        return client.saveTempAudioFile(context, dropboxMetadata.pathLower)
-            .storeMediaInfo(
-                context,
-                url,
+        return client.let {
+            val file = if (needDownloaded) it.saveAudioFile(
+                applicationContext,
+                dropboxMetadata.id,
+                dropboxMetadata.pathLower
+            ) else it.saveTempAudioFile(applicationContext, dropboxMetadata.pathLower)
+            file.storeMediaInfo(
+                applicationContext,
+                if (needDownloaded) Uri.fromFile(file).toString() else url,
+                db.trackDao().getByDropboxPath(dropboxMetadata.pathLower)?.track?.id,
                 null,
                 dropboxMetadata.pathLower,
                 currentTime + DROPBOX_EXPIRES_IN,
                 dropboxMetadata.serverModified.time
             )
+        }
     }
 }
