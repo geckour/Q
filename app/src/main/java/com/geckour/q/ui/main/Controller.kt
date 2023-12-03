@@ -203,15 +203,15 @@ fun Controller(
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            val rotation = remember { Animatable(360f) }
-                            LaunchedEffect(playbackInfo.second) {
-                                if (playbackInfo.second == Player.STATE_BUFFERING) {
-                                    rotation.animateTo(
-                                        0f,
-                                        animationSpec = infiniteRepeatable(tween(1000)),
-                                    )
-                                }
-                            }
+                            val infiniteTransition = rememberInfiniteTransition(label = "")
+                            val degree by infiniteTransition.animateFloat(
+                                initialValue = 360f,
+                                targetValue = 0f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(1000)
+                                ),
+                                label = ""
+                            )
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_backward),
                                 contentDescription = null,
@@ -238,7 +238,7 @@ fun Controller(
                                     .size(24.dp)
                                     .graphicsLayer {
                                         rotationZ =
-                                            if (playbackInfo.second == Player.STATE_BUFFERING) rotation.value else 0f
+                                            if (playbackInfo.second == Player.STATE_BUFFERING) degree else 0f
                                     }
                             ) {
                                 Icon(
