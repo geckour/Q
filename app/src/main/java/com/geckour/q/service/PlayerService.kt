@@ -64,9 +64,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -304,7 +302,7 @@ class PlayerService : Service(), LifecycleOwner {
                 )
             )
 
-            if (currentIndex == player.currentMediaItemIndex
+            if (currentIndex == player.mediaItemCount - 1
                 && playbackState == Player.STATE_ENDED
                 && player.repeatMode == Player.REPEAT_MODE_OFF
             ) {
@@ -708,9 +706,11 @@ class PlayerService : Service(), LifecycleOwner {
     }
 
     private fun prev() {
+        val windowIndex = player.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
         val index = if (player.currentMediaItemIndex > 0) player.currentMediaItemIndex - 1
         else 0
-        player.seekToDefaultPosition(index)
+        player.seekToDefaultPosition(windowIndex + index)
+        currentIndexFlow.value = index
     }
 
     fun fastForward() {
@@ -954,10 +954,10 @@ class PlayerService : Service(), LifecycleOwner {
         }
     }
 
-    private fun forceIndex(windowIndex: Int) {
-        val index = player.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
-        player.seekToDefaultPosition(index + windowIndex)
-        currentIndexFlow.value = windowIndex
+    private fun forceIndex(index: Int) {
+        val windowIndex = player.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
+        player.seekToDefaultPosition(windowIndex + index)
+        currentIndexFlow.value = index
     }
 
     private fun increasePlaybackCount() = lifecycleScope.launch {
