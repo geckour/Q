@@ -8,14 +8,17 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,6 +31,7 @@ import androidx.compose.material.Slider
 import androidx.compose.material.SliderDefaults
 import androidx.compose.material.Text
 import androidx.compose.material.minimumInteractiveComponentSize
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -37,6 +41,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -99,7 +104,7 @@ fun Controller(
                     modifier = Modifier
                         .padding(horizontal = 8.dp)
                         .height(100.dp),
-                    verticalArrangement = Arrangement.Center
+                    verticalArrangement = Arrangement.Top
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(
@@ -109,7 +114,7 @@ fun Controller(
                         ) {
                             Text(
                                 text = currentTrack?.title.orEmpty(),
-                                fontSize = 12.sp,
+                                fontSize = 16.sp,
                                 color = QTheme.colors.colorTextPrimary,
                                 modifier = Modifier.padding(top = 4.dp),
                                 maxLines = 1,
@@ -118,7 +123,7 @@ fun Controller(
                             Text(
                                 text = currentTrack?.let { "${it.artist.title} - ${it.album.title}" }
                                     .orEmpty(),
-                                fontSize = 10.sp,
+                                fontSize = 14.sp,
                                 color = QTheme.colors.colorTextPrimary,
                                 modifier = Modifier.padding(top = 2.dp),
                                 maxLines = 1,
@@ -126,8 +131,7 @@ fun Controller(
                             )
                         }
                         Row(
-                            modifier = Modifier
-                                .width(84.dp),
+                            modifier = Modifier.width(84.dp),
                             horizontalArrangement = Arrangement.SpaceEvenly,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -159,7 +163,6 @@ fun Controller(
                                 tint = QTheme.colors.colorTextPrimary,
                                 modifier = Modifier
                                     .size(24.dp)
-                                    .minimumInteractiveComponentSize()
                                     .alpha(dropboxIndicatorAlpha)
                             )
                             Icon(
@@ -168,7 +171,6 @@ fun Controller(
                                 tint = QTheme.colors.colorTextPrimary,
                                 modifier = Modifier
                                     .size(24.dp)
-                                    .minimumInteractiveComponentSize()
                                     .alpha(queueStateIndicatorAlpha)
                                     .graphicsLayer {
                                         rotationZ = degree
@@ -176,7 +178,8 @@ fun Controller(
                             )
                         }
                     }
-                    Row {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Row(modifier = Modifier.weight(1f).fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
                         Row(
                             modifier = Modifier
                                 .weight(1f)
@@ -208,16 +211,19 @@ fun Controller(
                                             }
                                         )
                                     }
+                                    .size(24.dp)
                             )
                             IconButton(
                                 onClick = {
                                     onTogglePlayPause()
                                     resetPlaybackButton()
                                 },
-                                modifier = Modifier.graphicsLayer {
-                                    rotationZ =
-                                        if (playbackInfo.second == Player.STATE_BUFFERING) rotation.value else 0f
-                                }
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .graphicsLayer {
+                                        rotationZ =
+                                            if (playbackInfo.second == Player.STATE_BUFFERING) rotation.value else 0f
+                                    }
                             ) {
                                 Icon(
                                     painter = painterResource(
@@ -242,13 +248,15 @@ fun Controller(
                                             }
                                         )
                                     }
+                                    .size(24.dp)
                             )
                         }
                         Row(
                             modifier = Modifier.width(84.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            IconButton(onClick = rotateRepeatMode) {
+                            IconButton(onClick = rotateRepeatMode, modifier = Modifier.size(24.dp)) {
                                 Icon(
                                     painter = painterResource(
                                         id = when (repeatMode) {
@@ -267,11 +275,13 @@ fun Controller(
                                 contentDescription = null,
                                 tint = QTheme.colors.colorButtonNormal,
                                 modifier = Modifier
-                                    .minimumInteractiveComponentSize()
                                     .combinedClickable(
                                         onClick = shuffleQueue,
-                                        onLongClick = resetShuffleQueue
+                                        onLongClick = resetShuffleQueue,
+                                        interactionSource = MutableInteractionSource(),
+                                        indication = rememberRipple(bounded = false)
                                     )
+                                    .size(24.dp)
                             )
                         }
                     }
@@ -291,8 +301,8 @@ fun Controller(
                     text = currentTrack?.let { progress.getTimeString() }.orEmpty(),
                     fontSize = 10.sp,
                     color = QTheme.colors.colorTextPrimary,
-                    modifier = Modifier.width(60.dp),
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.width(60.dp)
                 )
                 Slider(
                     value = currentTrack?.let { progress.toDouble() / it.duration }?.toFloat()
@@ -317,12 +327,12 @@ fun Controller(
                     color = QTheme.colors.colorTextPrimary,
                     textAlign = TextAlign.Center,
                     modifier = Modifier
-                        .width(60.dp)
                         .clickable {
                             coroutineScope.launch {
                                 context.setShouldShowCurrentRemain(shouldShowCurrentRemain.not())
                             }
                         }
+                        .width(60.dp)
                 )
             }
             Text(
