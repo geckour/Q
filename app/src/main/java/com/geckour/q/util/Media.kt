@@ -97,7 +97,8 @@ data class QueueInfo(
 )
 
 fun JoinedTrack.toDomainTrack(
-    trackNum: Int? = null
+    trackNum: Int? = null,
+    nowPlaying: Boolean = false
 ): DomainTrack {
     return DomainTrack(
         "${random.nextLong()}-${track.id}",
@@ -124,7 +125,8 @@ fun JoinedTrack.toDomainTrack(
         track.dropboxPath,
         track.dropboxExpiredAt,
         track.artworkUriString,
-        BoolConverter().toBoolean(track.ignored)
+        BoolConverter().toBoolean(track.ignored),
+        nowPlaying
     )
 }
 

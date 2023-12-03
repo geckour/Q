@@ -138,6 +138,7 @@ class MainActivity : AppCompatActivity() {
             val scaffoldState = rememberBottomSheetScaffoldState()
             var topBarTitle by remember { mutableStateOf("") }
             val queue by viewModel.currentQueueFlow.collectAsState()
+            val sourcePaths by viewModel.currentSourcePathsFlow.collectAsState()
             val currentIndex by viewModel.currentIndexFlow.collectAsState()
             val currentPlaybackPosition by viewModel.currentPlaybackPositionFlow.collectAsState()
             val currentPlaybackInfo by viewModel.currentPlaybackInfoFlow.collectAsState()
@@ -158,8 +159,8 @@ class MainActivity : AppCompatActivity() {
                 .collectAsState(initial = false)
 
             val bottomSheetHeightAngle = remember { Animatable(0f) }
-            LaunchedEffect(queue) {
-                if (queue.isNotEmpty()) {
+            LaunchedEffect(sourcePaths) {
+                if (sourcePaths.isNotEmpty()) {
                     bottomSheetHeightAngle.animateTo(
                         bottomSheetHeightAngle.value + Math.PI.toFloat(),
                         animationSpec = tween(400),

@@ -31,8 +31,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.lastOrNull
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
@@ -53,6 +51,7 @@ class MainViewModel(private val app: App) : ViewModel() {
 
     internal var isDropboxAuthOngoing = false
 
+    internal val currentSourcePathsFlow = MutableStateFlow(emptyList<String>())
     internal val currentQueueFlow = MutableStateFlow(emptyList<DomainTrack>())
     internal val currentIndexFlow = MutableStateFlow(0)
     internal val currentPlaybackPositionFlow = MutableStateFlow(0L)
@@ -96,16 +95,15 @@ class MainViewModel(private val app: App) : ViewModel() {
                     }
                 }
                 viewModelScope.launch {
-                    playerService.sourcePathsFlow.map { sourcePaths ->
-                        sourcePaths.mapNotNull {
+                    playerService.sourcePathsFlow.collect {
+                        currentSourcePathsFlow.value = it
+                        currentQueueFlow.value = it.mapIndexedNotNull { index, path ->
                             DB.getInstance(app)
                                 .trackDao()
-                                .getBySourcePath(it)
-                                ?.toDomainTrack()
-                        }
-                    }.collect {
-                        currentQueueFlow.value = it.mapIndexed { i, item ->
-                            item.copy(nowPlaying = i == currentIndexFlow.value)
+                                .getBySourcePath(path)
+                                ?.toDomainTrack(
+                                    nowPlaying = index == currentIndexFlow.value
+                                )
                         }
                     }
                 }
