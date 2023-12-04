@@ -557,7 +557,7 @@ class MainActivity : AppCompatActivity() {
                                                 }
                                             ) {
                                                 Text(
-                                                    text = stringResource(id = R.string.menu_insert_all_next),
+                                                    text = stringResource(id = R.string.menu_insert_next),
                                                     fontSize = 14.sp,
                                                     color = QTheme.colors.colorTextPrimary
                                                 )
@@ -573,7 +573,7 @@ class MainActivity : AppCompatActivity() {
                                                 }
                                             ) {
                                                 Text(
-                                                    text = stringResource(id = R.string.menu_insert_all_last),
+                                                    text = stringResource(id = R.string.menu_insert_last),
                                                     fontSize = 14.sp,
                                                     color = QTheme.colors.colorTextPrimary
                                                 )
@@ -589,7 +589,7 @@ class MainActivity : AppCompatActivity() {
                                                 }
                                             ) {
                                                 Text(
-                                                    text = stringResource(id = R.string.menu_override_all),
+                                                    text = stringResource(id = R.string.menu_override),
                                                     fontSize = 14.sp,
                                                     color = QTheme.colors.colorTextPrimary
                                                 )
