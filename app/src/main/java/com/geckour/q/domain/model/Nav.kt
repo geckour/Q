@@ -7,5 +7,6 @@ enum class Nav {
     GENRE,
     DROPBOX_SYNC,
     SYNC,
-    PAY
+    PAY,
+    EQUALIZER
 }

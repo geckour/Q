@@ -86,6 +86,7 @@ import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.dbxRequestConfig
 import com.geckour.q.util.getDropboxCredential
+import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.getIsNightMode
 import com.geckour.q.util.getTimeString
@@ -161,7 +162,7 @@ class MainActivity : AppCompatActivity() {
             var downloadTargets by remember { mutableStateOf(emptyList<String>()) }
             var invalidateDownloadedTargets by remember { mutableStateOf(emptyList<Long>()) }
             val snackBarMessage by viewModel.snackBarMessageFlow.collectAsState()
-
+            val equalizerParams by context.getEqualizerParams().collectAsState(initial = null)
             val bottomSheetHeightAngle = remember { Animatable(0f) }
             LaunchedEffect(sourcePaths) {
                 if (sourcePaths.isNotEmpty()) {
@@ -323,6 +324,18 @@ class MainActivity : AppCompatActivity() {
                                     coroutineScope.launch { scaffoldState.drawerState.close() }
                                 }
                             )
+                            if (equalizerParams != null) {
+                                DrawerItem(
+                                    iconResId = R.drawable.ic_spectrum,
+                                    title = stringResource(id = R.string.nav_equalizer),
+                                    isSelected = selectedNav == Nav.EQUALIZER,
+                                    onClick = {
+                                        navController.navigate("equalizer")
+                                        selectedNav = Nav.EQUALIZER
+                                        coroutineScope.launch { scaffoldState.drawerState.close() }
+                                    }
+                                )
+                            }
                         }
                     },
                     drawerElevation = 8.dp,
@@ -556,6 +569,11 @@ class MainActivity : AppCompatActivity() {
                                     selectedNav = Nav.PAY
                                     topBarTitle = stringResource(id = R.string.nav_pay)
                                     Pay(onStartBilling = { viewModel.startBilling(this@MainActivity) })
+                                }
+                                composable("equalizer") {
+                                    selectedNav = Nav.EQUALIZER
+                                    topBarTitle = stringResource(id = R.string.nav_equalizer)
+                                    Equalizer()
                                 }
                             }
                             selectedTrack?.let { domainTrack ->

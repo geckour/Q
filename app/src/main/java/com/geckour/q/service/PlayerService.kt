@@ -33,12 +33,15 @@ import androidx.media3.common.Tracks
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import androidx.media3.exoplayer.util.EventLogger
 import com.geckour.q.App
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.ui.LauncherActivity
+import com.geckour.q.util.EqualizerParams
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.PlayerControlCommand
@@ -48,11 +51,14 @@ import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.catchAsNull
 import com.geckour.q.util.currentSourcePaths
 import com.geckour.q.util.dropboxCachePathPattern
+import com.geckour.q.util.getEqualizerEnabled
+import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getMediaItem
 import com.geckour.q.util.getMediaMetadata
 import com.geckour.q.util.getPlayerNotification
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.removedAt
+import com.geckour.q.util.setEqualizerParams
 import com.geckour.q.util.sortedByTrackOrder
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toDomainTracks
@@ -62,7 +68,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.lastOrNull
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -87,7 +96,6 @@ class PlayerService : Service(), LifecycleOwner {
         private const val NOTIFICATION_ID_PLAYER = 320
 
         const val ARGS_KEY_CONTROL_COMMAND = "args_key_control_command"
-        const val ARGS_KEY_SETTING_COMMAND = "args_key_setting_command"
 
         const val PREF_KEY_PLAYER_STATE = "pref_key_player_state"
 
@@ -244,7 +252,6 @@ class PlayerService : Service(), LifecycleOwner {
     internal val playbackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
     internal val playbackPositionFLow = MutableStateFlow(0L)
     internal val repeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
-    internal val equalizerStateFlow = MutableStateFlow(false)
     internal val onDestroyFlow = MutableStateFlow(0L)
 
     private val listener = object : Player.Listener {
@@ -365,6 +372,12 @@ class PlayerService : Service(), LifecycleOwner {
             notificationUpdateJob.cancel()
             notificationUpdateJob = updateNotification()
         }
+
+        override fun onAudioSessionIdChanged(audioSessionId: Int) {
+            super.onAudioSessionIdChanged(audioSessionId)
+
+            setEqualizer(audioSessionId)
+        }
     }
 
     private var notificationUpdateJob: Job = Job()
@@ -385,7 +398,6 @@ class PlayerService : Service(), LifecycleOwner {
 
         MediaButtonReceiver.handleIntent(mediaSession, intent)
         onPlayerServiceControlAction(intent)
-//        onSettingAction(intent)
 
         return START_NOT_STICKY
     }
@@ -422,19 +434,30 @@ class PlayerService : Service(), LifecycleOwner {
                         .build(),
                     true
                 )
-//                addAnalyticsListener(object : EventLogger() {
-//
-//                    override fun onAudioSessionIdChanged(
-//                        eventTime: AnalyticsListener.EventTime,
-//                        audioSessionId: Int
-//                    ) {
-//                        super.onAudioSessionIdChanged(eventTime, audioSessionId)
-//                        setEqualizer(audioSessionId)
-//                    }
-//                })
+                addAnalyticsListener(object : EventLogger() {
+
+                    override fun onAudioSessionIdChanged(
+                        eventTime: AnalyticsListener.EventTime,
+                        audioSessionId: Int
+                    ) {
+                        super.onAudioSessionIdChanged(eventTime, audioSessionId)
+                        setEqualizer(audioSessionId)
+                    }
+                })
             }
 
         restoreState()
+
+        lifecycleScope.launch {
+            getEqualizerParams().collectLatest { params ->
+                params?.let { reflectEqualizerSettings(it) }
+            }
+        }
+        lifecycleScope.launch {
+            getEqualizerEnabled().collectLatest { enabled ->
+                setEqualizer(if (enabled) player.audioSessionId else null)
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -459,6 +482,7 @@ class PlayerService : Service(), LifecycleOwner {
         notificationUpdateJob.cancel()
         notificationUpdateJob = updateNotification()
         storeState()
+        setEqualizer(player.audioSessionId)
     }
 
     private fun onStopServiceRequested() {
@@ -919,20 +943,6 @@ class PlayerService : Service(), LifecycleOwner {
         }
     }
 
-//    private fun onSettingAction(intent: Intent) {
-//        if (intent.hasExtra(ARGS_KEY_SETTING_COMMAND)) {
-//            val key = intent.getIntExtra(ARGS_KEY_SETTING_COMMAND, -1)
-//            when (SettingCommand.values()[key]) {
-//                SettingCommand.SET_EQUALIZER -> {
-//                    player.audioSessionId.apply { setEqualizer(if (this != 0) this else null) }
-//                }
-//
-//                SettingCommand.UNSET_EQUALIZER -> setEqualizer(null)
-//                SettingCommand.REFLECT_EQUALIZER_SETTING -> reflectEqualizerSettings()
-//            }
-//        }
-//    }
-
     private fun PlayerState.set() {
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
@@ -967,53 +977,54 @@ class PlayerService : Service(), LifecycleOwner {
         }
     }
 
-//    private fun setEqualizer(audioSessionId: Int?) {
-//        if (audioSessionId != null) {
-//            if (equalizer == null) {
-//                try {
-//                    equalizer = Equalizer(0, audioSessionId).apply {
-//                        val params = EqualizerParams(bandLevelRange.let { range ->
-//                            range.first().toInt() to range.last().toInt()
-//                        }, (0 until numberOfBands).map { index ->
-//                            val short = index.toShort()
-//                            EqualizerParams.Band(
-//                                getBandFreqRange(short).let { it.first() to it.last() },
-//                                getCenterFreq(short)
-//                            )
-//                        })
-//                        sharedPreferences.equalizerParams = params
-//                        if (sharedPreferences.equalizerSettings == null) {
-//                            sharedPreferences.equalizerSettings =
-//                                EqualizerSettings(params.bands.map { 0 })
-//                        }
-//                    }
-//                } catch (t: Throwable) {
-//                    Timber.e(t)
-//                }
-//            }
-//            if (sharedPreferences.equalizerEnabled) {
-//                reflectEqualizerSettings()
-//                equalizer?.enabled = true
-//            }
-//        } else {
-//            equalizer?.enabled = false
-//            equalizer = null
-//        }
-//
-//        equalizerStateFlow.value = equalizer?.enabled == true
-//    }
+    private fun setEqualizer(audioSessionId: Int?) {
+        lifecycleScope.launch {
+            player.audioSessionId
+            if (audioSessionId != null && audioSessionId != C.AUDIO_SESSION_ID_UNSET) {
+                if (equalizer == null) {
+                    try {
+                        equalizer = Equalizer(0, audioSessionId).also { eq ->
+                            if (getEqualizerParams().take(1).lastOrNull() == null) {
+                                setEqualizerParams(
+                                    EqualizerParams(
+                                        levelRange = eq.bandLevelRange.let {
+                                            it.first().toInt() to it.last().toInt()
+                                        },
+                                        bands = List(eq.numberOfBands.toInt()) { index ->
+                                            EqualizerParams.Band(
+                                                freqRange = eq.getBandFreqRange(index.toShort())
+                                                    .let { it.first() to it.last() },
+                                                centerFreq = eq.getCenterFreq(index.toShort()),
+                                                level = 0
+                                            )
+                                        }
+                                    )
+                                )
+                            }
+                        }
+                    } catch (t: Throwable) {
+                        Timber.e(t)
+                    }
+                }
+                getEqualizerParams().take(1).lastOrNull()?.let {
+                    reflectEqualizerSettings(it)
+                }
+                equalizer?.enabled = getEqualizerEnabled().take(1).lastOrNull() == true
+            } else {
+                equalizer?.enabled = false
+            }
+        }
+    }
 
-//    private fun reflectEqualizerSettings() {
-//        sharedPreferences.equalizerSettings?.apply {
-//            levels.forEachIndexed { i, level ->
-//                try {
-//                    equalizer?.setBandLevel(i.toShort(), level.toShort())
-//                } catch (t: Throwable) {
-//                    Timber.e(t)
-//                }
-//            }
-//        }
-//    }
+    private fun reflectEqualizerSettings(equalizerParams: EqualizerParams) {
+        equalizerParams.bands.forEachIndexed { i, band ->
+            try {
+                equalizer?.setBandLevel(i.toShort(), band.level.toShort())
+            } catch (t: Throwable) {
+                Timber.e(t)
+            }
+        }
+    }
 
     private fun storeState(
         playWhenReady: Boolean = player.playWhenReady,

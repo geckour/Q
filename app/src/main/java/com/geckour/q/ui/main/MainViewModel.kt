@@ -68,7 +68,6 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal val currentPlaybackPositionFlow = MutableStateFlow(0L)
     internal val currentPlaybackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
     internal val currentRepeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
-    internal val equalizerStateFlow = MutableStateFlow(false)
     internal var snackBarMessageFlow = MutableStateFlow<String?>(null)
 
     internal val forceLoad = MutableLiveData<Unit>()
@@ -140,11 +139,6 @@ class MainViewModel(private val app: App) : ViewModel() {
                 viewModelScope.launch {
                     playerService.repeatModeFlow.collect {
                         currentRepeatModeFlow.value = it
-                    }
-                }
-                viewModelScope.launch {
-                    playerService.equalizerStateFlow.collect {
-                        equalizerStateFlow.value = it
                     }
                 }
                 viewModelScope.launch {

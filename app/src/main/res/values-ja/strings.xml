@@ -189,8 +189,9 @@
     <string name="setting_item_desc_license">OSSライセンスを表示</string>
 
     <!-- Equalizer -->
+    <string name="equalizer_switch_enabled">ON</string>
+    <string name="equalizer_switch_disabled">OFF</string>
     <string name="equalizer_flatten">リセット</string>
-    <string name="equalizer_message_error_turn_on">エラー: 一度曲を再生してから再度お試しください</string>
 
     <!-- Metadata Editor -->
     <string name="metadata_edit_dialog_title">曲情報を編集</string>

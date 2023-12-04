@@ -205,11 +205,9 @@
     <string name="setting_default_sharing_text_pattern" translatable="false">#NowPlaying TI - AR (AL)</string>
 
     <!-- Equalizer -->
+    <string name="equalizer_switch_enabled">Enabled</string>
+    <string name="equalizer_switch_disabled">Disabled</string>
     <string name="equalizer_flatten">Flatten</string>
-    <string name="equalizer_seek_bar_label" translatable="false">%1$sHz</string>
-    <string name="equalizer_scale_label_center" translatable="false">0dB</string>
-    <string name="equalizer_scale_label" translatable="false">%1$sdB</string>
-    <string name="equalizer_message_error_turn_on">Error: Please play music at once</string>
 
     <!-- Metadata Editor -->
     <string name="metadata_edit_dialog_title">Edit metadata</string>
