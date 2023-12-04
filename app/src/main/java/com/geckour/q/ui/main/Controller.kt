@@ -1,6 +1,5 @@
 package com.geckour.q.ui.main
 
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -32,10 +31,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.DownloadForOffline
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,7 +52,6 @@ import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.compose.QTheme
-import com.geckour.q.util.dropboxUrlPattern
 import com.geckour.q.util.getShouldShowCurrentRemain
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.isDownloaded
@@ -90,7 +86,7 @@ fun Controller(
         Column(modifier = Modifier.height(144.dp)) {
             Row {
                 AsyncImage(
-                    model = currentTrack?.artworkUriString ?: R.drawable.ic_empty,
+                    model = currentTrack?.let { it.artworkUriString ?: R.drawable.ic_empty },
                     contentDescription = null,
                     contentScale = ContentScale.Inside,
                     modifier = Modifier
