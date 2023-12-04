@@ -1,5 +1,6 @@
 package com.geckour.q.ui.main
 
+import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.ServiceConnection
@@ -16,6 +17,8 @@ import com.dropbox.core.android.Auth
 import com.dropbox.core.v2.files.FolderMetadata
 import com.dropbox.core.v2.files.Metadata
 import com.geckour.q.App
+import com.geckour.q.R
+import com.geckour.q.data.BillingApiClient
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.PlaybackButton
@@ -32,13 +35,13 @@ import com.geckour.q.worker.DROPBOX_DOWNLOAD_WORKER_NAME
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 import timber.log.Timber
-import java.io.File
 
 class MainViewModel(private val app: App) : ViewModel() {
 
@@ -66,6 +69,7 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal val currentPlaybackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
     internal val currentRepeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
     internal val equalizerStateFlow = MutableStateFlow(false)
+    internal var snackBarMessageFlow = MutableStateFlow<String?>(null)
 
     internal val forceLoad = MutableLiveData<Unit>()
 
@@ -209,6 +213,59 @@ class MainViewModel(private val app: App) : ViewModel() {
             }
         }
     }
+
+    private val billingApiClient = BillingApiClient(
+        app,
+        onError = {
+            viewModelScope.launch {
+                snackBarMessageFlow.value =
+                    app.getString(R.string.payment_message_error_failed_to_start)
+                delay(2000)
+                snackBarMessageFlow.value = null
+            }
+        },
+        onDonateCompleted = { result, client ->
+            when (result) {
+                BillingApiClient.BillingApiResult.SUCCESS -> {
+                    client.requestUpdate()
+                    viewModelScope.launch {
+                        snackBarMessageFlow.value = app.getString(R.string.payment_message_success)
+                        delay(2000)
+                        snackBarMessageFlow.value = null
+                    }
+                }
+
+                BillingApiClient.BillingApiResult.DUPLICATED -> {
+                    client.requestUpdate()
+                    viewModelScope.launch {
+                        snackBarMessageFlow.value =
+                            app.getString(R.string.payment_message_error_duplicated)
+                        delay(2000)
+                        snackBarMessageFlow.value = null
+                    }
+                }
+
+                BillingApiClient.BillingApiResult.CANCELLED -> {
+                    val paymentMessageErrorCanceled =
+                        app.getString(R.string.payment_message_error_canceled)
+                    viewModelScope.launch {
+                        snackBarMessageFlow.value = paymentMessageErrorCanceled
+                        delay(2000)
+                        snackBarMessageFlow.value = null
+                    }
+                }
+
+                BillingApiClient.BillingApiResult.FAILURE -> {
+                    viewModelScope.launch {
+                        snackBarMessageFlow.value =
+                            app.getString(R.string.payment_message_error_failed)
+                        delay(2000)
+                        snackBarMessageFlow.value = null
+                    }
+                }
+            }
+        }
+    )
 
     init {
         bindPlayer()
@@ -392,5 +449,15 @@ class MainViewModel(private val app: App) : ViewModel() {
         viewModelScope.launch {
             dropboxItemListChannel.send("" to emptyList())
         }
+    }
+
+    internal fun startBilling(activity: Activity) {
+        viewModelScope.launch {
+            billingApiClient.startBilling(activity, emptyList())
+        }
+    }
+
+    internal fun requestBillingInfoUpdate() {
+        billingApiClient.requestUpdate()
     }
 }

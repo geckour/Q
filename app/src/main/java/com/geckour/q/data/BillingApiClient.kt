@@ -1,7 +1,7 @@
 package com.geckour.q.data
 
+import android.app.Activity
 import android.content.Context
-import androidx.appcompat.app.AppCompatActivity
 import com.android.billingclient.api.AcknowledgePurchaseParams
 import com.android.billingclient.api.BillingClient
 import com.android.billingclient.api.BillingClient.ProductType
@@ -20,7 +20,10 @@ import kotlinx.coroutines.withContext
 class BillingApiClient(
     context: Context,
     private val onError: () -> Unit,
-    private val onDonateCompleted: (result: BillingApiResult) -> Unit
+    private val onDonateCompleted: (
+        result: BillingApiResult,
+        billingApiClient: BillingApiClient
+    ) -> Unit
 ) {
 
     enum class BillingApiResult {
@@ -39,17 +42,20 @@ class BillingApiClient(
                     } else BillingApiResult.DUPLICATED
                 } else BillingApiResult.FAILURE
             }
+
             BillingClient.BillingResponseCode.USER_CANCELED -> {
                 BillingApiResult.CANCELLED
             }
+
             BillingClient.BillingResponseCode.ITEM_ALREADY_OWNED -> {
                 BillingApiResult.DUPLICATED
             }
+
             else -> {
                 BillingApiResult.FAILURE
             }
         }
-        onDonateCompleted(result)
+        onDonateCompleted(result, this)
     }
 
     private val client: BillingClient =
@@ -69,7 +75,7 @@ class BillingApiClient(
         )
     }
 
-    suspend fun startBilling(activity: AppCompatActivity, skus: List<String>) {
+    suspend fun startBilling(activity: Activity, skus: List<String>) {
         runCatching {
             val params = QueryProductDetailsParams.newBuilder()
                 .setProductList(

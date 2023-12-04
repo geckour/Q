@@ -6,5 +6,6 @@ enum class Nav {
     TRACK,
     GENRE,
     DROPBOX_SYNC,
-    SYNC
+    SYNC,
+    PAY
 }

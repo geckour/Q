@@ -160,6 +160,7 @@ class MainActivity : AppCompatActivity() {
                 .collectAsState(initial = false)
             var downloadTargets by remember { mutableStateOf(emptyList<String>()) }
             var invalidateDownloadedTargets by remember { mutableStateOf(emptyList<Long>()) }
+            val snackBarMessage by viewModel.snackBarMessageFlow.collectAsState()
 
             val bottomSheetHeightAngle = remember { Animatable(0f) }
             LaunchedEffect(sourcePaths) {
@@ -309,6 +310,16 @@ class MainActivity : AppCompatActivity() {
                                 isSelected = selectedNav == Nav.SYNC,
                                 onClick = {
                                     retrieveMedia(false)
+                                    coroutineScope.launch { scaffoldState.drawerState.close() }
+                                }
+                            )
+                            DrawerItem(
+                                iconResId = R.drawable.ic_motive,
+                                title = stringResource(id = R.string.nav_pay),
+                                isSelected = selectedNav == Nav.PAY,
+                                onClick = {
+                                    navController.navigate("pay")
+                                    selectedNav = Nav.PAY
                                     coroutineScope.launch { scaffoldState.drawerState.close() }
                                 }
                             )
@@ -540,6 +551,11 @@ class MainActivity : AppCompatActivity() {
                                             selectedTrack = it.toDomainTrack()
                                         }
                                     )
+                                }
+                                composable("pay") {
+                                    selectedNav = Nav.PAY
+                                    topBarTitle = stringResource(id = R.string.nav_pay)
+                                    Pay(onStartBilling = { viewModel.startBilling(this@MainActivity) })
                                 }
                             }
                             selectedTrack?.let { domainTrack ->
@@ -1555,7 +1571,9 @@ class MainActivity : AppCompatActivity() {
                                     }
                                 }
                             }
-                            AnimatedVisibility(visible = progressMessage != null) {
+                            AnimatedVisibility(
+                                visible = progressMessage != null || snackBarMessage != null
+                            ) {
                                 Row(
                                     modifier = Modifier
                                         .background(color = QTheme.colors.colorBackgroundProgress)
@@ -1564,7 +1582,7 @@ class MainActivity : AppCompatActivity() {
                                     verticalAlignment = Alignment.Bottom
                                 ) {
                                     Text(
-                                        text = progressMessage.orEmpty(),
+                                        text = (progressMessage ?: snackBarMessage).orEmpty(),
                                         fontSize = 16.sp,
                                         color = QTheme.colors.colorTextPrimary,
                                         modifier = Modifier
@@ -1614,6 +1632,8 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         }
+
+        viewModel.requestBillingInfoUpdate()
     }
 
     private fun retrieveMedia(onlyAdded: Boolean) {

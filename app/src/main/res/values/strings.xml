@@ -151,7 +151,7 @@
     <string name="track_number_divider" translatable="false">|</string>
 
     <!-- Payment -->
-    <string name="payment_desc">Available donation</string>
+    <string name="payment_desc">Donation is available</string>
     <string name="payment_action_pay">Donate</string>
     <string name="payment_message_success">Succeeded to donate</string>
     <string name="payment_message_error_failed_to_start">Error\nFailed to start processing.</string>
