@@ -434,6 +434,9 @@ class MainActivity : AppCompatActivity() {
                             clearQueue = viewModel::onClickClearQueueButton,
                             onTrackSelected = {
                                 selectedTrack = it
+                            },
+                            cancelLoad = {
+                                isLoading.second?.invoke()
                             }
                         )
                         Queue(

@@ -80,7 +80,8 @@ fun Controller(
     resetShuffleQueue: () -> Unit,
     moveToCurrentIndex: () -> Unit,
     clearQueue: () -> Unit,
-    onTrackSelected: (item: DomainTrack) -> Unit
+    onTrackSelected: (item: DomainTrack) -> Unit,
+    cancelLoad: () -> Unit
 ) {
     Column {
         Column(modifier = Modifier.height(144.dp)) {
@@ -177,6 +178,11 @@ fun Controller(
                                 contentDescription = null,
                                 tint = QTheme.colors.colorTextPrimary,
                                 modifier = Modifier
+                                    .clickable(
+                                        onClick = cancelLoad,
+                                        interactionSource = MutableInteractionSource(),
+                                        indication = rememberRipple(bounded = false)
+                                    )
                                     .size(24.dp)
                                     .alpha(queueStateIndicatorAlpha)
                                     .graphicsLayer {
