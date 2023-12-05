@@ -37,6 +37,7 @@ internal const val KEY_PROGRESS_PROGRESS_DENOMINATOR = "key_progress_progress_de
 internal const val KEY_PROGRESS_PROGRESS_TOTAL_FILES = "key_progress_progress_total_files"
 internal const val KEY_PROGRESS_PROGRESS_PATH = "key_progress_progress_path"
 internal const val KEY_PROGRESS_REMAINING = "key_progress_remaining"
+internal const val KEY_PROGRESS_REMAINING_FILES_SIZE = "key_progress_remaining_files_size"
 internal const val KEY_PROGRESS_FINISHED = "key_progress_finished"
 
 internal fun createProgressData(
@@ -46,6 +47,7 @@ internal fun createProgressData(
     totalFiles: Int = -1,
     path: String? = null,
     remaining: Long = -1,
+    remainingFileSize: Long = -1,
 ): Data =
     Data.Builder()
         .putString(KEY_PROGRESS_TITLE, title)
@@ -54,6 +56,7 @@ internal fun createProgressData(
         .putInt(KEY_PROGRESS_PROGRESS_TOTAL_FILES, totalFiles)
         .putString(KEY_PROGRESS_PROGRESS_PATH, path)
         .putLong(KEY_PROGRESS_REMAINING, remaining)
+        .putLong(KEY_PROGRESS_REMAINING_FILES_SIZE, remainingFileSize)
         .build()
 
 internal suspend fun File.storeMediaInfo(

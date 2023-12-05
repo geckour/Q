@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.Card
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
@@ -46,7 +47,8 @@ fun Albums(
     changeTopBarTitle: (title: String) -> Unit,
     onSelectAlbum: (item: JoinedAlbum) -> Unit,
     onDownload: (dropboxPaths: List<String>) -> Unit,
-    onInvalidateDownloaded: (albumId: Long) -> Unit
+    onInvalidateDownloaded: (albumId: Long) -> Unit,
+    scrollToTop: Long
 ) {
     val db = DB.getInstance(LocalContext.current)
     val joinedAlbums by (
@@ -54,6 +56,8 @@ fun Albums(
             else db.albumDao().getAllByArtistIdAsync(artistId)
             ).collectAsState(initial = emptyList())
     val defaultTabBarTitle = stringResource(id = R.string.nav_album)
+    val listState = rememberLazyListState()
+
     LaunchedEffect(joinedAlbums) {
         changeTopBarTitle(
             if (artistId > 0) db.artistDao().get(artistId)?.title ?: defaultTabBarTitle
@@ -61,7 +65,11 @@ fun Albums(
         )
     }
 
-    LazyColumn {
+    LaunchedEffect(scrollToTop) {
+        listState.animateScrollToItem(0)
+    }
+
+    LazyColumn(state = listState) {
         items(joinedAlbums) { joinedAlbum ->
             val containDropboxContent by db.albumDao()
                 .containDropboxContent(joinedAlbum.album.id)

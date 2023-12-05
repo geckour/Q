@@ -132,7 +132,9 @@ class DropboxDownloadWorker(
                             val processedSize = files.take(index).sumOf { it.size }
                             val remainingSize = files.sumOf { it.size } - processedSize
                             (remainingSize * elapsedTime.toDouble() / processedSize).toLong()
-                        }
+                        },
+                        remainingFileSize = files.takeLast(files.size - index)
+                            .sumOf { it.size }
                     )
                 )
                 val savedFile = client.saveAudioFile(
@@ -141,7 +143,6 @@ class DropboxDownloadWorker(
                     fileMetadata.pathLower
                 )
                 db.trackDao().getByDropboxPath(fileMetadata.pathLower)?.let {
-                    Timber.d("qgeck track: ${it.track.title}")
                     db.trackDao().upsert(
                         it.track.copy(sourcePath = Uri.fromFile(savedFile).toString()),
                         it.album.id,

@@ -3,6 +3,7 @@ package com.geckour.q.ui.main
 import android.content.Context
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -67,6 +68,7 @@ import kotlinx.coroutines.launch
 fun QTopBar(
     title: String,
     scaffoldState: BottomSheetScaffoldState,
+    onTapBar: () -> Unit,
     onToggleTheme: () -> Unit,
     onSearchItemClicked: (item: SearchItem) -> Unit,
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
@@ -79,6 +81,7 @@ fun QTopBar(
     var result by remember { mutableStateOf(emptyList<SearchItem>()) }
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         TopAppBar(
+            modifier = Modifier.clickable(onClick = onTapBar),
             navigationIcon = {
                 IconButton(onClick = {
                     if (scaffoldState.drawerState.currentValue == DrawerValue.Closed) {

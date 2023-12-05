@@ -1,7 +1,5 @@
 package com.geckour.q.ui.main
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -14,6 +12,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.Card
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
@@ -22,7 +21,6 @@ import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.DownloadForOffline
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -51,7 +49,8 @@ fun Tracks(
     changeTopBarTitle: (title: String) -> Unit,
     onTrackSelected: (item: DomainTrack) -> Unit,
     onDownload: (item: DomainTrack) -> Unit,
-    onInvalidateDownloaded: (item: DomainTrack) -> Unit
+    onInvalidateDownloaded: (item: DomainTrack) -> Unit,
+    scrollToTop: Long
 ) {
     val db = DB.getInstance(LocalContext.current)
     val joinedTracks by (when {
@@ -60,6 +59,7 @@ fun Tracks(
         else -> db.trackDao().getAllAsync()
     }).collectAsState(initial = emptyList())
     val defaultTabBarTitle = stringResource(id = R.string.nav_track)
+    val listState = rememberLazyListState()
 
     LaunchedEffect(joinedTracks) {
         changeTopBarTitle(
@@ -71,7 +71,11 @@ fun Tracks(
         )
     }
 
-    LazyColumn {
+    LaunchedEffect(scrollToTop) {
+        listState.animateScrollToItem(0)
+    }
+
+    LazyColumn(state = listState) {
         items(joinedTracks) { joinedTrack ->
             val domainTrack = joinedTrack.toDomainTrack()
             Card(

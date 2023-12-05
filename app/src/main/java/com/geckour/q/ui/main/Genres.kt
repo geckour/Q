@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.Divider
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
@@ -45,13 +46,15 @@ import timber.log.Timber
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun Genres(navController: NavController, onSelectGenre: (item: Genre) -> Unit) {
+fun Genres(navController: NavController, onSelectGenre: (item: Genre) -> Unit, scrollToTop: Long) {
     val context = LocalContext.current
     val db = DB.getInstance(context)
     val genreNames by db.trackDao()
         .getAllGenreAsync()
         .collectAsState(initial = emptyList())
     var genres by remember { mutableStateOf(emptyList<Genre>()) }
+    val listState = rememberLazyListState()
+
     LaunchedEffect(genreNames) {
         launch {
             genres = genreNames.map { genreName ->
@@ -65,7 +68,11 @@ fun Genres(navController: NavController, onSelectGenre: (item: Genre) -> Unit) {
         }
     }
 
-    LazyColumn {
+    LaunchedEffect(scrollToTop) {
+        listState.animateScrollToItem(0)
+    }
+
+    LazyColumn(state = listState) {
         items(genres) { genre ->
             Timber.d("qgeck genre: $genre")
             Column(

@@ -157,7 +157,8 @@ class DropboxMediaRetrieveWorker(
                         title = applicationContext.getString(R.string.progress_title_retrieve_media),
                         numerator = processedFilesCount,
                         denominator = files.size,
-                        totalFiles = totalFilesCount
+                        totalFiles = totalFilesCount,
+                        remainingFileSize = sumOf { it.size }
                     )
                 )
                 setForeground(getForegroundInfo())
@@ -233,7 +234,10 @@ class DropboxMediaRetrieveWorker(
                         val processedSize = files.take(processedFilesCount - 1).sumOf { it.size }
                         val remainingSize = wholeFilesSize - processedSize
                         (remainingSize * elapsedTime.toDouble() / processedSize).toLong()
-                    }
+                    },
+                    remainingFileSize = files
+                        .takeLast(files.size - processedFilesCount)
+                        .sumOf { it.size }
                 )
             )
             setForeground(getForegroundInfo())

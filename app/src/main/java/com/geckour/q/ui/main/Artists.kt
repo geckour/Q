@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.Card
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.DownloadForOffline
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -40,12 +42,18 @@ fun Artists(
     navController: NavController,
     onSelectArtist: (item: Artist) -> Unit,
     onDownload: (dropboxPaths: List<String>) -> Unit,
-    onInvalidateDownloaded: (artistId: Long) -> Unit
+    onInvalidateDownloaded: (artistId: Long) -> Unit,
+    scrollToTop: Long
 ) {
     val db = DB.getInstance(LocalContext.current)
     val artists by db.artistDao().getAllOrientedAlbumAsync().collectAsState(initial = emptyList())
+    val listState = rememberLazyListState()
 
-    LazyColumn {
+    LaunchedEffect(scrollToTop) {
+        listState.animateScrollToItem(0)
+    }
+
+    LazyColumn(state = listState) {
         items(artists) { artist ->
             val containDropboxContent by db.artistDao()
                 .containDropboxContent(artist.id)
@@ -90,7 +98,9 @@ fun Artists(
                     if (containDropboxContent) {
                         IconButton(
                             onClick = {
-                                if (downloadableDropboxPaths.isEmpty()) onInvalidateDownloaded(artist.id)
+                                if (downloadableDropboxPaths.isEmpty()) onInvalidateDownloaded(
+                                    artist.id
+                                )
                                 else onDownload(downloadableDropboxPaths)
                             },
                             Modifier.padding(horizontal = 4.dp)

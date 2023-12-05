@@ -89,6 +89,7 @@ import com.geckour.q.util.getDropboxCredential
 import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.getIsNightMode
+import com.geckour.q.util.getNumberWithUnitPrefix
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.setHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.setIsNightMode
@@ -102,6 +103,7 @@ import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_NUMERATOR
 import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_PATH
 import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_TOTAL_FILES
 import com.geckour.q.worker.KEY_PROGRESS_REMAINING
+import com.geckour.q.worker.KEY_PROGRESS_REMAINING_FILES_SIZE
 import com.geckour.q.worker.KEY_PROGRESS_TITLE
 import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
@@ -172,6 +174,7 @@ class MainActivity : AppCompatActivity() {
                     )
                 }
             }
+            var scrollToTop by remember { mutableLongStateOf(0L) }
 
             LaunchedEffect(
                 workInfoList.map { it.progress },
@@ -195,6 +198,8 @@ class MainActivity : AppCompatActivity() {
                                 progress.getInt(KEY_PROGRESS_PROGRESS_TOTAL_FILES, -1)
                             val path = progress.getString(KEY_PROGRESS_PROGRESS_PATH).orEmpty()
                             val remaining = progress.getLong(KEY_PROGRESS_REMAINING, -1)
+                            val remainingFilesSize =
+                                progress.getLong(KEY_PROGRESS_REMAINING_FILES_SIZE, -1)
 
                             val progressText =
                                 if (denominator < 0 || totalFilesCount < 0) ""
@@ -204,13 +209,19 @@ class MainActivity : AppCompatActivity() {
                                     denominator,
                                     totalFilesCount
                                 )
-                            val remainingText =
-                                if (remaining < 0) ""
-                                else getString(R.string.remaining, remaining.getTimeString())
+                            val remainingText = 
+                                if (remainingFilesSize < 0) ""
+                                else getString(
+                                    R.string.remaining,
+                                    if (remaining < 0) "" else remaining.getTimeString(),
+                                    remainingFilesSize.getNumberWithUnitPrefix { value, prefix ->
+                                        "$value $prefix"
+                                    }
+                                )
 
                             if (progressText.isNotEmpty() || remainingText.isNotEmpty() || path.isNotEmpty()) {
                                 progressMessage =
-                                    "$title\n$progressText $remainingText\n$path"
+                                    "$title\n$progressText\n$remainingText\n$path"
                                 onCancelProgress = {
                                     val workManager = WorkManager.getInstance(context)
                                     workInfo.tags.forEach {
@@ -343,6 +354,7 @@ class MainActivity : AppCompatActivity() {
                         QTopBar(
                             title = topBarTitle,
                             scaffoldState = scaffoldState,
+                            onTapBar = { scrollToTop = System.currentTimeMillis() },
                             onToggleTheme = {
                                 coroutineScope.launch {
                                     context.setIsNightMode(isNightMode.not())
@@ -480,7 +492,8 @@ class MainActivity : AppCompatActivity() {
                                                         .artistDao()
                                                         .getContainTrackIds(it)
                                             }
-                                        }
+                                        },
+                                        scrollToTop = scrollToTop
                                     )
                                 }
                                 composable(
@@ -513,7 +526,8 @@ class MainActivity : AppCompatActivity() {
                                                         .albumDao()
                                                         .getContainTrackIds(it)
                                             }
-                                        }
+                                        },
+                                        scrollToTop = scrollToTop
                                     )
                                 }
                                 composable(
@@ -546,7 +560,8 @@ class MainActivity : AppCompatActivity() {
                                         },
                                         onInvalidateDownloaded = {
                                             invalidateDownloadedTargets = listOf(it.id)
-                                        }
+                                        },
+                                        scrollToTop = scrollToTop
                                     )
                                 }
                                 composable("genres") {
@@ -556,7 +571,8 @@ class MainActivity : AppCompatActivity() {
                                         navController = navController,
                                         onSelectGenre = {
                                             selectedGenre = it
-                                        }
+                                        },
+                                        scrollToTop = scrollToTop
                                     )
                                 }
                                 composable("qzi") {
