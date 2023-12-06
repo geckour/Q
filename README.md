@@ -18,7 +18,7 @@ The Android app for playing music oriented to queue.
 ## License
     GNU GENERAL PUBLIC LICENSE Version 3
 
-    Copyright 2018 geckour
+    Copyright 2023 geckour
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
