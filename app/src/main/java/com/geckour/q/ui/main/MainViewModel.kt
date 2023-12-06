@@ -447,7 +447,7 @@ class MainViewModel(private val app: App) : ViewModel() {
 
     internal fun startBilling(activity: Activity) {
         viewModelScope.launch {
-            billingApiClient.startBilling(activity, emptyList())
+            billingApiClient.startBilling(activity, listOf("donate"))
         }
     }
 
