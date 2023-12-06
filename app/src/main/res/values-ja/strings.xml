@@ -70,6 +70,9 @@
     <string name="menu_ignore_to_false">一括追加時スキップを無効にする</string>
     <string name="menu_ignore_to_true">一括追加時スキップを有効にする</string>
 
+    <string name="menu_attach_lyric">歌詞を紐づけ</string>
+    <string name="menu_detach_lyric">歌詞の紐づけを解除</string>
+
     <string name="menu_delete_from_device">端末から削除</string>
 
     <string name="menu_insert_next">次へ挿入</string>

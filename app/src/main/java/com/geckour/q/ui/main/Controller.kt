@@ -28,6 +28,7 @@ import androidx.compose.material.Slider
 import androidx.compose.material.SliderDefaults
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.outlined.DownloadForOffline
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.Composable
@@ -68,6 +69,7 @@ fun Controller(
     playbackInfo: Pair<Boolean, Int>,
     repeatMode: Int,
     isLoading: Boolean,
+    showLyric: Boolean,
     onTogglePlayPause: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
@@ -81,7 +83,8 @@ fun Controller(
     moveToCurrentIndex: () -> Unit,
     clearQueue: () -> Unit,
     onTrackSelected: (item: DomainTrack) -> Unit,
-    cancelLoad: () -> Unit
+    cancelLoad: () -> Unit,
+    onToggleShowLyrics: () -> Unit
 ) {
     Column {
         Column(modifier = Modifier.height(144.dp)) {
@@ -408,6 +411,18 @@ fun Controller(
                     ),
                     fontSize = 12.sp,
                     color = QTheme.colors.colorTextPrimary
+                )
+            }
+            IconButton(
+                onClick = onToggleShowLyrics,
+                modifier = Modifier
+                    .padding(end = 12.dp)
+                    .size(20.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Lyrics,
+                    contentDescription = null,
+                    tint = if (showLyric) QTheme.colors.colorButtonNormal else QTheme.colors.colorInactive
                 )
             }
             IconButton(

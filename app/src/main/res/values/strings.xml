@@ -76,6 +76,9 @@
     <string name="menu_ignore_to_false">Disable skip on multiple add</string>
     <string name="menu_ignore_to_true">Enable skip on multiple add</string>
 
+    <string name="menu_attach_lyric">Attach lyric</string>
+    <string name="menu_detach_lyric">Detach lyric</string>
+
     <string name="menu_delete_from_device">Delete from device</string>
 
     <string name="menu_insert_next">Insert to next</string>

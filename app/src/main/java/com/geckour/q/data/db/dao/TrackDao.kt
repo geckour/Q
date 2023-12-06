@@ -82,6 +82,7 @@ interface TrackDao {
     @Query("select mediaId from track where dropboxPath == null")
     suspend fun getAllLocalMediaIds(): List<Long>
 
+    @Transaction
     @Query("select * from track where ignored != :ignore order by titleSort collate nocase")
     fun getAllAsync(ignore: Bool = Bool.UNDEFINED): Flow<List<JoinedTrack>>
 
