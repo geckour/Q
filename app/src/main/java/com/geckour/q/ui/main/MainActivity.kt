@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Bundle
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
@@ -74,8 +75,10 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
+import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.SearchItem
@@ -91,6 +94,7 @@ import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.getIsNightMode
 import com.geckour.q.util.getNumberWithUnitPrefix
 import com.geckour.q.util.getTimeString
+import com.geckour.q.util.parseLrc
 import com.geckour.q.util.setHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.setIsNightMode
 import com.geckour.q.util.toDomainTrack
@@ -128,6 +132,23 @@ class MainActivity : AppCompatActivity() {
     private var onAuthDropboxCompleted: (() -> Unit)? = null
     private var onCancelProgress: (() -> Unit)? = null
 
+    private var onLrcFileLoaded: ((lyricLines: List<LyricLine>) -> Unit)? = null
+
+    private val getContent =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            uri ?: return@registerForActivityResult
+            val dir = File(cacheDir, "lrc")
+            val file = File(dir, "sample.lrc")
+
+            if (file.exists()) file.delete()
+            if (dir.exists().not()) dir.mkdirs()
+
+            contentResolver.openInputStream(uri)?.use {
+                file.writeBytes(it.readBytes())
+            }
+            onLrcFileLoaded?.invoke(file.parseLrc())
+        }
+
     @OptIn(ExperimentalMaterialApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -163,6 +184,7 @@ class MainActivity : AppCompatActivity() {
                 .collectAsState(initial = false)
             var downloadTargets by remember { mutableStateOf(emptyList<String>()) }
             var invalidateDownloadedTargets by remember { mutableStateOf(emptyList<Long>()) }
+            var attachLyricTargetTrackId by remember { mutableLongStateOf(-1) }
             val snackBarMessage by viewModel.snackBarMessageFlow.collectAsState()
             val equalizerParams by context.getEqualizerParams().collectAsState(initial = null)
             val bottomSheetHeightAngle = remember { Animatable(0f) }
@@ -175,6 +197,20 @@ class MainActivity : AppCompatActivity() {
                 }
             }
             var scrollToTop by remember { mutableLongStateOf(0L) }
+            var showLyric by remember { mutableStateOf(false) }
+
+            onLrcFileLoaded = {
+                if (attachLyricTargetTrackId > 0) {
+                    coroutineScope.launch {
+                        DB.getInstance(context)
+                            .lyricDao()
+                            .insertLyric(
+                                Lyric(id = 0, trackId = attachLyricTargetTrackId, lines = it)
+                            )
+                        attachLyricTargetTrackId = -1
+                    }
+                }
+            }
 
             LaunchedEffect(
                 workInfoList.map { it.progress },
@@ -209,7 +245,7 @@ class MainActivity : AppCompatActivity() {
                                     denominator,
                                     totalFilesCount
                                 )
-                            val remainingText = 
+                            val remainingText =
                                 if (remainingFilesSize < 0) ""
                                 else getString(
                                     R.string.remaining,
@@ -424,6 +460,7 @@ class MainActivity : AppCompatActivity() {
                             playbackInfo = currentPlaybackInfo,
                             repeatMode = currentRepeatMode,
                             isLoading = isLoading.first,
+                            showLyric = showLyric,
                             onTogglePlayPause = {
                                 viewModel.onPlayOrPause(
                                     currentPlaybackInfo.first && currentPlaybackInfo.second == Player.STATE_READY
@@ -449,11 +486,14 @@ class MainActivity : AppCompatActivity() {
                             },
                             cancelLoad = {
                                 isLoading.second?.invoke()
-                            }
+                            },
+                            onToggleShowLyrics = { showLyric = showLyric.not() }
                         )
                         Queue(
                             domainTracks = queue,
                             forceScrollToCurrent = forceScrollToCurrent,
+                            showLyric = showLyric,
+                            currentPlaybackPosition = currentPlaybackPosition,
                             onQueueMove = viewModel::onQueueMove,
                             onChangeRequestedTrackInQueue = viewModel::onChangeRequestedTrackInQueue,
                             onRemoveTrackFromQueue = viewModel::onRemoveTrackFromQueue
@@ -667,6 +707,35 @@ class MainActivity : AppCompatActivity() {
                                             ) {
                                                 Text(
                                                     text = stringResource(id = R.string.menu_transition_to_album),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    attachLyricTargetTrackId = domainTrack.id
+                                                    getContent.launch("*/*")
+                                                    selectedTrack = null
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_attach_lyric),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        DB.getInstance(context)
+                                                            .lyricDao()
+                                                            .deleteLyricByTrackId(domainTrack.id)
+                                                    }
+                                                    selectedTrack = null
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_detach_lyric),
                                                     fontSize = 14.sp,
                                                     color = QTheme.colors.colorTextPrimary
                                                 )
