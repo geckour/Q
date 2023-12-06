@@ -43,6 +43,9 @@
     <string name="remaining">Remaining: %s (%sB)</string>
     <string name="button_apply">Apply</string>
     <string name="button_cancel">Cancel</string>
+    <string name="message_attach_lyric_success">Success to link the lyric</string>
+    <string name="message_attach_lyric_failure">Failure to link the lyric</string>
+    <string name="message_delete_lyric_complete">Complete to delete the lyric</string>
 
     <!-- Bottom Sheet -->
     <string name="bottom_sheet_time_total">Total・%1$s</string>

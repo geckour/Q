@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.provider.OpenableColumns
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -76,9 +77,9 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Lyric
+import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
-import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.SearchItem
@@ -90,6 +91,7 @@ import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.dbxRequestConfig
 import com.geckour.q.util.getDropboxCredential
 import com.geckour.q.util.getEqualizerParams
+import com.geckour.q.util.getExtension
 import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.getIsNightMode
 import com.geckour.q.util.getNumberWithUnitPrefix
@@ -111,12 +113,15 @@ import com.geckour.q.worker.KEY_PROGRESS_REMAINING_FILES_SIZE
 import com.geckour.q.worker.KEY_PROGRESS_TITLE
 import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import permissions.dispatcher.ktx.constructPermissionsRequest
+import timber.log.Timber
 import java.io.File
+import java.nio.charset.Charset
 import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.sin
@@ -137,16 +142,49 @@ class MainActivity : AppCompatActivity() {
     private val getContent =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
             uri ?: return@registerForActivityResult
-            val dir = File(cacheDir, "lrc")
-            val file = File(dir, "sample.lrc")
 
-            if (file.exists()) file.delete()
-            if (dir.exists().not()) dir.mkdirs()
+            try {
+                contentResolver.query(uri, null, null, null, null, null).use { cursor ->
+                    cursor ?: return@use
+                    cursor.moveToFirst()
+                    val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (index < 0) return@use
+                    val fileName = cursor.getString(index)
+                    val extensionName = fileName.getExtension()
+                    if (extensionName == "txt") {
+                        val lyricText = contentResolver.openInputStream(uri)?.use {
+                            it.readBytes().toString(Charset.forName("UTF-8"))
+                        } ?: throw IllegalStateException("Cannot open lyric file.")
+                        onLrcFileLoaded?.invoke(listOf(LyricLine(0, lyricText)))
+                        return@registerForActivityResult
+                    } else if (extensionName != "lrc") {
+                        throw IllegalStateException("The file type .$extensionName is not supported.")
+                    }
+                }
 
-            contentResolver.openInputStream(uri)?.use {
-                file.writeBytes(it.readBytes())
+                val dir = File(cacheDir, "lrc")
+                val file = File(dir, "sample.lrc")
+
+                if (file.exists()) file.delete()
+                if (dir.exists().not()) dir.mkdirs()
+
+                contentResolver.openInputStream(uri)?.use {
+                    file.writeBytes(it.readBytes())
+                }
+                val lyricLines = file.parseLrc()
+                if (lyricLines.isEmpty()) throw IllegalStateException("The lyric is empty.")
+                onLrcFileLoaded?.invoke(lyricLines)
+                file.delete()
+            } catch (t: Throwable) {
+                Timber.e(t)
+                lifecycleScope.launch {
+                    viewModel.emitSnackBarMessage(
+                        getString(R.string.message_attach_lyric_failure)
+                    )
+                    delay(2000)
+                    viewModel.emitSnackBarMessage(null)
+                }
             }
-            onLrcFileLoaded?.invoke(file.parseLrc())
         }
 
     @OptIn(ExperimentalMaterialApi::class)
@@ -202,12 +240,26 @@ class MainActivity : AppCompatActivity() {
             onLrcFileLoaded = {
                 if (attachLyricTargetTrackId > 0) {
                     coroutineScope.launch {
-                        DB.getInstance(context)
-                            .lyricDao()
-                            .insertLyric(
-                                Lyric(id = 0, trackId = attachLyricTargetTrackId, lines = it)
+                        val db = DB.getInstance(context)
+                        val id = db.lyricDao().getLyricIdByTrackId(attachLyricTargetTrackId) ?: 0
+                        db.lyricDao()
+                            .upsertLyric(
+                                Lyric(id = id, trackId = attachLyricTargetTrackId, lines = it)
                             )
+                        viewModel.emitSnackBarMessage(
+                            getString(R.string.message_attach_lyric_success)
+                        )
+                        delay(2000)
+                        viewModel.emitSnackBarMessage(null)
                         attachLyricTargetTrackId = -1
+                    }
+                } else {
+                    coroutineScope.launch {
+                        viewModel.emitSnackBarMessage(
+                            getString(R.string.message_attach_lyric_failure)
+                        )
+                        delay(2000)
+                        viewModel.emitSnackBarMessage(null)
                     }
                 }
             }
@@ -730,6 +782,11 @@ class MainActivity : AppCompatActivity() {
                                                         DB.getInstance(context)
                                                             .lyricDao()
                                                             .deleteLyricByTrackId(domainTrack.id)
+                                                        viewModel.emitSnackBarMessage(
+                                                            getString(R.string.message_delete_lyric_complete)
+                                                        )
+                                                        delay(2000)
+                                                        viewModel.emitSnackBarMessage(null)
                                                     }
                                                     selectedTrack = null
                                                 }

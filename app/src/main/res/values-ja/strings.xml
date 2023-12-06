@@ -39,6 +39,9 @@
     <string name="remaining">残り: %s (%sB)</string>
     <string name="button_apply">適用</string>
     <string name="button_cancel">キャンセル</string>
+    <string name="message_attach_lyric_success">歌詞の紐づけに成功しました</string>
+    <string name="message_attach_lyric_failure">歌詞の紐づけに失敗しました</string>
+    <string name="message_delete_lyric_complete">歌詞の削除が完了しました</string>
 
     <!-- Bottom Sheet -->
     <string name="bottom_sheet_time_total">総時間・%1$s</string>

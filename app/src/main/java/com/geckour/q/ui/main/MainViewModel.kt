@@ -454,4 +454,8 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal fun requestBillingInfoUpdate() {
         billingApiClient.requestUpdate()
     }
+
+    internal suspend fun emitSnackBarMessage(message: String?) {
+        snackBarMessageFlow.emit(message)
+    }
 }
