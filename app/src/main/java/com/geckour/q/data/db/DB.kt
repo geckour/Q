@@ -1,6 +1,7 @@
 package com.geckour.q.data.db
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -13,7 +14,10 @@ import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.util.BoolConverter
 
-@Database(entities = [Track::class, Album::class, Artist::class], version = 1, exportSchema = false)
+@Database(
+    entities = [Track::class, Album::class, Artist::class],
+    version = 1,
+)
 @TypeConverters(BoolConverter::class)
 abstract class DB : RoomDatabase() {
 

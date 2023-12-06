@@ -75,6 +75,9 @@ android {
     composeOptions {
         kotlinCompilerExtensionVersion "1.5.4"
     }
+    ksp {
+        arg(new RoomSchemaArgProvider(new File(projectDir, "schemas")))
+    }
     ndkVersion = "21.0.6113669"
     repositories {
         maven {
@@ -205,6 +208,23 @@ dependencies {
 
     // File Utils
     implementation "commons-io:commons-io:2.11.0"
+}
+
+class RoomSchemaArgProvider implements CommandLineArgumentProvider {
+
+    @InputDirectory
+    @PathSensitive(PathSensitivity.RELATIVE)
+    File schemaDir
+
+    RoomSchemaArgProvider(File schemaDir) {
+        if (!schemaDir.exists()) schemaDir.mkdir()
+        this.schemaDir = schemaDir
+    }
+
+    @Override
+    Iterable<String> asArguments() {
+        return ["room.schemaLocation=${schemaDir.path}".toString()]
+    }
 }
 
 apply plugin: 'com.google.gms.google-services'
