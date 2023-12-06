@@ -207,3 +207,6 @@ codeStyleConfig.xml
 *.jks
 *.aab
 kotlinc.xml
+*/jarRepositories.xml
+secret.properties
+github.properties

@@ -20,11 +20,40 @@
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
 
+-keep class com.geckour.q.service.** { *; }
+-keep class org.jaudiotagger.**  { *; }
+
+-dontwarn androidx.concurrent.futures.**
+
+
 # Coroutines
+
+# ServiceLoader support
+-keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
+-keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+
+# Most of volatile fields are updated with AFU and should not be mangled
 -keepclassmembernames class kotlinx.** {
     volatile <fields>;
 }
 
--keep class com.geckour.q.service.** { *; }
+-keepattributes *Annotation*, InnerClasses
+-dontnote kotlinx.serialization.AnnotationsKt # core serialization annotations
 
--dontwarn androidx.concurrent.futures.**
+# kotlinx-serialization-json specific. Add this if you have java.lang.NoClassDefFoundError kotlinx.serialization.json.JsonObjectSerializer
+-keepclassmembers class kotlinx.serialization.json.** {
+    *** Companion;
+}
+-keepclasseswithmembers class kotlinx.serialization.json.** {
+    kotlinx.serialization.KSerializer serializer(...);
+}
+
+
+# Change here com.yourcompany.yourpackage
+-keep,includedescriptorclasses class com.geckour.q.**$$serializer { *; } # <-- change package name to your app's
+-keepclassmembers class com.geckour.q.** { # <-- change package name to your app's
+    *** Companion;
+}
+-keepclasseswithmembers class com.geckour.q.** { # <-- change package name to your app's
+    kotlinx.serialization.KSerializer serializer(...);
+}

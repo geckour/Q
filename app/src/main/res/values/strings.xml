@@ -1,58 +1,88 @@
 <resources>
+    <!-- App Broad -->
     <string name="app_name" translatable="false">Q</string>
+
     <string name="title_activity_main" translatable="false">Q</string>
     <string name="title_activity_setting">Settings</string>
     <string name="title_activity_equalizer">Equalizer</string>
     <string name="title_activity_license">OSS Licenses</string>
 
-
     <string name="app_theme_light">Light</string>
     <string name="app_theme_dark">Dark</string>
 
-
+    <!-- Drawer -->
     <string name="drawer_open">Open</string>
     <string name="drawer_close">Close</string>
 
-
+    <!-- Notification -->
     <string name="notification_channel_player">Player</string>
     <string name="notification_channel_description_player">Player information notification for keep player alive</string>
+    <string name="notification_channel_retriever">Media Retriever</string>
+    <string name="notification_channel_description_retriever">Notification for keep media retriever alive</string>
+    <string name="notification_channel_sleep_timer">Sleep timer</string>
+    <string name="notification_channel_description_sleep_timer">Notification for sleep timer</string>
+    <string name="notification_title_retriever">Retrieving media</string>
+    <string name="notification_text_retriever">%1$d / %2$d | Syncing library…</string>
+    <string name="notification_text_retriever_with_path">%1$d / %2$d | Syncing library…\n%3$s</string>
+    <string name="notification_title_media_add">Adding media</string>
+    <string name="notification_text_media_add">Adding %s…</string>
+    <string name="notification_title_sleep_timer">Sleep timer</string>
+    <string name="notification_text_sleep_timer">Remaining: %s</string>
+    <string name="notification_text_sleep_timer_with_tolerance">Remaining: %1$s ± %2$s</string>
     <string name="notification_action_prev">PREV</string>
     <string name="notification_action_play">PLAY</string>
     <string name="notification_action_pause">PAUSE</string>
     <string name="notification_action_next">NEXT</string>
 
-
+    <!-- Indicator -->
     <string name="syncing">Syncing library…</string>
+    <string name="progress_title_retrieve_media">@string/syncing</string>
+    <string name="progress_title_download_dropbox">@string/syncing</string>
     <string name="loading">Loading items…</string>
-    <string name="progress_sync" translatable="false">%1$d / %2$d</string>
-    <string name="button_cancel_sync">Cancel</string>
+    <string name="progress_sync" translatable="false">%1$d / %2$d (%3$d)</string>
+    <string name="remaining">Remaining: %s (%sB)</string>
+    <string name="button_apply">Apply</string>
+    <string name="button_cancel">Cancel</string>
+    <string name="message_attach_lyric_success">Success to link the lyric</string>
+    <string name="message_attach_lyric_failure">Failure to link the lyric</string>
+    <string name="message_delete_lyric_complete">Complete to delete the lyric</string>
 
-
+    <!-- Bottom Sheet -->
     <string name="bottom_sheet_time_total">Total・%1$s</string>
     <string name="bottom_sheet_time_remain">Remain・-%1$s</string>
 
-
+    <!-- Navigation Drawer -->
     <string name="nav_header_desc" translatable="false">: Queue oriented player</string>
 
+    <string name="nav_category_library">Library</string>
     <string name="nav_category_others">Others</string>
 
     <string name="nav_artist">Artists</string>
     <string name="nav_album">Albums</string>
-    <string name="nav_song">Songs</string>
+    <string name="nav_track">Tracks</string>
     <string name="nav_genre">Genres</string>
-    <string name="nav_playlist">Playlist</string>
+    <string name="nav_dropbox">Dropbox</string>
     <string name="nav_setting">Settings</string>
     <string name="nav_equalizer">Equalizer</string>
     <string name="nav_sync">Sync library</string>
+    <string name="nav_dropbox_sync">Sync with Dropbox</string>
     <string name="nav_pay">Donate</string>
     <string name="nav_fortune">Fortune</string>
 
-
+    <!-- Menu -->
     <string name="menu_search">Search</string>
 
-    <string name="menu_delete_song">Delete from device</string>
+    <string name="menu_daynight">Toggle theme</string>
 
-    <string name="menu_delete_playlist">Delete this playlist</string>
+    <string name="menu_sleep">Set sleep timer</string>
+
+    <string name="menu_ignore_to_false">Disable skip on multiple add</string>
+    <string name="menu_ignore_to_true">Enable skip on multiple add</string>
+
+    <string name="menu_attach_lyric">Attach lyric</string>
+    <string name="menu_detach_lyric">Detach lyric</string>
+
+    <string name="menu_delete_from_device">Delete from device</string>
 
     <string name="menu_insert_next">Insert to next</string>
     <string name="menu_insert_last">Insert to last</string>
@@ -78,19 +108,15 @@
     <string name="menu_genres_insert_all_shuffle_last">Shuffle with genres to last</string>
     <string name="menu_genres_override_all_shuffle">Shuffle and override with genres</string>
 
-    <string name="menu_playlists_insert_all_shuffle_next">Shuffle with playlists to next</string>
-    <string name="menu_playlists_insert_all_shuffle_last">Shuffle with playlists to last</string>
-    <string name="menu_playlists_override_all_shuffle">Shuffle and override with playlists</string>
+    <string name="menu_transition_to_artist">Show artist</string>
+    <string name="menu_transition_to_album">Show album</string>
 
+    <string name="menu_edit_metadata">Edit metadata</string>
 
+    <!-- Dialog -->
     <string name="dialog_ok">OK</string>
     <string name="dialog_ng">Cancel</string>
-
-    <string name="dialog_title_add_queue_to_playlist">Add queue to playlist</string>
-    <string name="dialog_desc_add_queue_to_playlist">Add current queue to existing or new playlist</string>
-    <string name="dialog_content_label_exist_playlist">Add to existing:</string>
-    <string name="dialog_content_label_new_playlist">Create new playlist:</string>
-    <string name="dialog_content_hint_playlist_name">Enter playlist name</string>
+    <string name="dialog_prev">Prev</string>
 
     <string name="dialog_title_choose_app_theme">Select theme</string>
     <string name="dialog_desc_choose_app_theme">Select app color theme</string>
@@ -102,25 +128,56 @@
     <string name="dialog_desc_pattern_format">Track name: TI\nArtist name: AR\nAlbum name: AL\nescape sequence: Wrap by \' \'\nline break: \\n</string>
     <string name="dialog_hint_pattern_format">ex: #NowPlaying TI - AR (AL)</string>
 
+    <string name="dialog_choice_reset_shuffle">Reset shuffle</string>
+    <string name="dialog_choice_album_oriented_shuffle">Album oriented shuffle</string>
+    <string name="dialog_choice_artist_oriented_shuffle">Artist oriented shuffle</string>
 
-    <string name="payment_desc">Available donation with Kyash</string>
-    <string name="payment_save_success">Succeeded</string>
-    <string name="payment_save_failure">Failure to save</string>
+    <string name="dialog_title_sleep_timer">Set sleep timer</string>
+    <string name="dialog_desc_sleep_timer">Set timer length and the tolerance</string>
+    <string name="dialog_text_sleep_timer_time">Pause %d min later</string>
+    <string name="dialog_text_sleep_timer_tolerance">Tolerance: %d min</string>
 
+    <string name="dialog_title_dropbox_choose_folder">Select folder</string>
+    <string name="dialog_desc_dropbox_choose_folder">Select root folder of retrieving media</string>
 
+    <string name="dialog_title_dropbox_sync_caution">Caution</string>
+    <string name="dialog_desc_dropbox_sync_caution">Dropbox sync feature will download all target tracks temporary and delete it after the task is done.\nTherefore it may take a lot of time and cause large amount of download.\nAre you sure?</string>
+
+    <string name="dialog_switch_need_downloaded">Save to device</string>
+
+    <string name="dialog_title_dropbox_download">Download</string>
+    <string name="dialog_desc_dropbox_download">Save files into the device?</string>
+
+    <string name="dialog_title_dropbox_invalidate_downloaded">Purge</string>
+    <string name="dialog_desc_dropbox_invalidate_downloaded">Remove downloaded file from the device?</string>
+
+    <!-- Track -->
+    <string name="track_item_artist_and_album" translatable="false">%1$s - %2$s</string>
+    <string name="track_file_info" translatable="false">%1$s・%2$dkbps・%3$.1fkHz</string>
+    <string name="track_number_divider" translatable="false">|</string>
+
+    <!-- Payment -->
+    <string name="payment_desc">Donation is available</string>
+    <string name="payment_action_pay">Donate</string>
+    <string name="payment_message_success">Succeeded to donate</string>
+    <string name="payment_message_error_failed_to_start">Error\nFailed to start processing.</string>
+    <string name="payment_message_error_duplicated">Error\nFailed to donate since you already have purchased item.</string>
+    <string name="payment_message_error_canceled">Error\nFailed to donate since cancelled.</string>
+    <string name="payment_message_error_failed">Error\nFailed to donate.</string>
+
+    <!-- Chooser -->
     <string name="share_chooser_title">Choose destination to share…</string>
 
+    <!-- Easter Egg -->
+    <string name="easter_egg_title">Today\'s track</string>
 
-    <string name="easter_egg_title">Today\'s song</string>
-
-
+    <!-- Search -->
     <string name="search_category_artist">Artist</string>
     <string name="search_category_album">Album</string>
-    <string name="search_category_song">Song</string>
-    <string name="search_category_playlist">Playlist</string>
+    <string name="search_category_track">Track</string>
     <string name="search_category_genre">Genre</string>
 
-
+    <!-- Settings -->
     <string name="setting_switch_on" translatable="false">ON</string>
     <string name="setting_switch_off" translatable="false">OFF</string>
 
@@ -153,13 +210,26 @@
 
     <string name="setting_default_sharing_text_pattern" translatable="false">#NowPlaying TI - AR (AL)</string>
 
-
+    <!-- Equalizer -->
+    <string name="equalizer_switch_enabled">Enabled</string>
+    <string name="equalizer_switch_disabled">Disabled</string>
     <string name="equalizer_flatten">Flatten</string>
-    <string name="equalizer_seek_bar_label" translatable="false">%1$sHz</string>
-    <string name="equalizer_scale_label_center" translatable="false">0dB</string>
-    <string name="equalizer_scale_label" translatable="false">%1$sdB</string>
-    <string name="equalizer_message_error_turn_on">Error: Please play music at once</string>
 
+    <!-- Metadata Editor -->
+    <string name="metadata_edit_dialog_title">Edit metadata</string>
+    <string name="metadata_edit_dialog_message">Fill following fields by new metadata values</string>
+    <string name="metadata_edit_track_name">Track name</string>
+    <string name="metadata_edit_track_name_kana">Track name kana</string>
+    <string name="metadata_edit_album_name">Album name</string>
+    <string name="metadata_edit_album_name_kana">Album name kana</string>
+    <string name="metadata_edit_artist_name">Artist name</string>
+    <string name="metadata_edit_artist_name_kana">Artist name kana</string>
+    <string name="metadata_edit_composer_name">Composer name</string>
+    <string name="metadata_edit_composer_name_kana">Composer name kana</string>
+
+    <!-- License -->
+    <string name="license_name_koin" translatable="false">Koin</string>
+    <string name="license_text_koin" translatable="false">Copyright 2017 Arnaud GIULIANI, Laurent BARESSE\n\nLicensed under the Apache License, Version 2.0 (the "License");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\nhttp://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an "AS IS" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.</string>
 
     <string name="license_name_coroutines" translatable="false">Kotlin Coroutines</string>
     <string name="license_text_coroutines" translatable="false">Copyright 2016–2018 JetBrains s.r.o.\nLicensed under the Apache License, Version 2.0 (the "License");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\nhttp://www.apache.org/licenses/LICENSE-2.0\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an "AS IS" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.</string>
@@ -173,11 +243,8 @@
     <string name="license_name_timber" translatable="false">Timber</string>
     <string name="license_text_timber" translatable="false">Copyright 2013 Jake Wharton\n\nLicensed under the Apache License, Version 2.0 (the "License");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n   http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an "AS IS" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.</string>
 
-    <string name="license_name_stetho" translatable="false">Stetho</string>
-    <string name="license_text_stetho" translatable="false">BSD License\n\nFor Stetho software\n\nCopyright (C) 2015, Facebook, Inc. All rights reserved.\n\nRedistribution and use in source and binary forms, with or without modification,\nare permitted provided that the following conditions are met:\n\n * Redistributions of source code must retain the above copyright notice, this\n   list of conditions and the following disclaimer.\n\n * Redistributions in binary form must reproduce the above copyright notice,\n   this list of conditions and the following disclaimer in the documentation\n   and/or other materials provided with the distribution.\n\n * Neither the name Facebook nor the names of its contributors may be used to\n   endorse or promote products derived from this software without specific\n   prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND\nANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR\nANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\nLOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON\nANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\nSOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</string>
-
-    <string name="license_name_gson" translatable="false">Gson</string>
-    <string name="license_text_gson" translatable="false">Copyright 2008 Google Inc.\n\nLicensed under the Apache License, Version 2.0 (the "License");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n    http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an "AS IS" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.</string>
+    <string name="license_name_json" translatable="false">Kotlin serialization</string>
+    <string name="license_text_json" translatable="false">Copyright 2020 JetBrains s.r.o.\n\n   Licensed under the Apache License, Version 2.0 (the "License");\n   you may not use this file except in compliance with the License.\n   You may obtain a copy of the License at\n\n       http://www.apache.org/licenses/LICENSE-2.0\n\n   Unless required by applicable law or agreed to in writing, software\n   distributed under the License is distributed on an "AS IS" BASIS,\n   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n   See the License for the specific language governing permissions and\n   limitations under the License.</string>
 
     <string name="license_name_aac" translatable="false">Android Architecture Components</string>
     <string name="license_text_aac" translatable="false">Copyright (C) 2018 The Android Open Source Project\n\nLicensed under the Apache License, Version 2.0 (the "License");\n you may not use this file except in compliance with the License.\n You may obtain a copy of the License at\n\n      http://www.apache.org/licenses/LICENSE–2.0\n\n Unless required by applicable law or agreed to in writing, software\n distributed under the License is distributed on an "AS IS" BASIS,\n WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n See the License for the specific language governing permissions and\n limitations under the License.</string>
@@ -185,12 +252,18 @@
     <string name="license_name_permission" translatable="false">PermissionsDispatcher</string>
     <string name="license_text_permission" translatable="false">Copyright 2016 Shintaro Katafuchi, Marcel Schnelle, Yoshinori Isogai\n\nLicensed under the Apache License, Version 2.0 (the "License");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n   http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an "AS IS" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.</string>
 
-    <string name="license_name_glide" translatable="false">Glide</string>
-    <string name="license_text_glide" translatable="false">License for everything not in third_party and not otherwise marked:\n\nCopyright 2014 Google, Inc. All rights reserved.\n\nRedistribution and use in source and binary forms, with or without modification, are\npermitted provided that the following conditions are met:\n\n   1. Redistributions of source code must retain the above copyright notice, this list of\n         conditions and the following disclaimer.\n\n   2. Redistributions in binary form must reproduce the above copyright notice, this list\n         of conditions and the following disclaimer in the documentation and/or other materials\n         provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY GOOGLE, INC. ``AS IS\'\' AND ANY EXPRESS OR IMPLIED\nWARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND\nFITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL GOOGLE, INC. OR\nCONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR\nCONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR\nSERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON\nANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING\nNEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF\nADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\nThe views and conclusions contained in the software and documentation are those of the\nauthors and should not be interpreted as representing official policies, either expressed\nor implied, of Google, Inc.\n–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\nLicense for third_party/disklrucache:\n\nCopyright 2012 Jake Wharton\nCopyright 2011 The Android Open Source Project\n\nLicensed under the Apache License, Version 2.0 (the "License");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n   http://www.apache.org/licenses/LICENSE–2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an "AS IS" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.\n–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\nLicense for third_party/gif_decoder:\n\nCopyright (C) 2013 Xcellent Creations, Inc.\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n"Software"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.\n–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\nLicense for third_party/gif_encoder/AnimatedGifEncoder.java and\nthird_party/gif_encoder/LZWEncoder.java:\n\nNo copyright asserted on the source code of this class. May be used for any\npurpose, however, refer to the Unisys LZW patent for restrictions on use of\nthe associated LZWEncoder class. Please forward any corrections to\nkweiner@fmsware.com.\n\n–––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––––\nLicense for third_party/gif_encoder/NeuQuant.java\n\nCopyright (C) 1994 Anthony Dekker\n\nNEUQUANT Neural–Net quantization algorithm by Anthony Dekker, 1994. See\n"Kohonen neural networks for optimal colour quantization" in "Network:\nComputation in Neural Systems" Vol. 5 (1994) pp 351–367. for a discussion of\nthe algorithm.\n\nAny party obtaining a copy of these files from the author, directly or\nindirectly, is granted, free of charge, a full and unrestricted irrevocable,\nworld–wide, paid up, royalty–free, nonexclusive right and license to deal in\nthis software and documentation files (the "Software"), including without\nlimitation the rights to use, copy, modify, merge, publish, distribute,\nsublicense, and/or sell copies of the Software, and to permit persons who\nreceive copies from any such party to do so, with the only requirement being\nthat this copyright notice remain intact.</string>
+    <string name="license_name_coil" translatable="false">Coil</string>
+    <string name="license_text_coil" translatable="false">Copyright 2021 Coil Contributors\n\nLicensed under the Apache License, Version 2.0 (the "License");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n   https://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an "AS IS" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.</string>
 
     <string name="license_name_exo" translatable="false">ExoPlayer</string>
     <string name="license_text_exo" translatable="false">Copyright 2018 Google Inc.\n\nLicensed under the Apache License, Version 2.0 (the "License");\n you may not use this file except in compliance with the License.\n You may obtain a copy of the License at\n\n      http://www.apache.org/licenses/LICENSE–2.0\n\n Unless required by applicable law or agreed to in writing, software\n distributed under the License is distributed on an "AS IS" BASIS,\n WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\n See the License for the specific language governing permissions and\n limitations under the License.</string>
 
     <string name="license_name_seek_bar" translatable="false">VerticalSeekBar</string>
     <string name="license_text_seek_bar" translatable="false">Copyright (C) 2015 Haruki Hasegawa\n\nLicensed under the Apache License, Version 2.0 (the "License");\nyou may not use this file except in compliance with the License.\nYou may obtain a copy of the License at\n\n    http://www.apache.org/licenses/LICENSE-2.0\n\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an "AS IS" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.</string>
+
+    <string name="license_name_dropbox" translatable="false">Dropbox Core SDK</string>
+    <string name="license_text_dropbox" translatable="false">Copyright (c) 2013-2021 Dropbox Inc., http://www.dropbox.com/\n\nPermission is hereby granted, free of charge, to any person obtaining\na copy of this software and associated documentation files (the\n"Software"), to deal in the Software without restriction, including\nwithout limitation the rights to use, copy, modify, merge, publish,\ndistribute, sublicense, and/or sell copies of the Software, and to\npermit persons to whom the Software is furnished to do so, subject to\nthe following conditions:\n\nThe above copyright notice and this permission notice shall be\nincluded in all copies or substantial portions of the Software.\n\nTHE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,\nEXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF\nMERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND\nNONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE\nLIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION\nOF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION\nWITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</string>
+
+    <string name="license_name_codec" translatable="false">Apache Commons Codec</string>
+    <string name="license_text_codec" translatable="false">Licensed to the Apache Software Foundation (ASF) under one or more\ncontributor license agreements.  See the NOTICE file distributed with\nthis work for additional information regarding copyright ownership.\nThe ASF licenses this file to You under the Apache License, Version 2.0\n(the "License"); you may not use this file except in compliance with\nthe License.  You may obtain a copy of the License at\n     http://www.apache.org/licenses/LICENSE-2.0\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an "AS IS" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.</string>
 </resources>

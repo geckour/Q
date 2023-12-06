@@ -1,12 +1,20 @@
 package com.geckour.q.data.db.model
 
+import android.os.Parcelable
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.geckour.q.domain.model.MediaItem
+import kotlinx.android.parcel.Parcelize
+import kotlinx.serialization.Serializable
 
 @Entity
+@Parcelize
+@Serializable
 data class Artist(
-        @PrimaryKey(autoGenerate = true) var id: Long,
-        var mediaId: Long?,
-        var title: String?,
-        var playbackCount: Long
-)
+    @PrimaryKey(autoGenerate = true) val id: Long,
+    val title: String,
+    val titleSort: String,
+    val playbackCount: Long,
+    val totalDuration: Long,
+    val artworkUriString: String?
+) : Parcelable, MediaItem

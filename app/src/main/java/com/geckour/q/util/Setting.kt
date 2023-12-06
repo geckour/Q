@@ -1,92 +1,89 @@
 package com.geckour.q.util
 
 import android.content.Context
-import android.content.SharedPreferences
-import android.preference.PreferenceManager
-import com.geckour.q.R
-import com.google.gson.Gson
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
-private const val KEY_APP_THEME = "key_app_theme"
-private const val KEY_PREFER_SCREEN = "key_prefer_screen"
-private const val KEY_DUCKING = "key_ducking"
-private const val KEY_PATTERN_FORMAT_SHARE_TEXT = "key_pattern_format_share_text"
-private const val KEY_BUNDLE_ARTWORK = "key_bundle_artwork"
-private const val KEY_SHOW_ARTWORK_ON_LOCK_SCREEN = "key_show_artwork_on_lock_screen"
-private const val KEY_EQUALIZER_ENABLED = "key_equalizer_enabled"
-private const val KEY_EQUALIZER_PARAMS = "key_equalizer_params"
-private const val KEY_EQUALIZER_SETTINGS = "key_equalizer_settings"
-
-enum class AppTheme(val displayNameResId: Int) {
-    LIGHT(R.string.app_theme_light),
-    DARK(R.string.app_theme_dark)
-}
-
-enum class Screen(val displayNameResId: Int) {
-    ARTIST(R.string.nav_artist),
-    ALBUM(R.string.nav_album),
-    SONG(R.string.nav_song),
-    GENRE(R.string.nav_genre),
-    PLAYLIST(R.string.nav_playlist)
-}
-
+@Serializable
 data class EqualizerParams(
-        val levelRange: Pair<Int, Int>,
-        val bands: List<Band>
+    val levelRange: Pair<Int, Int>,
+    val bands: List<Band>
 ) {
+
+    fun normalizedLevel(ratio: Float): Int =
+        levelRange.first + ((levelRange.second - levelRange.first) * ratio).toInt()
+
+    @Serializable
     data class Band(
-            val freqRange: Pair<Int, Int>,
-            val centerFreq: Int
+        val freqRange: Pair<Int, Int>,
+        val centerFreq: Int,
+        val level: Int
     )
 }
 
-data class EqualizerSettings(
-        val levels: List<Int>
-)
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+private val isNightModeKey = booleanPreferencesKey("key_night-mode")
+private val shouldShowCurrentRemainKey = booleanPreferencesKey("key_show_current_remain")
+private val hasAlreadyShownDropboxSyncAlertKey =
+    booleanPreferencesKey("key_has_already_shown_dropbox_sync_alert")
+private val dropboxCredentialKey = stringPreferencesKey("key_dropbox_credential")
+private val equalizerEnabledKey = booleanPreferencesKey("key_equalizer_enabled")
+private val equalizerParamsKey = stringPreferencesKey("key_equalizer_params")
 
-var SharedPreferences.appTheme: AppTheme
-    get() = AppTheme.values()[getInt(KEY_APP_THEME, AppTheme.LIGHT.ordinal)]
-    set(value) = edit().putInt(KEY_APP_THEME, value.ordinal).apply()
+fun Context.getIsNightMode(): Flow<Boolean> = dataStore.data.map {
+    it[isNightModeKey] ?: false
+}
 
-var SharedPreferences.preferScreen: Screen
-    get() = Screen.values()[getInt(KEY_PREFER_SCREEN, Screen.ARTIST.ordinal)]
-    set(value) = edit().putInt(KEY_PREFER_SCREEN, value.ordinal).apply()
+suspend fun Context.setIsNightMode(isNightMode: Boolean) {
+    dataStore.edit { it[isNightModeKey] = isNightMode }
+}
 
-var SharedPreferences.ducking: Boolean
-    get() = getBoolean(KEY_DUCKING, false)
-    set(value) = edit().putBoolean(KEY_DUCKING, value).apply()
+fun Context.getShouldShowCurrentRemain(): Flow<Boolean> = dataStore.data.map {
+    it[shouldShowCurrentRemainKey] ?: false
+}
 
-var Context.formatPattern: String
-    get() = PreferenceManager.getDefaultSharedPreferences(this)
-            .getString(KEY_PATTERN_FORMAT_SHARE_TEXT, null)
-            ?: this.getString(R.string.setting_default_sharing_text_pattern)
-    set(value) = PreferenceManager.getDefaultSharedPreferences(this).edit()
-            .putString(KEY_PATTERN_FORMAT_SHARE_TEXT, value).apply()
+suspend fun Context.setShouldShowCurrentRemain(shouldShowCurrentRemain: Boolean) {
+    dataStore.edit { it[shouldShowCurrentRemainKey] = shouldShowCurrentRemain }
+}
 
-var SharedPreferences.bundleArtwork: Boolean
-    get() = getBoolean(KEY_BUNDLE_ARTWORK, true)
-    set(value) = edit().putBoolean(KEY_BUNDLE_ARTWORK, value).apply()
+fun Context.getHasAlreadyShownDropboxSyncAlert(): Flow<Boolean> = dataStore.data.map {
+    it[hasAlreadyShownDropboxSyncAlertKey] ?: false
+}
 
-var SharedPreferences.showArtworkOnLockScreen: Boolean
-    get() = getBoolean(KEY_SHOW_ARTWORK_ON_LOCK_SCREEN, false)
-    set(value) = edit().putBoolean(KEY_SHOW_ARTWORK_ON_LOCK_SCREEN, value).apply()
+suspend fun Context.setHasAlreadyShownDropboxSyncAlert(shouldShowCurrentRemain: Boolean) {
+    dataStore.edit { it[hasAlreadyShownDropboxSyncAlertKey] = shouldShowCurrentRemain }
+}
 
-var SharedPreferences.equalizerEnabled: Boolean
-    get() = getBoolean(KEY_EQUALIZER_ENABLED, false)
-    set(value) = edit().putBoolean(KEY_EQUALIZER_ENABLED, value).apply()
+fun Context.getDropboxCredential(): Flow<String?> = dataStore.data.map {
+    it[dropboxCredentialKey]
+}
 
-var SharedPreferences.equalizerParams: EqualizerParams?
-    get() = getString(KEY_EQUALIZER_PARAMS, null)
-            ?.let { Gson().fromJson(it, EqualizerParams::class.java) }
-    set(value) = edit().putString(KEY_EQUALIZER_PARAMS, value?.let { Gson().toJson(it) }).apply()
+suspend fun Context.setDropboxCredential(newCredential: String) {
+    dataStore.edit { it[dropboxCredentialKey] = newCredential }
+}
 
-var SharedPreferences.equalizerSettings: EqualizerSettings?
-    get() = getString(KEY_EQUALIZER_SETTINGS, null)
-            ?.let { Gson().fromJson(it, EqualizerSettings::class.java) }
-    set(value) = edit().putString(KEY_EQUALIZER_SETTINGS, value?.let { Gson().toJson(it) }).apply()
+fun Context.getEqualizerEnabled(): Flow<Boolean> = dataStore.data.map {
+    it[equalizerEnabledKey] ?: false
+}
 
-fun SharedPreferences.setEqualizerLevel(bandNum: Int, level: Int) {
-    equalizerSettings?.apply {
-        this@setEqualizerLevel.equalizerSettings =
-                EqualizerSettings(levels.toMutableList().apply { this[bandNum] = level })
-    }
+suspend fun Context.setEqualizerEnabled(enabled: Boolean) {
+    dataStore.edit { it[equalizerEnabledKey] = enabled }
+}
+
+fun Context.getEqualizerParams(): Flow<EqualizerParams?> = dataStore.data.map { preferences ->
+    preferences[equalizerParamsKey]?.let { catchAsNull { Json.decodeFromString(it) }  }
+}
+
+suspend fun Context.setEqualizerParams(equalizerParams: EqualizerParams?) {
+    dataStore.edit { pref -> pref[equalizerParamsKey] = equalizerParams?.let { Json.encodeToString(it) }.orEmpty() }
 }

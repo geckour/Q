@@ -21,9 +21,11 @@
     <color name="colorInactive">#dfdcd5</color>
     <color name="colorInactiveInverse">#54524e</color>
     <color name="colorOption">#707070</color>
-    <color name="colorOptionInverse">#909090</color>
-    <color name="colorNowPlaying">#50f095ad</color>
-    <color name="colorNowPlayingInverse">#50a6bbbe</color>
+    <color name="colorOptionInverse">#c0f5f3f1</color>
+    <color name="colorWeakAccent">#50f095ad</color>
+    <color name="colorWeakAccentInverse">#50a6bbbe</color>
+    <color name="colorCoverInactive">#a0ffffff</color>
+    <color name="colorCoverInactiveInverse">#a0202020</color>
 
     <color name="colorBackground">#ffffff</color>
     <color name="colorBackgroundInverse">#202020</color>
@@ -33,13 +35,20 @@
     <color name="colorBackgroundInactiveInverse">#e8202020</color>
     <color name="colorBackgroundSearch">#ffffff</color>
     <color name="colorBackgroundSearchInverse">#202020</color>
+    <color name="colorBackgroundProgress">#30000000</color>
+    <color name="colorBackgroundProgressInverse">#30ffffff</color>
+    <color name="colorBackgroundInstantPlayer">#80000000</color>
 
     <color name="colorEqualizerScale">#20160900</color>
+    <color name="colorEqualizerScaleInverse">#20E3E3E3</color>
 
     <color name="colorDivider">#80f095ad</color>
+    <color name="colorDividerInverse">#80a6bbbe</color>
 
     <color name="colorShadowBottomSheetStart">#30000000</color>
     <color name="colorShadowBottomSheetCenter">#10000000</color>
     <color name="colorShadowBottomSheetStartInverse">#20ffffff</color>
     <color name="colorShadowBottomSheetCenterInverse">#08ffffff</color>
+
+    <color name="colorCoin">#d5cfc1</color>
 </resources>

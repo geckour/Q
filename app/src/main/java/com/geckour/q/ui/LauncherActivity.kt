@@ -9,12 +9,12 @@ import com.geckour.q.ui.main.MainActivity
 class LauncherActivity : AppCompatActivity() {
 
     companion object {
-        fun createIntent(context: Context): Intent =
-                Intent(context, LauncherActivity::class.java)
+        fun createIntent(context: Context): Intent = Intent(context, LauncherActivity::class.java)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         if (isTaskRoot) startActivity(MainActivity.createIntent(this))
         finish()
     }

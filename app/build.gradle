@@ -1,50 +1,109 @@
-apply plugin: 'com.android.application'
+plugins {
+    id 'com.android.application'
+    id 'kotlin-android'
+    id 'kotlin-parcelize'
+    id 'kotlinx-serialization'
+    id 'com.google.devtools.ksp'
+    id 'kotlin-kapt'
+}
 
-apply plugin: 'kotlin-android'
-
-apply plugin: 'kotlin-android-extensions'
-
-apply plugin: 'kotlin-kapt'
-
-kotlin.experimental.coroutines 'enable'
+kotlin {
+    jvmToolchain 17
+}
 
 android {
-    compileSdkVersion 28
+    namespace "com.geckour.q"
+
+    def keyNameDropBoxAppKey = "DROPBOX_APP_KEY"
+    def keyNameDropBoxAppSecret = "DROPBOX_APP_SECRET"
+
+    buildFeatures.buildConfig true
+
+    compileSdk 34
     defaultConfig {
         applicationId "com.geckour.q"
-        minSdkVersion 24
-        versionCode 4
-        versionName "1.2.0"
+        minSdk 24
+        targetSdk 34
+        versionCode 16
+        versionName "2.4.1"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+
+        buildConfigField "String", keyNameDropBoxAppKey, getQuotedKey(keyNameDropBoxAppKey)
+        buildConfigField "String", keyNameDropBoxAppSecret, getQuotedKey(keyNameDropBoxAppSecret)
+
+        def filesAuthorityValue = applicationId + ".files"
+        buildConfigField "String", "FILES_AUTHORITY", "\"${filesAuthorityValue}\""
+
+        manifestPlaceholders = [
+                dropboxAppKey : "db-" + getKey(keyNameDropBoxAppKey),
+                filesAuthority: filesAuthorityValue
+        ]
+    }
+    sourceSets.main {
+        jniLibs.srcDir 'src/main/libs'
+        // Disable the automatic ndk-build call by Android Studio.
     }
     signingConfigs {
+        debug {
+            keyAlias "AndroidDebugKey"
+            keyPassword "android"
+            storeFile file("${project.rootDir}/app/signing/debug.keystore")
+            storePassword "android"
+        }
         release {
             def releaseSettingGradleFile = new File("${project.rootDir}/app/signing/release.gradle")
-            if (releaseSettingGradleFile.exists()) {
-                apply from: releaseSettingGradleFile, to: android
-            } else {
-                throw new GradleException("Missing ${releaseSettingGradleFile.getAbsolutePath()} . Generate the file by copying and modifying ${project.rootDir}/app/signing/release.gradle.sample .")
-            }
+            apply from: releaseSettingGradleFile, to: android
         }
     }
     buildTypes {
+        debug {
+            applicationIdSuffix '.debug'
+        }
         release {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
         }
     }
-    androidExtensions {
-        experimental = true
-    }
     dataBinding.enabled = true
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
-    }
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        freeCompilerArgs += ["-Xopt-in=kotlin.RequiresOptIn"]
     }
+    buildFeatures {
+        compose true
+    }
+    composeOptions {
+        kotlinCompilerExtensionVersion "1.5.4"
+    }
+    ksp {
+        arg(new RoomSchemaArgProvider(new File(projectDir, "schemas")))
+    }
+    ndkVersion = "21.0.6113669"
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/geckour/NowPlayingSubjectBuilder")
+
+            credentials {
+                username = getKey('gpr.usr')
+                password = getKey('gpr.key')
+            }
+        }
+    }
+}
+
+static def getKey(keyName) {
+    Properties props = new Properties()
+    props.load(new FileInputStream(new File("secret.properties")))
+    return props[keyName]
+}
+
+static def quoted(value) {
+    return "\"" + value + "\""
+}
+
+static def getQuotedKey(keyName) {
+    return quoted(getKey(keyName))
 }
 
 repositories {
@@ -52,68 +111,122 @@ repositories {
 }
 
 dependencies {
-    def support_ver = '1.0.0'
-    def aac_lifecycle_ver = '2.0.0'
-    def aac_room_ver = '2.1.0-alpha01'
-    def aac_work_ver = '1.0.0-alpha09'
-    def coroutines_ver = '0.30.0'
-    def permission_dispatcher_ver = '3.3.1'
-    def stetho_ver = '1.5.0'
-    def glide_ver = '4.8.0'
-    def exo_ver = '2.9.0'
-    def exo_ext_ver = '2.7.0-1'
-
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
-    implementation 'androidx.constraintlayout:constraintlayout:2.0.0-alpha2'
-    implementation "androidx.legacy:legacy-support-core-ui:$support_ver"
-    implementation "androidx.media:media:$support_ver"
-    implementation "androidx.legacy:legacy-support-v13:$support_ver"
-    implementation 'com.google.android.material:material:1.0.0'
-    testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'androidx.test:runner:1.1.0-beta01'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.1.0-beta01'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.appcompat:appcompat:1.6.1'
+    implementation "androidx.media:media:1.7.0"
+    implementation 'com.google.android.material:material:1.10.0'
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation "com.google.truth:truth:1.1.3"
+    androidTestImplementation 'androidx.test:runner:1.5.2'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+
+    implementation platform('com.google.firebase:firebase-bom:26.4.0')
+
+    // DI
+    implementation "io.insert-koin:koin-android:3.4.0"
 
     // Logging
-    implementation 'com.jakewharton.timber:timber:4.7.1'
-
-    // Inspect
-    implementation "com.facebook.stetho:stetho:$stetho_ver"
-
-    // Coroutines
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:$coroutines_ver"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:$coroutines_ver"
+    implementation 'com.google.firebase:firebase-core'
+    implementation 'com.google.firebase:firebase-crashlytics-ktx'
+    implementation 'com.jakewharton.timber:timber:5.0.1'
 
     // JSON
-    implementation 'com.google.code.gson:gson:2.8.5'
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0"
+
+    // Networking
+    def retrofit2_version = "2.9.0"
+    def okhttp_version = "4.11.0"
+    implementation "com.squareup.retrofit2:retrofit:$retrofit2_version"
+    implementation "com.squareup.retrofit2:converter-gson:$retrofit2_version"
+    implementation "com.squareup.okhttp3:okhttp:$okhttp_version"
+    implementation "com.squareup.okhttp3:logging-interceptor:$okhttp_version"
+
+    // Preferences
+    implementation "androidx.datastore:datastore-preferences:1.0.0"
 
     // AAC ViewModel
-    implementation "androidx.lifecycle:lifecycle-extensions:$aac_lifecycle_ver"
-    kapt "androidx.lifecycle:lifecycle-compiler:$aac_lifecycle_ver"
-    implementation "androidx.lifecycle:lifecycle-common-java8:$aac_lifecycle_ver"
-
-    // AAC WorkManager
-    implementation "android.arch.work:work-runtime:$aac_work_ver"
-    implementation "android.arch.work:work-runtime-ktx:$aac_work_ver"
+    def aac_lifecycle_ver = '2.6.2'
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$aac_lifecycle_ver"
+    implementation "androidx.lifecycle:lifecycle-livedata-ktx:$aac_lifecycle_ver"
+    testImplementation 'androidx.arch.core:core-testing:2.2.0'
 
     // AAC Room
+    def aac_room_ver = '2.6.1'
     implementation "androidx.room:room-runtime:$aac_room_ver"
-    kapt "androidx.room:room-compiler:$aac_room_ver"
-    androidTestImplementation "androidx.room:room-testing:$aac_room_ver"
+    implementation "androidx.room:room-ktx:$aac_room_ver"
+    ksp "androidx.room:room-compiler:$aac_room_ver"
+    testImplementation "androidx.room:room-testing:$aac_room_ver"
+
+    // AndroidX
+    implementation 'androidx.preference:preference-ktx:1.2.1'
+    implementation "androidx.browser:browser:1.7.0"
+
+    // KTX
+    implementation 'androidx.fragment:fragment-ktx:1.6.2'
+    implementation 'androidx.activity:activity-ktx:1.8.1'
+    implementation "androidx.core:core-ktx:1.12.0"
+
+    // WorkManager
+    implementation 'androidx.work:work-runtime-ktx:2.9.0'
 
     // Permission
-    implementation "com.github.hotchemi:permissionsdispatcher:$permission_dispatcher_ver"
-    kapt "com.github.hotchemi:permissionsdispatcher-processor:$permission_dispatcher_ver"
+    implementation 'com.github.permissions-dispatcher:ktx:1.1.4'
 
     // Image processing
-    implementation "com.github.bumptech.glide:glide:$glide_ver"
-    kapt "com.github.bumptech.glide:compiler:$glide_ver"
+    implementation "io.coil-kt:coil-compose:2.5.0"
 
     // Player
-    implementation "com.google.android.exoplayer:exoplayer-core:$exo_ver"
-    implementation "com.github.PaulWoitaschek.ExoPlayer-Extensions:flac:$exo_ext_ver"
-    implementation "com.github.PaulWoitaschek.ExoPlayer-Extensions:opus:$exo_ext_ver"
+    implementation project(':media-lib-exoplayer')
+    implementation project(':media-lib-decoder-ffmpeg')
+    compileOnly 'org.checkerframework:checker-qual:3.13.0'
+    compileOnly 'org.checkerframework:checker-compat-qual:2.5.5'
 
-    // Vertical SeekBar
-    implementation 'com.h6ah4i.android.widget.verticalseekbar:verticalseekbar:1.0.0'
+    // Compose
+    implementation "androidx.compose.ui:ui:1.5.4"
+    implementation "androidx.compose.material:material:1.5.4"
+    implementation "androidx.compose.material3:material3:1.1.2"
+    implementation "androidx.compose.material:material-icons-extended:1.5.4"
+    implementation "androidx.compose.ui:ui-tooling-preview:1.5.4"
+    implementation "androidx.activity:activity-compose:1.8.1"
+    implementation "androidx.navigation:navigation-compose:2.7.5"
+    implementation "androidx.compose.ui:ui-text-google-fonts:1.5.4"
+    implementation "org.burnoutcrew.composereorderable:reorderable:0.9.6"
+
+    // Hash
+    implementation 'commons-codec:commons-codec:1.15'
+
+    // Dropbox
+    implementation 'com.dropbox.core:dropbox-core-sdk:5.4.4'
+
+    // Audio Metadata
+    implementation "net.jthink:jaudiotagger:3.0.1"
+
+    // Billing
+    implementation "com.android.billingclient:billing-ktx:6.1.0"
+
+    // File Utils
+    implementation "commons-io:commons-io:2.11.0"
 }
+
+class RoomSchemaArgProvider implements CommandLineArgumentProvider {
+
+    @InputDirectory
+    @PathSensitive(PathSensitivity.RELATIVE)
+    File schemaDir
+
+    RoomSchemaArgProvider(File schemaDir) {
+        if (!schemaDir.exists()) schemaDir.mkdir()
+        this.schemaDir = schemaDir
+    }
+
+    @Override
+    Iterable<String> asArguments() {
+        return ["room.schemaLocation=${schemaDir.path}".toString()]
+    }
+}
+
+apply plugin: 'com.google.gms.google-services'
+
+apply plugin: 'com.google.firebase.crashlytics'

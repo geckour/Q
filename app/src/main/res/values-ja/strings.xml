@@ -1,52 +1,82 @@
 <resources>
+    <!-- App Broad -->
     <string name="title_activity_setting">設定</string>
     <string name="title_activity_equalizer">イコライザ</string>
     <string name="title_activity_license">OSSライセンス</string>
 
-
     <string name="app_theme_light">ライト</string>
     <string name="app_theme_dark">ダーク</string>
 
+    <!-- Drawer -->
     <string name="drawer_open">開</string>
     <string name="drawer_close">閉</string>
 
-
+    <!-- Notification -->
     <string name="notification_channel_player">プレイヤー</string>
     <string name="notification_channel_description_player">プレイヤーを生存状態に保つためのプレイヤー情報通知</string>
+    <string name="notification_channel_retriever">メディア探索</string>
+    <string name="notification_channel_description_retriever">メディア探索サービスを生存状態に保つための通知</string>
+    <string name="notification_channel_sleep_timer">おやすみタイマー</string>
+    <string name="notification_channel_description_sleep_timer">おやすみタイマーの通知</string>
+    <string name="notification_title_retriever">メディアを探索中</string>
+    <string name="notification_text_retriever">%1$d / %2$d | ライブラリを同期しています…</string>
+    <string name="notification_text_retriever_with_path">%1$d / %2$d | ライブラリを同期しています…%3$s</string>
+    <string name="notification_title_media_add">メディアを追加中</string>
+    <string name="notification_text_media_add">%s を追加しています…</string>
+    <string name="notification_title_sleep_timer">おやすみタイマー</string>
+    <string name="notification_text_sleep_timer">残り: %s</string>
+    <string name="notification_text_sleep_timer_with_tolerance">残り: %1$s ± %2$s</string>
     <string name="notification_action_prev">前へ</string>
     <string name="notification_action_play">再生</string>
     <string name="notification_action_pause">停止</string>
     <string name="notification_action_next">次へ</string>
 
-
+    <!-- Indicator -->
     <string name="syncing">ライブラリを同期中…</string>
-    <string name="loading">アイテムを取得中…</string>
-    <string name="button_cancel_sync">キャンセル</string>
+    <string name="progress_title_retrieve_media">@string/syncing</string>
+    <string name="progress_title_download_dropbox">ダウンロード中…</string>
+    <string name="loading">アイテムを読み込み中…</string>
+    <string name="remaining">残り: %s (%sB)</string>
+    <string name="button_apply">適用</string>
+    <string name="button_cancel">キャンセル</string>
+    <string name="message_attach_lyric_success">歌詞の紐づけに成功しました</string>
+    <string name="message_attach_lyric_failure">歌詞の紐づけに失敗しました</string>
+    <string name="message_delete_lyric_complete">歌詞の削除が完了しました</string>
 
-
+    <!-- Bottom Sheet -->
     <string name="bottom_sheet_time_total">総時間・%1$s</string>
     <string name="bottom_sheet_time_remain">残り・-%1$s</string>
 
-
+    <!-- Navigation Drawer -->
+    <string name="nav_category_library">ライブラリ</string>
     <string name="nav_category_others">その他</string>
 
     <string name="nav_artist">アーティスト</string>
     <string name="nav_album">アルバム</string>
-    <string name="nav_song">曲</string>
+    <string name="nav_track">曲</string>
     <string name="nav_genre">ジャンル</string>
-    <string name="nav_playlist">プレイリスト</string>
+    <string name="nav_dropbox">Dropbox</string>
     <string name="nav_setting">設定</string>
     <string name="nav_equalizer">イコライザ</string>
     <string name="nav_sync">ライブラリを同期</string>
+    <string name="nav_dropbox_sync">Dropboxと同期</string>
     <string name="nav_pay">投げ銭</string>
     <string name="nav_fortune">おみQじ</string>
 
-
+    <!-- Menu -->
     <string name="menu_search">検索</string>
 
-    <string name="menu_delete_song">端末から削除</string>
+    <string name="menu_daynight">テーマを切替</string>
 
-    <string name="menu_delete_playlist">プレイリストを削除</string>
+    <string name="menu_sleep">おやすみモード</string>
+
+    <string name="menu_ignore_to_false">一括追加時スキップを無効にする</string>
+    <string name="menu_ignore_to_true">一括追加時スキップを有効にする</string>
+
+    <string name="menu_attach_lyric">歌詞を紐づけ</string>
+    <string name="menu_detach_lyric">歌詞の紐づけを解除</string>
+
+    <string name="menu_delete_from_device">端末から削除</string>
 
     <string name="menu_insert_next">次へ挿入</string>
     <string name="menu_insert_last">最後へ挿入</string>
@@ -72,19 +102,15 @@
     <string name="menu_genres_insert_all_shuffle_last">ジャンルシャッフルで最後へ挿入</string>
     <string name="menu_genres_override_all_shuffle">ジャンルシャッフルで上書き</string>
 
-    <string name="menu_playlists_insert_all_shuffle_next">プレイリストシャッフルで次へ挿入</string>
-    <string name="menu_playlists_insert_all_shuffle_last">プレイリストシャッフルで最後へ挿入</string>
-    <string name="menu_playlists_override_all_shuffle">プレイリストシャッフルで上書き</string>
+    <string name="menu_transition_to_artist">アーティストへ移動</string>
+    <string name="menu_transition_to_album">アルバムへ移動</string>
 
+    <string name="menu_edit_metadata">曲情報を編集</string>
 
+    <!-- Dialog -->
     <string name="dialog_ok">決定</string>
     <string name="dialog_ng">キャンセル</string>
-
-    <string name="dialog_title_add_queue_to_playlist">プレイリストへキューを追加</string>
-    <string name="dialog_desc_add_queue_to_playlist">現在のキューを 既存 / 新規 プレイリストへ追加</string>
-    <string name="dialog_content_label_exist_playlist">既存プレイリストへ追加:</string>
-    <string name="dialog_content_label_new_playlist">新規プレイリストを作成:</string>
-    <string name="dialog_content_hint_playlist_name">プレイリストの名前を入力</string>
+    <string name="dialog_prev">戻る</string>
 
     <string name="dialog_title_choose_app_theme">テーマを選択</string>
     <string name="dialog_desc_choose_app_theme">アプリのカラーテーマを選択</string>
@@ -96,25 +122,51 @@
     <string name="dialog_desc_pattern_format">曲名: TI\nアーティスト名: AR\nアルバム名: AL\nエスケープ: \' \' で囲む\n改行: \\n</string>
     <string name="dialog_hint_pattern_format">例: #NowPlaying TI - AR (AL)</string>
 
+    <string name="dialog_choice_reset_shuffle">シャッフルをリセット</string>
+    <string name="dialog_choice_album_oriented_shuffle">アルバム単位でシャッフル</string>
+    <string name="dialog_choice_artist_oriented_shuffle">アーティスト単位でシャッフル</string>
 
-    <string name="payment_desc">Kyashを利用した投げ銭を受け付けています</string>
-    <string name="payment_save_success">保存しました</string>
-    <string name="payment_save_failure">エラー: 保存できませんでした</string>
+    <string name="dialog_title_sleep_timer">おやすみモードの設定</string>
+    <string name="dialog_desc_sleep_timer">タイマーの長さと許容差を設定</string>
+    <string name="dialog_text_sleep_timer_time">%d分後に再生停止</string>
+    <string name="dialog_text_sleep_timer_tolerance">許容差: %d分</string>
 
+    <string name="dialog_title_dropbox_choose_folder">フォルダを選択</string>
+    <string name="dialog_desc_dropbox_choose_folder">メディアを探索するルートフォルダを選択</string>
 
+    <string name="dialog_title_dropbox_sync_caution">警告</string>
+    <string name="dialog_desc_dropbox_sync_caution">同期する曲を全て一時的にダウンロードし、楽曲データ取得後一時ファイルを削除します。\nそのため完了まで時間がかかり、大容量の通信が発生する可能性があります。\n実行しますか？</string>
+
+    <string name="dialog_switch_need_downloaded">端末に保存</string>
+
+    <string name="dialog_title_dropbox_download">ダウンロード</string>
+    <string name="dialog_desc_dropbox_download">ファイルを端末内に保存しますか？</string>
+
+    <string name="dialog_title_dropbox_invalidate_downloaded">削除</string>
+    <string name="dialog_desc_dropbox_invalidate_downloaded">端末からダウンロードしたファイルを削除しますか？</string>
+
+    <!-- Payment -->
+    <string name="payment_desc">投げ銭を受け付けています</string>
+    <string name="payment_action_pay">投げる</string>
+    <string name="payment_message_success">＼投げ銭に成功しました／</string>
+    <string name="payment_message_error_failed_to_start">エラー\n処理の開始に失敗しました</string>
+    <string name="payment_message_error_duplicated">エラー\n既に処理中の投げ銭があります</string>
+    <string name="payment_message_error_canceled">エラー\nキャンセルされました</string>
+    <string name="payment_message_error_failed">エラー\n処理に失敗しました</string>
+
+    <!-- Chooser -->
     <string name="share_chooser_title">共有先を選択…</string>
 
-
+    <!-- Easter Egg -->
     <string name="easter_egg_title">今日の一曲</string>
 
-
+    <!-- Search -->
     <string name="search_category_artist">アーティスト</string>
     <string name="search_category_album">アルバム</string>
-    <string name="search_category_song">曲</string>
-    <string name="search_category_playlist">プレイリスト</string>
+    <string name="search_category_track">曲</string>
     <string name="search_category_genre">ジャンル</string>
 
-
+    <!-- Settings -->
     <string name="setting_category_title_general">一般</string>
 
     <string name="setting_item_title_app_theme">アプリのテーマ</string>
@@ -142,7 +194,20 @@
     <string name="setting_item_title_license">ライセンス</string>
     <string name="setting_item_desc_license">OSSライセンスを表示</string>
 
-
+    <!-- Equalizer -->
+    <string name="equalizer_switch_enabled">ON</string>
+    <string name="equalizer_switch_disabled">OFF</string>
     <string name="equalizer_flatten">リセット</string>
-    <string name="equalizer_message_error_turn_on">エラー: 一度曲を再生してから再度お試しください</string>
+
+    <!-- Metadata Editor -->
+    <string name="metadata_edit_dialog_title">曲情報を編集</string>
+    <string name="metadata_edit_dialog_message">新しい曲情報を入力してください</string>
+    <string name="metadata_edit_track_name">曲名</string>
+    <string name="metadata_edit_track_name_kana">曲名読みがな</string>
+    <string name="metadata_edit_album_name">アルバム名</string>
+    <string name="metadata_edit_album_name_kana">アルバム名読みがな</string>
+    <string name="metadata_edit_artist_name">アーティスト名</string>
+    <string name="metadata_edit_artist_name_kana">アーティスト名読みがな</string>
+    <string name="metadata_edit_composer_name">作曲者名</string>
+    <string name="metadata_edit_composer_name_kana">作曲者名読みがな</string>
 </resources>

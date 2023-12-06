@@ -1,1 +1,4 @@
 include ':app'
+
+gradle.ext.androidxMediaModulePrefix = 'media-'
+apply from: file("/Users/geckour/develop/android/git/media/core_settings.gradle")

@@ -1,48 +1,60 @@
 package com.geckour.q.util
 
 import android.app.Notification
-import android.app.PendingIntent
-import android.content.ContentUris
 import android.content.Context
-import android.database.Cursor
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.media.MediaMetadataRetriever
 import android.net.Uri
-import android.os.Build
-import android.preference.PreferenceManager
-import android.provider.MediaStore
 import android.support.v4.media.MediaMetadataCompat
 import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
+import android.webkit.MimeTypeMap
 import androidx.core.app.NotificationCompat
+import androidx.core.content.FileProvider
+import androidx.core.graphics.drawable.toBitmap
+import androidx.core.net.toFile
 import androidx.media.session.MediaButtonReceiver
-import com.bumptech.glide.Glide
-import com.geckour.q.App
+import androidx.media3.common.MediaItem
+import androidx.media3.exoplayer.ExoPlayer
+import coil.Coil
+import coil.request.ImageRequest
+import coil.size.Scale
+import com.dropbox.core.v2.DbxClientV2
+import com.geckour.q.BuildConfig
 import com.geckour.q.R
+import com.geckour.q.data.db.BoolConverter
 import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.dao.upsert
-import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.JoinedAlbum
+import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.Track
-import com.geckour.q.domain.model.Genre
-import com.geckour.q.domain.model.Playlist
-import com.geckour.q.domain.model.Song
-import com.geckour.q.service.PlayerService
-import com.geckour.q.service.PlayerService.Companion.NOTIFICATION_CHANNEL_ID_PLAYER
-import com.geckour.q.ui.LauncherActivity
-import com.geckour.q.ui.main.MainActivity
-import com.google.android.exoplayer2.source.MediaSource
-import com.google.android.exoplayer2.source.ads.AdsMediaSource
-import kotlinx.coroutines.experimental.Deferred
-import kotlinx.coroutines.experimental.GlobalScope
-import kotlinx.coroutines.experimental.async
-import timber.log.Timber
+import com.geckour.q.databinding.DialogEditMetadataBinding
+import com.geckour.q.domain.model.DomainTrack
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.apache.commons.io.FileUtils
+import org.jaudiotagger.audio.AudioFileIO
+import org.jaudiotagger.tag.FieldKey
+import org.jaudiotagger.tag.images.ArtworkFactory
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import java.net.URLConnection
+import java.text.SimpleDateFormat
+import java.util.Locale
+import kotlin.random.Random
 
 
 const val UNKNOWN: String = "UNKNOWN"
+
+const val DROPBOX_EXPIRES_IN = 14400000L
+
+private val random = Random(System.currentTimeMillis())
+
+val dropboxUrlPattern = Regex("^https://.+\\.dl\\.dropboxusercontent\\.com/.+$")
+val dropboxCachePathPattern = Regex("^.*/com\\.geckour\\.q.*/cache/audio/id%3A.+$")
 
 enum class InsertActionType {
     NEXT,
@@ -56,441 +68,571 @@ enum class InsertActionType {
     SHUFFLE_SIMPLE_OVERRIDE
 }
 
+enum class ShuffleActionType {
+    SHUFFLE_SIMPLE,
+    SHUFFLE_ALBUM_ORIENTED,
+    SHUFFLE_ARTIST_ORIENTED
+}
+
 enum class OrientedClassType {
     ARTIST,
     ALBUM,
-    SONG,
-    GENRE,
-    PLAYLIST
+    TRACK,
+    GENRE
 }
 
-enum class NotificationCommand {
+enum class PlayerControlCommand {
     DESTROY
 }
 
-enum class SettingCommand {
-    SET_EQUALIZER,
-    UNSET_EQUALIZER,
-    REFLECT_EQUALIZER_SETTING
-}
-
 data class QueueMetadata(
-        val actionType: InsertActionType,
-        val classType: OrientedClassType
+    val actionType: InsertActionType,
+    val classType: OrientedClassType
 )
 
-data class InsertQueue(
-        val metadata: QueueMetadata,
-        val queue: List<Song>
+data class QueueInfo(
+    val metadata: QueueMetadata,
+    val queue: List<DomainTrack>
 )
 
-suspend fun getSongListFromTrackList(db: DB, dbTrackList: List<Track>): List<Song> =
-        dbTrackList.mapNotNull { getSong(db, it).await() }
-
-suspend fun getSongListFromTrackMediaId(db: DB,
-                                        dbTrackIdList: List<Long>,
-                                        genreId: Long? = null,
-                                        playlistId: Long? = null): List<Song> =
-        dbTrackIdList.mapNotNull {
-            getSong(db, it, genreId, playlistId).await()
-        }
-
-suspend fun getSongListFromTrackMediaIdWithTrackNum(db: DB,
-                                                    dbTrackMediaIdWithTrackNumList: List<Pair<Long, Int>>,
-                                                    genreId: Long? = null,
-                                                    playlistId: Long? = null): List<Song> =
-        dbTrackMediaIdWithTrackNumList.mapNotNull {
-            getSong(db, it.first, genreId, playlistId, trackNum = it.second).await()
-        }
-
-fun getSong(db: DB, trackMediaId: Long,
-            genreId: Long? = null, playlistId: Long? = null,
-            trackNum: Int? = null): Deferred<Song?> =
-        GlobalScope.async {
-            db.trackDao().getByMediaId(trackMediaId)?.let {
-                getSong(db, it, genreId, playlistId, trackNum = trackNum).await()
-            }
-        }
-
-fun getSong(db: DB, track: Track,
-            genreId: Long? = null, playlistId: Long? = null,
-            trackNum: Int? = null): Deferred<Song?> =
-        GlobalScope.async {
-            val artistName = db.artistDao().get(track.artistId)?.title ?: UNKNOWN
-            val artwork = db.albumDao().get(track.albumId)?.artworkUriString
-            Song(track.id, track.mediaId, track.albumId, track.title,
-                    artistName, artwork, track.duration, trackNum ?: track.trackNum, track.discNum,
-                    genreId, playlistId, track.sourcePath)
-        }
-
-fun fetchPlaylists(context: Context): Deferred<List<Playlist>> = GlobalScope.async {
-    context.contentResolver.query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
-            arrayOf(
-                    MediaStore.Audio.Playlists._ID,
-                    MediaStore.Audio.Playlists.NAME),
-            null,
-            null,
-            MediaStore.Audio.Playlists.DATE_MODIFIED)?.use {
-        val db = DB.getInstance(context)
-        val list: ArrayList<Playlist> = ArrayList()
-        while (it.moveToNext()) {
-            val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists._ID))
-            val tracks = getTrackMediaIdByPlaylistId(context, id)
-                    .mapNotNull { db.trackDao().getByMediaId(it.first) }
-            val totalDuration = tracks.map { it.duration }.sum()
-            val name = it.getString(it.getColumnIndex(MediaStore.Audio.Playlists.NAME)).let {
-                if (it.isBlank()) UNKNOWN else it
-            }
-            val count = context.contentResolver
-                    .query(MediaStore.Audio.Playlists.Members.getContentUri("external", id),
-                            null, null, null, null)
-                    ?.use { it.count } ?: 0
-            val playlist = Playlist(id, tracks.getPlaylistThumb(context).await(), name, count, totalDuration)
-            list.add(playlist)
-        }
-
-        return@use list.toList().sortedBy { it.name }
-    } ?: emptyList()
+fun JoinedTrack.toDomainTrack(
+    trackNum: Int? = null,
+    nowPlaying: Boolean = false
+): DomainTrack {
+    return DomainTrack(
+        "${random.nextLong()}-${track.id}",
+        track.id,
+        track.mediaId,
+        track.codec.uppercase(Locale.getDefault()),
+        track.bitrate,
+        track.sampleRate / 1000f,
+        album,
+        track.title,
+        track.titleSort,
+        artist,
+        track.composer,
+        track.composerSort,
+        album.artworkUriString,
+        track.duration,
+        trackNum ?: track.trackNum,
+        track.trackTotal,
+        track.discNum,
+        track.discTotal,
+        track.releaseDate,
+        track.genre,
+        track.sourcePath,
+        track.dropboxPath,
+        track.dropboxExpiredAt,
+        track.artworkUriString,
+        BoolConverter().toBoolean(track.ignored),
+        nowPlaying
+    )
 }
 
-private fun List<Track>.getPlaylistThumb(context: Context): Deferred<Bitmap?> = GlobalScope.async {
-    val db = DB.getInstance(context)
-    this@getPlaylistThumb.takeOrFillNull(10)
-            .map {
-                it?.let { db.getArtworkUriStringFromId(it.albumId).await()?.let { Uri.parse(it) } }
-            }
-            .getThumb(context)
-            .await()
-}
+val DomainTrack.isDownloaded
+    get() = dropboxPath != null && sourcePath.isNotBlank() && sourcePath.matches(dropboxUrlPattern)
+        .not()
 
-fun DB.searchArtistByFuzzyTitle(title: String): Deferred<List<Artist>> =
-        GlobalScope.async { this@searchArtistByFuzzyTitle.artistDao().findByTitle("%$title%") }
+val Track.isDownloaded
+    get() = dropboxPath != null && sourcePath.isNotBlank() && sourcePath.matches(dropboxUrlPattern)
+        .not()
 
-fun DB.searchAlbumByFuzzyTitle(title: String): Deferred<List<Album>> =
-        GlobalScope.async { this@searchAlbumByFuzzyTitle.albumDao().findByTitle("%$title%") }
+suspend fun DB.searchArtistByFuzzyTitle(title: String): List<Artist> =
+    this@searchArtistByFuzzyTitle.artistDao().findAllByTitle("%${title.escapeSql}%")
 
-fun DB.searchTrackByFuzzyTitle(title: String): Deferred<List<Track>> =
-        GlobalScope.async { this@searchTrackByFuzzyTitle.trackDao().findByTitle("%$title%") }
+suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<JoinedAlbum> =
+    this@searchAlbumByFuzzyTitle.albumDao().findAllByTitle("%${title.escapeSql}%")
 
-fun Context.searchPlaylistByFuzzyTitle(title: String): List<Playlist> =
-        contentResolver.query(MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
-                arrayOf(MediaStore.Audio.Playlists._ID,
-                        MediaStore.Audio.Playlists.NAME),
-                "${MediaStore.Audio.Playlists.NAME} like '%$title%'",
-                null,
-                MediaStore.Audio.Playlists.DEFAULT_SORT_ORDER).use {
-            it ?: return@use emptyList()
-            val result: MutableList<Playlist> = mutableListOf()
-            while (it.moveToNext()) {
-                val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists._ID))
-                val name = it.getString(it.getColumnIndex(MediaStore.Audio.Playlists.NAME))
-                        ?: UNKNOWN
-                result.add(Playlist(id, null, name, 0, 0))
-            }
+suspend fun DB.searchTrackByFuzzyTitle(title: String): List<JoinedTrack> =
+    this@searchTrackByFuzzyTitle.trackDao().getAllByTitle("%${title.escapeSql}%")
 
-            return@use result
-        }
-
-fun Context.searchGenreByFuzzyTitle(title: String): List<Genre> =
-        contentResolver.query(MediaStore.Audio.Genres.EXTERNAL_CONTENT_URI,
-                arrayOf(MediaStore.Audio.Genres._ID,
-                        MediaStore.Audio.Genres.NAME),
-                "${MediaStore.Audio.Genres.NAME} like '%$title%'",
-                null,
-                MediaStore.Audio.Genres.DEFAULT_SORT_ORDER).use {
-            it ?: return@use emptyList()
-            val result: MutableList<Genre> = mutableListOf()
-            while (it.moveToNext()) {
-                val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Genres._ID))
-                val name = it.getString(it.getColumnIndex(MediaStore.Audio.Genres.NAME)) ?: UNKNOWN
-                result.add(Genre(id, null, name, 0))
-            }
-
-            return@use result
-        }
-
-fun <T> List<T>.takeOrFillNull(n: Int): List<T?> =
-        this.take(n).let { it + List(n - it.size) { null } }
-
-fun List<Uri?>.getThumb(context: Context): Deferred<Bitmap?> = GlobalScope.async {
-    if (this@getThumb.isEmpty()) return@async null
+suspend fun List<String>.getThumb(context: Context): Bitmap? {
+    if (this.isEmpty()) return null
     val unit = 100
-    val bitmap = Bitmap.createBitmap(((this@getThumb.size * 0.9 - 0.1) * unit).toInt(), unit, Bitmap.Config.ARGB_8888)
+    val width = ((this.size * 0.9 - 0.1) * unit).toInt()
+    val bitmap = Bitmap.createBitmap(width, unit, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
-    this@getThumb.reversed().forEachIndexed { i, uri ->
-        val b = Glide.with(context).asBitmap()
-                .load(uri ?: return@forEachIndexed)
-                .submit().get()?.let {
-                    Bitmap.createScaledBitmap(
-                            it, unit, (it.height * unit.toFloat() / it.width).toInt(), false)
-                } ?: return@forEachIndexed
-        canvas.drawBitmap(b, bitmap.width - (i + 1) * unit * 0.9f, (unit - b.height) / 2f, Paint())
+    withContext(Dispatchers.IO) {
+        this@getThumb.reversed().forEachIndexed { i, uriString ->
+            val b = catchAsNull {
+                Coil.imageLoader(context)
+                    .execute(
+                        ImageRequest.Builder(context)
+                            .data(uriString)
+                            .size(unit)
+                            .scale(Scale.FIT)
+                            .allowHardware(false)
+                            .build()
+                    )
+                    .drawable
+                    ?.toBitmap()
+            } ?: return@forEachIndexed
+            canvas.drawBitmap(
+                b,
+                bitmap.width - (i + 1) * unit * 0.9f,
+                (unit - b.height) / 2f,
+                Paint()
+            )
+        }
     }
-    bitmap
+    return bitmap
 }
 
-fun Genre.getTrackMediaIds(context: Context): List<Long> =
-        getTrackMediaIdsByGenreId(context, this.id)
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+fun DomainTrack.getMediaItem(): MediaItem = MediaItem.fromUri(Uri.parse(sourcePath))
 
-fun getTrackMediaIdsByGenreId(context: Context, genreId: Long): List<Long> =
-        context.contentResolver.query(
-                MediaStore.Audio.Genres.Members.getContentUri("external", genreId),
-                arrayOf(MediaStore.Audio.Genres.Members._ID),
-                null, null, null)?.use {
-            val trackMediaIdList: ArrayList<Long> = ArrayList()
-            while (it.moveToNext()) {
-                val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Genres.Members._ID))
-                trackMediaIdList.add(id)
+fun List<DomainTrack>.sortedByTrackOrder(
+    classType: OrientedClassType,
+    actionType: InsertActionType
+): List<DomainTrack> {
+    val shuffleConditional = actionType in listOf(
+        InsertActionType.SHUFFLE_OVERRIDE,
+        InsertActionType.SHUFFLE_NEXT,
+        InsertActionType.SHUFFLE_LAST,
+    )
+    return this.groupBy { it.album }
+        .map { (album, tracks) ->
+            album to tracks.groupBy { it.discNum }
+                .map { (diskNum, track) ->
+                    diskNum to track.sortedBy { it.trackNum }
+                }
+                .sortedBy { it.first }
+                .flatMap { it.second }
+        }
+        .let {
+            if (shuffleConditional && classType == OrientedClassType.ALBUM) it.shuffled() else it
+        }
+        .groupBy { it.first.artistId }
+        .toList()
+        .let {
+            if (shuffleConditional && classType == OrientedClassType.ARTIST) it.shuffled() else it
+        }
+        .flatMap { (_, albumTrackMap) ->
+            albumTrackMap.flatMap { it.second }
+        }
+}
+
+suspend fun DomainTrack.getMediaMetadata(context: Context): MediaMetadataCompat =
+    MediaMetadataCompat.Builder()
+        .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaId.toString())
+        .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, sourcePath)
+        .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, title)
+        .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, artist.title)
+        .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, album.title)
+        .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
+        .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist.title)
+        .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album.title)
+        .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer)
+        .putString(MediaMetadataCompat.METADATA_KEY_DATE, releaseDate)
+        .apply {
+            val artworkUriString = getTempArtworkUriString(context)
+            val artwork = withContext(Dispatchers.IO) {
+                album.artworkUriString?.let {
+                    Coil.imageLoader(context)
+                        .execute(ImageRequest.Builder(context).data(it).build())
+                        .drawable
+                        ?.toBitmap()
+                }
             }
-
-            return@use trackMediaIdList
-        } ?: emptyList()
-
-fun Playlist.getTrackMediaIds(context: Context): List<Pair<Long, Int>> =
-        getTrackMediaIdByPlaylistId(context, this.id)
-
-fun getTrackMediaIdByPlaylistId(context: Context, playlistId: Long): List<Pair<Long, Int>> =
-        context.contentResolver.query(
-                MediaStore.Audio.Playlists.Members.getContentUri("external", playlistId),
-                arrayOf(MediaStore.Audio.Playlists.Members.AUDIO_ID, MediaStore.Audio.Playlists.Members.PLAY_ORDER),
-                null,
-                null,
-                MediaStore.Audio.Playlists.Members.PLAY_ORDER)?.use {
-            val trackMediaIdList: ArrayList<Pair<Long, Int>> = ArrayList()
-            while (it.moveToNext()) {
-                val id = it.getLong(it.getColumnIndex(MediaStore.Audio.Playlists.Members.AUDIO_ID))
-                val order = it.getInt(it.getColumnIndex(MediaStore.Audio.Playlists.Members.PLAY_ORDER))
-                trackMediaIdList.add(id to order)
-            }
-
-            return@use trackMediaIdList
-        } ?: emptyList()
-
-fun Song.getMediaSource(mediaSourceFactory: AdsMediaSource.MediaSourceFactory): MediaSource =
-        mediaSourceFactory.createMediaSource(Uri.fromFile(File(sourcePath)))
-
-fun List<Song>.sortedByTrackOrder(): List<Song> = this.asSequence()
-        .groupBy { it.discNum }
-        .map { it.key to it.value.sortedBy { it.trackNum } }
-        .sortedBy { it.first }.toList()
-        .flatMap { it.second }
-
-fun List<Song>.shuffleByClassType(classType: OrientedClassType): List<Song> =
-        when (classType) {
-            OrientedClassType.ARTIST -> {
-                val artists = this.map { it.artist }.distinct().shuffled()
-                artists.map { artist ->
-                    this.filter { it.artist == artist }
-                }.flatten()
-            }
-            OrientedClassType.ALBUM -> {
-                val albumIds = this.map { it.albumId }.distinct().shuffled()
-                albumIds.map { id ->
-                    this.filter { it.albumId == id }
-                }.flatten()
-            }
-            OrientedClassType.SONG -> {
-                this.shuffled()
-            }
-            OrientedClassType.GENRE -> {
-                val genreIds = this.map { it.genreId }.distinct().shuffled()
-                genreIds.map { id ->
-                    this.filter { it.genreId == id }
-                }.flatten()
-            }
-            OrientedClassType.PLAYLIST -> {
-                val playlistIds = this.map { it.playlistId }.distinct().shuffled()
-                playlistIds.map { id ->
-                    this.filter { it.playlistId == id }
-                }.flatten()
+            putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, artwork)
+            putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, artworkUriString)
+            putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, artworkUriString)
+            trackNum?.let { putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, it.toLong()) }
+            trackTotal?.let { putLong(MediaMetadataCompat.METADATA_KEY_NUM_TRACKS, it.toLong()) }
+            discNum?.let { putLong(MediaMetadataCompat.METADATA_KEY_DISC_NUMBER, it.toLong()) }
+            releaseDate?.parseDateLong()?.let { putLong(MediaMetadataCompat.METADATA_KEY_YEAR, it) }
+            DB.getInstance(context).artistDao().get(album.artistId)?.title?.let {
+                putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ARTIST, it)
             }
         }
+        .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
+        .build()
 
-fun Song.getMediaMetadata(context: Context, albumTitle: String? = null): Deferred<MediaMetadataCompat> =
-        GlobalScope.async {
-            val db = DB.getInstance(context)
-            val album = albumTitle
-                    ?: db.albumDao().get(this@getMediaMetadata.albumId)?.title
-                    ?: UNKNOWN
-            val uriString = db.getArtworkUriStringFromId(this@getMediaMetadata.albumId).await()
+fun String.parseDateLong(): Long? = catchAsNull {
+    SimpleDateFormat("yyyy-MM-dd", Locale.JAPAN).parse(this)?.time
+} ?: catchAsNull {
+    SimpleDateFormat("yyyy-MM", Locale.JAPAN).parse(this)?.time
+} ?: catchAsNull {
+    SimpleDateFormat("yyyy", Locale.JAPAN).parse(this)?.time
+}
 
-            MediaMetadataCompat.Builder()
-                    .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID,
-                            this@getMediaMetadata.mediaId.toString())
-                    .putString(MediaMetadataCompat.METADATA_KEY_TITLE, this@getMediaMetadata.name)
-                    .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, this@getMediaMetadata.artist)
-                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album)
-                    .putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, uriString)
-                    .apply {
-                        if (uriString != null
-                                && PreferenceManager.getDefaultSharedPreferences(context)
-                                        .showArtworkOnLockScreen) {
-                            val bitmap = try {
-                                Glide.with(context).asBitmap()
-                                        .load(uriString)
-                                        .submit().get()
-                            } catch (t: Throwable) {
-                                Timber.e(t)
-                                null
-                            }
-                            putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, bitmap)
-                        }
-                    }
-                    .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, this@getMediaMetadata.duration)
-                    .build()
-        }
+fun DomainTrack.getTempArtworkUriString(context: Context): String? =
+    album.artworkUriString?.let { uriString ->
+        val ext = MimeTypeMap.getFileExtensionFromUrl(uriString)
+        val dirName = "images"
+        val fileName = "temp_artwork.$ext"
+        val dir = File(context.cacheDir, dirName)
+        val file = File(dir, fileName)
 
-fun getNotification(context: Context, sessionToken: MediaSessionCompat.Token?,
-                    song: Song, albumTitle: String,
-                    playing: Boolean): Deferred<Notification?> =
-        GlobalScope.async {
-            if (sessionToken == null) return@async null
+        if (file.exists()) file.delete()
+        if (dir.exists().not()) dir.mkdirs()
 
-            val artwork = try {
-                Glide.with(context)
-                        .asBitmap()
-                        .load(DB.getInstance(context)
-                                .getArtworkUriStringFromId(song.albumId).await()
-                                ?: R.drawable.ic_empty)
-                        .submit()
-                        .get()
-            } catch (t: Throwable) {
-                Timber.e(t)
-                null
+        File(uriString).copyTo(file, overwrite = true)
+        return FileProvider.getUriForFile(context, BuildConfig.FILES_AUTHORITY, file)
+            .toString()
+    }
+
+fun getPlayerNotification(
+    context: Context,
+    mediaSession: MediaSessionCompat,
+    playing: Boolean
+): Notification {
+    val description = mediaSession.controller.metadata.description
+
+    return context.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER)
+        .setSmallIcon(R.drawable.ic_notification_player)
+        .setLargeIcon(description.iconBitmap)
+        .setContentTitle(description.title)
+        .setContentText(description.subtitle)
+        .setSubText(description.description)
+        .setOngoing(playing)
+        .setStyle(
+            androidx.media.app.NotificationCompat.MediaStyle()
+                .setShowActionsInCompactView(0, 1, 2)
+                .setMediaSession(mediaSession.sessionToken)
+        )
+        .setShowWhen(false)
+        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+        .setContentIntent(mediaSession.controller.sessionActivity)
+        .setDeleteIntent(
+            MediaButtonReceiver.buildMediaButtonPendingIntent(
+                context,
+                PlaybackStateCompat.ACTION_STOP
+            )
+        )
+        .addAction(
+            NotificationCompat.Action(
+                R.drawable.ic_backward,
+                context.getString(R.string.notification_action_prev),
+                MediaButtonReceiver.buildMediaButtonPendingIntent(
+                    context,
+                    PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
+                )
+            )
+        )
+        .addAction(
+            if (playing) {
+                NotificationCompat.Action(
+                    R.drawable.ic_pause,
+                    context.getString(R.string.notification_action_pause),
+                    MediaButtonReceiver.buildMediaButtonPendingIntent(
+                        context,
+                        PlaybackStateCompat.ACTION_PAUSE
+                    )
+                )
+            } else {
+                NotificationCompat.Action(
+                    R.drawable.ic_play,
+                    context.getString(R.string.notification_action_play),
+                    MediaButtonReceiver.buildMediaButtonPendingIntent(
+                        context,
+                        PlaybackStateCompat.ACTION_PLAY
+                    )
+                )
             }
-            val builder =
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-                        NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID_PLAYER)
-                    else NotificationCompat.Builder(context)
-            builder.setSmallIcon(R.drawable.ic_notification)
-                    .setLargeIcon(artwork)
-                    .setContentTitle(song.name)
-                    .setContentText(song.artist)
-                    .setSubText(albumTitle)
-                    .setOngoing(playing)
-                    .setStyle(androidx.media.app.NotificationCompat.MediaStyle()
-                            .setShowActionsInCompactView(0, 1, 2)
-                            .setMediaSession(sessionToken))
-                    .setContentIntent(PendingIntent.getActivity(context,
-                            App.REQUEST_CODE_LAUNCH_APP,
-                            LauncherActivity.createIntent(context),
-                            PendingIntent.FLAG_UPDATE_CURRENT))
-                    .addAction(NotificationCompat.Action.Builder(
-                            R.drawable.ic_backward,
-                            context.getString(R.string.notification_action_prev),
-                            MediaButtonReceiver.buildMediaButtonPendingIntent(context,
-                                    PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS)
-                    ).build())
-                    .addAction(if (playing) {
-                        NotificationCompat.Action.Builder(
-                                R.drawable.ic_pause,
-                                context.getString(R.string.notification_action_pause),
-                                MediaButtonReceiver.buildMediaButtonPendingIntent(context,
-                                        PlaybackStateCompat.ACTION_PLAY_PAUSE)
-                        ).build()
-                    } else {
-                        NotificationCompat.Action.Builder(
-                                R.drawable.ic_play,
-                                context.getString(R.string.notification_action_play),
-                                MediaButtonReceiver.buildMediaButtonPendingIntent(context,
-                                        PlaybackStateCompat.ACTION_PLAY_PAUSE)
-                        ).build()
-                    })
-                    .addAction(NotificationCompat.Action.Builder(
-                            R.drawable.ic_forward,
-                            context.getString(R.string.notification_action_next),
-                            MediaButtonReceiver.buildMediaButtonPendingIntent(context,
-                                    PlaybackStateCompat.ACTION_SKIP_TO_NEXT)
-                    ).build())
-                    .setDeleteIntent(getCommandPendingIntent(context, NotificationCommand.DESTROY))
-                    .build()
-        }
-
-private fun getCommandPendingIntent(context: Context, command: NotificationCommand): PendingIntent =
-        PendingIntent.getService(context, 0,
-                PlayerService.createIntent(context).apply {
-                    action = command.name
-                    putExtra(PlayerService.ARGS_KEY_CONTROL_COMMAND, command.ordinal)
-                },
-                PendingIntent.FLAG_CANCEL_CURRENT)
+        )
+        .addAction(
+            NotificationCompat.Action(
+                R.drawable.ic_forward,
+                context.getString(R.string.notification_action_next),
+                MediaButtonReceiver.buildMediaButtonPendingIntent(
+                    context,
+                    PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                )
+            )
+        )
+        .build()
+}
 
 fun Long.getTimeString(): String {
     val hour = this / 3600000
     val minute = (this % 3600000) / 60000
     val second = (this % 60000) / 1000
-    return (if (hour > 0) String.format("%d:", hour) else "") + String.format("%02d:%02d", minute, second)
+    return (if (hour > 0) String.format("%d:", hour) else "") + String.format(
+        "%02d:%02d", minute, second
+    )
 }
 
-fun pushMedia(context: Context, db: DB, cursor: Cursor) {
-    val trackMediaId = cursor.getLong(
-            cursor.getColumnIndex(MediaStore.Audio.Media._ID))
+fun DbxClientV2.saveTempAudioFile(context: Context, pathLower: String): File {
+    val dirName = "audio"
+    val fileName = "temp_audio.${pathLower.getExtension()}"
+    val dir = File(context.cacheDir, dirName)
+    val file = File(dir, fileName)
 
-    val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, trackMediaId)
+    if (file.exists()) file.delete()
+    if (dir.exists().not()) dir.mkdir()
 
-    val trackPath = cursor.getString(
-            cursor.getColumnIndex(MediaStore.Audio.Media.DATA))
+    FileOutputStream(file).use { files().download(pathLower).download(it) }
 
-    if (File(trackPath).exists().not()) {
-        context.contentResolver.delete(uri, null, null)
-        return
-    }
+    return file
+}
 
-    MediaMetadataRetriever().also { retriever ->
-        try {
-            retriever.setDataSource(context, uri)
+fun DbxClientV2.saveAudioFile(context: Context, id: String, pathLower: String): File {
+    val dirName = "audio"
+    val dir = File(context.cacheDir, dirName)
+    val file = File(dir, "$id.${pathLower.getExtension()}")
 
-            val current = cursor.position
-            val total = cursor.count
+    if (file.exists()) file.delete()
+    if (dir.exists().not()) dir.mkdir()
 
-            val title = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.TITLE))
-            val duration = cursor.getLong(cursor.getColumnIndex(MediaStore.Audio.Media.DURATION))
-            val trackNum = cursor.getInt(cursor.getColumnIndex(MediaStore.Audio.Media.TRACK))
-            val albumMediaId = cursor.getLong(
-                    cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM_ID))
-            val albumTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ALBUM))
-            val artistMediaId = cursor.getLong(
-                    cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST_ID))
-            val artistTitle = cursor.getString(cursor.getColumnIndex(MediaStore.Audio.Media.ARTIST))
-            val artworkUriString = albumMediaId.getArtworkUriIfExist(context)?.toString()
+    FileOutputStream(file).use { files().download(pathLower).download(it) }
 
-            val discNum = retriever.extractMetadata(
-                    MediaMetadataRetriever.METADATA_KEY_DISC_NUMBER)?.split("/")
-                    ?.first()?.toInt()
-            val albumArtistTitle = retriever.extractMetadata(
-                    MediaMetadataRetriever.METADATA_KEY_ALBUMARTIST)
+    return file
+}
 
-            val artistId = Artist(0, artistMediaId, artistTitle, 0).upsert(db) ?: return@also
-            val albumArtistId =
-                    if (albumArtistTitle == null) null
-                    else Artist(0, null, albumArtistTitle, 0).upsert(db)
+fun InputStream.saveTempAudioFile(context: Context): File {
+    val ext = URLConnection.guessContentTypeFromStream(this)
+        ?.replace(Regex(".+/(.+)"), ".$1")
+        ?: ""
 
-            val albumId = db.albumDao().getByMediaId(albumMediaId).let {
-                if (it == null || it.hasAlbumArtist.not()) {
-                    val album = Album(0, albumMediaId, albumTitle,
-                            albumArtistId ?: artistId,
-                            artworkUriString, albumArtistId != null, 0)
-                    album.upsert(db)
-                } else it.id
-            }
+    val dirName = "audio"
+    val fileName = "temp_audio$ext"
+    val dir = File(context.cacheDir, dirName)
+    val file = File(dir, fileName)
 
-            val track = Track(0, trackMediaId, title, albumId, artistId, albumArtistId, duration,
-                    trackNum, discNum, trackPath, 0)
-            track.upsert(db)
-            context.sendBroadcast(MainActivity.createProgressIntent(current to total))
-        } catch (t: Throwable) {
-            Timber.e(t)
-        }
+    if (file.exists()) file.delete()
+    if (dir.exists().not()) dir.mkdir()
+
+    FileUtils.copyToFile(this, file)
+
+    return file
+}
+
+suspend fun DialogEditMetadataBinding.updateFileMetadata(
+    context: Context,
+    db: DB,
+    targets: List<JoinedTrack>
+) {
+    targets.asSequence().forEach {
+        it.updateFileMetadata(
+            context,
+            db,
+            inputTrackName.text?.toString(),
+            inputTrackNameKana.text?.toString(),
+            inputAlbumName.text?.toString(),
+            inputAlbumNameKana.text?.toString(),
+            inputArtistName.text?.toString(),
+            inputArtistNameKana.text?.toString(),
+            inputComposerName.text?.toString(),
+            inputComposerNameKana.text?.toString(),
+        )
     }
 }
 
-private fun Long.getArtworkUriIfExist(context: Context): Uri? =
-        this.getArtworkUriFromMediaId().let { uri ->
-            context.contentResolver.query(uri,
-                    arrayOf(MediaStore.MediaColumns.DATA),
-                    null, null, null)?.use {
-                if (it.moveToFirst()
-                        && File(it.getString(it.getColumnIndex(MediaStore.MediaColumns.DATA))).exists())
-                    uri
-                else null
+/**
+ * Media placed at the outside of the device will be updated only data on the database
+ */
+suspend fun JoinedTrack.updateFileMetadata(
+    context: Context,
+    db: DB,
+    newTrackName: String? = null,
+    newTrackNameSort: String? = null,
+    newAlbumName: String? = null,
+    newAlbumNameSort: String? = null,
+    newArtistName: String? = null,
+    newArtistNameSort: String? = null,
+    newComposerName: String? = null,
+    newComposerNameSort: String? = null,
+    newArtwork: Bitmap? = null
+) = withContext(Dispatchers.IO) {
+    catchAsNull {
+        val artworkUriString = newArtwork?.toByteArray()?.storeArtwork(context)
+        val artwork = artworkUriString?.let { ArtworkFactory.createArtworkFromFile(File(it)) }
+        when {
+            newArtistName.isNullOrBlank().not() || newArtistNameSort.isNullOrBlank().not() -> {
+                db.trackDao().getAllByArtist(artist.id)
+                    .mapNotNull {
+                        if (it.track.sourcePath.startsWith("http")) null
+                        else AudioFileIO.read(File(it.track.sourcePath))
+                    }
+                    .forEach { existingAudioFile ->
+                        existingAudioFile.tag?.apply {
+                            newArtistName?.let { setField(FieldKey.ARTIST, it) }
+                            newArtistNameSort?.let { setField(FieldKey.ARTIST_SORT, it) }
+                            newAlbumName?.let { setField(FieldKey.ALBUM, it) }
+                            newAlbumNameSort?.let { setField(FieldKey.ALBUM_SORT, it) }
+                            artwork?.let { setField(it) }
+                            newTrackName?.let { setField(FieldKey.TITLE, it) }
+                            newTrackNameSort?.let { setField(FieldKey.TITLE_SORT, it) }
+                            newComposerName?.let { setField(FieldKey.COMPOSER, it) }
+                            newComposerNameSort?.let { setField(FieldKey.COMPOSER_SORT, it) }
+                        }
+
+                        existingAudioFile.let { AudioFileIO.write(it) }
+                    }
+                val artistId = db.artistDao().upsert(
+                    db,
+                    artist.let {
+                        it.copy(
+                            title = newArtistName ?: it.title,
+                            titleSort = newArtistNameSort ?: it.titleSort
+                        )
+                    }
+                )
+                val albumId = if (newAlbumName.isNullOrBlank().not()
+                    || newAlbumNameSort.isNullOrBlank().not()
+                ) {
+                    db.albumDao().upsert(
+                        db,
+                        album.let {
+                            it.copy(
+                                title = newAlbumName ?: it.title,
+                                titleSort = newAlbumNameSort ?: it.titleSort,
+                                artistId = artistId,
+                                artworkUriString = artworkUriString ?: it.artworkUriString
+                            )
+                        }
+                    )
+                } else album.id
+                if (newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not()) {
+                    db.trackDao().upsert(
+                        track.copy(
+                            title = newTrackName ?: track.title,
+                            titleSort = newTrackNameSort ?: track.titleSort,
+                            composer = newComposerName ?: track.composer,
+                            composerSort = newComposerNameSort ?: track.composerSort,
+                            artistId = artistId,
+                            albumId = albumId
+                        ),
+                        albumId,
+                        artistId
+                    )
+                }
+            }
+
+            newAlbumName.isNullOrBlank().not()
+                    || newAlbumNameSort.isNullOrBlank().not()
+                    || newArtwork != null -> {
+                db.trackDao().getAllByAlbum(album.id)
+                    .mapNotNull {
+                        if (it.track.sourcePath.startsWith("http")) null
+                        else AudioFileIO.read(File(it.track.sourcePath))
+                    }
+                    .forEach { existingAudioFile ->
+                        existingAudioFile.tag?.apply {
+                            newAlbumName?.let { setField(FieldKey.ALBUM, it) }
+                            newAlbumNameSort?.let { setField(FieldKey.ALBUM_SORT, it) }
+                            artwork?.let { setField(it) }
+                            newTrackName?.let { setField(FieldKey.TITLE, it) }
+                            newTrackNameSort?.let { setField(FieldKey.TITLE_SORT, it) }
+                            newComposerName?.let { setField(FieldKey.COMPOSER, it) }
+                            newComposerNameSort?.let { setField(FieldKey.COMPOSER_SORT, it) }
+                        }
+
+                        existingAudioFile.let { AudioFileIO.write(it) }
+                    }
+                val albumId = db.albumDao().upsert(
+                    db,
+                    album.let {
+                        it.copy(
+                            title = newAlbumName ?: it.title,
+                            titleSort = newAlbumNameSort ?: it.titleSort,
+                            artworkUriString = artworkUriString
+                                ?: it.artworkUriString
+                        )
+                    }
+                )
+                if (newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not()) {
+                    db.trackDao().upsert(
+                        track.copy(
+                            title = newTrackName ?: track.title,
+                            titleSort = newTrackNameSort ?: track.titleSort,
+                            composer = newComposerName ?: track.composer,
+                            composerSort = newComposerNameSort ?: track.composerSort,
+                            albumId = albumId
+                        ),
+                        artist.id,
+                        albumId,
+                        track.duration
+                    )
+                }
+            }
+
+            newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not() -> {
+                if (track.sourcePath.startsWith("http").not()) {
+                    AudioFileIO.read(File(track.sourcePath))?.let { audioFile ->
+                        audioFile.tag?.apply {
+                            newTrackName?.let { setField(FieldKey.TITLE, it) }
+                            newTrackNameSort?.let { setField(FieldKey.TITLE_SORT, it) }
+                            newComposerName?.let { setField(FieldKey.COMPOSER, it) }
+                            newComposerNameSort?.let { setField(FieldKey.COMPOSER_SORT, it) }
+                        }
+                        AudioFileIO.write(audioFile)
+                    }
+                }
+
+                db.trackDao().update(
+                    track.copy(
+                        title = newTrackName ?: track.title,
+                        titleSort = newTrackNameSort ?: track.titleSort,
+                        composer = newComposerName ?: track.composer,
+                        composerSort = newComposerNameSort ?: track.composerSort
+                    )
+                )
             }
         }
+        return@withContext
+    }
+}
+
+val ExoPlayer.currentSourcePaths: List<String>
+    @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class) get() = List(this.mediaItemCount) { index ->
+        this.getMediaItemAt(index).localConfiguration?.uri?.toString()
+    }.filterNotNull()
+
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+suspend fun MediaItem.toDomainTrack(db: DB): DomainTrack? =
+    localConfiguration?.uri?.toString()?.toDomainTrack(db)
+
+suspend fun String.toDomainTrack(db: DB): DomainTrack? =
+    db.trackDao().getBySourcePath(this)?.toDomainTrack()
+
+suspend fun List<String>.toDomainTracks(db: DB): List<DomainTrack> =
+    db.trackDao().getAllBySourcePaths(this).map { it.toDomainTrack() }
+
+/**
+ * @return First value of `Pair` is the old (passed) sourcePath.
+ */
+suspend fun DomainTrack.verifiedWithDropbox(
+    context: Context,
+    client: DbxClientV2,
+    force: Boolean = false
+): DomainTrack? =
+    withContext(Dispatchers.IO) {
+        dropboxPath ?: return@withContext null
+
+        if (force
+            || sourcePath.isBlank()
+            || (sourcePath.matches(dropboxUrlPattern)
+                    && (dropboxExpiredAt ?: 0) <= System.currentTimeMillis())
+            || (sourcePath.matches(dropboxUrlPattern).not()
+                    && Uri.parse(sourcePath).toFile().exists().not())
+        ) {
+            val currentTime = System.currentTimeMillis()
+            val url = client.files().getTemporaryLink(dropboxPath).link
+            val expiredAt = currentTime + DROPBOX_EXPIRES_IN
+
+            val trackDao = DB.getInstance(context).trackDao()
+            trackDao.get(id)?.let { joinedTrack ->
+                trackDao.update(
+                    joinedTrack.track.copy(
+                        sourcePath = url,
+                        dropboxExpiredAt = expiredAt
+                    )
+                )
+            }
+
+            return@withContext copy(
+                sourcePath = url,
+                dropboxExpiredAt = expiredAt
+            )
+        }
+
+        return@withContext null
+    }
+
+private fun Bitmap.toByteArray(): ByteArray =
+    ByteArrayOutputStream().apply { compress(Bitmap.CompressFormat.PNG, 100, this) }
+        .toByteArray()
+
+private val String.escapeSql: String get() = replace("'", "''")

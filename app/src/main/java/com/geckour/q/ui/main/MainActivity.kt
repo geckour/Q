@@ -1,848 +1,1890 @@
 package com.geckour.q.ui.main
 
 import android.Manifest
-import android.app.AlertDialog
-import android.content.*
+import android.content.Context
+import android.content.Intent
+import android.os.Build
 import android.os.Bundle
-import android.os.IBinder
-import android.preference.PreferenceManager
-import android.provider.MediaStore
-import android.view.MenuItem
-import android.view.View
-import android.view.inputmethod.InputMethodManager
-import android.widget.FrameLayout
-import androidx.appcompat.app.ActionBarDrawerToggle
+import android.provider.OpenableColumns
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-import androidx.databinding.DataBindingUtil
-import androidx.drawerlayout.widget.DrawerLayout
-import androidx.lifecycle.ViewModelProviders
-import androidx.work.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.BottomSheetScaffold
+import androidx.compose.material.Card
+import androidx.compose.material.Divider
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.Switch
+import androidx.compose.material.Text
+import androidx.compose.material.TextButton
+import androidx.compose.material.rememberBottomSheetScaffoldState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.lifecycle.lifecycleScope
+import androidx.media3.common.Player
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import com.dropbox.core.DbxHost
+import com.dropbox.core.android.Auth
+import com.dropbox.core.v2.files.FolderMetadata
+import com.geckour.q.BuildConfig
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.databinding.ActivityMainBinding
-import com.geckour.q.databinding.DialogAddQueuePlaylistBinding
+import com.geckour.q.data.db.model.Album
+import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.Lyric
+import com.geckour.q.data.db.model.LyricLine
+import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.Genre
+import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.PlaybackButton
-import com.geckour.q.domain.model.RequestedTransaction
 import com.geckour.q.domain.model.SearchItem
-import com.geckour.q.domain.model.Song
-import com.geckour.q.service.PlayerService
-import com.geckour.q.ui.dialog.playlist.QueueAddPlaylistListAdapter
-import com.geckour.q.ui.easteregg.EasterEggFragment
-import com.geckour.q.ui.equalizer.EqualizerFragment
-import com.geckour.q.ui.equalizer.EqualizerViewModel
-import com.geckour.q.ui.library.album.AlbumListFragment
-import com.geckour.q.ui.library.album.AlbumListViewModel
-import com.geckour.q.ui.library.artist.ArtistListFragment
-import com.geckour.q.ui.library.artist.ArtistListViewModel
-import com.geckour.q.ui.library.genre.GenreListFragment
-import com.geckour.q.ui.library.playlist.PlaylistListFragment
-import com.geckour.q.ui.library.song.SongListFragment
-import com.geckour.q.ui.library.song.SongListViewModel
-import com.geckour.q.ui.pay.PaymentFragment
-import com.geckour.q.ui.pay.PaymentViewModel
-import com.geckour.q.ui.setting.SettingActivity
-import com.geckour.q.ui.sheet.BottomSheetViewModel
-import com.geckour.q.util.*
-import com.google.android.exoplayer2.Player
-import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.google.android.material.snackbar.Snackbar
-import kotlinx.coroutines.experimental.CoroutineScope
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.android.Main
-import kotlinx.coroutines.experimental.launch
-import permissions.dispatcher.NeedsPermission
-import permissions.dispatcher.OnPermissionDenied
-import permissions.dispatcher.RuntimePermissions
+import com.geckour.q.ui.compose.QTheme
+import com.geckour.q.ui.main.MainViewModel.Companion.DROPBOX_PATH_ROOT
+import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.ShuffleActionType
+import com.geckour.q.util.dbxRequestConfig
+import com.geckour.q.util.getDropboxCredential
+import com.geckour.q.util.getEqualizerParams
+import com.geckour.q.util.getExtension
+import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
+import com.geckour.q.util.getIsNightMode
+import com.geckour.q.util.getNumberWithUnitPrefix
+import com.geckour.q.util.getTimeString
+import com.geckour.q.util.parseLrc
+import com.geckour.q.util.setHasAlreadyShownDropboxSyncAlert
+import com.geckour.q.util.setIsNightMode
+import com.geckour.q.util.toDomainTrack
+import com.geckour.q.worker.DROPBOX_DOWNLOAD_WORKER_NAME
+import com.geckour.q.worker.DropboxDownloadWorker
+import com.geckour.q.worker.DropboxMediaRetrieveWorker
+import com.geckour.q.worker.KEY_PROGRESS_FINISHED
+import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_DENOMINATOR
+import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_NUMERATOR
+import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_PATH
+import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_TOTAL_FILES
+import com.geckour.q.worker.KEY_PROGRESS_REMAINING
+import com.geckour.q.worker.KEY_PROGRESS_REMAINING_FILES_SIZE
+import com.geckour.q.worker.KEY_PROGRESS_TITLE
+import com.geckour.q.worker.LocalMediaRetrieveWorker
+import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import org.koin.androidx.viewmodel.ext.android.viewModel
+import permissions.dispatcher.ktx.constructPermissionsRequest
 import timber.log.Timber
 import java.io.File
-import kotlin.coroutines.experimental.CoroutineContext
+import java.nio.charset.Charset
+import java.util.UUID
+import kotlin.math.abs
+import kotlin.math.sin
 
-@RuntimePermissions
 class MainActivity : AppCompatActivity() {
 
-    enum class RequestCode(val code: Int) {
-        RESULT_SETTING(333)
-    }
-
     companion object {
-        private const val ACTION_PROGRESS_SYNCING = "action_progress_syncing"
-        private const val EXTRA_PROGRESS_SYNCING = "extra_progress_syncing"
-        private const val STATE_KEY_REQUESTED_TRANSACTION = "state_key_requested_transaction"
 
         fun createIntent(context: Context): Intent = Intent(context, MainActivity::class.java)
-
-        fun createProgressIntent(progress: Pair<Int, Int>) = Intent(ACTION_PROGRESS_SYNCING).apply {
-            putExtra(EXTRA_PROGRESS_SYNCING, progress)
-        }
     }
 
-    private val viewModel: MainViewModel by lazy {
-        ViewModelProviders.of(this)[MainViewModel::class.java]
-    }
-    private val bottomSheetViewModel: BottomSheetViewModel by lazy {
-        ViewModelProviders.of(this)[BottomSheetViewModel::class.java]
-    }
-    private val artistListViewModel: ArtistListViewModel by lazy {
-        ViewModelProviders.of(this)[ArtistListViewModel::class.java]
-    }
-    private val albumListViewModel: AlbumListViewModel by lazy {
-        ViewModelProviders.of(this)[AlbumListViewModel::class.java]
-    }
-    private val songListViewModel: SongListViewModel by lazy {
-        ViewModelProviders.of(this)[SongListViewModel::class.java]
-    }
-    private val genreListViewModel: SongListViewModel by lazy {
-        ViewModelProviders.of(this)[SongListViewModel::class.java]
-    }
-    private val playlistListViewModel: SongListViewModel by lazy {
-        ViewModelProviders.of(this)[SongListViewModel::class.java]
-    }
-    private val equalizerViewModel: EqualizerViewModel by lazy {
-        ViewModelProviders.of(this)[EqualizerViewModel::class.java]
-    }
-    private val paymentViewModel: PaymentViewModel by lazy {
-        ViewModelProviders.of(this)[PaymentViewModel::class.java]
-    }
-    internal lateinit var binding: ActivityMainBinding
-    private val sharedPreferences by lazy { PreferenceManager.getDefaultSharedPreferences(this) }
-    private lateinit var drawerToggle: ActionBarDrawerToggle
-    private val searchListAdapter: SearchListAdapter by lazy { SearchListAdapter(viewModel) }
-    private var parentJob = Job()
-    private val bgScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = parentJob
-    }
-    private val uiScope = object : CoroutineScope {
-        override val coroutineContext: CoroutineContext get() = Dispatchers.Main + parentJob
-    }
-    private var searchJob = Job()
+    private val viewModel by viewModel<MainViewModel>()
+    private var onAuthDropboxCompleted: (() -> Unit)? = null
+    private var onCancelProgress: (() -> Unit)? = null
 
-    private var requestedTransaction: RequestedTransaction? = null
-    private var paused = true
+    private var onLrcFileLoaded: ((lyricLines: List<LyricLine>) -> Unit)? = null
 
-    private var player: PlayerService? = null
+    private val getContent =
+        registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+            uri ?: return@registerForActivityResult
 
-    private var isBoundService = false
-
-    private val syncingProgressReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            (intent?.extras?.get(EXTRA_PROGRESS_SYNCING) as? Pair<Int, Int>)?.apply {
-                binding.coordinatorMain.indicatorLocking.progressSync.text =
-                        getString(R.string.progress_sync, this.first, this.second)
-            }
-        }
-    }
-    private val equalizerStateReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            val enabled = intent.getBooleanExtra(EqualizerFragment.EXTRA_KEY_EQUALIZER_ENABLED, false)
-            onReceiveEnabled(enabled)
-        }
-    }
-
-    private val onNavigationItemSelected: (MenuItem) -> Boolean = {
-        val fragment = when (it.itemId) {
-            R.id.nav_artist -> ArtistListFragment.newInstance()
-            R.id.nav_album -> AlbumListFragment.newInstance()
-            R.id.nav_song -> SongListFragment.newInstance()
-            R.id.nav_genre -> GenreListFragment.newInstance()
-            R.id.nav_playlist -> PlaylistListFragment.newInstance()
-            R.id.nav_setting -> {
-                startActivityForResult(SettingActivity.createIntent(this),
-                        RequestCode.RESULT_SETTING.code)
-                null
-            }
-            R.id.nav_equalizer -> EqualizerFragment.newInstance()
-            R.id.nav_sync -> {
-                retrieveMediaWithPermissionCheck()
-                null
-            }
-            R.id.nav_pay -> PaymentFragment.newInstance()
-            else -> null
-        }
-        if (fragment != null) {
-            supportFragmentManager.beginTransaction()
-                    .apply {
-                        if ((binding.coordinatorMain.contentMain.root as FrameLayout).childCount == 0)
-                            add(R.id.content_main, fragment)
-                        else {
-                            replace(R.id.content_main, fragment)
-                            addToBackStack(null)
-                        }
+            try {
+                contentResolver.query(uri, null, null, null, null, null).use { cursor ->
+                    cursor ?: return@use
+                    cursor.moveToFirst()
+                    val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (index < 0) return@use
+                    val fileName = cursor.getString(index)
+                    val extensionName = fileName.getExtension()
+                    if (extensionName == "txt") {
+                        val lyricText = contentResolver.openInputStream(uri)?.use {
+                            it.readBytes().toString(Charset.forName("UTF-8"))
+                        } ?: throw IllegalStateException("Cannot open lyric file.")
+                        onLrcFileLoaded?.invoke(listOf(LyricLine(0, lyricText)))
+                        return@registerForActivityResult
+                    } else if (extensionName != "lrc") {
+                        throw IllegalStateException("The file type .$extensionName is not supported.")
                     }
-                    .commit()
-        }
-        uiScope.launch { binding.drawerLayout.closeDrawers() }
-        true
-    }
+                }
 
-    private val serviceConnection = object : ServiceConnection {
-        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            if (name == ComponentName(applicationContext, PlayerService::class.java)) {
-                isBoundService = true
-                player = (service as? PlayerService.PlayerBinder)?.service?.apply {
-                    setOnQueueChangedListener {
-                        bottomSheetViewModel.currentQueue.value = it
-                    }
-                    setOnCurrentPositionChangedListener {
-                        bottomSheetViewModel.currentPosition.value = it
-                    }
-                    setOnPlaybackStateChangeListener { playbackState, playWhenReady ->
-                        bottomSheetViewModel.playing.value = when (playbackState) {
-                            Player.STATE_READY -> {
-                                playWhenReady
-                            }
-                            else -> false
-                        }
-                    }
-                    setOnPlaybackRatioChangedListener {
-                        bottomSheetViewModel.playbackRatio.value = it
-                    }
-                    setOnRepeatModeChangedListener {
-                        bottomSheetViewModel.repeatMode.value = it
-                    }
-                    setOnDestroyedListener { onDestroyPlayer() }
+                val dir = File(cacheDir, "lrc")
+                val file = File(dir, "sample.lrc")
 
-                    publishStatus()
+                if (file.exists()) file.delete()
+                if (dir.exists().not()) dir.mkdirs()
+
+                contentResolver.openInputStream(uri)?.use {
+                    file.writeBytes(it.readBytes())
+                }
+                val lyricLines = file.parseLrc()
+                if (lyricLines.isEmpty()) throw IllegalStateException("The lyric is empty.")
+                onLrcFileLoaded?.invoke(lyricLines)
+                file.delete()
+            } catch (t: Throwable) {
+                Timber.e(t)
+                lifecycleScope.launch {
+                    viewModel.emitSnackBarMessage(
+                        getString(R.string.message_attach_lyric_failure)
+                    )
+                    delay(2000)
+                    viewModel.emitSnackBarMessage(null)
                 }
             }
         }
 
-        override fun onServiceDisconnected(name: ComponentName?) {
-            if (name == ComponentName(applicationContext, PlayerService::class.java)) {
-                onDestroyPlayer()
-            }
-        }
-
-        override fun onBindingDied(name: ComponentName?) {
-            super.onBindingDied(name)
-            if (name == ComponentName(applicationContext, PlayerService::class.java)) {
-                onDestroyPlayer()
-            }
-        }
-
-        override fun onNullBinding(name: ComponentName?) {
-            super.onNullBinding(name)
-            if (name == ComponentName(applicationContext, PlayerService::class.java)) {
-                onDestroyPlayer()
-            }
-        }
-    }
-
-    private lateinit var currentAppTheme: AppTheme
-
+    @OptIn(ExperimentalMaterialApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        currentAppTheme = sharedPreferences.appTheme
-        setTheme(when (currentAppTheme) {
-            AppTheme.LIGHT -> R.style.AppTheme
-            AppTheme.DARK -> R.style.AppTheme_Dark
-        })
+        setContent {
+            val coroutineScope = rememberCoroutineScope()
+            val context = LocalContext.current
+            val isNightMode by context.getIsNightMode()
+                .collectAsState(initial = isSystemInDarkTheme())
+            val isLoading by viewModel.loading.collectAsState()
+            val navController = rememberNavController()
+            val scaffoldState = rememberBottomSheetScaffoldState()
+            var topBarTitle by remember { mutableStateOf("") }
+            val queue by viewModel.currentQueueFlow.collectAsState()
+            val sourcePaths by viewModel.currentSourcePathsFlow.collectAsState()
+            val currentIndex by viewModel.currentIndexFlow.collectAsState()
+            val currentPlaybackPosition by viewModel.currentPlaybackPositionFlow.collectAsState()
+            val currentPlaybackInfo by viewModel.currentPlaybackInfoFlow.collectAsState()
+            val currentRepeatMode by viewModel.currentRepeatModeFlow.collectAsState()
+            var forceScrollToCurrent by remember { mutableLongStateOf(System.currentTimeMillis()) }
+            var showDropboxDialog by remember { mutableStateOf(false) }
+            var showResetShuffleDialog by remember { mutableStateOf(false) }
+            var selectedTrack by remember { mutableStateOf<DomainTrack?>(null) }
+            var selectedAlbum by remember { mutableStateOf<Album?>(null) }
+            var selectedArtist by remember { mutableStateOf<Artist?>(null) }
+            var selectedGenre by remember { mutableStateOf<Genre?>(null) }
+            var selectedNav by remember { mutableStateOf<Nav?>(null) }
+            val workInfoList by viewModel.workInfoListFlow
+                .collectAsState(initial = emptyList())
+            var progressMessage by remember { mutableStateOf<String?>(null) }
+            var finishedWorkIdSet by remember { mutableStateOf(emptySet<UUID>()) }
+            val hasAlreadyShownDropboxSyncAlert by context.getHasAlreadyShownDropboxSyncAlert()
+                .collectAsState(initial = false)
+            var downloadTargets by remember { mutableStateOf(emptyList<String>()) }
+            var invalidateDownloadedTargets by remember { mutableStateOf(emptyList<Long>()) }
+            var attachLyricTargetTrackId by remember { mutableLongStateOf(-1) }
+            val snackBarMessage by viewModel.snackBarMessageFlow.collectAsState()
+            val equalizerParams by context.getEqualizerParams().collectAsState(initial = null)
+            val bottomSheetHeightAngle = remember { Animatable(0f) }
+            LaunchedEffect(sourcePaths) {
+                if (sourcePaths.isNotEmpty()) {
+                    bottomSheetHeightAngle.animateTo(
+                        bottomSheetHeightAngle.value + Math.PI.toFloat(),
+                        animationSpec = tween(400),
+                    )
+                }
+            }
+            var scrollToTop by remember { mutableLongStateOf(0L) }
+            var showLyric by remember { mutableStateOf(false) }
 
-        binding = DataBindingUtil.setContentView(this, R.layout.activity_main)
-        binding.coordinatorMain.viewModel = viewModel
-        binding.coordinatorMain.contentSearch.recyclerView.adapter = searchListAdapter
+            onLrcFileLoaded = {
+                if (attachLyricTargetTrackId > 0) {
+                    coroutineScope.launch {
+                        val db = DB.getInstance(context)
+                        val id = db.lyricDao().getLyricIdByTrackId(attachLyricTargetTrackId) ?: 0
+                        db.lyricDao()
+                            .upsertLyric(
+                                Lyric(id = id, trackId = attachLyricTargetTrackId, lines = it)
+                            )
+                        viewModel.emitSnackBarMessage(
+                            getString(R.string.message_attach_lyric_success)
+                        )
+                        delay(2000)
+                        viewModel.emitSnackBarMessage(null)
+                        attachLyricTargetTrackId = -1
+                    }
+                } else {
+                    coroutineScope.launch {
+                        viewModel.emitSnackBarMessage(
+                            getString(R.string.message_attach_lyric_failure)
+                        )
+                        delay(2000)
+                        viewModel.emitSnackBarMessage(null)
+                    }
+                }
+            }
 
-        observeEvents()
-        registerReceiver(syncingProgressReceiver, IntentFilter(ACTION_PROGRESS_SYNCING))
-        registerReceiver(equalizerStateReceiver,
-                IntentFilter(EqualizerFragment.ACTION_EQUALIZER_STATE))
+            LaunchedEffect(
+                workInfoList.map { it.progress },
+                workInfoList.map { it.state }) {
+                if (workInfoList.none { it.state == WorkInfo.State.RUNNING }) {
+                    viewModel.forceLoad.value = Unit
+                    progressMessage = null
+                    return@LaunchedEffect
+                }
 
-        setSupportActionBar(binding.coordinatorMain.toolbar)
-        setupDrawer()
+                workInfoList.forEach { workInfo ->
+                    workInfo.progress.also { progress ->
+                        progress.getInt(KEY_PROGRESS_PROGRESS_NUMERATOR, -1).let { numerator ->
+                            if (numerator < 0) return@let
+
+                            val title = progress.getString(KEY_PROGRESS_TITLE)
+                                ?: getString(R.string.progress_title_retrieve_media)
+
+                            val denominator = progress.getInt(KEY_PROGRESS_PROGRESS_DENOMINATOR, -1)
+                            val totalFilesCount =
+                                progress.getInt(KEY_PROGRESS_PROGRESS_TOTAL_FILES, -1)
+                            val path = progress.getString(KEY_PROGRESS_PROGRESS_PATH).orEmpty()
+                            val remaining = progress.getLong(KEY_PROGRESS_REMAINING, -1)
+                            val remainingFilesSize =
+                                progress.getLong(KEY_PROGRESS_REMAINING_FILES_SIZE, -1)
+
+                            val progressText =
+                                if (denominator < 0 || totalFilesCount < 0) ""
+                                else getString(
+                                    R.string.progress_sync,
+                                    numerator,
+                                    denominator,
+                                    totalFilesCount
+                                )
+                            val remainingText =
+                                if (remainingFilesSize < 0) ""
+                                else getString(
+                                    R.string.remaining,
+                                    if (remaining < 0) "" else remaining.getTimeString(),
+                                    remainingFilesSize.getNumberWithUnitPrefix { value, prefix ->
+                                        "$value $prefix"
+                                    }
+                                )
+
+                            if (progressText.isNotEmpty() || remainingText.isNotEmpty() || path.isNotEmpty()) {
+                                progressMessage =
+                                    "$title\n$progressText\n$remainingText\n$path"
+                                onCancelProgress = {
+                                    val workManager = WorkManager.getInstance(context)
+                                    workInfo.tags.forEach {
+                                        workManager.cancelAllWorkByTag(it)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (finishedWorkIdSet.contains(workInfo.id).not()
+                        && workInfo.outputData.getBoolean(KEY_PROGRESS_FINISHED, false)
+                    ) {
+                        finishedWorkIdSet += workInfo.id
+                        viewModel.forceLoad.value = Unit
+                        progressMessage = null
+                    }
+                }
+            }
+
+            SideEffect {
+                onAuthDropboxCompleted = { showDropboxDialog = true }
+            }
+
+            QTheme(darkTheme = isNightMode) {
+                BottomSheetScaffold(
+                    scaffoldState = scaffoldState,
+                    drawerContent = {
+                        Column(
+                            modifier = Modifier
+                                .background(color = QTheme.colors.colorBackground)
+                                .fillMaxSize()
+                        ) {
+                            BackHandler(scaffoldState.drawerState.isOpen) {
+                                coroutineScope.launch { scaffoldState.drawerState.close() }
+                            }
+
+                            DrawerHeader(
+                                openQzi = {
+                                    navController.navigate("qzi")
+                                    coroutineScope.launch { scaffoldState.drawerState.close() }
+                                }
+                            )
+                            DrawerSectionHeader(title = stringResource(id = R.string.nav_category_library))
+                            DrawerItem(
+                                iconResId = R.drawable.ic_artist,
+                                title = stringResource(id = R.string.nav_artist),
+                                isSelected = selectedNav == Nav.ARTIST,
+                                onClick = {
+                                    navController.navigate("artists")
+                                    selectedNav = Nav.ARTIST
+                                    coroutineScope.launch { scaffoldState.drawerState.close() }
+                                }
+                            )
+                            DrawerItem(
+                                iconResId = R.drawable.ic_album,
+                                title = stringResource(id = R.string.nav_album),
+                                isSelected = selectedNav == Nav.ALBUM,
+                                onClick = {
+                                    navController.navigate("albums")
+                                    selectedNav = Nav.ALBUM
+                                    coroutineScope.launch { scaffoldState.drawerState.close() }
+                                }
+                            )
+                            DrawerItem(
+                                iconResId = R.drawable.ic_track,
+                                title = stringResource(id = R.string.nav_track),
+                                isSelected = selectedNav == Nav.TRACK,
+                                onClick = {
+                                    navController.navigate("tracks")
+                                    selectedNav = Nav.TRACK
+                                    coroutineScope.launch { scaffoldState.drawerState.close() }
+                                }
+                            )
+                            DrawerItem(
+                                iconResId = R.drawable.ic_genre,
+                                title = stringResource(id = R.string.nav_genre),
+                                isSelected = selectedNav == Nav.GENRE,
+                                onClick = {
+                                    navController.navigate("genres")
+                                    selectedNav = Nav.GENRE
+                                    coroutineScope.launch { scaffoldState.drawerState.close() }
+                                }
+                            )
+                            Divider(color = QTheme.colors.colorPrimaryDark)
+                            DrawerSectionHeader(title = stringResource(id = R.string.nav_category_others))
+                            DrawerItem(
+                                iconResId = R.drawable.ic_dropbox,
+                                title = stringResource(id = R.string.nav_dropbox_sync),
+                                isSelected = selectedNav == Nav.DROPBOX_SYNC,
+                                onClick = {
+                                    showDropboxDialog = true
+                                    coroutineScope.launch { scaffoldState.drawerState.close() }
+                                }
+                            )
+                            DrawerItem(
+                                iconResId = R.drawable.ic_sync,
+                                title = stringResource(id = R.string.nav_sync),
+                                isSelected = selectedNav == Nav.SYNC,
+                                onClick = {
+                                    retrieveMedia(false)
+                                    coroutineScope.launch { scaffoldState.drawerState.close() }
+                                }
+                            )
+                            DrawerItem(
+                                iconResId = R.drawable.ic_motive,
+                                title = stringResource(id = R.string.nav_pay),
+                                isSelected = selectedNav == Nav.PAY,
+                                onClick = {
+                                    navController.navigate("pay")
+                                    selectedNav = Nav.PAY
+                                    coroutineScope.launch { scaffoldState.drawerState.close() }
+                                }
+                            )
+                            if (equalizerParams != null) {
+                                DrawerItem(
+                                    iconResId = R.drawable.ic_spectrum,
+                                    title = stringResource(id = R.string.nav_equalizer),
+                                    isSelected = selectedNav == Nav.EQUALIZER,
+                                    onClick = {
+                                        navController.navigate("equalizer")
+                                        selectedNav = Nav.EQUALIZER
+                                        coroutineScope.launch { scaffoldState.drawerState.close() }
+                                    }
+                                )
+                            }
+                        }
+                    },
+                    drawerElevation = 8.dp,
+                    topBar = {
+                        QTopBar(
+                            title = topBarTitle,
+                            scaffoldState = scaffoldState,
+                            onTapBar = { scrollToTop = System.currentTimeMillis() },
+                            onToggleTheme = {
+                                coroutineScope.launch {
+                                    context.setIsNightMode(isNightMode.not())
+                                }
+                            },
+                            onSearchItemClicked = { item ->
+                                when (item.type) {
+                                    SearchItem.SearchItemType.TRACK -> {
+                                        selectedTrack = item.data as DomainTrack
+                                    }
+
+                                    SearchItem.SearchItemType.ALBUM -> {
+                                        navController.navigate("tracks?albumId=${(item.data as Album).id}")
+                                    }
+
+                                    SearchItem.SearchItemType.ARTIST -> {
+                                        navController.navigate("albums?artistId=${(item.data as Artist).id}")
+                                    }
+
+                                    SearchItem.SearchItemType.GENRE -> {
+                                        navController.navigate("tracks?genreName=${(item.data as Genre).name}")
+                                    }
+
+                                    else -> Unit
+                                }
+                            },
+                            onSearchItemLongClicked = { item ->
+                                when (item.type) {
+                                    SearchItem.SearchItemType.TRACK -> {
+                                        selectedTrack = item.data as DomainTrack
+                                    }
+
+                                    SearchItem.SearchItemType.ALBUM -> {
+                                        selectedAlbum = item.data as Album
+                                    }
+
+                                    SearchItem.SearchItemType.ARTIST -> {
+                                        selectedArtist = item.data as Artist
+                                    }
+
+                                    SearchItem.SearchItemType.GENRE -> {
+                                        selectedGenre = item.data as Genre
+                                    }
+
+                                    else -> Unit
+                                }
+                            }
+                        )
+                    },
+                    backgroundColor = QTheme.colors.colorBackground,
+                    sheetBackgroundColor = QTheme.colors.colorBackgroundBottomSheet,
+                    sheetPeekHeight = (144 + abs(sin(bottomSheetHeightAngle.value)) * 20).dp,
+                    sheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
+                    sheetElevation = 8.dp,
+                    sheetContent = {
+                        BackHandler(scaffoldState.bottomSheetState.isExpanded && scaffoldState.drawerState.isClosed) {
+                            coroutineScope.launch { scaffoldState.bottomSheetState.collapse() }
+                        }
+                        Controller(
+                            currentTrack = queue.getOrNull(currentIndex),
+                            progress = currentPlaybackPosition,
+                            queueTotalDuration = queue.sumOf { it.duration },
+                            queueRemainingDuration = queue.drop(currentIndex + 1)
+                                .sumOf { it.duration }
+                                    + (queue.getOrNull(currentIndex)?.duration ?: 0)
+                                    - currentPlaybackPosition,
+                            playbackInfo = currentPlaybackInfo,
+                            repeatMode = currentRepeatMode,
+                            isLoading = isLoading.first,
+                            showLyric = showLyric,
+                            onTogglePlayPause = {
+                                viewModel.onPlayOrPause(
+                                    currentPlaybackInfo.first && currentPlaybackInfo.second == Player.STATE_READY
+                                )
+                            },
+                            onPrev = viewModel::onPrev,
+                            onNext = viewModel::onNext,
+                            onRewind = viewModel::onRewind,
+                            onFastForward = viewModel::onFF,
+                            resetPlaybackButton = {
+                                viewModel.onNewPlaybackButton(PlaybackButton.UNDEFINED)
+                            },
+                            onNewProgress = viewModel::onNewSeekBarProgress,
+                            rotateRepeatMode = viewModel::onClickRepeatButton,
+                            shuffleQueue = viewModel::onShuffle,
+                            resetShuffleQueue = { showResetShuffleDialog = true },
+                            moveToCurrentIndex = {
+                                forceScrollToCurrent = System.currentTimeMillis()
+                            },
+                            clearQueue = viewModel::onClickClearQueueButton,
+                            onTrackSelected = {
+                                selectedTrack = it
+                            },
+                            cancelLoad = {
+                                isLoading.second?.invoke()
+                            },
+                            onToggleShowLyrics = { showLyric = showLyric.not() }
+                        )
+                        Queue(
+                            domainTracks = queue,
+                            forceScrollToCurrent = forceScrollToCurrent,
+                            showLyric = showLyric,
+                            currentPlaybackPosition = currentPlaybackPosition,
+                            onQueueMove = viewModel::onQueueMove,
+                            onChangeRequestedTrackInQueue = viewModel::onChangeRequestedTrackInQueue,
+                            onRemoveTrackFromQueue = viewModel::onRemoveTrackFromQueue
+                        )
+                    }
+                ) { paddingValues ->
+                    Box(
+                        modifier = Modifier
+                            .padding(paddingValues)
+                            .fillMaxSize()
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            NavHost(
+                                navController = navController,
+                                startDestination = "artists",
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxSize()
+                            ) {
+                                composable("artists") {
+                                    selectedNav = Nav.ARTIST
+                                    topBarTitle = stringResource(id = R.string.nav_artist)
+                                    Artists(
+                                        navController = navController, onSelectArtist = {
+                                            selectedArtist = it
+                                        },
+                                        onDownload = {
+                                            downloadTargets = it
+                                        },
+                                        onInvalidateDownloaded = {
+                                            coroutineScope.launch {
+                                                invalidateDownloadedTargets =
+                                                    DB.getInstance(context)
+                                                        .artistDao()
+                                                        .getContainTrackIds(it)
+                                            }
+                                        },
+                                        scrollToTop = scrollToTop
+                                    )
+                                }
+                                composable(
+                                    "albums?artistId={artistId}",
+                                    arguments = listOf(
+                                        navArgument("artistId") {
+                                            type = NavType.LongType
+                                            defaultValue = -1
+                                        }
+                                    )
+                                ) { backStackEntry ->
+                                    selectedNav = Nav.ALBUM
+                                    Albums(
+                                        navController = navController,
+                                        artistId = backStackEntry.arguments?.getLong("artistId")
+                                            ?: -1,
+                                        changeTopBarTitle = {
+                                            topBarTitle = it
+                                        },
+                                        onSelectAlbum = {
+                                            selectedAlbum = it.album
+                                        },
+                                        onDownload = {
+                                            downloadTargets = it
+                                        },
+                                        onInvalidateDownloaded = {
+                                            coroutineScope.launch {
+                                                invalidateDownloadedTargets =
+                                                    DB.getInstance(context)
+                                                        .albumDao()
+                                                        .getContainTrackIds(it)
+                                            }
+                                        },
+                                        scrollToTop = scrollToTop
+                                    )
+                                }
+                                composable(
+                                    "tracks?albumId={albumId}&genreName={genreName}",
+                                    arguments = listOf(
+                                        navArgument("albumId") {
+                                            type = NavType.LongType
+                                            defaultValue = -1
+                                        },
+                                        navArgument("genreName") {
+                                            type = NavType.StringType
+                                            nullable = true
+                                        }
+                                    )
+                                ) { backStackEntry ->
+                                    selectedNav = Nav.TRACK
+                                    val albumId = backStackEntry.arguments?.getLong("albumId") ?: -1
+                                    val genreName = backStackEntry.arguments?.getString("genreName")
+                                    Tracks(
+                                        albumId = albumId,
+                                        genreName = genreName,
+                                        changeTopBarTitle = {
+                                            topBarTitle = it
+                                        },
+                                        onTrackSelected = {
+                                            selectedTrack = it
+                                        },
+                                        onDownload = {
+                                            downloadTargets = listOfNotNull(it.dropboxPath)
+                                        },
+                                        onInvalidateDownloaded = {
+                                            invalidateDownloadedTargets = listOf(it.id)
+                                        },
+                                        scrollToTop = scrollToTop
+                                    )
+                                }
+                                composable("genres") {
+                                    selectedNav = Nav.GENRE
+                                    topBarTitle = stringResource(id = R.string.nav_genre)
+                                    Genres(
+                                        navController = navController,
+                                        onSelectGenre = {
+                                            selectedGenre = it
+                                        },
+                                        scrollToTop = scrollToTop
+                                    )
+                                }
+                                composable("qzi") {
+                                    selectedNav = null
+                                    topBarTitle = stringResource(id = R.string.nav_fortune)
+                                    Qzi(
+                                        onClick = {
+                                            selectedTrack = it.toDomainTrack()
+                                        }
+                                    )
+                                }
+                                composable("pay") {
+                                    selectedNav = Nav.PAY
+                                    topBarTitle = stringResource(id = R.string.nav_pay)
+                                    Pay(onStartBilling = { viewModel.startBilling(this@MainActivity) })
+                                }
+                                composable("equalizer") {
+                                    selectedNav = Nav.EQUALIZER
+                                    topBarTitle = stringResource(id = R.string.nav_equalizer)
+                                    Equalizer()
+                                }
+                            }
+                            selectedTrack?.let { domainTrack ->
+                                Dialog(onDismissRequest = { selectedTrack = null }) {
+                                    Card(backgroundColor = QTheme.colors.colorBackground) {
+                                        Column {
+                                            DialogListItem(
+                                                onClick = {
+                                                    viewModel.onNewQueue(
+                                                        listOf(domainTrack),
+                                                        actionType = InsertActionType.NEXT,
+                                                        classType = OrientedClassType.TRACK
+                                                    )
+                                                    selectedTrack = null
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_next),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    viewModel.onNewQueue(
+                                                        listOf(domainTrack),
+                                                        actionType = InsertActionType.LAST,
+                                                        classType = OrientedClassType.TRACK
+                                                    )
+                                                    selectedTrack = null
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_last),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    viewModel.onNewQueue(
+                                                        listOf(domainTrack),
+                                                        actionType = InsertActionType.OVERRIDE,
+                                                        classType = OrientedClassType.TRACK
+                                                    )
+                                                    selectedTrack = null
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_override),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    navController.navigate("albums?artistId=${domainTrack.artist.id}")
+                                                    selectedTrack = null
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_transition_to_artist),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    navController.navigate("tracks?albumId=${domainTrack.album.id}")
+                                                    selectedTrack = null
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_transition_to_album),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    attachLyricTargetTrackId = domainTrack.id
+                                                    getContent.launch("*/*")
+                                                    selectedTrack = null
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_attach_lyric),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        DB.getInstance(context)
+                                                            .lyricDao()
+                                                            .deleteLyricByTrackId(domainTrack.id)
+                                                        viewModel.emitSnackBarMessage(
+                                                            getString(R.string.message_delete_lyric_complete)
+                                                        )
+                                                        delay(2000)
+                                                        viewModel.emitSnackBarMessage(null)
+                                                    }
+                                                    selectedTrack = null
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_detach_lyric),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    viewModel.deleteTrack(domainTrack)
+                                                    selectedTrack = null
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_delete_from_device),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            selectedAlbum?.let { album ->
+                                Dialog(onDismissRequest = { selectedAlbum = null }) {
+                                    Card(backgroundColor = QTheme.colors.colorBackground) {
+                                        Column {
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByAlbum(album.id)
+                                                                .map { it.toDomainTrack() }
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.NEXT,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        selectedAlbum = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_next),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByAlbum(album.id)
+                                                                .map { it.toDomainTrack() }
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.LAST,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        selectedAlbum = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_last),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByAlbum(album.id)
+                                                                .map { it.toDomainTrack() }
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.OVERRIDE,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        selectedAlbum = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_override_all),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByAlbum(album.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_SIMPLE_NEXT,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        selectedAlbum = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_simple_shuffle_next),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByAlbum(album.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_SIMPLE_LAST,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        selectedAlbum = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_simple_shuffle_last),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByAlbum(album.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        selectedAlbum = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_override_all_simple_shuffle),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        DB.getInstance(context).trackDao()
+                                                            .getAllByAlbum(album.id)
+                                                            .forEach {
+                                                                viewModel.deleteTrack(it.toDomainTrack())
+                                                                selectedAlbum = null
+                                                            }
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_delete_from_device),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            selectedArtist?.let { artist ->
+                                Dialog(onDismissRequest = { selectedArtist = null }) {
+                                    Card(backgroundColor = QTheme.colors.colorBackground) {
+                                        Column {
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.NEXT,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        selectedArtist = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_next),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.LAST,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        selectedArtist = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_last),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.OVERRIDE,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        selectedArtist = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_override_all),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_NEXT,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        selectedArtist = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_albums_insert_all_shuffle_next),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_LAST,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        selectedArtist = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_albums_insert_all_shuffle_last),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_OVERRIDE,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        selectedArtist = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_albums_override_all_shuffle),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_SIMPLE_NEXT,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        selectedArtist = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_simple_shuffle_next),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_SIMPLE_LAST,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        selectedArtist = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_simple_shuffle_last),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByArtist(artist.id)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
+                                                            classType = OrientedClassType.ARTIST
+                                                        )
+                                                        selectedArtist = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_override_all_simple_shuffle),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        DB.getInstance(context).trackDao()
+                                                            .getAllByArtist(artist.id)
+                                                            .forEach {
+                                                                viewModel.deleteTrack(it.toDomainTrack())
+                                                                selectedArtist = null
+                                                            }
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_delete_from_device),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            selectedGenre?.let { genre ->
+                                Dialog(onDismissRequest = { selectedGenre = null }) {
+                                    Card(backgroundColor = QTheme.colors.colorBackground) {
+                                        Column {
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByGenreName(genre.name)
+                                                                .map { it.toDomainTrack() }
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.NEXT,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        selectedGenre = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_next),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByGenreName(genre.name)
+                                                                .map { it.toDomainTrack() }
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.LAST,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        selectedGenre = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_last),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByGenreName(genre.name)
+                                                                .map { it.toDomainTrack() }
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.OVERRIDE,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        selectedGenre = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_override_all),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByGenreName(genre.name)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_SIMPLE_NEXT,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        selectedGenre = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_simple_shuffle_next),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByGenreName(genre.name)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_SIMPLE_LAST,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        selectedGenre = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_insert_all_simple_shuffle_last),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        val tracks =
+                                                            DB.getInstance(context).trackDao()
+                                                                .getAllByGenreName(genre.name)
+                                                                .map { it.toDomainTrack() }
+                                                                .shuffled()
+                                                        viewModel.onNewQueue(
+                                                            tracks,
+                                                            actionType = InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
+                                                            classType = OrientedClassType.ALBUM
+                                                        )
+                                                        selectedGenre = null
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_override_all_simple_shuffle),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    coroutineScope.launch {
+                                                        DB.getInstance(context).trackDao()
+                                                            .getAllByGenreName(genre.name)
+                                                            .forEach {
+                                                                viewModel.deleteTrack(it.toDomainTrack())
+                                                                selectedGenre = null
+                                                            }
+                                                    }
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.menu_delete_from_device),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (showDropboxDialog) {
+                                val credential = runBlocking {
+                                    context.getDropboxCredential().firstOrNull()
+                                }
+                                if (hasAlreadyShownDropboxSyncAlert) {
+                                    if (credential.isNullOrBlank()) {
+                                        viewModel.isDropboxAuthOngoing = true
+                                        Auth.startOAuth2PKCE(
+                                            context,
+                                            BuildConfig.DROPBOX_APP_KEY,
+                                            dbxRequestConfig,
+                                            DbxHost.DEFAULT
+                                        )
+                                        showDropboxDialog = false
+                                    } else {
+                                        viewModel.showDropboxFolderChooser()
+
+                                        val currentDropboxItemList by viewModel.dropboxItemList.collectAsState(
+                                            initial = "" to emptyList()
+                                        )
+                                        var selectedHistory by remember { mutableStateOf(emptyList<FolderMetadata>()) }
+                                        Dialog(onDismissRequest = { showDropboxDialog = false }) {
+                                            var needDownloaded by remember { mutableStateOf(false) }
+                                            Card(
+                                                backgroundColor = QTheme.colors.colorBackground,
+                                                modifier = Modifier.heightIn(max = 800.dp)
+                                            ) {
+                                                Column(
+                                                    modifier = Modifier.padding(
+                                                        horizontal = 12.dp,
+                                                        vertical = 8.dp
+                                                    )
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(id = R.string.dialog_title_dropbox_choose_folder),
+                                                        fontSize = 28.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = QTheme.colors.colorAccent
+                                                    )
+                                                    Spacer(modifier = Modifier.height(8.dp))
+                                                    Text(
+                                                        text = stringResource(id = R.string.dialog_desc_dropbox_choose_folder),
+                                                        fontSize = 18.sp,
+                                                        color = QTheme.colors.colorTextPrimary,
+                                                    )
+                                                    Spacer(modifier = Modifier.height(4.dp))
+                                                    Row(
+                                                        horizontalArrangement = Arrangement.End,
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Text(
+                                                            text = stringResource(id = R.string.dialog_switch_need_downloaded),
+                                                            fontSize = 18.sp,
+                                                            color = QTheme.colors.colorTextPrimary,
+                                                        )
+                                                        Switch(
+                                                            checked = needDownloaded,
+                                                            onCheckedChange = {
+                                                                needDownloaded =
+                                                                    needDownloaded.not()
+                                                            })
+                                                    }
+                                                    Text(
+                                                        text = currentDropboxItemList.first,
+                                                        fontSize = 22.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = QTheme.colors.colorAccent
+                                                    )
+                                                    LazyColumn(
+                                                        modifier = Modifier
+                                                            .weight(1f)
+                                                            .fillMaxHeight()
+                                                    ) {
+                                                        items(currentDropboxItemList.second) {
+                                                            Text(
+                                                                text = it.name,
+                                                                fontSize = 20.sp,
+                                                                color = QTheme.colors.colorTextPrimary,
+                                                                modifier = Modifier
+                                                                    .clickable {
+                                                                        selectedHistory += it
+                                                                        viewModel.showDropboxFolderChooser(
+                                                                            it
+                                                                        )
+                                                                    }
+                                                                    .padding(
+                                                                        horizontal = 8.dp,
+                                                                        vertical = 12.dp
+                                                                    )
+                                                                    .fillMaxWidth()
+                                                            )
+                                                        }
+                                                    }
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth()
+                                                    ) {
+                                                        val prev = {
+                                                            selectedHistory =
+                                                                selectedHistory.dropLast(1)
+                                                            viewModel.showDropboxFolderChooser(
+                                                                selectedHistory.lastOrNull()
+                                                            )
+                                                        }
+                                                        BackHandler(selectedHistory.isNotEmpty()) {
+                                                            prev()
+                                                        }
+                                                        if (selectedHistory.isNotEmpty()) {
+                                                            TextButton(onClick = { prev() }) {
+                                                                Text(
+                                                                    text = stringResource(R.string.dialog_prev),
+                                                                    fontSize = 16.sp,
+                                                                    color = QTheme.colors.colorTextPrimary
+                                                                )
+                                                            }
+                                                        }
+                                                        Spacer(
+                                                            modifier = Modifier
+                                                                .weight(1f)
+                                                                .fillMaxWidth()
+                                                        )
+                                                        TextButton(
+                                                            onClick = {
+                                                                viewModel.clearDropboxItemList()
+                                                                showDropboxDialog = false
+                                                            }
+                                                        ) {
+                                                            Text(
+                                                                text = stringResource(R.string.dialog_ng),
+                                                                fontSize = 16.sp,
+                                                                color = QTheme.colors.colorTextPrimary
+                                                            )
+                                                        }
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        TextButton(
+                                                            onClick = {
+                                                                retrieveDropboxMedia(
+                                                                    selectedHistory.lastOrNull()?.pathLower
+                                                                        ?: DROPBOX_PATH_ROOT,
+                                                                    needDownloaded
+                                                                )
+                                                                showDropboxDialog = false
+                                                            }
+                                                        ) {
+                                                            Text(
+                                                                text = stringResource(R.string.dialog_ok),
+                                                                fontSize = 16.sp,
+                                                                color = QTheme.colors.colorAccent
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    Dialog(onDismissRequest = { showDropboxDialog = false }) {
+                                        Card(backgroundColor = QTheme.colors.colorBackground) {
+                                            Column(
+                                                modifier = Modifier.padding(
+                                                    horizontal = 12.dp,
+                                                    vertical = 8.dp
+                                                )
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.dialog_title_dropbox_sync_caution),
+                                                    fontSize = 28.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = QTheme.colors.colorAccent
+                                                )
+                                                Spacer(modifier = Modifier.height(8.dp))
+                                                Text(
+                                                    text = stringResource(id = R.string.dialog_desc_dropbox_sync_caution),
+                                                    fontSize = 18.sp,
+                                                    color = QTheme.colors.colorTextPrimary,
+                                                )
+                                                Row(
+                                                    modifier = Modifier.fillMaxWidth(),
+                                                    horizontalArrangement = Arrangement.End
+                                                ) {
+                                                    TextButton(
+                                                        onClick = {
+                                                            showDropboxDialog = false
+                                                        }
+                                                    ) {
+                                                        Text(
+                                                            text = stringResource(R.string.dialog_ng),
+                                                            fontSize = 16.sp,
+                                                            color = QTheme.colors.colorTextPrimary
+                                                        )
+                                                    }
+                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                    TextButton(
+                                                        onClick = {
+                                                            coroutineScope.launch {
+                                                                context.setHasAlreadyShownDropboxSyncAlert(
+                                                                    true
+                                                                )
+                                                            }
+                                                        }
+                                                    ) {
+                                                        Text(
+                                                            text = stringResource(R.string.dialog_ok),
+                                                            fontSize = 16.sp,
+                                                            color = QTheme.colors.colorAccent
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (showResetShuffleDialog) {
+                                Dialog(onDismissRequest = { showResetShuffleDialog = false }) {
+                                    Card(backgroundColor = QTheme.colors.colorBackground) {
+                                        Column {
+                                            DialogListItem(
+                                                onClick = {
+                                                    viewModel.onResetShuffle()
+                                                    showResetShuffleDialog = false
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.dialog_choice_reset_shuffle),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    viewModel.onShuffle(ShuffleActionType.SHUFFLE_ALBUM_ORIENTED)
+                                                    showResetShuffleDialog = false
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.dialog_choice_album_oriented_shuffle),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                            DialogListItem(
+                                                onClick = {
+                                                    viewModel.onShuffle(ShuffleActionType.SHUFFLE_ARTIST_ORIENTED)
+                                                    showResetShuffleDialog = false
+                                                }
+                                            ) {
+                                                Text(
+                                                    text = stringResource(id = R.string.dialog_choice_artist_oriented_shuffle),
+                                                    fontSize = 14.sp,
+                                                    color = QTheme.colors.colorTextPrimary
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (downloadTargets.isNotEmpty()) {
+                                Dialog(onDismissRequest = { downloadTargets = emptyList() }) {
+                                    Card(backgroundColor = QTheme.colors.colorBackground) {
+                                        Column(
+                                            modifier = Modifier.padding(
+                                                horizontal = 12.dp,
+                                                vertical = 8.dp
+                                            )
+                                        ) {
+                                            Text(
+                                                text = stringResource(id = R.string.dialog_title_dropbox_download),
+                                                fontSize = 28.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = QTheme.colors.colorAccent
+                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text(
+                                                text = stringResource(id = R.string.dialog_desc_dropbox_download),
+                                                fontSize = 18.sp,
+                                                color = QTheme.colors.colorTextPrimary,
+                                            )
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.End
+                                            ) {
+                                                TextButton(
+                                                    onClick = {
+                                                        downloadTargets = emptyList()
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(R.string.dialog_ng),
+                                                        fontSize = 16.sp,
+                                                        color = QTheme.colors.colorTextPrimary
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                TextButton(
+                                                    onClick = {
+                                                        enqueueDropboxDownloadWorker(downloadTargets)
+                                                        downloadTargets = emptyList()
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(R.string.dialog_ok),
+                                                        fontSize = 16.sp,
+                                                        color = QTheme.colors.colorAccent
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            if (invalidateDownloadedTargets.isNotEmpty()) {
+                                Dialog(onDismissRequest = {
+                                    invalidateDownloadedTargets = emptyList()
+                                }) {
+                                    Card(backgroundColor = QTheme.colors.colorBackground) {
+                                        Column(
+                                            modifier = Modifier.padding(
+                                                horizontal = 12.dp,
+                                                vertical = 8.dp
+                                            )
+                                        ) {
+                                            Text(
+                                                text = stringResource(id = R.string.dialog_title_dropbox_invalidate_downloaded),
+                                                fontSize = 28.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = QTheme.colors.colorAccent
+                                            )
+                                            Spacer(modifier = Modifier.height(8.dp))
+                                            Text(
+                                                text = stringResource(id = R.string.dialog_desc_dropbox_invalidate_downloaded),
+                                                fontSize = 18.sp,
+                                                color = QTheme.colors.colorTextPrimary,
+                                            )
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                horizontalArrangement = Arrangement.End
+                                            ) {
+                                                TextButton(
+                                                    onClick = {
+                                                        invalidateDownloadedTargets = emptyList()
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(R.string.dialog_ng),
+                                                        fontSize = 16.sp,
+                                                        color = QTheme.colors.colorTextPrimary
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.width(8.dp))
+                                                TextButton(
+                                                    onClick = {
+                                                        viewModel.invalidateDownloaded(
+                                                            invalidateDownloadedTargets
+                                                        )
+                                                        invalidateDownloadedTargets = emptyList()
+                                                    }
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(R.string.dialog_ok),
+                                                        fontSize = 16.sp,
+                                                        color = QTheme.colors.colorAccent
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            AnimatedVisibility(
+                                visible = progressMessage != null || snackBarMessage != null
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .background(color = QTheme.colors.colorBackgroundProgress)
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    verticalAlignment = Alignment.Bottom
+                                ) {
+                                    Text(
+                                        text = (progressMessage ?: snackBarMessage).orEmpty(),
+                                        fontSize = 16.sp,
+                                        color = QTheme.colors.colorTextPrimary,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .fillMaxWidth()
+                                    )
+                                    onCancelProgress?.let {
+                                        TextButton(onClick = it) {
+                                            Text(
+                                                text = stringResource(R.string.button_cancel),
+                                                fontSize = 16.sp,
+                                                color = QTheme.colors.colorAccent
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         if (savedInstanceState == null) {
-            retrieveMediaIfEmpty()
-            WorkManager.getInstance().observeMediaChange()
-
-            val navId = when (PreferenceManager.getDefaultSharedPreferences(this).preferScreen) {
-                Screen.ARTIST -> R.id.nav_artist
-                Screen.ALBUM -> R.id.nav_album
-                Screen.SONG -> R.id.nav_song
-                Screen.GENRE -> R.id.nav_genre
-                Screen.PLAYLIST -> R.id.nav_playlist
-            }
-            onNavigationItemSelected(binding.navigationView.menu.findItem(navId))
-        } else if (savedInstanceState.containsKey(STATE_KEY_REQUESTED_TRANSACTION)) {
-            requestedTransaction =
-                    savedInstanceState.getParcelable(STATE_KEY_REQUESTED_TRANSACTION)
-                            as RequestedTransaction
+            viewModel.checkDBIsEmpty { retrieveMedia(false) }
+            retrieveMedia(true)
         }
     }
 
     override fun onResume() {
         super.onResume()
 
-        paused = false
-
-        if (player == null) {
-            bottomSheetViewModel.currentQueue.value = emptyList()
-            bindPlayer()
-        }
-
-        tryTransaction()
-    }
-
-    override fun onStart() {
-        super.onStart()
-        parentJob = Job()
-        startService(PlayerService.createIntent(this))
-    }
-
-    override fun onSaveInstanceState(outState: Bundle) {
-        super.onSaveInstanceState(outState)
-
-        requestedTransaction?.apply {
-            outState.putParcelable(STATE_KEY_REQUESTED_TRANSACTION, this)
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        paused = true
-    }
-
-    override fun onStop() {
-        super.onStop()
-        parentJob.cancel()
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        player?.onRequestedStopService()
-        unbindPlayer()
-        unregisterReceiver(syncingProgressReceiver)
-        unregisterReceiver(equalizerStateReceiver)
-    }
-
-    override fun onBackPressed() {
-        when {
-            binding.drawerLayout.isDrawerOpen(binding.navigationView) ->
-                binding.drawerLayout.closeDrawer(binding.navigationView)
-            bottomSheetViewModel.sheetState == BottomSheetBehavior.STATE_EXPANDED ->
-                bottomSheetViewModel.toggleSheetState.call()
-            else -> super.onBackPressed()
-        }
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-
-        onRequestPermissionsResult(requestCode, grantResults)
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-
-        when (requestCode) {
-            RequestCode.RESULT_SETTING.code -> {
-                if (player?.getDuking() != sharedPreferences.ducking)
-                    rebootPlayer()
-                if (currentAppTheme != sharedPreferences.appTheme) {
-                    finish()
-                    startActivity(MainActivity.createIntent(this))
-                }
-            }
-        }
-    }
-
-    private fun onReceiveEnabled(enabled: Boolean) {
-        equalizerViewModel.equalizerState.value = enabled
-    }
-
-    private fun bindPlayer() {
-        if (isBoundService.not()) {
-            bindService(PlayerService.createIntent(this),
-                    serviceConnection, Context.BIND_AUTO_CREATE)
-            isBoundService = true
-        }
-    }
-
-    private fun unbindPlayer() {
-        if (isBoundService) {
-            unbindService(serviceConnection)
-            isBoundService = false
-        }
-    }
-
-    private fun onDestroyPlayer() {
-        player = null
-    }
-
-    private fun rebootPlayer() {
-        player?.storeState()
-        player?.pause()
-        unbindPlayer()
-        player?.onRequestedStopService()
-        startService(PlayerService.createIntent(this))
-        bindPlayer()
-    }
-
-    @NeedsPermission(Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE)
-    internal fun retrieveMedia() {
-        WorkManager.getInstance().invokeRetrieveMediaWorker()
-    }
-
-    private fun retrieveMediaIfEmpty() {
-        bgScope.launch {
-            if (DB.getInstance(this@MainActivity).trackDao().count() == 0)
-                uiScope.launch { retrieveMediaWithPermissionCheck() }
-        }
-    }
-
-    private fun WorkManager.invokeRetrieveMediaWorker() {
-        beginUniqueWork(MediaRetrieveWorker.WORK_NAME, ExistingWorkPolicy.KEEP,
-                OneTimeWorkRequestBuilder<MediaRetrieveWorker>().build()).enqueue()
-        viewModel.syncing.value = true
-    }
-
-    private fun WorkManager.observeMediaChange() {
-        enqueue(OneTimeWorkRequestBuilder<MediaObserveWorker>().setConstraints(Constraints().apply {
-            requiredNetworkType = NetworkType.NOT_REQUIRED
-            contentUriTriggers = ContentUriTriggers().apply {
-                add(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, true)
-            }
-        }).build())
-    }
-
-    private fun WorkManager.monitorSyncState() {
-        getStatusesForUniqueWork(MediaRetrieveWorker.WORK_NAME)
-                .observe(this@MainActivity) {
-                    viewModel.syncing.value =
-                            it?.firstOrNull { it.state == State.RUNNING } != null
-                    if (it?.any { status -> status.state == State.SUCCEEDED } == true) {
-                        Timber.d("qgeck sync succeeded")
-                        val fragment = supportFragmentManager.fragments.lastOrNull { it.isVisible }
-                        when (fragment) {
-                            is ArtistListFragment -> artistListViewModel.forceLoad.call()
-                            is AlbumListFragment -> albumListViewModel.forceLoad.call()
-                            is SongListFragment -> songListViewModel.forceLoad.call()
-                            is GenreListFragment -> genreListViewModel.forceLoad.call()
-                            is PlaylistListFragment -> playlistListViewModel.forceLoad.call()
-                        }
-                    }
-                }
-    }
-
-    private fun WorkManager.cancelSync() {
-        cancelUniqueWork(MediaRetrieveWorker.WORK_NAME)
-    }
-
-    @OnPermissionDenied(Manifest.permission.READ_EXTERNAL_STORAGE,
-            Manifest.permission.WRITE_EXTERNAL_STORAGE)
-    internal fun onReadExternalStorageDenied() {
-        retrieveMediaWithPermissionCheck()
-    }
-
-    private fun observeEvents() {
-        WorkManager.getInstance().monitorSyncState()
-
-        viewModel.resumedFragmentId.observe(this) { navId ->
-            if (navId == null) return@observe
-            binding.navigationView.setCheckedItem(navId)
-            val title = supportFragmentManager.fragments.firstOrNull {
-                when (navId) {
-                    R.id.nav_artist -> it is ArtistListFragment
-                    R.id.nav_album -> it is AlbumListFragment
-                    R.id.nav_song -> it is SongListFragment
-                    R.id.nav_genre -> it is GenreListFragment
-                    R.id.nav_playlist -> it is PlaylistListFragment
-                    else -> false
-                }
-            }?.tag ?: getString(when (navId) {
-                R.id.nav_artist -> R.string.nav_artist
-                R.id.nav_album -> R.string.nav_album
-                R.id.nav_song -> R.string.nav_song
-                R.id.nav_genre -> R.string.nav_genre
-                R.id.nav_playlist -> R.string.nav_playlist
-                R.id.nav_equalizer -> R.string.nav_equalizer
-                R.id.nav_pay -> R.string.nav_pay
-                R.layout.fragment_easter_egg -> R.string.nav_fortune
-                else -> return@observe
-            })
-            supportActionBar?.title = title
-        }
-
-        viewModel.syncing.observe(this) {
-            if (it == null) return@observe
-            setLockingIndicator(it, viewModel.loading.value == true)
-        }
-
-        viewModel.loading.observe(this) {
-            if (it == null) return@observe
-            setLockingIndicator(viewModel.syncing.value == true, it)
-        }
-
-        viewModel.requireScrollTop.observe(this) {
-            artistListViewModel.requireScrollTop.call()
-            albumListViewModel.requireScrollTop.call()
-            songListViewModel.requireScrollTop.call()
-            genreListViewModel.requireScrollTop.call()
-            playlistListViewModel.requireScrollTop.call()
-        }
-
-        viewModel.selectedArtist.observe(this) {
-            if (it == null) return@observe
-            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.ARTIST, artist = it)
-            tryTransaction()
-        }
-
-        viewModel.selectedAlbum.observe(this) {
-            if (it == null) return@observe
-            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.ALBUM, album = it)
-            tryTransaction()
-        }
-
-        viewModel.selectedGenre.observe(this) {
-            if (it == null) return@observe
-            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.GENRE, genre = it)
-            tryTransaction()
-        }
-
-        viewModel.selectedPlaylist.observe(this) {
-            if (it == null) return@observe
-            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.PLAYLIST, playlist = it)
-            tryTransaction()
-        }
-
-        viewModel.newQueue.observe(this) {
-            if (it == null) return@observe
-            player?.submitQueue(it)
-        }
-
-        viewModel.requestedPositionInQueue.observe(this) {
-            if (it == null) return@observe
-            player?.play(it)
-        }
-
-        viewModel.swappedQueuePositions.observe(this) {
-            if (it == null) return@observe
-            player?.swapQueuePosition(it.first, it.second)
-        }
-
-        viewModel.removedQueueIndex.observe(this) {
-            if (it == null) return@observe
-            player?.removeQueue(it)
-        }
-
-        viewModel.songToDelete.observe(this) {
-            if (it == null) return@observe
-
-            deleteFromDeviceWithPermissionCheck(it)
-        }
-
-        viewModel.cancelSync.observe(this) {
-            WorkManager.getInstance().cancelSync()
-        }
-
-        viewModel.searchQuery.observe(this) {
-            if (it == null || it.isBlank() || it.filterNot { it.isWhitespace() }.length < 2) {
-                binding.coordinatorMain.contentSearch.root.visibility = View.GONE
-                return@observe
-            } else binding.coordinatorMain.contentSearch.root.visibility = View.VISIBLE
-
-            val db = DB.getInstance(this@MainActivity)
-            searchJob.cancel()
-            searchJob = uiScope.launch {
-                searchListAdapter.clearItems()
-                val tracks = db.searchTrackByFuzzyTitle(it).await().take(3)
-                if (tracks.isNotEmpty()) {
-                    searchListAdapter.addItem(SearchItem(getString(R.string.search_category_song),
-                            Unit, SearchItem.SearchItemType.CATEGORY))
-                    searchListAdapter.addItems(tracks.map {
-                        SearchItem(it.title ?: UNKNOWN, it, SearchItem.SearchItemType.TRACK)
-                    })
-                }
-                val albums = db.searchAlbumByFuzzyTitle(it).await().take(3)
-                if (albums.isNotEmpty()) {
-                    searchListAdapter.addItem(SearchItem(getString(R.string.search_category_album),
-                            Unit, SearchItem.SearchItemType.CATEGORY))
-                    searchListAdapter.addItems(albums.map {
-                        SearchItem(it.title ?: UNKNOWN, it, SearchItem.SearchItemType.ALBUM)
-                    })
-                }
-                val artists = db.searchArtistByFuzzyTitle(it).await().take(3)
-                if (artists.isNotEmpty()) {
-                    searchListAdapter.addItem(SearchItem(getString(R.string.search_category_artist),
-                            Unit, SearchItem.SearchItemType.CATEGORY))
-                    searchListAdapter.addItems(artists.map {
-                        SearchItem(it.title ?: UNKNOWN, it, SearchItem.SearchItemType.ARTIST)
-                    })
-                }
-                val playlists = searchPlaylistByFuzzyTitle(it).take(3)
-                if (playlists.isNotEmpty()) {
-                    searchListAdapter.addItem(SearchItem(getString(R.string.search_category_playlist),
-                            Unit, SearchItem.SearchItemType.CATEGORY))
-                    searchListAdapter.addItems(playlists.map {
-                        SearchItem(it.name, it, SearchItem.SearchItemType.PLAYLIST)
-                    })
-                }
-                val genres = searchGenreByFuzzyTitle(it).take(3)
-                if (genres.isNotEmpty()) {
-                    searchListAdapter.addItem(SearchItem(getString(R.string.search_category_genre),
-                            Unit, SearchItem.SearchItemType.CATEGORY))
-                    searchListAdapter.addItems(genres.map {
-                        SearchItem(it.name, it, SearchItem.SearchItemType.GENRE)
-                    })
-                }
+        if (viewModel.isDropboxAuthOngoing) {
+            viewModel.isDropboxAuthOngoing = false
+            lifecycleScope.launch {
+                viewModel.storeDropboxApiToken()
+                onAuthDropboxCompleted?.invoke()
             }
         }
 
-        bottomSheetViewModel.playbackButton.observe(this) {
-            if (it == null) return@observe
-            when (it) {
-                PlaybackButton.PLAY_OR_PAUSE -> player?.togglePlayPause()
-                PlaybackButton.NEXT -> player?.next()
-                PlaybackButton.PREV -> player?.headOrPrev()
-                PlaybackButton.FF -> player?.fastForward()
-                PlaybackButton.REWIND -> player?.rewind()
-                PlaybackButton.UNDEFINED -> player?.stopRunningButtonAction()
+        if (cacheDir.getDirSize() == 0L) {
+            lifecycleScope.launch {
+                viewModel.invalidateDownloaded(
+                    DB.getInstance(this@MainActivity)
+                        .trackDao()
+                        .getAllDownloadedIds()
+                )
             }
         }
 
-        bottomSheetViewModel.addQueueToPlaylist.observe(this) { queue ->
-            if (queue == null) return@observe
-            uiScope.launch {
-                val playlists = fetchPlaylists(this@MainActivity).await()
-                val binding = DialogAddQueuePlaylistBinding.inflate(layoutInflater)
-                val dialog = AlertDialog.Builder(this@MainActivity)
-                        .setTitle(R.string.dialog_title_add_queue_to_playlist)
-                        .setMessage(R.string.dialog_desc_add_queue_to_playlist)
-                        .setView(binding.root)
-                        .setNegativeButton(R.string.dialog_ng) { dialog, _ ->
-                            dialog.dismiss()
-                        }
-                        .setPositiveButton(R.string.dialog_ok) { _, _ -> }
-                        .setCancelable(true)
-                        .create()
-                binding.recyclerView.adapter = QueueAddPlaylistListAdapter(playlists) {
-                    queue.forEachIndexed { i, song ->
-                        contentResolver.insert(
-                                MediaStore.Audio.Playlists.Members
-                                        .getContentUri("external", it.id),
-                                ContentValues().apply {
-                                    put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, it.memberCount + 1 + i)
-                                    put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
-                                })
-                    }
-                    dialog.dismiss()
-                }
-                dialog.show()
-                dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-                    val title = binding.editText.text?.toString()
-                    if (title.isNullOrBlank()) {
-                        // TODO: エラーメッセージ表示
-                    } else {
-                        val playlistId = contentResolver.insert(
-                                MediaStore.Audio.Playlists.EXTERNAL_CONTENT_URI,
-                                ContentValues().apply {
-                                    val now = System.currentTimeMillis()
-                                    put(MediaStore.Audio.PlaylistsColumns.NAME, title)
-                                    put(MediaStore.Audio.PlaylistsColumns.DATE_ADDED, now)
-                                    put(MediaStore.Audio.PlaylistsColumns.DATE_MODIFIED, now)
-                                })?.let { ContentUris.parseId(it) } ?: kotlin.run {
-                            dialog.dismiss()
-                            return@setOnClickListener
-                        }
-                        queue.forEachIndexed { i, song ->
-                            contentResolver.insert(
-                                    MediaStore.Audio.Playlists.Members
-                                            .getContentUri("external", playlistId),
-                                    ContentValues().apply {
-                                        put(MediaStore.Audio.Playlists.Members.PLAY_ORDER, i + 1)
-                                        put(MediaStore.Audio.Playlists.Members.AUDIO_ID, song.mediaId)
-                                    })
-                        }
-                        dialog.dismiss()
-                    }
-                }
-            }
-        }
+        viewModel.requestBillingInfoUpdate()
+    }
 
-        bottomSheetViewModel.clearQueue.observe(this) {
-            player?.clear(true)
-        }
-
-        bottomSheetViewModel.newSeekBarProgress.observe(this) {
-            if (it == null) return@observe
-            player?.seek(it)
-        }
-
-        bottomSheetViewModel.shuffle.observe(this) { player?.shuffle() }
-
-        bottomSheetViewModel.changeRepeatMode.observe(this) { player?.rotateRepeatMode() }
-
-        bottomSheetViewModel.changedQueue.observe(this) {
-            if (it == null) return@observe
-            player?.submitQueue(InsertQueue(
-                    QueueMetadata(InsertActionType.OVERRIDE,
-                            OrientedClassType.SONG), it))
-        }
-
-        bottomSheetViewModel.changedPosition.observe(this) {
-            if (it == null) return@observe
-            player?.forcePosition(it)
-        }
-
-        paymentViewModel.saveSuccess.observe(this) {
-            if (it == null) return@observe
-            Snackbar.make(binding.root,
-                    if (it) R.string.payment_save_success
-                    else R.string.payment_save_failure,
-                    Snackbar.LENGTH_SHORT).show()
+    private fun retrieveMedia(onlyAdded: Boolean) {
+        WorkManager.getInstance(this)
+            .cancelAllWorkByTag(LocalMediaRetrieveWorker.TAG)
+        if (Build.VERSION.SDK_INT < 33) {
+            constructPermissionsRequest(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                onPermissionDenied = ::onReadExternalStorageDenied
+            ) {
+                enqueueLocalRetrieveWorker(onlyAdded)
+            }.launch()
+        } else {
+            enqueueLocalRetrieveWorker(onlyAdded)
         }
     }
 
-    private fun setupDrawer() {
-        drawerToggle = ActionBarDrawerToggle(this,
-                binding.drawerLayout, binding.coordinatorMain.toolbar,
-                R.string.drawer_open, R.string.drawer_close)
-        binding.drawerLayout.addDrawerListener(drawerToggle)
-        drawerToggle.syncState()
-        binding.navigationView.setNavigationItemSelectedListener(onNavigationItemSelected)
-        binding.navigationView.getHeaderView(0).findViewById<View>(R.id.drawer_head_icon)?.setOnLongClickListener {
-            requestedTransaction = RequestedTransaction(RequestedTransaction.Tag.EASTER_EGG)
-            tryTransaction()
-            true
+    private fun retrieveDropboxMedia(rootPath: String, needDownloaded: Boolean) {
+        WorkManager.getInstance(this)
+            .cancelAllWorkByTag(DropboxMediaRetrieveWorker.TAG)
+        if (Build.VERSION.SDK_INT < 33) {
+            constructPermissionsRequest(
+                Manifest.permission.READ_EXTERNAL_STORAGE,
+                Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                onPermissionDenied = ::onReadExternalStorageDenied
+            ) {
+                enqueueDropboxRetrieveWorker(rootPath, needDownloaded)
+            }.launch()
+        } else {
+            enqueueDropboxRetrieveWorker(rootPath, needDownloaded)
         }
     }
 
-    private fun setLockingIndicator(syncing: Boolean, loading: Boolean) {
-        when {
-            syncing -> {
-                indicateSync()
-                toggleIndicateLock(true)
-            }
-            syncing.not() && loading -> {
-                indicateLoad()
-                toggleIndicateLock(true)
-            }
-            syncing.not() && loading.not() -> {
-                toggleIndicateLock(false)
-            }
-        }
+    private fun enqueueLocalRetrieveWorker(onlyAdded: Boolean) {
+        viewModel.workManager.beginUniqueWork(
+            MEDIA_RETRIEVE_WORKER_NAME,
+            ExistingWorkPolicy.KEEP,
+            OneTimeWorkRequestBuilder<LocalMediaRetrieveWorker>()
+                .setInputData(
+                    Data.Builder()
+                        .putBoolean(LocalMediaRetrieveWorker.KEY_ONLY_ADDED, onlyAdded)
+                        .build()
+                )
+                .addTag(LocalMediaRetrieveWorker.TAG)
+                .build()
+        ).enqueue()
     }
 
-    private fun indicateSync() {
-        binding.coordinatorMain.indicatorLocking.descLocking.text = getString(R.string.syncing)
-        binding.coordinatorMain.indicatorLocking.progressSync.visibility = View.VISIBLE
-        binding.coordinatorMain.indicatorLocking.buttonCancelSync.visibility = View.VISIBLE
+    private fun enqueueDropboxRetrieveWorker(rootPath: String, needDownloaded: Boolean) {
+        viewModel.workManager.beginUniqueWork(
+            MEDIA_RETRIEVE_WORKER_NAME,
+            ExistingWorkPolicy.KEEP,
+            OneTimeWorkRequestBuilder<DropboxMediaRetrieveWorker>()
+                .setInputData(
+                    Data.Builder()
+                        .putString(DropboxMediaRetrieveWorker.KEY_ROOT_PATH, rootPath)
+                        .putBoolean(DropboxMediaRetrieveWorker.KEY_NEED_DOWNLOADED, needDownloaded)
+                        .build()
+                )
+                .addTag(DropboxMediaRetrieveWorker.TAG)
+                .build()
+        ).enqueue()
     }
 
-    private fun indicateLoad() {
-        binding.coordinatorMain.indicatorLocking.descLocking.text = getString(R.string.loading)
-        binding.coordinatorMain.indicatorLocking.progressSync.visibility = View.GONE
-        binding.coordinatorMain.indicatorLocking.buttonCancelSync.visibility = View.GONE
+    private fun enqueueDropboxDownloadWorker(targetPaths: List<String>) {
+        viewModel.workManager.beginUniqueWork(
+            DROPBOX_DOWNLOAD_WORKER_NAME,
+            ExistingWorkPolicy.KEEP,
+            OneTimeWorkRequestBuilder<DropboxDownloadWorker>()
+                .setInputData(
+                    Data.Builder()
+                        .putStringArray(
+                            DropboxDownloadWorker.KEY_TARGET_PATHS,
+                            targetPaths.toTypedArray()
+                        )
+                        .build()
+                )
+                .addTag(DropboxDownloadWorker.TAG)
+                .build()
+        ).enqueue()
     }
 
-    private fun toggleIndicateLock(locking: Boolean) {
-        binding.coordinatorMain.indicatorLocking.root.visibility =
-                if (locking) View.VISIBLE else View.GONE
-        binding.drawerLayout.setDrawerLockMode(
-                if (locking) DrawerLayout.LOCK_MODE_LOCKED_CLOSED
-                else DrawerLayout.LOCK_MODE_UNLOCKED)
+    private fun onReadExternalStorageDenied() {
+        retrieveMedia(false)
     }
 
-    private fun tryTransaction() {
-        if (paused.not()) {
-            requestedTransaction?.apply {
-                Timber.d("qgeck requested transaction: $requestedTransaction")
-                dismissSearch()
-                when (this.tag) {
-                    RequestedTransaction.Tag.ARTIST -> {
-                        if (artist != null) {
-                            supportFragmentManager.beginTransaction()
-                                    .replace(R.id.content_main,
-                                            AlbumListFragment.newInstance(artist), artist.name)
-                                    .addToBackStack(null)
-                                    .commit()
-                        }
-                    }
-                    RequestedTransaction.Tag.ALBUM -> {
-                        if (album != null) {
-                            supportFragmentManager.beginTransaction()
-                                    .replace(R.id.content_main,
-                                            SongListFragment.newInstance(album), album.name)
-                                    .addToBackStack(null)
-                                    .commit()
-                        }
-                    }
-                    RequestedTransaction.Tag.GENRE -> {
-                        if (genre != null) {
-                            supportFragmentManager.beginTransaction()
-                                    .replace(R.id.content_main,
-                                            SongListFragment.newInstance(genre), genre.name)
-                                    .addToBackStack(null)
-                                    .commit()
-                        }
-                    }
-                    RequestedTransaction.Tag.PLAYLIST -> {
-                        if (playlist != null) {
-                            supportFragmentManager.beginTransaction()
-                                    .replace(R.id.content_main,
-                                            SongListFragment.newInstance(playlist), playlist.name)
-                                    .addToBackStack(null)
-                                    .commit()
-                        }
-                    }
-                    RequestedTransaction.Tag.EASTER_EGG -> {
-                        supportFragmentManager.beginTransaction()
-                                .replace(R.id.content_main, EasterEggFragment.newInstance())
-                                .addToBackStack(null)
-                                .commit()
-                        binding.drawerLayout.closeDrawer(binding.navigationView)
-                    }
-                }
-                requestedTransaction = null
-            }
-        }
-    }
-
-    private fun dismissSearch() {
-        binding.coordinatorMain.contentSearch.root.visibility = View.GONE
-        getSystemService(InputMethodManager::class.java)
-                .hideSoftInputFromWindow(currentFocus?.windowToken, 0)
-    }
-
-    @NeedsPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-    internal fun deleteFromDevice(song: Song) {
-        File(song.sourcePath).apply {
-            if (this.exists()) {
-                player?.removeQueue(song.id)
-                this.delete()
-            }
-        }
-        contentResolver.delete(
-                android.provider.MediaStore.Files.getContentUri("external"),
-                "${android.provider.MediaStore.Files.FileColumns.DATA}=?",
-                kotlin.arrayOf(song.sourcePath))
-
-        bgScope.launch {
-            val db = com.geckour.q.data.db.DB.getInstance(this@MainActivity)
-            val track = db.trackDao().get(song.id) ?: return@launch
-
-            player?.removeQueue(track.id)
-
-            var deleted = db.trackDao().delete(track.id) > 0
-            if (deleted)
-                uiScope.launch {
-                    songListViewModel.songIdDeleted.value = track.id
-                }
-            if (db.trackDao().findByAlbum(track.albumId).isEmpty()) {
-                deleted = db.albumDao().delete(track.albumId) > 0
-                if (deleted)
-                    uiScope.launch {
-                        albumListViewModel.albumIdDeleted.value = track.albumId
-                    }
-            }
-            if (db.trackDao().findByArtist(track.artistId).isEmpty()) {
-                deleted = db.artistDao().delete(track.artistId) > 0
-                if (deleted)
-                    uiScope.launch {
-                        artistListViewModel.artistIdDeleted.value = track.artistId
-                    }
-            }
-        }
-    }
+    private fun File.getDirSize(initialSize: Long = 0): Long =
+        if (isFile) initialSize + length()
+        else listFiles()?.sumOf { it.getDirSize(initialSize) } ?: initialSize
 }

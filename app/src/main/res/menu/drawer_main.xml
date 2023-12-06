@@ -1,48 +1,56 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <group android:checkableBehavior="single">
-        <item
-            android:id="@+id/nav_artist"
-            android:icon="@drawable/ic_artist"
-            android:title="@string/nav_artist" />
-        <item
-            android:id="@+id/nav_album"
-            android:icon="@drawable/ic_album"
-            android:title="@string/nav_album" />
-        <item
-            android:id="@+id/nav_song"
-            android:icon="@drawable/ic_song"
-            android:title="@string/nav_song" />
-        <item
-            android:id="@+id/nav_genre"
-            android:icon="@drawable/ic_genre"
-            android:title="@string/nav_genre" />
-        <item
-            android:id="@+id/nav_playlist"
-            android:icon="@drawable/ic_playlist"
-            android:title="@string/nav_playlist" />
-    </group>
 
-    <item android:title="@string/nav_category_others">
+    <item android:title="@string/nav_category_library">
         <menu>
-            <item
-                android:id="@+id/nav_setting"
-                android:icon="@drawable/ic_setting"
-                android:title="@string/nav_setting" />
-            <item
-                android:id="@+id/nav_equalizer"
-                android:icon="@drawable/ic_spectrum"
-                android:title="@string/nav_equalizer" />
-            <item
-                android:id="@+id/nav_sync"
-                android:icon="@drawable/ic_sync"
-                android:title="@string/nav_sync" />
-            <item
-                android:id="@+id/nav_pay"
-                android:icon="@drawable/ic_motive"
-                android:title="@string/nav_pay" />
+            <group android:checkableBehavior="single">
+                <item
+                    android:id="@+id/nav_artist"
+                    android:icon="@drawable/ic_artist"
+                    android:title="@string/nav_artist" />
+                <item
+                    android:id="@+id/nav_album"
+                    android:icon="@drawable/ic_album"
+                    android:title="@string/nav_album" />
+                <item
+                    android:id="@+id/nav_track"
+                    android:icon="@drawable/ic_track"
+                    android:title="@string/nav_track" />
+                <item
+                    android:id="@+id/nav_genre"
+                    android:icon="@drawable/ic_genre"
+                    android:title="@string/nav_genre" />
+            </group>
         </menu>
     </item>
 
+    <item android:title="@string/nav_category_others">
+        <menu>
+            <group android:checkableBehavior="single">
+                <item
+                    android:id="@+id/nav_setting"
+                    android:icon="@drawable/ic_setting"
+                    android:title="@string/nav_setting" />
+                <item
+                    android:id="@+id/nav_equalizer"
+                    android:icon="@drawable/ic_spectrum"
+                    android:title="@string/nav_equalizer" />
+                <item
+                    android:id="@+id/nav_pay"
+                    android:icon="@drawable/ic_motive"
+                    android:title="@string/nav_pay" />
+                <item
+                    android:checkable="false"
+                    android:id="@+id/nav_sync"
+                    android:icon="@drawable/ic_sync"
+                    android:title="@string/nav_sync" />
+                <item
+                    android:checkable="false"
+                    android:id="@+id/nav_dropbox_sync"
+                    android:icon="@drawable/ic_dropbox"
+                    android:title="@string/nav_dropbox_sync" />
+            </group>
+        </menu>
+    </item>
 </menu>

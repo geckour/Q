@@ -1,7 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
 
     <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.MaterialComponents.Light.NoActionBar.Bridge">
+    <style name="AppTheme" parent="Theme.MaterialComponents.DayNight.NoActionBar.Bridge">
         <!-- Customize your theme here. -->
         <item name="colorControlNormal">@android:color/white</item>
         <item name="android:textColorPrimary">@color/colorTextPrimary</item>
@@ -16,7 +17,7 @@
         <item name="searchViewStyle">@style/SearchStyle</item>
         <item name="colorInactive">@color/colorInactive</item>
         <item name="colorOption">@color/colorOption</item>
-        <item name="colorNowPlaying">@color/colorNowPlaying</item>
+        <item name="colorWeakAccent">@color/colorWeakAccent</item>
         <item name="colorTextPrimary">@color/colorTextPrimary</item>
         <item name="colorTextSecondary">@color/colorTextSecondary</item>
         <item name="colorTextStrong">@color/colorTextStrong</item>
@@ -25,47 +26,28 @@
         <item name="colorBackgroundInactive">@color/colorBackgroundInactive</item>
         <item name="colorBackgroundBottomSheet">@color/colorBackgroundBottomSheet</item>
         <item name="colorBackgroundSearch">@color/colorBackgroundSearch</item>
+        <item name="colorBackgroundNavItem">@color/colorWeakAccent</item>
+        <item name="colorBackgroundProgress">@color/colorBackgroundProgress</item>
         <item name="colorTransparent">@android:color/transparent</item>
         <item name="colorShadowBottomSheetStart">@color/colorShadowBottomSheetStart</item>
         <item name="colorShadowBottomSheetCenter">@color/colorShadowBottomSheetCenter</item>
         <item name="colorButtonNormal">@color/colorPrimary</item>
+        <item name="colorDivider">@color/colorDivider</item>
+        <item name="colorEqualizerScale">@color/colorEqualizerScale</item>
+        <item name="colorCoverInactive">@color/colorCoverInactive</item>
     </style>
 
     <style name="SearchStyle" parent="AppTheme">
-        <item name="android:colorBackground">@color/colorBackgroundSearch</item>
+        <item name="android:colorBackground">?attr/colorBackgroundSearch</item>
     </style>
 
-    <style name="AppTheme.Dark" parent="Theme.MaterialComponents.NoActionBar.Bridge">
-        <!-- Customize your theme here. -->
-        <item name="colorControlNormal">@android:color/white</item>
-        <item name="android:textColorPrimary">@color/colorTextPrimaryInverse</item>
-        <item name="android:textColorSecondary">@color/colorTextSecondaryInverse</item>
-        <item name="colorPrimary">@color/colorPrimaryInverse</item>
-        <item name="colorPrimaryDark">@color/colorPrimaryDarkInverse</item>
-        <item name="colorAccent">@color/colorAccentInverse</item>
-        <item name="colorStrong">@color/colorStrongInverse</item>
-        <item name="android:colorBackground">@android:color/black</item>
-        <item name="android:statusBarColor">@color/colorPrimaryDarkInverse</item>
-        <item name="android:windowBackground">@android:color/black</item>
-        <item name="searchViewStyle">@style/SearchStyle.Dark</item>
-        <item name="colorInactive">@color/colorInactiveInverse</item>
-        <item name="colorOption">@color/colorOptionInverse</item>
-        <item name="colorNowPlaying">@color/colorNowPlayingInverse</item>
-        <item name="colorTextPrimary">@color/colorTextPrimaryInverse</item>
-        <item name="colorTextSecondary">@color/colorTextSecondaryInverse</item>
-        <item name="colorTextStrong">@color/colorTextStrongInverse</item>
-        <item name="colorTextSettingNormal">@color/colorTextStrong</item>
-        <item name="colorBackground">@color/colorBackgroundInverse</item>
-        <item name="colorBackgroundInactive">@color/colorBackgroundInactiveInverse</item>
-        <item name="colorBackgroundBottomSheet">@color/colorBackgroundBottomSheetInverse</item>
-        <item name="colorBackgroundSearch">@color/colorBackgroundSearchInverse</item>
-        <item name="colorTransparent">@android:color/transparent</item>
-        <item name="colorShadowBottomSheetStart">@color/colorShadowBottomSheetStartInverse</item>
-        <item name="colorShadowBottomSheetCenter">@color/colorShadowBottomSheetCenterInverse</item>
-        <item name="colorButtonNormal">@color/colorStrong</item>
-    </style>
-
-    <style name="SearchStyle.Dark" parent="AppTheme.Dark">
-        <item name="android:colorBackground">@color/colorBackgroundSearchInverse</item>
+    <style name="AppTheme.Transparent" parent="AppTheme">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowContentOverlay">@null</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:statusBarColor">@null</item>
+        <item name="android:windowAnimationStyle">@null</item>
     </style>
 </resources>

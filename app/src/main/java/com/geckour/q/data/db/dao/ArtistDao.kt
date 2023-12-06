@@ -2,53 +2,100 @@ package com.geckour.q.data.db.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Update
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface ArtistDao {
-    @Insert
-    fun insert(artist: Artist): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insert(artist: Artist): Long
 
     @Update
-    fun update(artist: Artist): Int
+    suspend fun update(artist: Artist): Int
 
     @Query("delete from artist where id = :id")
-    fun delete(id: Long): Int
+    suspend fun delete(id: Long): Int
 
-    @Query("select * from artist where title like :title")
-    fun findByTitle(title: String): List<Artist>
+    @Query("delete from album where artistId = :artistId")
+    suspend fun deleteAlbumByArtist(artistId: Long)
 
-    @Query("select * from artist where title = :title")
-    fun findArtist(title: String): List<Artist>
-
-    @Query("select * from artist")
-    fun getAll(): List<Artist>
+    @Query("delete from track where artistId = :artistId")
+    suspend fun deleteTrackByArtist(artistId: Long)
 
     @Query("select * from artist where id = :id")
-    fun get(id: Long): Artist?
+    suspend fun get(id: Long): Artist?
 
-    @Query("select * from artist where mediaId = :artistId")
-    fun getByMediaId(artistId: Long): Artist?
+    @Query("select * from artist where title = :title")
+    suspend fun getByTitle(title: String): Artist?
 
-    @Query("update artist set playbackCount = (select playbackCount from artist where id = :artistId) + 1 where id = :artistId")
-    fun increasePlaybackCount(artistId: Long)
-}
+    @Query("select * from artist where title = :title")
+    suspend fun getAllByTitle(title: String): List<Artist>
 
-fun Artist.upsert(db: DB): Long? =
-        this.mediaId?.let {
-            val artist = db.artistDao().getByMediaId(it)
-            if (artist != null) {
-                if (this.title != null) db.artistDao().update(this.copy(id = artist.id))
-                artist.id
-            } else db.artistDao().insert(this)
-        } ?: run {
-            this.title?.let {
-                db.artistDao().findArtist(it).let {
-                    if (it.isEmpty()) db.artistDao().insert(this)
-                    else it.first().id
-                }
-            }
+    @Query("select * from artist where title like :title")
+    suspend fun findAllByTitle(title: String): List<Artist>
+
+    @Query("select * from artist where id in (select artistId from album group by id) order by titleSort collate nocase")
+    fun getAllOrientedAlbumAsync(): Flow<List<Artist>>
+
+    @Query("select artworkUriString from album where artistId = :artistId and artworkUriString is not null order by playbackCount limit 1")
+    suspend fun getThumbnailUriString(artistId: Long): String
+
+    @Query("update artist set playbackCount = (select playbackCount from artist where id = :artistId) + 1, artworkUriString = (select artworkUriString from album where artistId = :artistId order by playbackCount desc limit 1) where id = :artistId")
+    suspend fun increasePlaybackCount(artistId: Long)
+
+    @Query("update artist set totalDuration = 0")
+    suspend fun resetTotalDurations()
+
+    @Transaction
+    suspend fun deleteRecursively(artistId: Long) {
+        deleteTrackByArtist(artistId)
+        deleteAlbumByArtist(artistId)
+        delete(artistId)
+    }
+
+    @Query("select exists(select 1 from track where (artistId = :artistId or albumArtistId = :artistId) and dropboxPath is not null)")
+    fun containDropboxContent(artistId: Long): Flow<Boolean>
+
+    @Query("select dropboxPath from track where (artistId = :artistId or albumArtistId = :artistId) and dropboxPath is not null and (sourcePath is '' or sourcePath like 'https://%.dl.dropboxusercontent.com/%')")
+    fun downloadableDropboxPaths(artistId: Long): Flow<List<String>>
+
+    @Query("select id from track where (artistId = :artistId or albumArtistId = :artistId)")
+    suspend fun getContainTrackIds(artistId: Long): List<Long>
+
+    @Transaction
+    suspend fun upsert(db: DB, newArtist: Artist, durationToAdd: Long = 0): Long {
+        val existingArtist = getByTitle(newArtist.title)
+        val id = existingArtist?.let { existing ->
+            val artworkUriString = db.albumDao()
+                .getAllByArtistId(existingArtist.id)
+                .maxByOrNull { it.album.playbackCount }
+                ?.album
+                ?.artworkUriString
+                ?: newArtist.artworkUriString
+            val target = newArtist.copy(
+                id = existing.id,
+                playbackCount = existing.playbackCount,
+                totalDuration = existing.totalDuration + durationToAdd,
+                artworkUriString = artworkUriString
+            )
+            update(target)
+            existing.id
+        } ?: insert(newArtist.copy(totalDuration = durationToAdd))
+
+        return id
+    }
+
+    @Transaction
+    suspend fun refreshTotalDurations(db: DB) {
+        resetTotalDurations()
+        db.trackDao().getAll().forEach {
+            upsert(db, it.artist, it.track.duration)
         }
+    }
+}

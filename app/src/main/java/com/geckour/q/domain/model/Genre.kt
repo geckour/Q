@@ -6,8 +6,7 @@ import kotlinx.android.parcel.Parcelize
 
 @Parcelize
 data class Genre(
-        val id: Long,
         val thumb: Bitmap?,
         val name: String,
         val totalDuration: Long
-) : Parcelable
+) : Parcelable, MediaItem
