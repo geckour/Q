@@ -34,6 +34,7 @@ import com.geckour.q.util.toDomainTrack
 import com.geckour.q.worker.DROPBOX_DOWNLOAD_WORKER_NAME
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -363,20 +364,21 @@ class MainViewModel(private val app: App) : ViewModel() {
 
     internal fun deleteTrack(domainTrack: DomainTrack) {
         viewModelScope.launch {
+            invalidateDownloaded(listOf(domainTrack.id)).join()
             onRemoveQueueByTrack?.invoke(domainTrack)
 
             db.trackDao().deleteIncludingRootIfEmpty(db, domainTrack.id)
         }
     }
 
-    internal fun invalidateDownloaded(targetIds: List<Long>) {
-        viewModelScope.launch {
-            if (targetIds.contains(currentQueueFlow.value.getOrNull(currentIndexFlow.value)?.id)) {
-                onPause?.invoke()
-            }
-            currentQueueFlow.value.filter { track -> targetIds.any { it == track.id } }.forEach {
-                onRemoveQueueByTrack?.invoke(it)
-            }
+    internal fun invalidateDownloaded(targetIds: List<Long>): Job = viewModelScope.launch {
+        if (targetIds.contains(currentQueueFlow.value.getOrNull(currentIndexFlow.value)?.id)) {
+            onPause?.invoke()
+        }
+        currentQueueFlow.value.filter { track -> targetIds.any { it == track.id } }.forEach {
+            onRemoveQueueByTrack?.invoke(it)
+        }
+        runCatching {
             db.trackDao().getAllSourcePathsByIds(targetIds).forEach {
                 val file = Uri.parse(it).toFile()
                 if (file.exists()) {
