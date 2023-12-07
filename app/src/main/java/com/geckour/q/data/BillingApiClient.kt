@@ -8,7 +8,9 @@ import com.android.billingclient.api.BillingClient.ProductType
 import com.android.billingclient.api.BillingClientStateListener
 import com.android.billingclient.api.BillingFlowParams
 import com.android.billingclient.api.BillingResult
+import com.android.billingclient.api.ConsumeParams
 import com.android.billingclient.api.Purchase
+import com.android.billingclient.api.Purchase.PurchaseState
 import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryProductDetailsParams.Product
@@ -16,6 +18,7 @@ import com.android.billingclient.api.QueryPurchasesParams
 import com.android.billingclient.api.queryProductDetails
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 
 class BillingApiClient(
     context: Context,
@@ -25,6 +28,11 @@ class BillingApiClient(
         billingApiClient: BillingApiClient
     ) -> Unit
 ) {
+
+    companion object {
+
+        private const val SKU_DONATE = "donate"
+    }
 
     enum class BillingApiResult {
         SUCCESS,
@@ -36,11 +44,15 @@ class BillingApiClient(
     private val purchasesUpdatedListener = PurchasesUpdatedListener { billingResult, purchases ->
         val result = when (billingResult.responseCode) {
             BillingClient.BillingResponseCode.OK -> {
-                if (purchases?.isEmpty() == false) {
-                    if (purchases.none { it.purchaseState == Purchase.PurchaseState.PURCHASED }) {
-                        BillingApiResult.SUCCESS
-                    } else BillingApiResult.DUPLICATED
-                } else BillingApiResult.FAILURE
+                if (purchases.isNullOrEmpty()) BillingApiResult.FAILURE
+                else {
+                    Timber.d("qgeck purchases: $purchases")
+                    purchases.forEach {
+                        if (it.products.contains(SKU_DONATE).not()) return@forEach
+                        it.consume()
+                    }
+                    null
+                }
             }
 
             BillingClient.BillingResponseCode.USER_CANCELED -> {
@@ -55,7 +67,7 @@ class BillingApiClient(
                 BillingApiResult.FAILURE
             }
         }
-        onDonateCompleted(result, this)
+        result?.let { onDonateCompleted(it, this) }
     }
 
     private val client: BillingClient =
@@ -86,25 +98,45 @@ class BillingApiClient(
                             .build()
                     }
                 ).build()
-            val (billingResult, productDetailsList) = withContext(Dispatchers.IO) {
-                client.queryProductDetails(params)
-            }
+            val (billingResult, productDetailsList) = client.queryProductDetails(params)
             if (billingResult.responseCode != BillingClient.BillingResponseCode.OK) {
                 onError()
                 return
             }
-
-            productDetailsList?.firstOrNull()?.let {
-                val productDetailParamsList = listOf(
-                    BillingFlowParams.ProductDetailsParams.newBuilder()
-                        .setProductDetails(it)
-                        .build()
-                )
-                val billingFlowParams = BillingFlowParams.newBuilder()
-                    .setProductDetailsParamsList(productDetailParamsList)
-                    .build()
-                client.launchBillingFlow(activity, billingFlowParams)
-            } ?: run { onError() }
+            if (billingResult.responseCode == BillingClient.BillingResponseCode.OK) {
+                client.queryPurchasesAsync(
+                    QueryPurchasesParams.newBuilder().apply {
+                        productDetailsList?.firstOrNull()?.productType?.let {
+                            setProductType(it)
+                        }
+                    }.build()
+                ) { br, purchases ->
+                    if (br.responseCode == BillingClient.BillingResponseCode.OK) {
+                        if (purchases.isEmpty()) {
+                            productDetailsList?.firstOrNull()?.let {
+                                val productDetailParamsList = listOf(
+                                    BillingFlowParams.ProductDetailsParams.newBuilder()
+                                        .setProductDetails(it)
+                                        .build()
+                                )
+                                val billingFlowParams = BillingFlowParams.newBuilder()
+                                    .setProductDetailsParamsList(productDetailParamsList)
+                                    .build()
+                                val result = client.launchBillingFlow(activity, billingFlowParams)
+                                if (result.responseCode != BillingClient.BillingResponseCode.OK) {
+                                    onError()
+                                    return@queryPurchasesAsync
+                                }
+                            } ?: run { onError() }
+                        } else {
+                            purchases.forEach {
+                                if (it.products.contains(SKU_DONATE).not()) return@forEach
+                                it.consume()
+                            }
+                        }
+                    }
+                }
+            }
         }.onFailure { onError() }
     }
 
@@ -127,5 +159,30 @@ class BillingApiClient(
                 }
             }
         }.onFailure { onError() }
+    }
+
+    private fun Purchase.consume() {
+        client.acknowledgePurchase(
+            AcknowledgePurchaseParams.newBuilder()
+                .setPurchaseToken(purchaseToken)
+                .build()
+        ) {
+            Timber.d("qgeck ack response code: ${it.responseCode}, message: ${it.debugMessage}")
+            if (it.responseCode == BillingClient.BillingResponseCode.OK) {
+                client.consumeAsync(
+                    ConsumeParams.newBuilder()
+                        .setPurchaseToken(purchaseToken)
+                        .build()
+                ) { billingResult, _ ->
+                    Timber.d("qgeck consume response code: ${billingResult.responseCode}, message: ${billingResult.debugMessage}")
+                    val result = when (billingResult.responseCode) {
+                        BillingClient.BillingResponseCode.OK -> BillingApiResult.SUCCESS
+
+                        else -> BillingApiResult.FAILURE
+                    }
+                    onDonateCompleted(result, this@BillingApiClient)
+                }
+            } else onDonateCompleted(BillingApiResult.FAILURE, this@BillingApiClient)
+        }
     }
 }
