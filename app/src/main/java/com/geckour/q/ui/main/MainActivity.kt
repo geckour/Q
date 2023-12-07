@@ -555,6 +555,7 @@ class MainActivity : AppCompatActivity() {
                     Box(
                         modifier = Modifier
                             .padding(paddingValues)
+                            .background(color = QTheme.colors.colorBackground)
                             .fillMaxSize()
                     ) {
                         Column(
@@ -1739,26 +1740,38 @@ class MainActivity : AppCompatActivity() {
                             ) {
                                 Row(
                                     modifier = Modifier
-                                        .background(color = QTheme.colors.colorBackgroundProgress)
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                    verticalAlignment = Alignment.Bottom
+                                        .background(color = QTheme.colors.colorBackground)
+                                        .padding(12.dp)
                                 ) {
-                                    Text(
-                                        text = (progressMessage ?: snackBarMessage).orEmpty(),
-                                        fontSize = 16.sp,
-                                        color = QTheme.colors.colorTextPrimary,
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .fillMaxWidth()
-                                    )
-                                    onCancelProgress?.let {
-                                        TextButton(onClick = it) {
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        shape = RoundedCornerShape(12.dp),
+                                        backgroundColor = QTheme.colors.colorBackgroundProgress
+                                    ) {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                            verticalAlignment = Alignment.Bottom
+                                        ) {
                                             Text(
-                                                text = stringResource(R.string.button_cancel),
+                                                text = (progressMessage
+                                                    ?: snackBarMessage).orEmpty(),
                                                 fontSize = 16.sp,
-                                                color = QTheme.colors.colorAccent
+                                                color = QTheme.colors.colorTextPrimary,
+                                                modifier = Modifier
+                                                    .weight(1f)
+                                                    .fillMaxWidth()
                                             )
+                                            onCancelProgress?.let {
+                                                TextButton(onClick = it) {
+                                                    Text(
+                                                        text = stringResource(R.string.button_cancel),
+                                                        fontSize = 16.sp,
+                                                        color = QTheme.colors.colorAccent
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }

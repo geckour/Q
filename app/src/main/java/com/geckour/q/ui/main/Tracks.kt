@@ -17,6 +17,7 @@ import androidx.compose.material.Card
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
+import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
@@ -78,10 +79,9 @@ fun Tracks(
     LazyColumn(state = listState) {
         items(joinedTracks) { joinedTrack ->
             val domainTrack = joinedTrack.toDomainTrack()
-            Card(
-                shape = RectangleShape,
+            Surface(
                 elevation = 0.dp,
-                backgroundColor = QTheme.colors.colorBackground,
+                color = QTheme.colors.colorBackground,
                 onClick = { onTrackSelected(domainTrack) }
             ) {
                 Row(

@@ -15,6 +15,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.Card
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
+import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
@@ -77,9 +78,8 @@ fun Albums(
             val downloadableDropboxPaths by db.albumDao()
                 .downloadableDropboxPaths(joinedAlbum.album.id)
                 .collectAsState(emptyList())
-            Card(
-                shape = RectangleShape,
-                backgroundColor = QTheme.colors.colorBackground,
+            Surface(
+                color = QTheme.colors.colorBackground,
                 elevation = 0.dp,
                 modifier = Modifier.combinedClickable(
                     onClick = { navController.navigate(route = "tracks?albumId=${joinedAlbum.album.id}") },
