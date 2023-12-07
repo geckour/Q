@@ -52,8 +52,9 @@ class DropboxMediaRetrieveWorker(
     private var processedFilesCount = 0
     private val files = mutableListOf<FileMetadata>()
     private var totalFilesCount = 0
-    private var wholeFilesSize = 0L
+    private var totalFilesSize = 0L
     private var currentPath: String? = null
+    private val currentProcessingSpeeds = mutableListOf<ProcessingSpeed>()
     private val notificationBitmap = Bitmap.createBitmap(1000, 1000, Bitmap.Config.ARGB_8888)
     private var seed: Long = -1
     private var startTime: Long = 0
@@ -91,7 +92,7 @@ class DropboxMediaRetrieveWorker(
 
             files.clear()
             retrieveAudioFilePaths(rootPath, dbxClient, needDownloaded)
-            wholeFilesSize = files.sumOf { it.size }
+            totalFilesSize = files.sumOf { it.size }
             startTime = System.currentTimeMillis()
             files.forEach {
                 if (isStopped) {
@@ -132,11 +133,10 @@ class DropboxMediaRetrieveWorker(
                 fileAndFolders = client.files().listFolderContinue(fileAndFolders.cursor)
             }
 
-            fileAndFolders.entries.mapNotNull { metadata ->
+            fileAndFolders.entries.forEach { metadata ->
                 when (metadata) {
                     is FolderMetadata -> {
                         retrieveAudioFilePaths(metadata.pathLower, client, needDownloaded)
-                        null
                     }
 
                     is FileMetadata -> {
@@ -144,23 +144,24 @@ class DropboxMediaRetrieveWorker(
                         if (needDownloaded || (db.trackDao()
                                 .getByDropboxPath(metadata.pathLower)?.track?.lastModified
                                 ?: 0) < metadata.serverModified.time
-                        ) metadata
-                        else null
+                        ) {
+                            totalFilesSize += metadata.size
+                            setProgress(
+                                createProgressData(
+                                    title = applicationContext.getString(R.string.progress_title_retrieve_media),
+                                    numerator = processedFilesCount,
+                                    denominator = files.size,
+                                    totalFiles = totalFilesCount,
+                                    remainingFileSize = totalFilesSize
+                                )
+                            )
+                            files.add(metadata)
+                        }
                     }
 
-                    else -> null
+                    else -> Unit
                 }
             }.apply {
-                files.addAll(this)
-                setProgress(
-                    createProgressData(
-                        title = applicationContext.getString(R.string.progress_title_retrieve_media),
-                        numerator = processedFilesCount,
-                        denominator = files.size,
-                        totalFiles = totalFilesCount,
-                        remainingFileSize = sumOf { it.size }
-                    )
-                )
                 setForeground(getForegroundInfo())
             }
         } catch (e: RateLimitException) {
@@ -221,30 +222,47 @@ class DropboxMediaRetrieveWorker(
     ) {
         if (name.isAudioFilePath) {
             processedFilesCount++
-            setProgress(
-                createProgressData(
-                    title = applicationContext.getString(R.string.progress_title_retrieve_media),
-                    numerator = processedFilesCount,
-                    denominator = files.size,
-                    totalFiles = totalFilesCount,
-                    path = pathDisplay,
-                    remaining = if (processedFilesCount < 2) -1
-                    else run {
-                        val elapsedTime = System.currentTimeMillis() - startTime
-                        val processedSize = files.take(processedFilesCount - 1).sumOf { it.size }
-                        val remainingSize = wholeFilesSize - processedSize
-                        (remainingSize * elapsedTime.toDouble() / processedSize).toLong()
-                    },
-                    remainingFileSize = files
-                        .takeLast(files.size - processedFilesCount)
-                        .sumOf { it.size }
+            if (currentProcessingSpeeds.isEmpty()) {
+                currentProcessingSpeeds.add(
+                    ProcessingSpeed(
+                        timing = System.currentTimeMillis(),
+                        speed = -1.0
+                    )
                 )
-            )
+            }
             setForeground(getForegroundInfo())
             currentPath = this.pathDisplay
 
             runCatching {
                 storeMediaInfo(client, this@storeMediaInfo, needDownloaded)
+                currentProcessingSpeeds.lastOrNull()?.let {
+                    if (currentProcessingSpeeds.size > 6) {
+                        currentProcessingSpeeds.drop(1)
+                    }
+                    currentProcessingSpeeds.add(
+                        ProcessingSpeed.calcProcessingSpeed(
+                            prev = it,
+                            size = this@storeMediaInfo.size
+                        )
+                    )
+                }
+
+                val remainingFileSize = files
+                    .takeLast(files.size - processedFilesCount)
+                    .sumOf { it.size }
+                val targetProcessingSpeeds = currentProcessingSpeeds.filter { it.speed > 0 }
+                val averageSpeed = targetProcessingSpeeds.sumOf { it.speed } / targetProcessingSpeeds.size
+                setProgress(
+                    createProgressData(
+                        title = applicationContext.getString(R.string.progress_title_retrieve_media),
+                        numerator = processedFilesCount,
+                        denominator = files.size,
+                        totalFiles = totalFilesCount,
+                        path = pathDisplay,
+                        remaining = (remainingFileSize / averageSpeed).toLong(),
+                        remainingFileSize = remainingFileSize
+                    )
+                )
             }.onFailure { t ->
                 if (t is RateLimitException) {
                     Thread.sleep(t.backoffMillis)
@@ -280,6 +298,23 @@ class DropboxMediaRetrieveWorker(
                 currentTime + DROPBOX_EXPIRES_IN,
                 dropboxMetadata.serverModified.time
             )
+        }
+    }
+
+    private data class ProcessingSpeed(
+        val timing: Long,
+        val speed: Double
+    ) {
+
+        companion object {
+
+            fun calcProcessingSpeed(prev: ProcessingSpeed, size: Long): ProcessingSpeed {
+                val now = System.currentTimeMillis()
+                return ProcessingSpeed(
+                    timing = now,
+                    speed = size.toDouble() / (now - prev.timing)
+                )
+            }
         }
     }
 }
