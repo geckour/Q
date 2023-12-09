@@ -83,8 +83,6 @@ import com.geckour.q.worker.KEY_PROGRESS_REMAINING_FILES_SIZE
 import com.geckour.q.worker.KEY_PROGRESS_TITLE
 import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import com.google.android.material.internal.EdgeToEdgeUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map

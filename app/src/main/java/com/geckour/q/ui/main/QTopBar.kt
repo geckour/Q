@@ -24,6 +24,7 @@ import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
@@ -128,6 +129,18 @@ fun QTopBar(
                 )
             ),
             leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null) },
+            trailingIcon = {
+                if (query.isNotEmpty()) {
+                    IconButton(
+                        onClick = {
+                            query = ""
+                            active = false
+                        }
+                    ) {
+                        Icon(imageVector = Icons.Outlined.Cancel, contentDescription = null)
+                    }
+                }
+            },
             modifier = Modifier.padding(bottom = 8.dp)
         ) {
             LazyColumn(
