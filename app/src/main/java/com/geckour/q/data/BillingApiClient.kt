@@ -10,14 +10,11 @@ import com.android.billingclient.api.BillingFlowParams
 import com.android.billingclient.api.BillingResult
 import com.android.billingclient.api.ConsumeParams
 import com.android.billingclient.api.Purchase
-import com.android.billingclient.api.Purchase.PurchaseState
 import com.android.billingclient.api.PurchasesUpdatedListener
 import com.android.billingclient.api.QueryProductDetailsParams
 import com.android.billingclient.api.QueryProductDetailsParams.Product
 import com.android.billingclient.api.QueryPurchasesParams
 import com.android.billingclient.api.queryProductDetails
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class BillingApiClient(
@@ -167,14 +164,12 @@ class BillingApiClient(
                 .setPurchaseToken(purchaseToken)
                 .build()
         ) {
-            Timber.d("qgeck ack response code: ${it.responseCode}, message: ${it.debugMessage}")
             if (it.responseCode == BillingClient.BillingResponseCode.OK) {
                 client.consumeAsync(
                     ConsumeParams.newBuilder()
                         .setPurchaseToken(purchaseToken)
                         .build()
                 ) { billingResult, _ ->
-                    Timber.d("qgeck consume response code: ${billingResult.responseCode}, message: ${billingResult.debugMessage}")
                     val result = when (billingResult.responseCode) {
                         BillingClient.BillingResponseCode.OK -> BillingApiResult.SUCCESS
 

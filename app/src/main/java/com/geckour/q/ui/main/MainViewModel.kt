@@ -425,7 +425,7 @@ class MainViewModel(private val app: App) : ViewModel() {
         showDropboxFolderChooser()
     }
 
-    internal fun showDropboxFolderChooser(dropboxMetadata: Metadata? = null) =
+    internal fun showDropboxFolderChooser(dropboxMetadata: Metadata? = null) {
         viewModelScope.launch(Dispatchers.IO) {
             val client = obtainDbxClient(app).firstOrNull() ?: return@launch
             var result = client.files().listFolder(dropboxMetadata?.pathLower.orEmpty())
@@ -440,6 +440,7 @@ class MainViewModel(private val app: App) : ViewModel() {
                     .sortedBy { it.name.lowercase() }
             )
         }
+    }
 
     internal fun clearDropboxItemList() {
         viewModelScope.launch {

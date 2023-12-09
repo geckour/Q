@@ -5,6 +5,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -54,7 +55,7 @@ import org.burnoutcrew.reorderable.reorderable
 
 
 @Composable
-fun Queue(
+fun ColumnScope.Queue(
     domainTracks: List<DomainTrack>,
     forceScrollToCurrent: Long,
     showLyric: Boolean,
@@ -86,6 +87,7 @@ fun Queue(
         if (lyric?.lines.isNullOrEmpty()) {
             Box(
                 modifier = Modifier
+                    .weight(1f)
                     .fillMaxSize()
                     .padding(24.dp),
                 contentAlignment = Alignment.Center
@@ -117,6 +119,7 @@ fun Queue(
             LazyColumn(
                 state = listState,
                 modifier = Modifier
+                    .weight(1f)
                     .fillMaxHeight()
                     .onGloballyPositioned { lyricListHeight = it.size.height }
             ) {
@@ -131,6 +134,7 @@ fun Queue(
             modifier = Modifier
                 .reorderable(reorderableState)
                 .detectReorderAfterLongPress(reorderableState)
+                .weight(1f)
                 .fillMaxHeight()
         ) {
             itemsIndexed(items, { _, item -> item.key }) { index, domainTrack ->

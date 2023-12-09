@@ -15,9 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.BottomSheetScaffoldState
+import androidx.compose.material.DrawerState
 import androidx.compose.material.DrawerValue
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Text
@@ -61,13 +60,13 @@ import com.geckour.q.util.toDomainTrack
 import kotlinx.coroutines.launch
 
 @OptIn(
-    ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class,
+    ExperimentalMaterial3Api::class,
     ExperimentalComposeUiApi::class
 )
 @Composable
 fun QTopBar(
     title: String,
-    scaffoldState: BottomSheetScaffoldState,
+    drawerState: DrawerState,
     onTapBar: () -> Unit,
     onToggleTheme: () -> Unit,
     onSearchItemClicked: (item: SearchItem) -> Unit,
@@ -83,13 +82,15 @@ fun QTopBar(
         TopAppBar(
             modifier = Modifier.clickable(onClick = onTapBar),
             navigationIcon = {
-                IconButton(onClick = {
-                    if (scaffoldState.drawerState.currentValue == DrawerValue.Closed) {
-                        coroutineScope.launch { scaffoldState.drawerState.open() }
-                    } else {
-                        coroutineScope.launch { scaffoldState.drawerState.close() }
+                IconButton(
+                    onClick = {
+                        if (drawerState.currentValue == DrawerValue.Closed) {
+                            coroutineScope.launch { drawerState.open() }
+                        } else {
+                            coroutineScope.launch { drawerState.close() }
+                        }
                     }
-                }) {
+                ) {
                     Icon(Icons.Default.Menu, contentDescription = null)
                 }
             },

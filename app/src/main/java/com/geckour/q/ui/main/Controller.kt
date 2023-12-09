@@ -53,6 +53,7 @@ import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.compose.QTheme
+import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.getShouldShowCurrentRemain
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.isDownloaded
@@ -78,7 +79,7 @@ fun Controller(
     resetPlaybackButton: () -> Unit,
     onNewProgress: (newProgress: Long) -> Unit,
     rotateRepeatMode: () -> Unit,
-    shuffleQueue: () -> Unit,
+    shuffleQueue: (actionType: ShuffleActionType?) -> Unit,
     resetShuffleQueue: () -> Unit,
     moveToCurrentIndex: () -> Unit,
     clearQueue: () -> Unit,
@@ -300,7 +301,7 @@ fun Controller(
                                 tint = QTheme.colors.colorButtonNormal,
                                 modifier = Modifier
                                     .combinedClickable(
-                                        onClick = shuffleQueue,
+                                        onClick = { shuffleQueue(null) },
                                         onLongClick = resetShuffleQueue,
                                         interactionSource = MutableInteractionSource(),
                                         indication = rememberRipple(bounded = false)

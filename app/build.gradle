@@ -65,7 +65,7 @@ android {
     }
     dataBinding.enabled = true
     kotlinOptions {
-        freeCompilerArgs += ["-Xopt-in=kotlin.RequiresOptIn"]
+        freeCompilerArgs += ["-opt-in=kotlin.RequiresOptIn"]
     }
     buildFeatures {
         compose true
@@ -160,6 +160,7 @@ dependencies {
     // AndroidX
     implementation 'androidx.preference:preference-ktx:1.2.1'
     implementation "androidx.browser:browser:1.7.0"
+    implementation "androidx.window:window:1.2.0"
 
     // KTX
     implementation 'androidx.fragment:fragment-ktx:1.6.2'
@@ -196,7 +197,7 @@ dependencies {
     implementation 'commons-codec:commons-codec:1.15'
 
     // Dropbox
-    implementation 'com.dropbox.core:dropbox-core-sdk:5.4.4'
+    implementation 'com.dropbox.core:dropbox-core-sdk:5.4.6'
 
     // Audio Metadata
     implementation "net.jthink:jaudiotagger:3.0.1"
