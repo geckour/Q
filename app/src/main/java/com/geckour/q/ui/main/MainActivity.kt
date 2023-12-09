@@ -15,16 +15,11 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -36,7 +31,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.Player
@@ -63,7 +57,6 @@ import com.geckour.q.domain.model.LayoutType
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.ui.compose.ColorBackground
-import com.geckour.q.ui.compose.ColorBackgroundInactive
 import com.geckour.q.ui.compose.ColorBackgroundInverse
 import com.geckour.q.ui.compose.ColorPrimaryDark
 import com.geckour.q.ui.compose.ColorPrimaryDarkInverse
@@ -90,16 +83,14 @@ import com.geckour.q.worker.KEY_PROGRESS_REMAINING_FILES_SIZE
 import com.geckour.q.worker.KEY_PROGRESS_TITLE
 import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.google.android.material.internal.EdgeToEdgeUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import org.koin.androidx.viewmodel.ext.android.viewModel
-import permissions.dispatcher.ktx.constructPermissionsRequest
 import timber.log.Timber
 import java.io.File
 import java.nio.charset.Charset
@@ -186,7 +177,8 @@ class MainActivity : ComponentActivity() {
                     bounds.height().toFloat() / bounds.width()
                 }
                 val isSquareIshScreen = windowAspectRatio in 0.75..1.33
-                val isHorizontal = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+                val isHorizontal =
+                    resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
                 val foldingFeature = it.displayFeatures
                     .filterIsInstance<FoldingFeature>()
@@ -288,7 +280,7 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            LaunchedEffect(Unit) {
+            LaunchedEffect(isNightMode) {
                 enableEdgeToEdge(
                     statusBarStyle = SystemBarStyle.auto(
                         lightScrim = ColorPrimaryDark.value.toInt(),
@@ -777,5 +769,6 @@ class MainActivity : ComponentActivity() {
         else listFiles()?.sumOf { it.getDirSize(initialSize) } ?: initialSize
 }
 
-private val Resources.isNightMode get() =
-    (configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) != Configuration.UI_MODE_NIGHT_NO
+private val Resources.isNightMode
+    get() =
+        (configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) != Configuration.UI_MODE_NIGHT_NO
