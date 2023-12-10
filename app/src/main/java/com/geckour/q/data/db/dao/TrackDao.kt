@@ -79,7 +79,7 @@ interface TrackDao {
     @Query("select mediaId from track")
     suspend fun getAllMediaIds(): List<Long>
 
-    @Query("select mediaId from track where dropboxPath == null")
+    @Query("select mediaId from track where dropboxPath is null")
     suspend fun getAllLocalMediaIds(): List<Long>
 
     @Transaction

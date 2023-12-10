@@ -72,7 +72,8 @@ class LocalMediaRetrieveWorker(
                 } else SELECTION
             applicationContext.contentResolver
                 .query(
-                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                    if (Build.VERSION.SDK_INT < 29) MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+                    else MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL),
                     projection,
                     selection,
                     null,
@@ -111,7 +112,7 @@ class LocalMediaRetrieveWorker(
                     }
 
                     if (onlyAdded.not()) {
-                        val diff = db.trackDao().getAllLocalMediaIds() - newTrackMediaIds.toSet()
+                        val diff = db.trackDao().getAllLocalMediaIds().apply { Timber.d("qgeck local media ids: $this") } - newTrackMediaIds.toSet().apply { Timber.d("qgeck new media ids: $this") }
                         db.deleteTracks(diff)
                     }
                 }

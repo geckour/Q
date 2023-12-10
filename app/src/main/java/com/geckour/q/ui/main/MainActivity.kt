@@ -1,14 +1,20 @@
 package com.geckour.q.ui.main
 
 import android.Manifest
+import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.content.res.Resources
+import android.database.ContentObserver
 import android.graphics.Rect
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.DisplayMetrics
 import androidx.activity.ComponentActivity
@@ -159,6 +165,17 @@ class MainActivity : ComponentActivity() {
                     delay(2000)
                     viewModel.emitSnackBarMessage(null)
                 }
+            }
+        }
+
+    private val generalContentObserver =
+        object : ContentObserver(Handler(Looper.getMainLooper())) {
+            override fun onChange(selfChange: Boolean, uri: Uri?, flags: Int) {
+                super.onChange(selfChange, uri, flags)
+
+                Timber.d("qgeck change occurred uri: $uri, flags: $flags")
+
+                retrieveMedia(false)
             }
         }
 
@@ -638,12 +655,29 @@ class MainActivity : ComponentActivity() {
 
         if (savedInstanceState == null) {
             viewModel.checkDBIsEmpty { retrieveMedia(false) }
-            retrieveMedia(true)
+        }
+
+        if (checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            contentResolver.registerContentObserver(
+                if (Build.VERSION.SDK_INT < 29) MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+                else MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL),
+                true,
+                generalContentObserver
+            )
         }
     }
 
     override fun onResume() {
         super.onResume()
+
+        if (Build.VERSION.SDK_INT > 25) {
+            contentResolver.refresh(
+                if (Build.VERSION.SDK_INT < 29) MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+                else MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL),
+                null,
+                null
+            )
+        }
 
         if (viewModel.isDropboxAuthOngoing) {
             viewModel.isDropboxAuthOngoing = false
@@ -664,6 +698,12 @@ class MainActivity : ComponentActivity() {
         }
 
         viewModel.requestBillingInfoUpdate()
+    }
+
+    override fun onDestroy() {
+        contentResolver.unregisterContentObserver(generalContentObserver)
+
+        super.onDestroy()
     }
 
     private fun retrieveMedia(onlyAdded: Boolean) {
@@ -689,7 +729,24 @@ class MainActivity : ComponentActivity() {
                 }
             }
         } else {
-            enqueueLocalRetrieveWorker(onlyAdded)
+            when {
+                checkSelfPermission(
+                    Manifest.permission.READ_MEDIA_AUDIO
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    enqueueLocalRetrieveWorker(onlyAdded)
+                }
+
+                else -> {
+                    onStoragePermissionRequestResult = {
+                        if (it) {
+                            enqueueLocalRetrieveWorker(onlyAdded)
+                        } else {
+                            onReadMediaDenied()
+                        }
+                    }
+                    requestStoragePermission.launch(Manifest.permission.READ_MEDIA_AUDIO)
+                }
+            }
         }
     }
 
@@ -769,9 +826,9 @@ class MainActivity : ComponentActivity() {
         ).enqueue()
     }
 
-    private fun onReadExternalStorageDenied() {
-        retrieveMedia(false)
-    }
+    private fun onReadExternalStorageDenied() = Unit
+
+    private fun onReadMediaDenied() = Unit
 
     private fun File.getDirSize(initialSize: Long = 0): Long =
         if (isFile) initialSize + length()
