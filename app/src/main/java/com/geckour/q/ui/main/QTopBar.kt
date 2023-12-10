@@ -1,6 +1,7 @@
 package com.geckour.q.ui.main
 
 import android.content.Context
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -30,6 +31,7 @@ import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -96,7 +99,9 @@ fun QTopBar(
                 }
             },
             title = {
-                AnimatedVisibility(visible = active.not()) { Text(text = title) }
+                AnimatedVisibility(visible = active.not()) {
+                    Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             },
             actions = {
                 IconButton(onClick = onToggleTheme) {
@@ -111,11 +116,7 @@ fun QTopBar(
         )
         SearchBar(
             query = query,
-            onQueryChange = { q ->
-                query = q
-                if (q.isEmpty()) result = emptyList()
-                else coroutineScope.launch { result = search(context, q) }
-            },
+            onQueryChange = { q -> query = q },
             onSearch = { keyboardController?.hide() },
             active = active,
             onActiveChange = { newActive -> active = newActive },
@@ -143,6 +144,13 @@ fun QTopBar(
             },
             modifier = Modifier.padding(bottom = 8.dp)
         ) {
+            LaunchedEffect(query) {
+                if (query.isEmpty()) result = emptyList()
+                else coroutineScope.launch { result = search(context, query) }
+            }
+            BackHandler(active) {
+                active = false
+            }
             LazyColumn(
                 modifier = Modifier
                     .padding(bottom = 144.dp)
