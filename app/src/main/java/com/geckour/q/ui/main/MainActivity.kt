@@ -10,6 +10,7 @@ import android.graphics.Rect
 import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.util.DisplayMetrics
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -168,15 +169,19 @@ class MainActivity : ComponentActivity() {
             .windowLayoutInfo(this)
             .flowWithLifecycle(this.lifecycle)
             .map {
-                val windowAspectRatio = if (Build.VERSION.SDK_INT < 30) {
-                    resources.displayMetrics.heightPixels.toFloat() / resources.displayMetrics.widthPixels
+                val (windowHeight, windowWidth) = if (Build.VERSION.SDK_INT < 30) {
+                    val metrics = DisplayMetrics().apply {
+                        windowManager.defaultDisplay.getMetrics(this)
+                    }
+                    metrics.heightPixels.toFloat() to metrics.widthPixels.toFloat()
                 } else {
-                    val bounds = windowManager.maximumWindowMetrics.bounds
-                    bounds.height().toFloat() / bounds.width()
+                    val bounds = windowManager.currentWindowMetrics.bounds
+                    bounds.height().toFloat() to bounds.width().toFloat()
                 }
-                val isSquareIshScreen = windowAspectRatio in 0.75..1.33
+                val isSquareIshScreen = (windowHeight / windowWidth) in 0.75..1.33
                 val isHorizontal =
                     resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+                val existSpaceToSplit = windowWidth > 1500
 
                 val foldingFeature = it.displayFeatures
                     .filterIsInstance<FoldingFeature>()
@@ -184,7 +189,7 @@ class MainActivity : ComponentActivity() {
 
                 when {
                     foldingFeature == null -> {
-                        if (isSquareIshScreen || isHorizontal) {
+                        if (existSpaceToSplit && (isSquareIshScreen || isHorizontal)) {
                             LayoutType.Twin(
                                 hingePosition = Rect(0, 0, 0, 0),
                                 orientation = FoldingFeature.Orientation.VERTICAL
@@ -295,10 +300,16 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(
                 workInfoList.map { it.progress },
-                workInfoList.map { it.state }) {
+                workInfoList.map { it.state }
+            ) {
                 if (workInfoList.none { it.state == WorkInfo.State.RUNNING }) {
                     viewModel.forceLoad.value = Unit
-                    progressMessage = null
+                    progressMessage =
+                        if (workInfoList.any {
+                                it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED
+                            }) {
+                            getString(R.string.starting)
+                        } else null
                     return@LaunchedEffect
                 }
 

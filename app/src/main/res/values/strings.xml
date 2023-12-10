@@ -36,6 +36,7 @@
 
     <!-- Indicator -->
     <string name="syncing">Syncing library…</string>
+    <string name="starting">Starting sync…</string>
     <string name="progress_title_retrieve_media">@string/syncing</string>
     <string name="progress_title_download_dropbox">@string/syncing</string>
     <string name="loading">Loading items…</string>

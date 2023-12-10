@@ -131,7 +131,7 @@ fun QTopBar(
             ),
             leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null) },
             trailingIcon = {
-                if (query.isNotEmpty()) {
+                if (active) {
                     IconButton(
                         onClick = {
                             query = ""
