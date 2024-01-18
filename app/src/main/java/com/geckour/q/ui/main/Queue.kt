@@ -125,9 +125,11 @@ fun ColumnScope.Queue(
             val density = LocalDensity.current
 
             LaunchedEffect(currentPlaybackPosition) {
-                currentIndex = lyricLinesForShowing.indexOfLast {
-                    it.lyricLine.timing < currentPlaybackPosition
-                }
+                currentIndex =
+                    if (lyricLinesForShowing.all { it.lyricLine.timing == 0L }) -1
+                    else lyricLinesForShowing.indexOfLast {
+                        it.lyricLine.timing < currentPlaybackPosition
+                    }
             }
             LaunchedEffect(currentIndex, lyricListHeight) {
                 if (isInEditMode.not() && currentIndex > -1) {
