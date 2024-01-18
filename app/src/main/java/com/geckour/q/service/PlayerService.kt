@@ -502,12 +502,11 @@ class PlayerService : Service(), LifecycleOwner {
 
     private fun verifyByCauseIfNeeded(throwable: Throwable): Boolean {
         val isTarget =
-            throwable.getCausesRecursively().apply { Timber.d("qgeck causes: $this") }.any {
+            throwable.getCausesRecursively().any {
                 (it as? HttpDataSource.InvalidResponseCodeException?)?.responseCode == 410 ||
                         (it is FileNotFoundException &&
                                 player.currentSourcePaths
                                     .getOrNull(currentIndex)
-                                    .apply { Timber.d("qgeck source path: $this") }
                                     ?.matches(dropboxCachePathPattern) == true)
             }
         if (isTarget) {
@@ -516,15 +515,15 @@ class PlayerService : Service(), LifecycleOwner {
                     loadStateFlow.value = true to null
                     val index = currentIndex
                     val position = player.currentPosition
-                    player.currentSourcePaths
-                        .forEach { path ->
-                            val track = path.toDomainTrack(db) ?: return@forEach
+                    val replacingPairs = player.currentSourcePaths
+                        .mapNotNull { path ->
+                            val track = path.toDomainTrack(db) ?: return@mapNotNull null
                             val new = obtainDbxClient(this@PlayerService).firstOrNull()?.let {
                                 track.verifiedWithDropbox(this@PlayerService, it)
-                            } ?: return@forEach
-
-                            replace(track to new)
+                            } ?: return@mapNotNull null
+                            track to new
                         }
+                    replace(replacingPairs)
 
                     forceIndex(index)
                     seek(position)
@@ -700,13 +699,16 @@ class PlayerService : Service(), LifecycleOwner {
         replace(listOf(with))
     }
 
+    /**
+     * @param with: first: old, second: new
+     */
     private fun replace(with: List<Pair<DomainTrack, DomainTrack>>) {
         if (with.isEmpty()) return
 
         with.forEach { withTrack ->
             val index = player.currentSourcePaths.indexOfFirst { it == withTrack.first.sourcePath }
-            Timber.d("qgeck source path: ${withTrack.first.sourcePath}")
-            Timber.d("qgeck index: $index")
+            FirebaseCrashlytics.getInstance()
+                .log("replace source path: ${withTrack.second.sourcePath}")
             removeQueue(index)
             player.addMediaItem(
                 index,

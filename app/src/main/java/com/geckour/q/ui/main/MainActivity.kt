@@ -1,7 +1,6 @@
 package com.geckour.q.ui.main
 
 import android.Manifest
-import android.content.ContentResolver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -671,12 +670,14 @@ class MainActivity : ComponentActivity() {
         super.onResume()
 
         if (Build.VERSION.SDK_INT > 25) {
-            contentResolver.refresh(
-                if (Build.VERSION.SDK_INT < 29) MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-                else MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL),
-                null,
-                null
-            )
+            if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+                contentResolver.refresh(
+                    if (Build.VERSION.SDK_INT < 29) MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+                    else MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL),
+                    null,
+                    null
+                )
+            }
         }
 
         if (viewModel.isDropboxAuthOngoing) {
@@ -710,10 +711,8 @@ class MainActivity : ComponentActivity() {
         WorkManager.getInstance(this)
             .cancelAllWorkByTag(LocalMediaRetrieveWorker.TAG)
         if (Build.VERSION.SDK_INT < 33) {
-            when {
-                checkSelfPermission(
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ) == PackageManager.PERMISSION_GRANTED -> {
+            when (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
+                PackageManager.PERMISSION_GRANTED -> {
                     enqueueLocalRetrieveWorker(onlyAdded)
                 }
 
@@ -729,10 +728,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
         } else {
-            when {
-                checkSelfPermission(
-                    Manifest.permission.READ_MEDIA_AUDIO
-                ) == PackageManager.PERMISSION_GRANTED -> {
+            when (checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO)) {
+                PackageManager.PERMISSION_GRANTED -> {
                     enqueueLocalRetrieveWorker(onlyAdded)
                 }
 
