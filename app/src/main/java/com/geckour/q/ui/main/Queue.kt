@@ -9,20 +9,28 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.Button
+import androidx.compose.material.Divider
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Surface
 import androidx.compose.material.Text
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -30,14 +38,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -45,9 +56,14 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Lyric
+import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.ui.compose.QTheme
+import com.geckour.q.util.getTimeString
 import com.geckour.q.util.moved
+import com.geckour.q.util.removedAt
+import kotlinx.coroutines.launch
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
 import org.burnoutcrew.reorderable.rememberReorderableLazyListState
@@ -64,16 +80,21 @@ fun ColumnScope.Queue(
     onChangeRequestedTrackInQueue: (domainTrack: DomainTrack) -> Unit,
     onRemoveTrackFromQueue: (domainTrack: DomainTrack) -> Unit
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     var items by remember { mutableStateOf(domainTracks) }
-    val lyric by DB.getInstance(LocalContext.current)
+    val lyric by DB.getInstance(context)
         .lyricDao()
         .getLyricByTrackId(domainTracks.firstOrNull { it.nowPlaying }?.id ?: -1)
         .collectAsState(initial = null)
+    val lyricLinesForShowing = lyric.lyricLinesForShowing
     val reorderableState = rememberReorderableLazyListState(
         onMove = { from, to -> items = items.moved(from.index, to.index) },
         onDragEnd = { from, to -> onQueueMove(from, to) }
     )
     var lyricListHeight by remember { mutableIntStateOf(0) }
+
+    var isInEditMode by remember { mutableStateOf(false) }
 
     LaunchedEffect(domainTracks) {
         items = domainTracks
@@ -104,14 +125,14 @@ fun ColumnScope.Queue(
             val density = LocalDensity.current
 
             LaunchedEffect(currentPlaybackPosition) {
-                currentIndex = checkNotNull(lyric?.lines.orEmpty()).indexOfLast {
-                    it.timing < currentPlaybackPosition
+                currentIndex = lyricLinesForShowing.indexOfLast {
+                    it.lyricLine.timing < currentPlaybackPosition
                 }
             }
             LaunchedEffect(currentIndex, lyricListHeight) {
-                if (currentIndex > -1) {
+                if (isInEditMode.not() && currentIndex > -1) {
                     listState.animateScrollToItem(
-                        currentIndex,
+                        currentIndex + 1,
                         -lyricListHeight / 2 + with(density) { 22.dp.roundToPx() }
                     )
                 }
@@ -123,8 +144,84 @@ fun ColumnScope.Queue(
                     .fillMaxHeight()
                     .onGloballyPositioned { lyricListHeight = it.size.height }
             ) {
-                itemsIndexed(checkNotNull(lyric?.lines.orEmpty())) { index, lyricLine ->
-                    LrcItem(lyric = lyricLine.sentence, index == currentIndex)
+                item {
+                    Row(
+                        modifier = Modifier
+                            .padding(horizontal = 24.dp)
+                            .fillMaxWidth(),
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Button(onClick = { isInEditMode = isInEditMode.not() }) {
+                            Text(
+                                text = if (isInEditMode) "完了" else "編集",
+                                color = QTheme.colors.colorTextPrimary
+                            )
+                        }
+                    }
+                }
+                if (isInEditMode) {
+                    item {
+                        NewLyricLineInputBox(
+                            onSubmit = { newSentence ->
+                                lyric?.let {
+                                    coroutineScope.launch {
+                                        DB.getInstance(context).lyricDao().upsertLyric(
+                                            it.copy(
+                                                lines = lyricLinesForShowing.map { it.lyricLine } +
+                                                        LyricLine(
+                                                            currentPlaybackPosition,
+                                                            newSentence
+                                                        )
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
+                items(lyricLinesForShowing) { indexedLyricLine ->
+                    if (isInEditMode) EditableLrcItem(
+                        line = indexedLyricLine,
+                        currentPlaybackPosition = currentPlaybackPosition,
+                        onUpdateLine = { index, newLine ->
+                            lyric?.let {
+                                coroutineScope.launch {
+                                    DB.getInstance(context)
+                                        .lyricDao()
+                                        .upsertLyric(
+                                            it.copy(
+                                                lines = lyricLinesForShowing.toMutableList()
+                                                    .apply {
+                                                        set(
+                                                            index,
+                                                            IndexedLyricLine(index, newLine)
+                                                        )
+                                                    }
+                                                    .map { it.lyricLine }
+                                            )
+                                        )
+                                }
+                            }
+                        },
+                        onDeleteLine = { index ->
+                            lyric?.let {
+                                coroutineScope.launch {
+                                    DB.getInstance(context)
+                                        .lyricDao()
+                                        .upsertLyric(
+                                            it.copy(
+                                                lines = lyricLinesForShowing.removedAt(index)
+                                                    .map { it.lyricLine }
+                                            )
+                                        )
+                                }
+                            }
+                        })
+                    else LrcItem(
+                        lyric = indexedLyricLine.lyricLine.sentence,
+                        indexedLyricLine.index == currentIndex
+                    )
                 }
             }
         }
@@ -262,6 +359,109 @@ fun QueueItem(
 }
 
 @Composable
+fun NewLyricLineInputBox(onSubmit: (newLine: String) -> Unit) {
+    var text by remember { mutableStateOf("") }
+    Row(
+        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        BasicTextField(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .defaultMinSize(minWidth = 0.dp, minHeight = 0.dp),
+            value = text,
+            onValueChange = { text = it },
+            singleLine = true,
+            textStyle = TextStyle(fontSize = 16.sp, color = QTheme.colors.colorTextPrimary),
+            cursorBrush = SolidColor(QTheme.colors.colorTextSecondary),
+            decorationBox = { innerTextField ->
+                Column {
+                    Box(modifier = Modifier.padding(vertical = 4.dp)) {
+                        innerTextField()
+                    }
+                    Divider(color = QTheme.colors.colorTextSecondary)
+                }
+            }
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Button(onClick = {
+            onSubmit(text)
+            text = ""
+        }) {
+            Text(
+                text = "挿入",
+                color = QTheme.colors.colorTextPrimary
+            )
+        }
+    }
+}
+
+@Composable
+fun EditableLrcItem(
+    line: IndexedLyricLine,
+    currentPlaybackPosition: Long,
+    onUpdateLine: (index: Int, newLine: LyricLine) -> Unit,
+    onDeleteLine: (index: Int) -> Unit,
+) {
+    var text by remember { mutableStateOf(line.lyricLine.sentence) }
+
+    LaunchedEffect(line.index, line) {
+        text = line.lyricLine.sentence
+    }
+
+    Row(
+        modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Button(onClick = {
+            onUpdateLine(
+                line.index,
+                line.lyricLine.copy(timing = currentPlaybackPosition)
+            )
+        }) {
+            Text(
+                text = line.lyricLine.timing.getTimeString(),
+                color = QTheme.colors.colorTextPrimary
+            )
+        }
+        BasicTextField(
+            modifier = Modifier
+                .padding(horizontal = 8.dp)
+                .fillMaxWidth()
+                .weight(1f)
+                .defaultMinSize(minWidth = 0.dp, minHeight = 0.dp),
+            value = text,
+            onValueChange = {
+                text = it
+                onUpdateLine(
+                    line.index,
+                    line.lyricLine.copy(sentence = text)
+                )
+            },
+            singleLine = true,
+            textStyle = TextStyle(fontSize = 16.sp, color = QTheme.colors.colorTextPrimary),
+            cursorBrush = SolidColor(QTheme.colors.colorTextSecondary),
+            decorationBox = { innerTextField ->
+                Column {
+                    Box(modifier = Modifier.padding(vertical = 4.dp)) {
+                        innerTextField()
+                    }
+                    Divider(color = QTheme.colors.colorTextSecondary)
+                }
+            }
+        )
+        IconButton(onClick = { onDeleteLine(line.index) }) {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = "削除",
+                tint = QTheme.colors.colorButtonNormal
+            )
+        }
+    }
+}
+
+@Composable
 fun LrcItem(lyric: String, focused: Boolean) {
     Row(modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
         Text(
@@ -272,3 +472,18 @@ fun LrcItem(lyric: String, focused: Boolean) {
         )
     }
 }
+
+data class IndexedLyricLine(
+    val index: Int,
+    val lyricLine: LyricLine,
+)
+
+val Lyric?.lyricLinesForShowing
+    get() = this?.lines.orEmpty()
+        .let { lines ->
+            lines.filter { it.timing == 0L } +
+                    lines.filter { it.timing != 0L }.sortedBy { it.timing }
+        }
+        .mapIndexed { index, lyricLine ->
+            IndexedLyricLine(index, lyricLine)
+        }
