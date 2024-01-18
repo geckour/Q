@@ -135,7 +135,9 @@ class MainActivity : ComponentActivity() {
                         val lyricText = contentResolver.openInputStream(uri)?.use {
                             it.readBytes().toString(Charset.forName("UTF-8"))
                         } ?: throw IllegalStateException("Cannot open lyric file.")
-                        onLrcFileLoaded?.invoke(listOf(LyricLine(0, lyricText)))
+                        onLrcFileLoaded?.invoke(
+                            lyricText.split('\n').map { LyricLine(0, it) }
+                        )
                         return@registerForActivityResult
                     } else if (extensionName != "lrc") {
                         throw IllegalStateException("The file type .$extensionName is not supported.")
