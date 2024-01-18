@@ -44,6 +44,8 @@
     <string name="remaining">Remaining: %s (%sB)</string>
     <string name="button_apply">Apply</string>
     <string name="button_cancel">Cancel</string>
+    <string name="message_export_lyric_success">Success to export the lyric</string>
+    <string name="message_export_lyric_failure">Failure to export the lyric</string>
     <string name="message_attach_lyric_success">Success to link the lyric</string>
     <string name="message_attach_lyric_failure">Failure to link the lyric</string>
     <string name="message_delete_lyric_complete">Complete to delete the lyric</string>
@@ -80,6 +82,7 @@
     <string name="menu_ignore_to_false">Disable skip on multiple add</string>
     <string name="menu_ignore_to_true">Enable skip on multiple add</string>
 
+    <string name="menu_export_lyric">Export lyric</string>
     <string name="menu_attach_lyric">Attach lyric</string>
     <string name="menu_detach_lyric">Detach lyric</string>
 

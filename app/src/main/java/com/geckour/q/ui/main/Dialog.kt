@@ -62,6 +62,7 @@ fun TrackOptionDialog(
         actionType: InsertActionType,
         classType: OrientedClassType
     ) -> Unit,
+    onExportLyric: (domainTrack: DomainTrack) -> Unit,
     onAttachLyric: (trackId: Long) -> Unit,
     onDetachLyric: (trackId: Long) -> Unit,
     onDeleteTrack: (track: DomainTrack) -> Unit
@@ -137,6 +138,18 @@ fun TrackOptionDialog(
                 ) {
                     Text(
                         text = stringResource(id = R.string.menu_transition_to_album),
+                        fontSize = 14.sp,
+                        color = QTheme.colors.colorTextPrimary
+                    )
+                }
+                DialogListItem(
+                    onClick = {
+                        onExportLyric(domainTrack)
+                        onSelectTrack(null)
+                    }
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.menu_export_lyric),
                         fontSize = 14.sp,
                         color = QTheme.colors.colorTextPrimary
                     )
@@ -1138,6 +1151,7 @@ fun BoxScope.Dialogs(
     onSelectArtist: (artist: Artist?) -> Unit,
     onSelectGenre: (genre: Genre?) -> Unit,
     onDeleteTrack: (track: DomainTrack) -> Unit,
+    onExportLyric: (domainTrack: DomainTrack) -> Unit,
     onAttachLyric: (trackId: Long) -> Unit,
     onDetachLyric: (trackId: Long) -> Unit,
     onNewQueue: (queue: List<DomainTrack>, actionType: InsertActionType, classType: OrientedClassType) -> Unit,
@@ -1159,6 +1173,7 @@ fun BoxScope.Dialogs(
             navController = navController,
             onSelectTrack = onSelectTrack,
             onNewQueue = onNewQueue,
+            onExportLyric = onExportLyric,
             onAttachLyric = onAttachLyric,
             onDetachLyric = onDetachLyric,
             onDeleteTrack = onDeleteTrack

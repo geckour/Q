@@ -1,5 +1,6 @@
 package com.geckour.q.util
 
+import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
 import java.io.File
 
@@ -7,7 +8,9 @@ fun File.parseLrc(): List<LyricLine> =
     if (extension != "lrc") emptyList()
     else readLines()
         .map { line ->
-            if (line.matches(Regex("^(\\[\\d+?:\\d+?(\\.\\d+?)?])+.*$")).not()) return@map emptyList()
+            if (line.matches(Regex("^(\\[\\d+?:\\d+?(\\.\\d+?)?])+.*$"))
+                    .not()
+            ) return@map emptyList()
 
             val timings = Regex("^((\\[\\d+?:\\d+?(\\.\\d+?)?])+).*$").find(line)
                 ?.groupValues
@@ -30,3 +33,7 @@ fun File.parseLrc(): List<LyricLine> =
             timings.map { LyricLine(it, sentence) }
         }.flatten()
         .sortedBy { it.timing }
+
+fun Lyric.toLrcString(): String = lines.joinToString("\n") {
+    "[${it.timing.getTimeString()}.${it.timing % 1000 / 10}]${it.sentence}"
+}

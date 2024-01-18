@@ -76,6 +76,7 @@ import com.geckour.q.util.getNumberWithUnitPrefix
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.parseLrc
 import com.geckour.q.util.setIsNightMode
+import com.geckour.q.util.toLrcString
 import com.geckour.q.worker.DROPBOX_DOWNLOAD_WORKER_NAME
 import com.geckour.q.worker.DropboxDownloadWorker
 import com.geckour.q.worker.DropboxMediaRetrieveWorker
@@ -97,6 +98,7 @@ import kotlinx.coroutines.launch
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import timber.log.Timber
 import java.io.File
+import java.io.FileOutputStream
 import java.nio.charset.Charset
 import java.util.UUID
 
@@ -112,6 +114,7 @@ class MainActivity : ComponentActivity() {
     private var onCancelProgress: (() -> Unit)? = null
 
     private var onLrcFileLoaded: ((lyricLines: List<LyricLine>) -> Unit)? = null
+    private var lrcString: String? = null
 
     private val requestStoragePermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -162,6 +165,37 @@ class MainActivity : ComponentActivity() {
                 lifecycleScope.launch {
                     viewModel.emitSnackBarMessage(
                         getString(R.string.message_attach_lyric_failure)
+                    )
+                    delay(2000)
+                    viewModel.emitSnackBarMessage(null)
+                }
+            }
+        }
+
+    private val putContent =
+        registerForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+            uri ?: return@registerForActivityResult
+            val lrcString = this.lrcString ?: return@registerForActivityResult
+
+            try {
+                contentResolver.openFileDescriptor(uri, "w")?.use { parcelFileDescriptor ->
+                    FileOutputStream(parcelFileDescriptor.fileDescriptor).use {
+                        it.write(lrcString.toByteArray())
+                    }
+                }
+                this.lrcString = null
+                lifecycleScope.launch {
+                    viewModel.emitSnackBarMessage(
+                        getString(R.string.message_export_lyric_success)
+                    )
+                    delay(2000)
+                    viewModel.emitSnackBarMessage(null)
+                }
+            } catch (t: Throwable) {
+                Timber.e(t)
+                lifecycleScope.launch {
+                    viewModel.emitSnackBarMessage(
+                        getString(R.string.message_export_lyric_failure)
                     )
                     delay(2000)
                     viewModel.emitSnackBarMessage(null)
@@ -481,6 +515,15 @@ class MainActivity : ComponentActivity() {
                                     invalidateDownloadedTargets = emptyList()
                                 },
                                 onDeleteTrack = viewModel::deleteTrack,
+                                onExportLyric = {
+                                    coroutineScope.launch {
+                                        lrcString = DB.getInstance(context)
+                                            .lyricDao()
+                                            .getLyricByTrackId(it.id)
+                                            ?.toLrcString() ?: return@launch
+                                        putContent.launch("${it.title}.lrc")
+                                    }
+                                },
                                 onAttachLyric = {
                                     attachLyricTargetTrackId = it
                                     getContent.launch("*/*")
@@ -606,6 +649,15 @@ class MainActivity : ComponentActivity() {
                                     invalidateDownloadedTargets = emptyList()
                                 },
                                 onDeleteTrack = viewModel::deleteTrack,
+                                onExportLyric = {
+                                    coroutineScope.launch {
+                                        lrcString = DB.getInstance(context)
+                                            .lyricDao()
+                                            .getLyricByTrackId(it.id)
+                                            ?.toLrcString() ?: return@launch
+                                        putContent.launch("${it.title}.lrc")
+                                    }
+                                },
                                 onAttachLyric = {
                                     attachLyricTargetTrackId = it
                                     getContent.launch("*/*")

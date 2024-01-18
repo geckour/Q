@@ -85,7 +85,7 @@ fun ColumnScope.Queue(
     var items by remember { mutableStateOf(domainTracks) }
     val lyric by DB.getInstance(context)
         .lyricDao()
-        .getLyricByTrackId(domainTracks.firstOrNull { it.nowPlaying }?.id ?: -1)
+        .getLyricFlowByTrackId(domainTracks.firstOrNull { it.nowPlaying }?.id ?: -1)
         .collectAsState(initial = null)
     val lyricLinesForShowing = lyric.lyricLinesForShowing
     val reorderableState = rememberReorderableLazyListState(
