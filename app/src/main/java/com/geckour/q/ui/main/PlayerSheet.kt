@@ -10,6 +10,7 @@ fun PlayerSheet(
     queue: List<DomainTrack>,
     currentIndex: Int,
     currentPlaybackPosition: Long,
+    currentBufferedPosition: Long,
     currentPlaybackInfo: Pair<Boolean, Int>,
     currentRepeatMode: Int,
     isLoading: Pair<Boolean, (() -> Unit)?>,
@@ -37,6 +38,7 @@ fun PlayerSheet(
         Controller(
             currentTrack = queue.getOrNull(currentIndex),
             progress = currentPlaybackPosition,
+            bufferProgress = currentBufferedPosition,
             queueTotalDuration = queue.sumOf { it.duration },
             queueRemainingDuration = queue.drop(currentIndex + 1)
                 .sumOf { it.duration }

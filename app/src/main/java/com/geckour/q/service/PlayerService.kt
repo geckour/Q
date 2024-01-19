@@ -251,6 +251,7 @@ class PlayerService : Service(), LifecycleOwner {
     internal val loadStateFlow = MutableStateFlow<Pair<Boolean, (() -> Unit)?>>(false to null)
     internal val playbackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
     internal val playbackPositionFLow = MutableStateFlow(0L)
+    internal val bufferedPositionFLow = MutableStateFlow(0L)
     internal val repeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
     internal val onDestroyFlow = MutableStateFlow(0L)
 
@@ -479,6 +480,7 @@ class PlayerService : Service(), LifecycleOwner {
         sourcePathsFlow.value = player.currentSourcePaths
         currentIndexFlow.value = currentIndex
         playbackPositionFLow.value = player.currentPosition
+        bufferedPositionFLow.value = player.bufferedPosition
         notificationUpdateJob.cancel()
         notificationUpdateJob = updateNotification()
         storeState()
@@ -646,6 +648,7 @@ class PlayerService : Service(), LifecycleOwner {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 while (this.isActive) {
                     playbackPositionFLow.value = player.currentPosition
+                    bufferedPositionFLow.value = player.bufferedPosition
                     delay(100)
                 }
             }

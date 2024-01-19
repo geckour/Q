@@ -67,6 +67,7 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal val currentQueueFlow = MutableStateFlow(emptyList<DomainTrack>())
     internal val currentIndexFlow = MutableStateFlow(0)
     internal val currentPlaybackPositionFlow = MutableStateFlow(0L)
+    internal val currentBufferedPositionFlow = MutableStateFlow(0L)
     internal val currentPlaybackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
     internal val currentRepeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
     internal var snackBarMessageFlow = MutableStateFlow<String?>(null)
@@ -130,6 +131,11 @@ class MainViewModel(private val app: App) : ViewModel() {
                 viewModelScope.launch {
                     playerService.playbackPositionFLow.collect {
                         currentPlaybackPositionFlow.value = it
+                    }
+                }
+                viewModelScope.launch {
+                    playerService.bufferedPositionFLow.collect {
+                        currentBufferedPositionFlow.value = it
                     }
                 }
                 viewModelScope.launch {

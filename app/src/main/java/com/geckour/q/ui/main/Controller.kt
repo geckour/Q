@@ -24,8 +24,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
-import androidx.compose.material.Slider
-import androidx.compose.material.SliderDefaults
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lyrics
@@ -52,6 +50,7 @@ import androidx.media3.common.Player
 import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.ui.DoubleTrackSlider
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.getShouldShowCurrentRemain
@@ -65,6 +64,7 @@ import kotlinx.coroutines.launch
 fun Controller(
     currentTrack: DomainTrack?,
     progress: Long,
+    bufferProgress: Long,
     queueTotalDuration: Long,
     queueRemainingDuration: Long,
     playbackInfo: Pair<Boolean, Int>,
@@ -329,19 +329,23 @@ fun Controller(
                     textAlign = TextAlign.Center,
                     modifier = Modifier.width(60.dp)
                 )
-                Slider(
-                    value = currentTrack?.let { progress.toDouble() / it.duration }?.toFloat()
-                        ?: 0f,
-                    onValueChange = { newProgress ->
-                        currentTrack?.let { onNewProgress((newProgress * it.duration).toLong()) }
-                    },
-                    colors = SliderDefaults.colors(
-                        thumbColor = QTheme.colors.colorButtonNormal,
-                        activeTrackColor = QTheme.colors.colorButtonNormal,
-                    ),
+                DoubleTrackSlider(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth()
+                        .fillMaxWidth(),
+                    progressFraction = currentTrack?.duration
+                        ?.let { progress.toFloat() / it }
+                        ?: 0f,
+                    subProgressFraction = currentTrack?.duration?.let { bufferProgress.toFloat() / it },
+                    thumbColor = QTheme.colors.colorButtonNormal,
+                    baseTrackColor = QTheme.colors.colorTextSecondary,
+                    subTrackColor = QTheme.colors.colorTextPrimary,
+                    activeTrackColor = QTheme.colors.colorButtonNormal,
+                    onSeek = { newProgressFraction ->
+                        currentTrack?.let {
+                            onNewProgress((newProgressFraction * it.duration).toLong())
+                        }
+                    },
                 )
                 Text(
                     text = currentTrack?.let {

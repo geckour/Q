@@ -280,6 +280,7 @@ class MainActivity : ComponentActivity() {
             val sourcePaths by viewModel.currentSourcePathsFlow.collectAsState()
             val currentIndex by viewModel.currentIndexFlow.collectAsState()
             val currentPlaybackPosition by viewModel.currentPlaybackPositionFlow.collectAsState()
+            val currentBufferedPosition by viewModel.currentBufferedPositionFlow.collectAsState()
             val currentPlaybackInfo by viewModel.currentPlaybackInfoFlow.collectAsState()
             val currentRepeatMode by viewModel.currentRepeatModeFlow.collectAsState()
             var forceScrollToCurrent by remember { mutableLongStateOf(System.currentTimeMillis()) }
@@ -441,6 +442,7 @@ class MainActivity : ComponentActivity() {
                                 queue = queue,
                                 currentIndex = currentIndex,
                                 currentPlaybackPosition = currentPlaybackPosition,
+                                currentBufferedPosition = currentBufferedPosition,
                                 currentPlaybackInfo = currentPlaybackInfo,
                                 currentRepeatMode = currentRepeatMode,
                                 isLoading = isLoading,
@@ -575,6 +577,7 @@ class MainActivity : ComponentActivity() {
                                 queue = queue,
                                 currentIndex = currentIndex,
                                 currentPlaybackPosition = currentPlaybackPosition,
+                                currentBufferedPosition = currentBufferedPosition,
                                 currentPlaybackInfo = currentPlaybackInfo,
                                 currentRepeatMode = currentRepeatMode,
                                 isLoading = isLoading,
