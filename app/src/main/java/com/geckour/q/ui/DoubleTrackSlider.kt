@@ -1,9 +1,8 @@
 package com.geckour.q.ui
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +16,7 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,26 +34,43 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun DoubleTrackSlider(
     modifier: Modifier = Modifier,
+    key: Any? = null,
     progressFraction: Float,
-    subProgressFraction: Float? = null,
+    secondaryProgressFraction: Float? = null,
     thickness: Dp = 4.dp,
     thumbRadius: Dp = 6.dp,
     thumbElevation: Dp = 4.dp,
-    baseTrackColor: Color = MaterialTheme.colors.surface,
     activeTrackColor: Color = MaterialTheme.colors.primary,
-    subTrackColor: Color = MaterialTheme.colors.secondary,
+    baseTrackColor: Color = activeTrackColor.copy(alpha = 0.24f),
+    secondaryTrackColor: Color = MaterialTheme.colors.secondary,
     thumbColor: Color = activeTrackColor,
     onSeek: ((newProgressFraction: Float) -> Unit)? = null,
 ) {
     val density = LocalDensity.current
     var trackWidth by remember { mutableStateOf(0.dp) }
-    var offsetX by remember { mutableStateOf(0.dp) }
+    var innerProgressFraction by remember { mutableFloatStateOf(progressFraction) }
     LaunchedEffect(progressFraction) {
-        offsetX = (trackWidth - thickness) * progressFraction
+        innerProgressFraction = progressFraction
     }
 
     Box(
-        modifier = modifier,
+        modifier = modifier
+            .pointerInput(key ?: Unit) {
+                detectTapGestures {
+                    innerProgressFraction = it.x
+                        .coerceIn(0f..(trackWidth - thickness).toPx())
+                        .toDp() / (trackWidth - thickness)
+                    onSeek?.invoke(innerProgressFraction)
+                }
+            }
+            .pointerInput(key ?: Unit) {
+                detectHorizontalDragGestures { change, _ ->
+                    innerProgressFraction = change.position.x
+                        .coerceIn(0f..(trackWidth - thickness).toPx())
+                        .toDp() / (trackWidth - thickness)
+                    onSeek?.invoke(innerProgressFraction)
+                }
+            },
         contentAlignment = Alignment.CenterStart
     ) {
         Box(
@@ -68,14 +86,14 @@ fun DoubleTrackSlider(
                     trackWidth = with(density) { it.size.width.toDp() }
                 }
         )
-        if (subProgressFraction != null) {
+        if (secondaryProgressFraction != null) {
             Box(
                 modifier = Modifier
                     .padding(horizontal = thumbRadius - thickness / 2)
-                    .width(trackWidth * subProgressFraction.coerceAtMost(1f))
+                    .width(trackWidth * secondaryProgressFraction.coerceAtMost(1f))
                     .height(thickness)
                     .background(
-                        color = subTrackColor,
+                        color = secondaryTrackColor,
                         shape = RoundedCornerShape(thickness / 2)
                     )
             )
@@ -83,7 +101,7 @@ fun DoubleTrackSlider(
         Box(
             modifier = Modifier
                 .padding(horizontal = thumbRadius - thickness / 2)
-                .width(trackWidth * progressFraction.coerceAtMost(1f))
+                .width(trackWidth * innerProgressFraction.coerceAtMost(1f))
                 .height(thickness)
                 .background(
                     color = activeTrackColor,
@@ -93,16 +111,7 @@ fun DoubleTrackSlider(
         Box(
             modifier = Modifier
                 .size(thumbRadius * 2)
-                .offset(x = offsetX)
-                .draggable(
-                    orientation = Orientation.Horizontal,
-                    state = rememberDraggableState { delta ->
-                        offsetX += with(density) { delta.toDp() }
-                        if (offsetX < 0.dp) offsetX = 0.dp
-                        if (offsetX > trackWidth - thickness) offsetX = trackWidth - thickness
-                        onSeek?.invoke(offsetX / trackWidth)
-                    }
-                )
+                .offset(x = (trackWidth - thickness) * innerProgressFraction)
                 .shadow(elevation = thumbElevation)
                 .background(
                     color = thumbColor,
@@ -117,6 +126,6 @@ fun DoubleTrackSlider(
 fun SliderPreview() {
     DoubleTrackSlider(
         progressFraction = 0.1f,
-        subProgressFraction = 0.3f,
+        secondaryProgressFraction = 0.3f,
     )
 }

@@ -383,6 +383,7 @@ class PlayerService : Service(), LifecycleOwner {
 
     private var notificationUpdateJob: Job = Job()
     private var notifyPlaybackPositionJob: Job = Job()
+    private var notifyBufferedPositionJob: Job = Job()
     private var playbackCountIncreaseJob: Job = Job()
     private var seekJob: Job = Job()
 
@@ -483,6 +484,15 @@ class PlayerService : Service(), LifecycleOwner {
         bufferedPositionFLow.value = player.bufferedPosition
         notificationUpdateJob.cancel()
         notificationUpdateJob = updateNotification()
+        notifyBufferedPositionJob.cancel()
+        notifyBufferedPositionJob = lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                while (this.isActive) {
+                    bufferedPositionFLow.value = player.bufferedPosition
+                    delay(100)
+                }
+            }
+        }
         storeState()
         setEqualizer(player.audioSessionId)
     }
@@ -648,7 +658,6 @@ class PlayerService : Service(), LifecycleOwner {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 while (this.isActive) {
                     playbackPositionFLow.value = player.currentPosition
-                    bufferedPositionFLow.value = player.bufferedPosition
                     delay(100)
                 }
             }
