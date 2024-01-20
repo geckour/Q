@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -22,7 +23,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -39,10 +39,10 @@ fun DoubleTrackSlider(
     secondaryProgressFraction: Float? = null,
     thickness: Dp = 4.dp,
     thumbRadius: Dp = 6.dp,
-    thumbElevation: Dp = 4.dp,
+    thumbElevation: Dp = 1.dp,
     activeTrackColor: Color = MaterialTheme.colors.primary,
     baseTrackColor: Color = activeTrackColor.copy(alpha = 0.24f),
-    secondaryTrackColor: Color = MaterialTheme.colors.secondary,
+    secondaryTrackColor: Color = activeTrackColor.copy(alpha = 0.48f),
     thumbColor: Color = activeTrackColor,
     onSeek: ((newProgressFraction: Float) -> Unit)? = null,
 ) {
@@ -108,16 +108,14 @@ fun DoubleTrackSlider(
                     shape = RoundedCornerShape(thickness / 2)
                 )
         )
-        Box(
-            modifier = Modifier
-                .size(thumbRadius * 2)
-                .offset(x = (trackWidth - thickness) * innerProgressFraction)
-                .shadow(elevation = thumbElevation)
-                .background(
-                    color = thumbColor,
-                    shape = CircleShape
-                )
-        )
+        Surface(
+            modifier = Modifier.offset(x = (trackWidth - thickness) * innerProgressFraction),
+            shape = CircleShape,
+            color = thumbColor,
+            elevation = thumbElevation
+        ) {
+            Box(modifier = Modifier.size(thumbRadius * 2))
+        }
     }
 }
 

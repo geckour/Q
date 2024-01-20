@@ -340,7 +340,6 @@ fun Controller(
                     secondaryProgressFraction = currentTrack?.duration?.let { bufferProgress.toFloat() / it },
                     thumbColor = QTheme.colors.colorButtonNormal,
                     activeTrackColor = QTheme.colors.colorButtonNormal,
-                    secondaryTrackColor = QTheme.colors.colorTextPrimary,
                     onSeek = { newProgressFraction ->
                         currentTrack?.let {
                             onNewProgress((newProgressFraction * it.duration).toLong())
