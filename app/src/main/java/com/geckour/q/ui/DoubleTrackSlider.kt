@@ -15,7 +15,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -30,46 +29,68 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlin.math.abs
 
 @Composable
 fun DoubleTrackSlider(
     modifier: Modifier = Modifier,
     key: Any? = null,
-    progressFraction: Float,
+    primaryProgressFraction: Float,
     secondaryProgressFraction: Float? = null,
+    steps: Int = 0,
     thickness: Dp = 4.dp,
     thumbRadius: Dp = 6.dp,
     thumbElevation: Dp = 1.dp,
-    activeTrackColor: Color = MaterialTheme.colors.primary,
-    baseTrackColor: Color = activeTrackColor.copy(alpha = 0.24f),
-    secondaryTrackColor: Color = activeTrackColor.copy(alpha = 0.48f),
-    thumbColor: Color = activeTrackColor,
+    primaryTrackColor: Color = MaterialTheme.colors.primary,
+    secondaryTrackColor: Color = primaryTrackColor.copy(alpha = 0.48f),
+    baseTrackColor: Color = primaryTrackColor.copy(alpha = 0.24f),
+    thumbColor: Color = primaryTrackColor,
     onSeek: ((newProgressFraction: Float) -> Unit)? = null,
+    onSeekEnded: ((newProgressFraction: Float) -> Unit)? = null,
 ) {
     val density = LocalDensity.current
     var trackWidth by remember { mutableStateOf(0.dp) }
-    var innerProgressFraction by remember { mutableFloatStateOf(progressFraction) }
-    LaunchedEffect(progressFraction) {
-        innerProgressFraction = progressFraction
+    var innerProgressFraction by remember(primaryProgressFraction) {
+        mutableFloatStateOf(primaryProgressFraction)
+    }
+    val tickFractions = remember(steps) {
+        stepsToTickFractions(steps)
     }
 
     Box(
         modifier = modifier
             .pointerInput(key ?: Unit) {
                 detectTapGestures {
-                    innerProgressFraction = it.x
+                    val newValue = it.x
                         .coerceIn(0f..(trackWidth - thickness).toPx())
                         .toDp() / (trackWidth - thickness)
-                    onSeek?.invoke(innerProgressFraction)
+                    val resolvedValue = if (steps > 0) {
+                        tickFractions.minBy { abs(it - newValue) }
+                    } else {
+                        newValue
+                    }
+                    innerProgressFraction = resolvedValue
+                    onSeek?.invoke(resolvedValue)
                 }
             }
             .pointerInput(key ?: Unit) {
-                detectHorizontalDragGestures { change, _ ->
-                    innerProgressFraction = change.position.x
-                        .coerceIn(0f..(trackWidth - thickness).toPx())
-                        .toDp() / (trackWidth - thickness)
-                    onSeek?.invoke(innerProgressFraction)
-                }
+                detectHorizontalDragGestures(
+                    onHorizontalDrag = { change, _ ->
+                        val newValue = change.position.x
+                            .coerceIn(0f..(trackWidth - thickness).toPx())
+                            .toDp() / (trackWidth - thickness)
+                        val resolvedValue = if (steps > 0) {
+                            tickFractions.minBy { abs(it - newValue) }
+                        } else {
+                            newValue
+                        }
+                        innerProgressFraction = resolvedValue
+                        onSeek?.invoke(resolvedValue)
+                    },
+                    onDragEnd = {
+                        onSeekEnded?.invoke(innerProgressFraction)
+                    }
+                )
             },
         contentAlignment = Alignment.CenterStart
     ) {
@@ -104,7 +125,7 @@ fun DoubleTrackSlider(
                 .width(trackWidth * innerProgressFraction.coerceAtMost(1f))
                 .height(thickness)
                 .background(
-                    color = activeTrackColor,
+                    color = primaryTrackColor,
                     shape = RoundedCornerShape(thickness / 2)
                 )
         )
@@ -119,11 +140,15 @@ fun DoubleTrackSlider(
     }
 }
 
+private fun stepsToTickFractions(steps: Int): List<Float> {
+    return if (steps == 0) emptyList() else List(steps + 2) { it.toFloat() / (steps + 1) }
+}
+
 @Composable
 @Preview
 fun SliderPreview() {
     DoubleTrackSlider(
-        progressFraction = 0.1f,
+        primaryProgressFraction = 0.1f,
         secondaryProgressFraction = 0.3f,
     )
 }

@@ -35,11 +35,13 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.geckour.q.R
+import com.geckour.q.ui.DoubleTrackSlider
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getEqualizerEnabled
 import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.setEqualizerEnabled
 import com.geckour.q.util.setEqualizerParams
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -51,6 +53,7 @@ fun Equalizer() {
         .collectAsState(initial = false)
     val equalizerParams by LocalContext.current.getEqualizerParams()
         .collectAsState(initial = null)
+    var updateEqualizerSettingJob by remember { mutableStateOf<Job>(Job()) }
 
     LaunchedEffect(equalizerEnabled) {
         context.setEqualizerParams(equalizerParams)
@@ -80,11 +83,11 @@ fun Equalizer() {
                     Modifier
                         .fillMaxWidth()
                         .height(300.dp)
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = 6.dp),
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     repeat(5) {
-                        Divider(color = QTheme.colors.colorButtonNormal)
+                        Divider(color = QTheme.colors.colorPrimary)
                     }
                 }
                 Row(
@@ -97,7 +100,7 @@ fun Equalizer() {
                     }
                     params.bands.forEachIndexed { index, band ->
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Slider(
+                            DoubleTrackSlider(
                                 modifier = Modifier
                                     .padding(0.dp)
                                     .graphicsLayer {
@@ -118,15 +121,14 @@ fun Equalizer() {
                                         }
                                     }
                                     .width(300.dp),
-                                value = levels.getOrNull(index)?.toFloat() ?: 0f,
-                                onValueChange = {
-                                    levels =
-                                        levels.toMutableList().apply { this[index] = it.toInt() }
-                                },
-                                valueRange = params.levelRange.first.toFloat()..params.levelRange.second.toFloat(),
+                                primaryProgressFraction = params.toRatio(levels.getOrNull(index) ?: 0),
                                 steps = params.levelRange.second - params.levelRange.first,
-                                onValueChangeFinished = {
-                                    coroutineScope.launch {
+                                primaryTrackColor = QTheme.colors.colorButtonNormal,
+                                onSeekEnded = {
+                                    levels =
+                                        levels.toMutableList().apply { this[index] = params.normalizedLevel(it) }
+                                    updateEqualizerSettingJob.cancel()
+                                    updateEqualizerSettingJob = coroutineScope.launch {
                                         equalizerParams?.let { params ->
                                             context.setEqualizerParams(
                                                 params.copy(

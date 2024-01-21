@@ -23,6 +23,8 @@ data class EqualizerParams(
     fun normalizedLevel(ratio: Float): Int =
         levelRange.first + ((levelRange.second - levelRange.first) * ratio).toInt()
 
+    fun toRatio(level: Int): Float = (level.toFloat() - levelRange.first) / (levelRange.second - levelRange.first)
+
     @Serializable
     data class Band(
         val freqRange: Pair<Int, Int>,
