@@ -688,7 +688,7 @@ class PlayerService : Service(), LifecycleOwner {
         forceIndex(0)
     }
 
-    fun clear(keepCurrentIfPlaying: Boolean = false) {
+    fun clear(keepCurrentIfPlaying: Boolean = true) {
         val needToKeepCurrent = keepCurrentIfPlaying
                 && player.playbackState == Player.STATE_READY
                 && player.playWhenReady
