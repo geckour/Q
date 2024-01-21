@@ -562,7 +562,6 @@ class MainActivity : ComponentActivity() {
                                         rootFolderPath ?: MainViewModel.DROPBOX_PATH_ROOT,
                                         needDownloaded
                                     )
-                                    showDropboxDialog = false
                                 },
                                 hideResetShuffleDialog = { showResetShuffleDialog = false },
                                 onStartBilling = { viewModel.startBilling(this@MainActivity) },
@@ -697,7 +696,6 @@ class MainActivity : ComponentActivity() {
                                         rootFolderPath ?: MainViewModel.DROPBOX_PATH_ROOT,
                                         needDownloaded
                                     )
-                                    showDropboxDialog = false
                                 },
                                 hideResetShuffleDialog = { showResetShuffleDialog = false },
                                 onStartBilling = { viewModel.startBilling(this@MainActivity) },

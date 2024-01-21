@@ -803,8 +803,9 @@ fun DropboxDialog(
         if (credential.isNullOrBlank()) {
             onStartAuthDropbox()
         } else {
-            if (currentDropboxItemList.second.isEmpty()) {
+            if (currentDropboxItemList.first.isEmpty() && currentDropboxItemList.second.isEmpty()) {
                 onShowDropboxFolderChooser(null)
+                return
             }
             var selectedHistory by remember { mutableStateOf(emptyList<FolderMetadata>()) }
             Dialog(onDismissRequest = hideDropboxDialog) {
@@ -855,27 +856,48 @@ fun DropboxDialog(
                             fontWeight = FontWeight.Bold,
                             color = QTheme.colors.colorAccent
                         )
-                        LazyColumn(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                        ) {
-                            items(currentDropboxItemList.second) {
+                        if (currentDropboxItemList.second.isEmpty()) {
+                            TextButton(
+                                modifier = Modifier.align(Alignment.CenterHorizontally),
+                                onClick = {
+                                    startDropboxSync(
+                                        selectedHistory.lastOrNull()?.pathLower,
+                                        needDownloaded
+                                    )
+                                    hideDropboxDialog()
+                                }
+                            ) {
                                 Text(
-                                    text = it.name,
-                                    fontSize = 20.sp,
-                                    color = QTheme.colors.colorTextPrimary,
-                                    modifier = Modifier
-                                        .clickable {
-                                            selectedHistory += it
-                                            onShowDropboxFolderChooser(it)
-                                        }
-                                        .padding(
-                                            horizontal = 8.dp,
-                                            vertical = 12.dp
-                                        )
-                                        .fillMaxWidth()
+                                    text = stringResource(
+                                        R.string.dialog_action_dropbox_choose_folder
+                                    ),
+                                    fontSize = 16.sp,
+                                    color = QTheme.colors.colorAccent
                                 )
+                            }
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                            ) {
+                                items(currentDropboxItemList.second) {
+                                    Text(
+                                        text = it.name,
+                                        fontSize = 20.sp,
+                                        color = QTheme.colors.colorTextPrimary,
+                                        modifier = Modifier
+                                            .clickable {
+                                                selectedHistory += it
+                                                onShowDropboxFolderChooser(it)
+                                            }
+                                            .padding(
+                                                horizontal = 8.dp,
+                                                vertical = 12.dp
+                                            )
+                                            .fillMaxWidth()
+                                    )
+                                }
                             }
                         }
                         Row(
@@ -917,6 +939,7 @@ fun DropboxDialog(
                                         selectedHistory.lastOrNull()?.pathLower,
                                         needDownloaded
                                     )
+                                    hideDropboxDialog()
                                 }
                             ) {
                                 Text(

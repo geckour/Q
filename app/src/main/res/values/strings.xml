@@ -143,6 +143,7 @@
 
     <string name="dialog_title_dropbox_choose_folder">Select folder</string>
     <string name="dialog_desc_dropbox_choose_folder">Select root folder of retrieving media</string>
+    <string name="dialog_action_dropbox_choose_folder">Decide to this folder</string>
 
     <string name="dialog_title_dropbox_sync_caution">Caution</string>
     <string name="dialog_desc_dropbox_sync_caution">Dropbox sync feature will download all target tracks temporary and delete it after the task is done.\nTherefore it may take a lot of time and cause large amount of download.\nAre you sure?</string>

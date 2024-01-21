@@ -137,6 +137,7 @@
 
     <string name="dialog_title_dropbox_choose_folder">フォルダを選択</string>
     <string name="dialog_desc_dropbox_choose_folder">メディアを探索するルートフォルダを選択</string>
+    <string name="dialog_action_dropbox_choose_folder">このフォルダを探索する</string>
 
     <string name="dialog_title_dropbox_sync_caution">警告</string>
     <string name="dialog_desc_dropbox_sync_caution">同期する曲を全て一時的にダウンロードし、楽曲データ取得後一時ファイルを削除します。\nそのため完了まで時間がかかり、大容量の通信が発生する可能性があります。\n実行しますか？</string>
