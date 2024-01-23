@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.Card
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Surface
@@ -20,13 +19,14 @@ import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.DownloadForOffline
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -37,6 +37,7 @@ import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.JoinedAlbum
+import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
 
@@ -49,7 +50,8 @@ fun Albums(
     onSelectAlbum: (item: JoinedAlbum) -> Unit,
     onDownload: (dropboxPaths: List<String>) -> Unit,
     onInvalidateDownloaded: (albumId: Long) -> Unit,
-    scrollToTop: Long
+    scrollToTop: Long,
+    onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     val db = DB.getInstance(LocalContext.current)
     val joinedAlbums by (
@@ -129,7 +131,9 @@ fun Albums(
                                 )
                                 else onDownload(downloadableDropboxPaths)
                             },
-                            Modifier.padding(horizontal = 4.dp)
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .size(24.dp)
                         ) {
                             Icon(
                                 imageVector = if (downloadableDropboxPaths.isNotEmpty()) Icons.Outlined.Download else Icons.Outlined.DownloadForOffline,
@@ -139,9 +143,21 @@ fun Albums(
                         }
                     }
                     IconButton(
+                        onClick = { onToggleFavorite(joinedAlbum.album) },
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (joinedAlbum.album.isFavorite) Icons.Outlined.Star else Icons.Outlined.StarBorder,
+                            contentDescription = null,
+                            tint = QTheme.colors.colorTextPrimary
+                        )
+                    }
+                    IconButton(
                         onClick = { onSelectAlbum(joinedAlbum) },
                         modifier = Modifier
-                            .padding(horizontal = 4.dp)
+                            .padding(8.dp)
                             .size(24.dp)
                     ) {
                         Icon(

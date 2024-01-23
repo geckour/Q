@@ -25,6 +25,7 @@ import com.geckour.q.BuildConfig
 import com.geckour.q.R
 import com.geckour.q.data.db.BoolConverter
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.data.db.model.JoinedTrack
@@ -125,7 +126,8 @@ fun JoinedTrack.toDomainTrack(
         track.dropboxExpiredAt,
         track.artworkUriString,
         BoolConverter().toBoolean(track.ignored),
-        nowPlaying
+        nowPlaying,
+        isFavorite = track.isFavorite
     )
 }
 
@@ -181,10 +183,17 @@ suspend fun List<String>.getThumb(context: Context): Bitmap? {
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 fun DomainTrack.getMediaItem(): MediaItem = MediaItem.fromUri(Uri.parse(sourcePath))
 
-fun List<DomainTrack>.sortedByTrackOrder(
+fun List<DomainTrack>.modifyOrder(
     classType: OrientedClassType,
     actionType: InsertActionType
 ): List<DomainTrack> {
+    val simpleShuffleConditional = actionType in listOf(
+        InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
+        InsertActionType.SHUFFLE_SIMPLE_NEXT,
+        InsertActionType.SHUFFLE_SIMPLE_LAST,
+    )
+    if (simpleShuffleConditional) return shuffled()
+
     val shuffleConditional = actionType in listOf(
         InsertActionType.SHUFFLE_OVERRIDE,
         InsertActionType.SHUFFLE_NEXT,
@@ -485,7 +494,7 @@ suspend fun JoinedTrack.updateFileMetadata(
                     )
                 } else album.id
                 if (newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not()) {
-                    db.trackDao().upsert(
+                    db.trackDao().insert(
                         track.copy(
                             title = newTrackName ?: track.title,
                             titleSort = newTrackNameSort ?: track.titleSort,
@@ -493,9 +502,7 @@ suspend fun JoinedTrack.updateFileMetadata(
                             composerSort = newComposerNameSort ?: track.composerSort,
                             artistId = artistId,
                             albumId = albumId
-                        ),
-                        albumId,
-                        artistId
+                        )
                     )
                 }
             }
@@ -533,17 +540,14 @@ suspend fun JoinedTrack.updateFileMetadata(
                     }
                 )
                 if (newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not()) {
-                    db.trackDao().upsert(
+                    db.trackDao().insert(
                         track.copy(
                             title = newTrackName ?: track.title,
                             titleSort = newTrackNameSort ?: track.titleSort,
                             composer = newComposerName ?: track.composer,
                             composerSort = newComposerNameSort ?: track.composerSort,
                             albumId = albumId
-                        ),
-                        artist.id,
-                        albumId,
-                        track.duration
+                        )
                     )
                 }
             }
@@ -589,6 +593,23 @@ suspend fun String.toDomainTrack(db: DB): DomainTrack? =
 
 suspend fun List<String>.toDomainTracks(db: DB): List<DomainTrack> =
     db.trackDao().getAllBySourcePaths(this).map { it.toDomainTrack() }
+
+fun com.geckour.q.domain.model.MediaItem?.isFavoriteToggled(): com.geckour.q.domain.model.MediaItem? =
+    when (this) {
+        is DomainTrack -> {
+            copy(isFavorite = isFavorite.not())
+        }
+
+        is Album -> {
+            copy(isFavorite = isFavorite.not())
+        }
+
+        is Artist -> {
+            copy(isFavorite = isFavorite.not())
+        }
+
+        else -> null
+    }
 
 /**
  * @return First value of `Pair` is the old (passed) sourcePath.

@@ -22,6 +22,8 @@ import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.DownloadForOffline
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,6 +40,7 @@ import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.isDownloaded
 import com.geckour.q.util.toDomainTrack
@@ -51,7 +54,8 @@ fun Tracks(
     onTrackSelected: (item: DomainTrack) -> Unit,
     onDownload: (item: DomainTrack) -> Unit,
     onInvalidateDownloaded: (item: DomainTrack) -> Unit,
-    scrollToTop: Long
+    scrollToTop: Long,
+    onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     val db = DB.getInstance(LocalContext.current)
     val joinedTracks by (when {
@@ -174,7 +178,9 @@ fun Tracks(
                                 )
                                 else onDownload(domainTrack)
                             },
-                            modifier = Modifier.padding(8.dp)
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .size(24.dp)
                         ) {
                             Icon(
                                 imageVector = if (joinedTrack.track.isDownloaded) Icons.Outlined.DownloadForOffline else Icons.Outlined.Download,
@@ -182,6 +188,18 @@ fun Tracks(
                                 tint = QTheme.colors.colorTextPrimary
                             )
                         }
+                    }
+                    IconButton(
+                        onClick = { onToggleFavorite(domainTrack) },
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (joinedTrack.track.isFavorite) Icons.Outlined.Star else Icons.Outlined.StarBorder,
+                            contentDescription = null,
+                            tint = QTheme.colors.colorTextPrimary
+                        )
                     }
                 }
             }

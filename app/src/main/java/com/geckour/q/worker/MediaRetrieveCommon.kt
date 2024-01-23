@@ -193,7 +193,7 @@ internal suspend fun File.storeMediaInfo(
         playbackCount = 0
     )
 
-    return@withContext db.trackDao().upsert(track, albumId, artistId, duration)
+    return@withContext db.trackDao().insert(track)
 }
 
 internal fun Bitmap.drawProgressIcon(

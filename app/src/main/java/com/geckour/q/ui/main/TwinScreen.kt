@@ -19,6 +19,7 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
+import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
@@ -31,6 +32,7 @@ import com.geckour.q.util.ShuffleActionType
 fun TwinScreen(
     navController: NavHostController,
     topBarTitle: String,
+    optionMediaItem: MediaItem?,
     queue: List<DomainTrack>,
     currentIndex: Int,
     currentPlaybackPosition: Long,
@@ -52,6 +54,7 @@ fun TwinScreen(
     forceScrollToCurrent: Long,
     showDropboxDialog: Boolean,
     showResetShuffleDialog: Boolean,
+    showOptionsDialog: Boolean,
     hasAlreadyShownDropboxSyncAlert: Boolean,
     scrollToTop: Long,
     onSelectNav: (nav: Nav?) -> Unit,
@@ -72,6 +75,7 @@ fun TwinScreen(
     rotateRepeatMode: () -> Unit,
     shuffleQueue: (actionType: ShuffleActionType?) -> Unit,
     resetShuffleQueue: () -> Unit,
+    closeOptionsDialog: () -> Unit,
     moveToCurrentIndex: () -> Unit,
     clearQueue: () -> Unit,
     onToggleShowLyrics: () -> Unit,
@@ -102,11 +106,15 @@ fun TwinScreen(
     hideResetShuffleDialog: () -> Unit,
     onStartBilling: () -> Unit,
     onCancelProgress: (() -> Unit)?,
+    onSetOptionMediaItem: (mediaItem: MediaItem?) -> Unit,
+    onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
+    onShowOptions: () -> Unit,
 ) {
     Row {
         TwinStartPage(
             navController = navController,
             topBarTitle = topBarTitle,
+            optionMediaItem = optionMediaItem,
             scrollToTop = scrollToTop,
             selectedNav = selectedNav,
             selectedArtist = selectedArtist,
@@ -121,6 +129,7 @@ fun TwinScreen(
             onCancelProgress = onCancelProgress,
             showDropboxDialog = showDropboxDialog,
             showResetShuffleDialog = showResetShuffleDialog,
+            showOptionsDialog = showOptionsDialog,
             hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
             onSelectNav = onSelectNav,
             onChangeTopBarTitle = onChangeTopBarTitle,
@@ -148,9 +157,13 @@ fun TwinScreen(
             hideResetShuffleDialog = hideResetShuffleDialog,
             onShuffle = shuffleQueue,
             onResetShuffle = resetShuffleQueue,
+            onCloseOptionsDialog = closeOptionsDialog,
             onShowDropboxDialog = onShowDropboxDialog,
             onRetrieveMedia = onRetrieveMedia,
-            onStartBilling = onStartBilling
+            onStartBilling = onStartBilling,
+            onSetOptionMediaItem = onSetOptionMediaItem,
+            onToggleFavorite = onToggleFavorite,
+            onShowOptions = onShowOptions,
         )
         TwinEndPage(
             queue = queue,
@@ -187,6 +200,7 @@ fun TwinScreen(
 fun RowScope.TwinStartPage(
     navController: NavHostController,
     topBarTitle: String,
+    optionMediaItem: MediaItem?,
     scrollToTop: Long,
     selectedNav: Nav?,
     selectedArtist: Artist?,
@@ -201,6 +215,7 @@ fun RowScope.TwinStartPage(
     onCancelProgress: (() -> Unit)?,
     showDropboxDialog: Boolean,
     showResetShuffleDialog: Boolean,
+    showOptionsDialog: Boolean,
     hasAlreadyShownDropboxSyncAlert: Boolean,
     onSelectNav: (nav: Nav?) -> Unit,
     onChangeTopBarTitle: (newTitle: String) -> Unit,
@@ -232,9 +247,13 @@ fun RowScope.TwinStartPage(
     hideResetShuffleDialog: () -> Unit,
     onShuffle: (actionType: ShuffleActionType?) -> Unit,
     onResetShuffle: () -> Unit,
+    onCloseOptionsDialog: () -> Unit,
     onShowDropboxDialog: () -> Unit,
     onRetrieveMedia: (onlyAdded: Boolean) -> Unit,
     onStartBilling: () -> Unit,
+    onSetOptionMediaItem: (mediaItem: MediaItem?) -> Unit,
+    onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
+    onShowOptions: () -> Unit,
 ) {
     val scaffoldState = rememberScaffoldState()
     Scaffold(
@@ -245,6 +264,7 @@ fun RowScope.TwinStartPage(
         topBar = {
             QTopBar(
                 title = topBarTitle,
+                optionMediaItem = optionMediaItem,
                 drawerState = scaffoldState.drawerState,
                 onTapBar = onTapBar,
                 onToggleTheme = onToggleTheme,
@@ -289,7 +309,10 @@ fun RowScope.TwinStartPage(
 
                         else -> Unit
                     }
-                }
+                },
+                onToggleFavorite = onToggleFavorite,
+                onShowOptions = onShowOptions,
+                onSetOptionMediaItem = onSetOptionMediaItem,
             )
         },
         drawerContent = {
@@ -315,10 +338,12 @@ fun RowScope.TwinStartPage(
             currentDropboxItemList = currentDropboxItemList,
             downloadTargets = downloadTargets,
             invalidateDownloadedTargets = invalidateDownloadedTargets,
+            optionMediaItem = optionMediaItem,
             snackBarMessage = snackBarMessage,
             onCancelProgress = onCancelProgress,
             showDropboxDialog = showDropboxDialog,
             showResetShuffleDialog = showResetShuffleDialog,
+            showOptionsDialog = showOptionsDialog,
             hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
             onSelectNav = onSelectNav,
             onChangeTopBarTitle = onChangeTopBarTitle,
@@ -344,7 +369,10 @@ fun RowScope.TwinStartPage(
             hideResetShuffleDialog = hideResetShuffleDialog,
             onShuffle = onShuffle,
             onResetShuffle = onResetShuffle,
-            onStartBilling = onStartBilling
+            onCloseOptionsDialog = onCloseOptionsDialog,
+            onStartBilling = onStartBilling,
+            onSetOptionMediaItem = onSetOptionMediaItem,
+            onToggleFavorite = onToggleFavorite,
         )
     }
 }

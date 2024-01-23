@@ -35,7 +35,8 @@ data class DomainTrack(
     val dropboxExpiredAt: Long?,
     val artworkUriString: String?,
     val ignored: Boolean?,
-    val nowPlaying: Boolean = false
+    val nowPlaying: Boolean = false,
+    val isFavorite: Boolean = false,
 ) : Parcelable, MediaItem {
 
     val durationString: String get() = duration.getTimeString()

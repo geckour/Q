@@ -143,10 +143,8 @@ class DropboxDownloadWorker(
                     fileMetadata.pathLower
                 )
                 db.trackDao().getByDropboxPath(fileMetadata.pathLower)?.let {
-                    db.trackDao().upsert(
-                        it.track.copy(sourcePath = Uri.fromFile(savedFile).toString()),
-                        it.album.id,
-                        it.artist.id
+                    db.trackDao().insert(
+                        it.track.copy(sourcePath = Uri.fromFile(savedFile).toString())
                     )
                 }
             }

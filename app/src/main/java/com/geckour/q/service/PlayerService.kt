@@ -59,7 +59,7 @@ import com.geckour.q.util.getPlayerNotification
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.removedAt
 import com.geckour.q.util.setEqualizerParams
-import com.geckour.q.util.sortedByTrackOrder
+import com.geckour.q.util.modifyOrder
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toDomainTracks
 import com.geckour.q.util.verifiedWithDropbox
@@ -566,7 +566,7 @@ class PlayerService : Service(), LifecycleOwner {
             .let {
                 when {
                     shuffleSimple -> it.shuffled()
-                    needSorted -> it.sortedByTrackOrder(
+                    needSorted -> it.modifyOrder(
                         queueInfo.metadata.classType,
                         queueInfo.metadata.actionType
                     )

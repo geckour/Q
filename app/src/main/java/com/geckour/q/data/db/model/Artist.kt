@@ -1,6 +1,7 @@
 package com.geckour.q.data.db.model
 
 import android.os.Parcelable
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.geckour.q.domain.model.MediaItem
@@ -16,5 +17,6 @@ data class Artist(
     val titleSort: String,
     val playbackCount: Long,
     val totalDuration: Long,
-    val artworkUriString: String?
+    val artworkUriString: String?,
+    @ColumnInfo(defaultValue = "FALSE") val isFavorite: Boolean = false,
 ) : Parcelable, MediaItem

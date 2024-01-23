@@ -170,31 +170,6 @@ interface TrackDao {
     }
 
     @Transaction
-    suspend fun upsert(
-        newTrack: Track,
-        albumId: Long,
-        artistId: Long,
-        newDuration: Long? = null
-    ): Long {
-        val existingTrack =
-            if (newTrack.mediaId < 0) get(newTrack.id)
-            else getByMediaId(newTrack.mediaId)
-        existingTrack?.track?.let {
-            update(
-                newTrack.copy(
-                    id = it.id,
-                    playbackCount = it.playbackCount,
-                    ignored = it.ignored,
-                    duration = newDuration ?: it.duration,
-                    artworkUriString = newTrack.artworkUriString ?: it.artworkUriString
-                )
-            )
-        }
-
-        return existingTrack?.track?.id ?: insert(newTrack)
-    }
-
-    @Transaction
     suspend fun getDurationWithTitles(
         title: String,
         albumTitle: String?,

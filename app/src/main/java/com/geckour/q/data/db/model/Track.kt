@@ -1,5 +1,6 @@
 package com.geckour.q.data.db.model
 
+import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -32,7 +33,8 @@ data class Track(
     val genre: String?,
     val playbackCount: Long,
     val artworkUriString: String?,
-    val ignored: Bool = Bool.FALSE
+    val ignored: Bool = Bool.FALSE,
+    @ColumnInfo(defaultValue = "FALSE") val isFavorite: Boolean = false,
 )
 
 data class JoinedTrack(

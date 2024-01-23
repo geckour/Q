@@ -24,7 +24,10 @@ import androidx.compose.material.Text
 import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SearchBar
@@ -54,6 +57,7 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
+import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.SearchCategory
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
@@ -70,11 +74,15 @@ import kotlinx.coroutines.launch
 @Composable
 fun QTopBar(
     title: String,
+    optionMediaItem: MediaItem?,
     drawerState: DrawerState,
     onTapBar: () -> Unit,
     onToggleTheme: () -> Unit,
     onSearchItemClicked: (item: SearchItem) -> Unit,
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
+    onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
+    onShowOptions: () -> Unit,
+    onSetOptionMediaItem: (mediaItem: MediaItem?) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -104,11 +112,38 @@ fun QTopBar(
                 }
             },
             actions = {
+                if (optionMediaItem != null) {
+                    val isFavorite = when (optionMediaItem) {
+                        is Artist -> optionMediaItem.isFavorite
+                        is Album -> optionMediaItem.isFavorite
+                        is DomainTrack -> optionMediaItem.isFavorite
+                        else -> null
+                    }
+                    if (isFavorite != null) {
+                        IconButton(onClick = {
+                            val newMediaItem = onToggleFavorite(optionMediaItem)
+                            onSetOptionMediaItem(newMediaItem)
+                        }) {
+                            Icon(
+                                imageVector = if (isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                                contentDescription = null
+                            )
+                        }
+                    }
+                }
                 IconButton(onClick = onToggleTheme) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_daynight),
                         contentDescription = null
                     )
+                }
+                if (optionMediaItem != null) {
+                    IconButton(onClick = onShowOptions) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = null
+                        )
+                    }
                 }
             },
             backgroundColor = QTheme.colors.colorPrimary,

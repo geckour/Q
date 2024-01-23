@@ -18,6 +18,7 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
+import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
@@ -34,6 +35,7 @@ import kotlin.math.sin
 fun SingleScreen(
     navController: NavHostController,
     topBarTitle: String,
+    optionMediaItem: MediaItem?,
     sourcePaths: List<String>,
     queue: List<DomainTrack>,
     currentIndex: Int,
@@ -56,6 +58,7 @@ fun SingleScreen(
     forceScrollToCurrent: Long,
     showDropboxDialog: Boolean,
     showResetShuffleDialog: Boolean,
+    showOptionsDialog: Boolean,
     hasAlreadyShownDropboxSyncAlert: Boolean,
     scrollToTop: Long,
     onSelectNav: (nav: Nav?) -> Unit,
@@ -75,6 +78,7 @@ fun SingleScreen(
     onNewProgress: (newProgress: Long) -> Unit,
     rotateRepeatMode: () -> Unit,
     shuffleQueue: (actionType: ShuffleActionType?) -> Unit,
+    closeOptionsDialog: () -> Unit,
     resetShuffleQueue: () -> Unit,
     moveToCurrentIndex: () -> Unit,
     clearQueue: () -> Unit,
@@ -106,6 +110,9 @@ fun SingleScreen(
     hideResetShuffleDialog: () -> Unit,
     onStartBilling: () -> Unit,
     onCancelProgress: (() -> Unit)?,
+    onSetOptionMediaItem: (mediaItem: MediaItem?) -> Unit,
+    onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
+    onShowOptions: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scaffoldState = rememberBottomSheetScaffoldState()
@@ -136,6 +143,7 @@ fun SingleScreen(
         topBar = {
             QTopBar(
                 title = topBarTitle,
+                optionMediaItem = optionMediaItem,
                 drawerState = scaffoldState.drawerState,
                 onTapBar = onTapBar,
                 onToggleTheme = onToggleTheme,
@@ -180,7 +188,10 @@ fun SingleScreen(
 
                         else -> Unit
                     }
-                }
+                },
+                onToggleFavorite = onToggleFavorite,
+                onShowOptions = onShowOptions,
+                onSetOptionMediaItem = onSetOptionMediaItem,
             )
         },
         backgroundColor = QTheme.colors.colorBackground,
@@ -233,10 +244,12 @@ fun SingleScreen(
             currentDropboxItemList = currentDropboxItemList,
             downloadTargets = downloadTargets,
             invalidateDownloadedTargets = invalidateDownloadedTargets,
+            optionMediaItem = optionMediaItem,
             snackBarMessage = snackBarMessage,
             onCancelProgress = onCancelProgress,
             showDropboxDialog = showDropboxDialog,
             showResetShuffleDialog = showResetShuffleDialog,
+            showOptionsDialog = showOptionsDialog,
             hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
             onSelectNav = onSelectNav,
             onChangeTopBarTitle = onChangeTopBarTitle,
@@ -262,7 +275,10 @@ fun SingleScreen(
             hideResetShuffleDialog = hideResetShuffleDialog,
             onShuffle = shuffleQueue,
             onResetShuffle = resetShuffleQueue,
-            onStartBilling = onStartBilling
+            onCloseOptionsDialog = closeOptionsDialog,
+            onStartBilling = onStartBilling,
+            onSetOptionMediaItem = onSetOptionMediaItem,
+            onToggleFavorite = onToggleFavorite,
         )
     }
 }

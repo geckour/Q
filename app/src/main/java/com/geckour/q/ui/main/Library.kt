@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -21,8 +22,10 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
+import com.geckour.q.domain.model.AllArtists
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
+import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.InsertActionType
@@ -43,10 +46,12 @@ fun Library(
     currentDropboxItemList: Pair<String, List<FolderMetadata>>,
     downloadTargets: List<String>,
     invalidateDownloadedTargets: List<Long>,
+    optionMediaItem: MediaItem?,
     snackBarMessage: String?,
     onCancelProgress: (() -> Unit)?,
     showDropboxDialog: Boolean,
     showResetShuffleDialog: Boolean,
+    showOptionsDialog: Boolean,
     hasAlreadyShownDropboxSyncAlert: Boolean,
     onSelectNav: (nav: Nav?) -> Unit,
     onChangeTopBarTitle: (newTitle: String) -> Unit,
@@ -76,7 +81,10 @@ fun Library(
     hideResetShuffleDialog: () -> Unit,
     onShuffle: (actionType: ShuffleActionType?) -> Unit,
     onResetShuffle: () -> Unit,
+    onCloseOptionsDialog: () -> Unit,
     onStartBilling: () -> Unit,
+    onSetOptionMediaItem: (mediaItem: MediaItem?) -> Unit,
+    onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -97,8 +105,12 @@ fun Library(
                     .fillMaxSize()
             ) {
                 composable("artists") {
-                    onSelectNav(Nav.ARTIST)
-                    onChangeTopBarTitle(stringResource(id = R.string.nav_artist))
+                    val topBarTitle = stringResource(id = R.string.nav_artist)
+                    LaunchedEffect(navController.currentDestination) {
+                        onSelectNav(Nav.ARTIST)
+                        onChangeTopBarTitle(topBarTitle)
+                        onSetOptionMediaItem(AllArtists)
+                    }
                     Artists(
                         navController = navController, onSelectArtist = {
                             onSelectArtist(it)
@@ -113,7 +125,8 @@ fun Library(
                                 onInvalidateDownloaded(targets)
                             }
                         },
-                        scrollToTop = scrollToTop
+                        scrollToTop = scrollToTop,
+                        onToggleFavorite = onToggleFavorite,
                     )
                 }
                 composable(
@@ -125,7 +138,16 @@ fun Library(
                         }
                     )
                 ) { backStackEntry ->
-                    onSelectNav(Nav.ALBUM)
+                    val artistId = backStackEntry.arguments?.getLong("artistId")
+                        ?: -1
+                    LaunchedEffect(artistId) {
+                        onSelectNav(Nav.ALBUM)
+                        launch {
+                            onSetOptionMediaItem(
+                                DB.getInstance(context).artistDao().get(artistId) ?: return@launch
+                            )
+                        }
+                    }
                     Albums(
                         navController = navController,
                         artistId = backStackEntry.arguments?.getLong("artistId")
@@ -148,7 +170,8 @@ fun Library(
                                 onInvalidateDownloaded(targets)
                             }
                         },
-                        scrollToTop = scrollToTop
+                        scrollToTop = scrollToTop,
+                        onToggleFavorite = onToggleFavorite,
                     )
                 }
                 composable(
@@ -164,9 +187,17 @@ fun Library(
                         }
                     )
                 ) { backStackEntry ->
-                    onSelectNav(Nav.TRACK)
                     val albumId = backStackEntry.arguments?.getLong("albumId") ?: -1
                     val genreName = backStackEntry.arguments?.getString("genreName")
+                    LaunchedEffect(albumId) {
+                        onSelectNav(Nav.TRACK)
+                        launch {
+                            onSetOptionMediaItem(
+                                DB.getInstance(context).albumDao().get(albumId)?.album
+                                    ?: return@launch
+                            )
+                        }
+                    }
                     Tracks(
                         albumId = albumId,
                         genreName = genreName,
@@ -182,12 +213,17 @@ fun Library(
                         onInvalidateDownloaded = {
                             onInvalidateDownloaded(listOf(it.id))
                         },
-                        scrollToTop = scrollToTop
+                        scrollToTop = scrollToTop,
+                        onToggleFavorite = onToggleFavorite,
                     )
                 }
                 composable("genres") {
-                    onSelectNav(Nav.GENRE)
-                    onChangeTopBarTitle(stringResource(id = R.string.nav_genre))
+                    val topBarTitle = stringResource(id = R.string.nav_genre)
+                    LaunchedEffect(navController.currentDestination) {
+                        onSelectNav(Nav.GENRE)
+                        onChangeTopBarTitle(topBarTitle)
+                        onSetOptionMediaItem(null)
+                    }
                     Genres(
                         navController = navController,
                         onSelectGenre = { onSelectGenre(it) },
@@ -195,20 +231,32 @@ fun Library(
                     )
                 }
                 composable("qzi") {
-                    onSelectNav(null)
-                    onChangeTopBarTitle(stringResource(id = R.string.nav_fortune))
+                    val topBarTitle = stringResource(id = R.string.nav_fortune)
+                    LaunchedEffect(navController.currentDestination) {
+                        onSelectNav(null)
+                        onChangeTopBarTitle(topBarTitle)
+                        onSetOptionMediaItem(null)
+                    }
                     Qzi(
                         onClick = { onSelectTrack(it.toDomainTrack()) }
                     )
                 }
                 composable("pay") {
-                    onSelectNav(Nav.PAY)
-                    onChangeTopBarTitle(stringResource(id = R.string.nav_pay))
+                    val topBarTitle = stringResource(id = R.string.nav_pay)
+                    LaunchedEffect(navController.currentDestination) {
+                        onSelectNav(Nav.PAY)
+                        onChangeTopBarTitle(topBarTitle)
+                        onSetOptionMediaItem(null)
+                    }
                     Pay(onStartBilling = onStartBilling)
                 }
                 composable("equalizer") {
-                    onSelectNav(Nav.EQUALIZER)
-                    onChangeTopBarTitle(stringResource(id = R.string.nav_equalizer))
+                    val topBarTitle = stringResource(id = R.string.nav_equalizer)
+                    LaunchedEffect(navController.currentDestination) {
+                        onSelectNav(Nav.EQUALIZER)
+                        onChangeTopBarTitle(topBarTitle)
+                        onSetOptionMediaItem(null)
+                    }
                     Equalizer()
                 }
             }
@@ -226,8 +274,10 @@ fun Library(
             currentDropboxItemList = currentDropboxItemList,
             downloadTargets = downloadTargets,
             invalidateDownloadedTargets = invalidateDownloadedTargets,
+            optionMediaItem = optionMediaItem,
             showDropboxDialog = showDropboxDialog,
             showResetShuffleDialog = showResetShuffleDialog,
+            showOptionsDialog = showOptionsDialog,
             hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
             onSelectTrack = onSelectTrack,
             onSelectAlbum = onSelectAlbum,
@@ -245,6 +295,7 @@ fun Library(
             hideResetShuffleDialog = hideResetShuffleDialog,
             onShuffle = onShuffle,
             onResetShuffle = onResetShuffle,
+            onCloseOptionsDialog = onCloseOptionsDialog,
             onCancelDownload = onCancelDownload,
             onStartDownloader = onStartDownloader,
             onCancelInvalidateDownloaded = onCancelInvalidateDownloaded,

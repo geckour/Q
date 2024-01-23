@@ -39,8 +39,10 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
+import com.geckour.q.domain.model.AllArtists
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
+import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -284,7 +286,6 @@ fun AlbumOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByAlbum(album.id)
                                     .map { it.toDomainTrack() }
-                                    .shuffled()
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_NEXT,
@@ -307,7 +308,6 @@ fun AlbumOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByAlbum(album.id)
                                     .map { it.toDomainTrack() }
-                                    .shuffled()
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_LAST,
@@ -330,7 +330,6 @@ fun AlbumOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByAlbum(album.id)
                                     .map { it.toDomainTrack() }
-                                    .shuffled()
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
@@ -395,7 +394,7 @@ fun ArtistOptionDialog(
                             onNewQueue(
                                 tracks,
                                 InsertActionType.NEXT,
-                                OrientedClassType.ARTIST
+                                OrientedClassType.ALBUM
                             )
                             onSelectArtist(null)
                         }
@@ -417,7 +416,7 @@ fun ArtistOptionDialog(
                             onNewQueue(
                                 tracks,
                                 InsertActionType.LAST,
-                                OrientedClassType.ARTIST
+                                OrientedClassType.ALBUM
                             )
                             onSelectArtist(null)
                         }
@@ -439,7 +438,7 @@ fun ArtistOptionDialog(
                             onNewQueue(
                                 tracks,
                                 InsertActionType.OVERRIDE,
-                                OrientedClassType.ARTIST
+                                OrientedClassType.ALBUM
                             )
                             onSelectArtist(null)
                         }
@@ -458,11 +457,10 @@ fun ArtistOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByArtist(artist.id)
                                     .map { it.toDomainTrack() }
-                                    .shuffled()
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_NEXT,
-                                OrientedClassType.ARTIST
+                                OrientedClassType.ALBUM
                             )
                             onSelectArtist(null)
                         }
@@ -481,11 +479,10 @@ fun ArtistOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByArtist(artist.id)
                                     .map { it.toDomainTrack() }
-                                    .shuffled()
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_LAST,
-                                OrientedClassType.ARTIST
+                                OrientedClassType.ALBUM
                             )
                             onSelectArtist(null)
                         }
@@ -504,11 +501,10 @@ fun ArtistOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByArtist(artist.id)
                                     .map { it.toDomainTrack() }
-                                    .shuffled()
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_OVERRIDE,
-                                OrientedClassType.ARTIST
+                                OrientedClassType.ALBUM
                             )
                             onSelectArtist(null)
                         }
@@ -527,11 +523,10 @@ fun ArtistOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByArtist(artist.id)
                                     .map { it.toDomainTrack() }
-                                    .shuffled()
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_NEXT,
-                                OrientedClassType.ARTIST
+                                OrientedClassType.ALBUM
                             )
                             onSelectArtist(null)
                         }
@@ -550,11 +545,10 @@ fun ArtistOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByArtist(artist.id)
                                     .map { it.toDomainTrack() }
-                                    .shuffled()
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_LAST,
-                                OrientedClassType.ARTIST
+                                OrientedClassType.ALBUM
                             )
                             onSelectArtist(null)
                         }
@@ -573,11 +567,10 @@ fun ArtistOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByArtist(artist.id)
                                     .map { it.toDomainTrack() }
-                                    .shuffled()
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
-                                OrientedClassType.ARTIST
+                                OrientedClassType.ALBUM
                             )
                             onSelectArtist(null)
                         }
@@ -597,6 +590,242 @@ fun ArtistOptionDialog(
                                 .forEach {
                                     onDeleteTrack(it.toDomainTrack())
                                     onSelectArtist(null)
+                                }
+                        }
+                    }
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.menu_delete_from_device),
+                        fontSize = 14.sp,
+                        color = QTheme.colors.colorTextPrimary
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun AllArtistOptionDialog(
+    onSelected: () -> Unit,
+    onNewQueue: (
+        queue: List<DomainTrack>,
+        actionType: InsertActionType,
+        classType: OrientedClassType
+    ) -> Unit,
+    onDeleteTrack: (track: DomainTrack) -> Unit
+) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    Dialog(onDismissRequest = { onSelected() }) {
+        Card(backgroundColor = QTheme.colors.colorBackground) {
+            Column {
+                DialogListItem(
+                    onClick = {
+                        coroutineScope.launch {
+                            val tracks =
+                                DB.getInstance(context).trackDao()
+                                    .getAll()
+                                    .map { it.toDomainTrack() }
+                            onNewQueue(
+                                tracks,
+                                InsertActionType.NEXT,
+                                OrientedClassType.ARTIST
+                            )
+                            onSelected()
+                        }
+                    }
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.menu_insert_all_next),
+                        fontSize = 14.sp,
+                        color = QTheme.colors.colorTextPrimary
+                    )
+                }
+                DialogListItem(
+                    onClick = {
+                        coroutineScope.launch {
+                            val tracks =
+                                DB.getInstance(context).trackDao()
+                                    .getAll()
+                                    .map { it.toDomainTrack() }
+                            onNewQueue(
+                                tracks,
+                                InsertActionType.LAST,
+                                OrientedClassType.ARTIST
+                            )
+                            onSelected()
+                        }
+                    }
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.menu_insert_all_last),
+                        fontSize = 14.sp,
+                        color = QTheme.colors.colorTextPrimary
+                    )
+                }
+                DialogListItem(
+                    onClick = {
+                        coroutineScope.launch {
+                            val tracks =
+                                DB.getInstance(context).trackDao()
+                                    .getAll()
+                                    .map { it.toDomainTrack() }
+                            onNewQueue(
+                                tracks,
+                                InsertActionType.OVERRIDE,
+                                OrientedClassType.ARTIST
+                            )
+                            onSelected()
+                        }
+                    }
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.menu_override_all),
+                        fontSize = 14.sp,
+                        color = QTheme.colors.colorTextPrimary
+                    )
+                }
+                DialogListItem(
+                    onClick = {
+                        coroutineScope.launch {
+                            val tracks =
+                                DB.getInstance(context).trackDao()
+                                    .getAll()
+                                    .map { it.toDomainTrack() }
+                            onNewQueue(
+                                tracks,
+                                InsertActionType.SHUFFLE_NEXT,
+                                OrientedClassType.ARTIST
+                            )
+                            onSelected()
+                        }
+                    }
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.menu_artists_insert_all_shuffle_next),
+                        fontSize = 14.sp,
+                        color = QTheme.colors.colorTextPrimary
+                    )
+                }
+                DialogListItem(
+                    onClick = {
+                        coroutineScope.launch {
+                            val tracks =
+                                DB.getInstance(context).trackDao()
+                                    .getAll()
+                                    .map { it.toDomainTrack() }
+                            onNewQueue(
+                                tracks,
+                                InsertActionType.SHUFFLE_LAST,
+                                OrientedClassType.ARTIST
+                            )
+                            onSelected()
+                        }
+                    }
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.menu_artists_insert_all_shuffle_last),
+                        fontSize = 14.sp,
+                        color = QTheme.colors.colorTextPrimary
+                    )
+                }
+                DialogListItem(
+                    onClick = {
+                        coroutineScope.launch {
+                            val tracks =
+                                DB.getInstance(context).trackDao()
+                                    .getAll()
+                                    .map { it.toDomainTrack() }
+                            onNewQueue(
+                                tracks,
+                                InsertActionType.SHUFFLE_OVERRIDE,
+                                OrientedClassType.ARTIST
+                            )
+                            onSelected()
+                        }
+                    }
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.menu_artists_override_all_shuffle),
+                        fontSize = 14.sp,
+                        color = QTheme.colors.colorTextPrimary
+                    )
+                }
+                DialogListItem(
+                    onClick = {
+                        coroutineScope.launch {
+                            val tracks =
+                                DB.getInstance(context).trackDao()
+                                    .getAll()
+                                    .map { it.toDomainTrack() }
+                            onNewQueue(
+                                tracks,
+                                InsertActionType.SHUFFLE_SIMPLE_NEXT,
+                                OrientedClassType.ARTIST
+                            )
+                            onSelected()
+                        }
+                    }
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.menu_insert_all_simple_shuffle_next),
+                        fontSize = 14.sp,
+                        color = QTheme.colors.colorTextPrimary
+                    )
+                }
+                DialogListItem(
+                    onClick = {
+                        coroutineScope.launch {
+                            val tracks =
+                                DB.getInstance(context).trackDao()
+                                    .getAll()
+                                    .map { it.toDomainTrack() }
+                            onNewQueue(
+                                tracks,
+                                InsertActionType.SHUFFLE_SIMPLE_LAST,
+                                OrientedClassType.ARTIST
+                            )
+                            onSelected()
+                        }
+                    }
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.menu_insert_all_simple_shuffle_last),
+                        fontSize = 14.sp,
+                        color = QTheme.colors.colorTextPrimary
+                    )
+                }
+                DialogListItem(
+                    onClick = {
+                        coroutineScope.launch {
+                            val tracks =
+                                DB.getInstance(context).trackDao()
+                                    .getAll()
+                                    .map { it.toDomainTrack() }
+                            onNewQueue(
+                                tracks,
+                                InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
+                                OrientedClassType.ARTIST
+                            )
+                            onSelected()
+                        }
+                    }
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.menu_override_all_simple_shuffle),
+                        fontSize = 14.sp,
+                        color = QTheme.colors.colorTextPrimary
+                    )
+                }
+                DialogListItem(
+                    onClick = {
+                        coroutineScope.launch {
+                            DB.getInstance(context).trackDao()
+                                .getAll()
+                                .forEach {
+                                    onDeleteTrack(it.toDomainTrack())
+                                    onSelected()
                                 }
                         }
                     }
@@ -638,7 +867,7 @@ fun GenreOptionDialog(
                             onNewQueue(
                                 tracks,
                                 InsertActionType.NEXT,
-                                OrientedClassType.ALBUM
+                                OrientedClassType.GENRE
                             )
                             onSelectGenre(null)
                         }
@@ -660,7 +889,7 @@ fun GenreOptionDialog(
                             onNewQueue(
                                 tracks,
                                 InsertActionType.LAST,
-                                OrientedClassType.ALBUM
+                                OrientedClassType.GENRE
                             )
                             onSelectGenre(null)
                         }
@@ -682,7 +911,7 @@ fun GenreOptionDialog(
                             onNewQueue(
                                 tracks,
                                 InsertActionType.OVERRIDE,
-                                OrientedClassType.ALBUM
+                                OrientedClassType.GENRE
                             )
                             onSelectGenre(null)
                         }
@@ -701,11 +930,10 @@ fun GenreOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByGenreName(genre.name)
                                     .map { it.toDomainTrack() }
-                                    .shuffled()
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_NEXT,
-                                OrientedClassType.ALBUM
+                                OrientedClassType.GENRE
                             )
                             onSelectGenre(null)
                         }
@@ -724,11 +952,10 @@ fun GenreOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByGenreName(genre.name)
                                     .map { it.toDomainTrack() }
-                                    .shuffled()
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_LAST,
-                                OrientedClassType.ALBUM
+                                OrientedClassType.GENRE
                             )
                             onSelectGenre(null)
                         }
@@ -747,11 +974,10 @@ fun GenreOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByGenreName(genre.name)
                                     .map { it.toDomainTrack() }
-                                    .shuffled()
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
-                                OrientedClassType.ALBUM
+                                OrientedClassType.GENRE
                             )
                             onSelectGenre(null)
                         }
@@ -1166,8 +1392,10 @@ fun BoxScope.Dialogs(
     currentDropboxItemList: Pair<String, List<FolderMetadata>>,
     downloadTargets: List<String>,
     invalidateDownloadedTargets: List<Long>,
+    optionMediaItem: MediaItem?,
     showDropboxDialog: Boolean,
     showResetShuffleDialog: Boolean,
+    showOptionsDialog: Boolean,
     hasAlreadyShownDropboxSyncAlert: Boolean,
     onSelectTrack: (track: DomainTrack?) -> Unit,
     onSelectAlbum: (album: Album?) -> Unit,
@@ -1185,6 +1413,7 @@ fun BoxScope.Dialogs(
     hideResetShuffleDialog: () -> Unit,
     onShuffle: (actionType: ShuffleActionType) -> Unit,
     onResetShuffle: () -> Unit,
+    onCloseOptionsDialog: () -> Unit,
     onCancelDownload: () -> Unit,
     onStartDownloader: () -> Unit,
     onCancelInvalidateDownloaded: () -> Unit,
@@ -1217,6 +1446,45 @@ fun BoxScope.Dialogs(
             onNewQueue = onNewQueue,
             onDeleteTrack = onDeleteTrack
         )
+    }
+    if (showOptionsDialog) {
+        when (optionMediaItem) {
+            is DomainTrack -> {
+                TrackOptionDialog(
+                    domainTrack = optionMediaItem,
+                    navController = navController,
+                    onSelectTrack = { _ -> onCloseOptionsDialog() },
+                    onNewQueue = onNewQueue,
+                    onExportLyric = onExportLyric,
+                    onAttachLyric = onAttachLyric,
+                    onDetachLyric = onDetachLyric,
+                    onDeleteTrack = onDeleteTrack
+                )
+            }
+            is Album -> {
+                AlbumOptionDialog(
+                    album = optionMediaItem,
+                    onSelectAlbum = { _ -> onCloseOptionsDialog() },
+                    onNewQueue = onNewQueue,
+                    onDeleteTrack = onDeleteTrack
+                )
+            }
+            is Artist -> {
+                ArtistOptionDialog(
+                    artist = optionMediaItem,
+                    onSelectArtist = { _ -> onCloseOptionsDialog() },
+                    onNewQueue = onNewQueue,
+                    onDeleteTrack = onDeleteTrack
+                )
+            }
+            is AllArtists -> {
+                AllArtistOptionDialog(
+                    onSelected = onCloseOptionsDialog,
+                    onNewQueue = onNewQueue,
+                    onDeleteTrack = onDeleteTrack
+                )
+            }
+        }
     }
     selectedGenre?.let { genre ->
         GenreOptionDialog(
