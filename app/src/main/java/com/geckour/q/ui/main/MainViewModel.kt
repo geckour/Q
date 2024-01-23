@@ -64,8 +64,18 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal var isDropboxAuthOngoing = false
 
     internal val currentSourcePathsFlow = MutableStateFlow(emptyList<String>())
-    internal val currentQueueFlow = MutableStateFlow(emptyList<DomainTrack>())
     internal val currentIndexFlow = MutableStateFlow(0)
+    internal val currentQueueFlow = DB.getInstance(app).trackDao()
+        .getAllAsync()
+        .combine(currentSourcePathsFlow) { allTracks, currentSourcePaths ->
+            allTracks to currentSourcePaths
+        }
+        .combine(currentIndexFlow) { (allTracks, currentSourcePaths), currentIndex ->
+            currentSourcePaths.mapIndexedNotNull { index, sourcePath ->
+                allTracks.firstOrNull { it.track.sourcePath == sourcePath }
+                    ?.toDomainTrack(nowPlaying = currentIndex == index)
+            }
+        }
     internal val currentPlaybackPositionFlow = MutableStateFlow(0L)
     internal val currentBufferedPositionFlow = MutableStateFlow(0L)
     internal val currentPlaybackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
@@ -83,6 +93,7 @@ class MainViewModel(private val app: App) : ViewModel() {
     private var onSubmitQueue: ((queueInfo: QueueInfo) -> Unit)? = null
     private var onMoveQueuePosition: ((from: Int, to: Int) -> Unit)? = null
     private var onRemoveQueueByIndex: ((index: Int) -> Unit)? = null
+    internal var onRemoveQueueBySourcePath: ((sourcePath: String) -> Unit)? = null
     internal var onRemoveQueueByTrack: (suspend (track: DomainTrack) -> Unit)? = null
     private var onShuffleQueue: ((type: ShuffleActionType?) -> Unit)? = null
     private var onResetQueueOrder: (() -> Unit)? = null
@@ -110,22 +121,11 @@ class MainViewModel(private val app: App) : ViewModel() {
                 viewModelScope.launch {
                     playerService.sourcePathsFlow.collect {
                         currentSourcePathsFlow.value = it
-                        currentQueueFlow.value = it.mapIndexedNotNull { index, path ->
-                            DB.getInstance(app)
-                                .trackDao()
-                                .getBySourcePath(path)
-                                ?.toDomainTrack(
-                                    nowPlaying = index == currentIndexFlow.value
-                                )
-                        }
                     }
                 }
                 viewModelScope.launch {
                     playerService.currentIndexFlow.collect { index ->
                         currentIndexFlow.value = index
-                        currentQueueFlow.value = currentQueueFlow.value.mapIndexed { i, item ->
-                            item.copy(nowPlaying = i == index)
-                        }
                     }
                 }
                 viewModelScope.launch {
@@ -161,6 +161,9 @@ class MainViewModel(private val app: App) : ViewModel() {
                     playerService.moveQueuePosition(from, to)
                 }
                 onRemoveQueueByIndex = {
+                    playerService.removeQueue(it)
+                }
+                onRemoveQueueBySourcePath = {
                     playerService.removeQueue(it)
                 }
                 onRemoveQueueByTrack = {
@@ -296,7 +299,7 @@ class MainViewModel(private val app: App) : ViewModel() {
     }
 
     fun onRemoveTrackFromQueue(domainTrack: DomainTrack) {
-        val index = currentQueueFlow.value.indexOf(domainTrack)
+        val index = currentSourcePathsFlow.value.indexOf(domainTrack.sourcePath)
         onRemoveQueueByIndex?.invoke(index)
     }
 
@@ -370,28 +373,30 @@ class MainViewModel(private val app: App) : ViewModel() {
 
     internal fun deleteTrack(domainTrack: DomainTrack) {
         viewModelScope.launch {
-            invalidateDownloaded(listOf(domainTrack.id)).join()
+            purgeDownloaded(listOf(domainTrack.sourcePath)).join()
             onRemoveQueueByTrack?.invoke(domainTrack)
 
             db.trackDao().deleteIncludingRootIfEmpty(db, domainTrack.id)
         }
     }
 
-    internal fun invalidateDownloaded(targetIds: List<Long>): Job = viewModelScope.launch {
-        if (targetIds.contains(currentQueueFlow.value.getOrNull(currentIndexFlow.value)?.id)) {
+    internal fun purgeDownloaded(targetSourcePaths: List<String>): Job = viewModelScope.launch {
+        if (targetSourcePaths.contains(currentSourcePathsFlow.value.getOrNull(currentIndexFlow.value))) {
             onPause?.invoke()
         }
-        currentQueueFlow.value.filter { track -> targetIds.any { it == track.id } }.forEach {
-            onRemoveQueueByTrack?.invoke(it)
+        currentSourcePathsFlow.value.forEach { sourcePath ->
+            if (targetSourcePaths.any { it == sourcePath }) {
+                onRemoveQueueBySourcePath?.invoke(sourcePath)
+            }
         }
         runCatching {
-            db.trackDao().getAllSourcePathsByIds(targetIds).forEach {
+            targetSourcePaths.forEach {
                 val file = Uri.parse(it).toFile()
                 if (file.exists()) {
                     file.delete()
                 }
             }
-            db.trackDao().clearAllSourcePaths(targetIds)
+            db.trackDao().clearAllSourcePaths(targetSourcePaths)
         }
     }
 
@@ -400,7 +405,7 @@ class MainViewModel(private val app: App) : ViewModel() {
     }
 
     internal fun onChangeRequestedTrackInQueue(domainTrack: DomainTrack) {
-        val position = currentQueueFlow.value.indexOf(domainTrack)
+        val position = currentSourcePathsFlow.value.indexOf(domainTrack.sourcePath)
         onResetQueuePosition?.invoke(position)
     }
 

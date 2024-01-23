@@ -59,7 +59,7 @@ import com.geckour.q.util.getPlayerNotification
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.removedAt
 import com.geckour.q.util.setEqualizerParams
-import com.geckour.q.util.modifyOrder
+import com.geckour.q.util.orderModified
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toDomainTracks
 import com.geckour.q.util.verifiedWithDropbox
@@ -556,17 +556,10 @@ class PlayerService : Service(), LifecycleOwner {
         var alive = true
         loadStateFlow.value = true to { alive = false }
 
-        val shuffleSimple = queueInfo.metadata.actionType in listOf(
-            InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
-            InsertActionType.SHUFFLE_SIMPLE_NEXT,
-            InsertActionType.SHUFFLE_SIMPLE_LAST,
-        )
-
         val newQueue = queueInfo.queue
             .let {
                 when {
-                    shuffleSimple -> it.shuffled()
-                    needSorted -> it.modifyOrder(
+                    needSorted -> it.orderModified(
                         queueInfo.metadata.classType,
                         queueInfo.metadata.actionType
                     )
@@ -579,7 +572,7 @@ class PlayerService : Service(), LifecycleOwner {
                     loadStateFlow.value = false to null
                     return
                 }
-                (obtainDbxClient(this).firstOrNull()?.let {
+                (obtainDbxClient(this).take(1).lastOrNull()?.let {
                     track.verifiedWithDropbox(this, it)
                 } ?: track)
                     .getMediaItem()
@@ -632,6 +625,11 @@ class PlayerService : Service(), LifecycleOwner {
         ) return
 
         player.removeMediaItem(position)
+    }
+
+    fun removeQueue(sourcePath: String) {
+        val position = player.currentSourcePaths.indexOfFirst { it == sourcePath }
+        removeQueue(position)
     }
 
     suspend fun removeQueue(track: DomainTrack) {

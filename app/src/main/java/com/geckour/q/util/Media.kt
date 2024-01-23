@@ -183,7 +183,7 @@ suspend fun List<String>.getThumb(context: Context): Bitmap? {
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 fun DomainTrack.getMediaItem(): MediaItem = MediaItem.fromUri(Uri.parse(sourcePath))
 
-fun List<DomainTrack>.modifyOrder(
+fun List<DomainTrack>.orderModified(
     classType: OrientedClassType,
     actionType: InsertActionType
 ): List<DomainTrack> {

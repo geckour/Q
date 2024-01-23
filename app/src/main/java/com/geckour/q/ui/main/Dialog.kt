@@ -1391,7 +1391,7 @@ fun BoxScope.Dialogs(
     navController: NavHostController,
     currentDropboxItemList: Pair<String, List<FolderMetadata>>,
     downloadTargets: List<String>,
-    invalidateDownloadedTargets: List<Long>,
+    invalidateDownloadedTargets: List<String>,
     optionMediaItem: MediaItem?,
     showDropboxDialog: Boolean,
     showResetShuffleDialog: Boolean,

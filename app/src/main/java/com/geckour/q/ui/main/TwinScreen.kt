@@ -49,7 +49,7 @@ fun TwinScreen(
     equalizerParams: EqualizerParams?,
     currentDropboxItemList: Pair<String, List<FolderMetadata>>,
     downloadTargets: List<String>,
-    invalidateDownloadedTargets: List<Long>,
+    invalidateDownloadedTargets: List<String>,
     snackBarMessage: String?,
     forceScrollToCurrent: Long,
     showDropboxDialog: Boolean,
@@ -92,7 +92,7 @@ fun TwinScreen(
     onDownload: (targets: List<String>) -> Unit,
     onCancelDownload: () -> Unit,
     onStartDownloader: () -> Unit,
-    onInvalidateDownloaded: (targets: List<Long>) -> Unit,
+    onInvalidateDownloaded: (targets: List<String>) -> Unit,
     onCancelInvalidateDownloaded: () -> Unit,
     onStartInvalidateDownloaded: () -> Unit,
     onDeleteTrack: (target: DomainTrack) -> Unit,
@@ -191,7 +191,8 @@ fun TwinScreen(
             forceScrollToCurrent = forceScrollToCurrent,
             onQueueMove = onQueueMove,
             onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
-            onRemoveTrackFromQueue = onRemoveTrackFromQueue
+            onRemoveTrackFromQueue = onRemoveTrackFromQueue,
+            onToggleFavorite = onToggleFavorite,
         )
     }
 }
@@ -210,7 +211,7 @@ fun RowScope.TwinStartPage(
     equalizerParams: EqualizerParams?,
     currentDropboxItemList: Pair<String, List<FolderMetadata>>,
     downloadTargets: List<String>,
-    invalidateDownloadedTargets: List<Long>,
+    invalidateDownloadedTargets: List<String>,
     snackBarMessage: String?,
     onCancelProgress: (() -> Unit)?,
     showDropboxDialog: Boolean,
@@ -233,7 +234,7 @@ fun RowScope.TwinStartPage(
     onDownload: (targetTrackPaths: List<String>) -> Unit,
     onCancelDownload: () -> Unit,
     onStartDownloader: () -> Unit,
-    onInvalidateDownloaded: (targetTrackIds: List<Long>) -> Unit,
+    onInvalidateDownloaded: (targetTrackIds: List<String>) -> Unit,
     onCancelInvalidateDownloaded: () -> Unit,
     onStartInvalidateDownloaded: () -> Unit,
     onDeleteTrack: (track: DomainTrack) -> Unit,
@@ -404,7 +405,8 @@ fun RowScope.TwinEndPage(
     forceScrollToCurrent: Long,
     onQueueMove: (from: Int, to: Int) -> Unit,
     onChangeRequestedTrackInQueue: (track: DomainTrack) -> Unit,
-    onRemoveTrackFromQueue: (track: DomainTrack) -> Unit
+    onRemoveTrackFromQueue: (track: DomainTrack) -> Unit,
+    onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     Box(
         modifier = Modifier
@@ -443,7 +445,8 @@ fun RowScope.TwinEndPage(
                 forceScrollToCurrent = forceScrollToCurrent,
                 onQueueMove = onQueueMove,
                 onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
-                onRemoveTrackFromQueue = onRemoveTrackFromQueue
+                onRemoveTrackFromQueue = onRemoveTrackFromQueue,
+                onToggleFavorite = onToggleFavorite,
             )
         }
     }

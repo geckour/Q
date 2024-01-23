@@ -27,6 +27,8 @@ import androidx.compose.material.IconButton
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Lyrics
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.outlined.DownloadForOffline
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.Composable
@@ -50,6 +52,7 @@ import androidx.media3.common.Player
 import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.ui.DoubleTrackSlider
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.ShuffleActionType
@@ -85,7 +88,8 @@ fun Controller(
     clearQueue: () -> Unit,
     onTrackSelected: (item: DomainTrack) -> Unit,
     cancelLoad: () -> Unit,
-    onToggleShowLyrics: () -> Unit
+    onToggleShowLyrics: () -> Unit,
+    onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     Column {
         Column(modifier = Modifier.height(144.dp)) {
@@ -131,11 +135,7 @@ fun Controller(
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
-                        Row(
-                            modifier = Modifier.width(84.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
                             val infiniteTransition = rememberInfiniteTransition(label = "")
                             val degree by infiniteTransition.animateFloat(
                                 initialValue = 0f,
@@ -158,12 +158,28 @@ fun Controller(
                                 animationSpec = tween(200),
                                 label = ""
                             )
+                            currentTrack?.isFavorite?.let {
+                                Icon(
+                                    imageVector = if (it) Icons.Default.Star else Icons.Default.StarBorder,
+                                    contentDescription = null,
+                                    tint = QTheme.colors.colorTextPrimary,
+                                    modifier = Modifier
+                                        .clickable(
+                                            onClick = { onToggleFavorite(currentTrack) },
+                                            interactionSource = MutableInteractionSource(),
+                                            indication = rememberRipple(bounded = false)
+                                        )
+                                        .padding(8.dp)
+                                        .size(24.dp)
+                                )
+                            }
                             if (currentTrack?.isDownloaded == true) {
                                 Icon(
                                     imageVector = Icons.Outlined.DownloadForOffline,
                                     contentDescription = null,
                                     tint = QTheme.colors.colorTextPrimary,
                                     modifier = Modifier
+                                        .padding(8.dp)
                                         .size(24.dp)
                                         .alpha(dropboxIndicatorAlpha)
                                 )
@@ -173,6 +189,7 @@ fun Controller(
                                     contentDescription = null,
                                     tint = QTheme.colors.colorTextPrimary,
                                     modifier = Modifier
+                                        .padding(8.dp)
                                         .size(24.dp)
                                         .alpha(dropboxIndicatorAlpha)
                                 )
@@ -187,6 +204,7 @@ fun Controller(
                                         interactionSource = MutableInteractionSource(),
                                         indication = rememberRipple(bounded = false)
                                     )
+                                    .padding(8.dp)
                                     .size(24.dp)
                                     .alpha(queueStateIndicatorAlpha)
                                     .graphicsLayer {
@@ -273,28 +291,27 @@ fun Controller(
                                     .size(24.dp)
                             )
                         }
-                        Row(
-                            modifier = Modifier.width(84.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            IconButton(
-                                onClick = rotateRepeatMode,
-                                modifier = Modifier.size(24.dp)
-                            ) {
-                                Icon(
-                                    painter = painterResource(
-                                        id = when (repeatMode) {
-                                            Player.REPEAT_MODE_OFF -> R.drawable.ic_repeat_off
-                                            Player.REPEAT_MODE_ALL -> R.drawable.ic_repeat
-                                            Player.REPEAT_MODE_ONE -> R.drawable.ic_repeat_one
-                                            else -> throw IllegalStateException()
-                                        }
-                                    ),
-                                    contentDescription = null,
-                                    tint = QTheme.colors.colorButtonNormal
-                                )
-                            }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                painter = painterResource(
+                                    id = when (repeatMode) {
+                                        Player.REPEAT_MODE_OFF -> R.drawable.ic_repeat_off
+                                        Player.REPEAT_MODE_ALL -> R.drawable.ic_repeat
+                                        Player.REPEAT_MODE_ONE -> R.drawable.ic_repeat_one
+                                        else -> throw IllegalStateException()
+                                    }
+                                ),
+                                contentDescription = null,
+                                tint = QTheme.colors.colorButtonNormal,
+                                modifier = Modifier
+                                    .clickable(
+                                        onClick = rotateRepeatMode,
+                                        interactionSource = MutableInteractionSource(),
+                                        indication = rememberRipple(bounded = false)
+                                    )
+                                    .padding(8.dp)
+                                    .size(24.dp)
+                            )
                             Icon(
                                 painter = painterResource(id = R.drawable.ic_shuffle),
                                 contentDescription = null,
@@ -306,6 +323,7 @@ fun Controller(
                                         interactionSource = MutableInteractionSource(),
                                         indication = rememberRipple(bounded = false)
                                     )
+                                    .padding(8.dp)
                                     .size(24.dp)
                             )
                         }

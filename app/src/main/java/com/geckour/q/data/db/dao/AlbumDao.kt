@@ -90,8 +90,8 @@ interface AlbumDao {
     @Query("select dropboxPath from track where albumId = :albumId and dropboxPath is not null and (sourcePath is '' or sourcePath like 'https://%.dl.dropboxusercontent.com/%')")
     fun downloadableDropboxPaths(albumId: Long): Flow<List<String>>
 
-    @Query("select id from track where albumId = :albumId")
-    suspend fun getContainTrackIds(albumId: Long): List<Long>
+    @Query("select sourcePath from track where albumId = :albumId")
+    suspend fun getContainTrackIds(albumId: Long): List<String>
 
     @Transaction
     suspend fun deleteRecursively(db: DB, albumId: Long) {

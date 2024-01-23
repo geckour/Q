@@ -31,6 +31,8 @@ import androidx.compose.material.Surface
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -59,6 +61,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.moved
@@ -78,7 +81,8 @@ fun ColumnScope.Queue(
     currentPlaybackPosition: Long,
     onQueueMove: (from: Int, to: Int) -> Unit,
     onChangeRequestedTrackInQueue: (domainTrack: DomainTrack) -> Unit,
-    onRemoveTrackFromQueue: (domainTrack: DomainTrack) -> Unit
+    onRemoveTrackFromQueue: (domainTrack: DomainTrack) -> Unit,
+    onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -246,7 +250,8 @@ fun ColumnScope.Queue(
                         index = index,
                         isDragging = isDragging,
                         onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
-                        onRemoveTrackFromQueue = onRemoveTrackFromQueue
+                        onRemoveTrackFromQueue = onRemoveTrackFromQueue,
+                        onToggleFavorite = onToggleFavorite,
                     )
                 }
             }
@@ -262,7 +267,8 @@ fun QueueItem(
     index: Int,
     isDragging: Boolean,
     onChangeRequestedTrackInQueue: (domainTrack: DomainTrack) -> Unit,
-    onRemoveTrackFromQueue: (domainTrack: DomainTrack) -> Unit
+    onRemoveTrackFromQueue: (domainTrack: DomainTrack) -> Unit,
+    onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     val elevation by animateDpAsState(targetValue = if (isDragging) 16.dp else 0.dp, label = "")
 
@@ -310,6 +316,18 @@ fun QueueItem(
                             text = "${domainTrack.artist.title} - ${domainTrack.album.title}",
                             color = if (domainTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
                             fontSize = 12.sp
+                        )
+                    }
+                    IconButton(
+                        onClick = { onToggleFavorite(domainTrack) },
+                        modifier = Modifier
+                            .padding(12.dp)
+                            .size(20.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (domainTrack.isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = null,
+                            tint = QTheme.colors.colorTextPrimary
                         )
                     }
                     IconButton(

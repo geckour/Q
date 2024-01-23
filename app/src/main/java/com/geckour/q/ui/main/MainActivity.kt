@@ -210,8 +210,6 @@ class MainActivity : ComponentActivity() {
             override fun onChange(selfChange: Boolean, uri: Uri?, flags: Int) {
                 super.onChange(selfChange, uri, flags)
 
-                Timber.d("qgeck change occurred uri: $uri, flags: $flags")
-
                 retrieveMedia(false)
             }
         }
@@ -278,7 +276,7 @@ class MainActivity : ComponentActivity() {
             val isLoading by viewModel.loading.collectAsState()
             val navController = rememberNavController()
             var topBarTitle by remember { mutableStateOf("") }
-            val queue by viewModel.currentQueueFlow.collectAsState()
+            val queue by viewModel.currentQueueFlow.collectAsState(initial = emptyList())
             val sourcePaths by viewModel.currentSourcePathsFlow.collectAsState()
             val currentIndex by viewModel.currentIndexFlow.collectAsState()
             val currentPlaybackPosition by viewModel.currentPlaybackPositionFlow.collectAsState()
@@ -301,7 +299,7 @@ class MainActivity : ComponentActivity() {
             val hasAlreadyShownDropboxSyncAlert by context.getHasAlreadyShownDropboxSyncAlert()
                 .collectAsState(initial = false)
             var downloadTargets by remember { mutableStateOf(emptyList<String>()) }
-            var invalidateDownloadedTargets by remember { mutableStateOf(emptyList<Long>()) }
+            var invalidateDownloadedTargets by remember { mutableStateOf(emptyList<String>()) }
             var attachLyricTargetTrackId by remember { mutableLongStateOf(-1) }
             val snackBarMessage by viewModel.snackBarMessageFlow.collectAsState()
             val equalizerParams by context.getEqualizerParams().collectAsState(initial = null)
@@ -543,7 +541,7 @@ class MainActivity : ComponentActivity() {
                                     invalidateDownloadedTargets = emptyList()
                                 },
                                 onStartInvalidateDownloaded = {
-                                    viewModel.invalidateDownloaded(
+                                    viewModel.purgeDownloaded(
                                         invalidateDownloadedTargets
                                     )
                                     invalidateDownloadedTargets = emptyList()
@@ -683,7 +681,7 @@ class MainActivity : ComponentActivity() {
                                     invalidateDownloadedTargets = emptyList()
                                 },
                                 onStartInvalidateDownloaded = {
-                                    viewModel.invalidateDownloaded(
+                                    viewModel.purgeDownloaded(
                                         invalidateDownloadedTargets
                                     )
                                     invalidateDownloadedTargets = emptyList()
@@ -786,10 +784,10 @@ class MainActivity : ComponentActivity() {
 
         if (cacheDir.getDirSize() == 0L) {
             lifecycleScope.launch {
-                viewModel.invalidateDownloaded(
+                viewModel.purgeDownloaded(
                     DB.getInstance(this@MainActivity)
                         .trackDao()
-                        .getAllDownloadedIds()
+                        .getAllDownloadedSourcePaths()
                 )
             }
         }

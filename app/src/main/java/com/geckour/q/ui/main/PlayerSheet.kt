@@ -3,6 +3,7 @@ package com.geckour.q.ui.main
 import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.util.ShuffleActionType
 
 @Composable
@@ -32,7 +33,8 @@ fun PlayerSheet(
     forceScrollToCurrent: Long,
     onQueueMove: (from: Int, to: Int) -> Unit,
     onChangeRequestedTrackInQueue: (track: DomainTrack) -> Unit,
-    onRemoveTrackFromQueue: (track: DomainTrack) -> Unit
+    onRemoveTrackFromQueue: (track: DomainTrack) -> Unit,
+    onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     Column {
         Controller(
@@ -62,7 +64,8 @@ fun PlayerSheet(
             clearQueue = clearQueue,
             onTrackSelected = onSelectTrack,
             cancelLoad = { isLoading.second?.invoke() },
-            onToggleShowLyrics = onToggleShowLyrics
+            onToggleShowLyrics = onToggleShowLyrics,
+            onToggleFavorite = onToggleFavorite,
         )
         Queue(
             domainTracks = queue,
@@ -71,7 +74,8 @@ fun PlayerSheet(
             currentPlaybackPosition = currentPlaybackPosition,
             onQueueMove = onQueueMove,
             onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
-            onRemoveTrackFromQueue = onRemoveTrackFromQueue
+            onRemoveTrackFromQueue = onRemoveTrackFromQueue,
+            onToggleFavorite = onToggleFavorite,
         )
     }
 }

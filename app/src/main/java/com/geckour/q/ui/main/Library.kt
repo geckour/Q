@@ -45,7 +45,7 @@ fun Library(
     selectedGenre: Genre?,
     currentDropboxItemList: Pair<String, List<FolderMetadata>>,
     downloadTargets: List<String>,
-    invalidateDownloadedTargets: List<Long>,
+    invalidateDownloadedTargets: List<String>,
     optionMediaItem: MediaItem?,
     snackBarMessage: String?,
     onCancelProgress: (() -> Unit)?,
@@ -67,7 +67,7 @@ fun Library(
     onDownload: (targetTrackPaths: List<String>) -> Unit,
     onCancelDownload: () -> Unit,
     onStartDownloader: () -> Unit,
-    onInvalidateDownloaded: (targetTrackIds: List<Long>) -> Unit,
+    onInvalidateDownloaded: (targetTrackIds: List<String>) -> Unit,
     onCancelInvalidateDownloaded: () -> Unit,
     onStartInvalidateDownloaded: () -> Unit,
     onDeleteTrack: (track: DomainTrack) -> Unit,
@@ -211,7 +211,7 @@ fun Library(
                             onDownload(listOfNotNull(it.dropboxPath))
                         },
                         onInvalidateDownloaded = {
-                            onInvalidateDownloaded(listOf(it.id))
+                            onInvalidateDownloaded(listOf(it.sourcePath))
                         },
                         scrollToTop = scrollToTop,
                         onToggleFavorite = onToggleFavorite,

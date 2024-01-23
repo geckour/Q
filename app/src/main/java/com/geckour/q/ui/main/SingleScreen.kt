@@ -53,7 +53,7 @@ fun SingleScreen(
     equalizerParams: EqualizerParams?,
     currentDropboxItemList: Pair<String, List<FolderMetadata>>,
     downloadTargets: List<String>,
-    invalidateDownloadedTargets: List<Long>,
+    invalidateDownloadedTargets: List<String>,
     snackBarMessage: String?,
     forceScrollToCurrent: Long,
     showDropboxDialog: Boolean,
@@ -96,7 +96,7 @@ fun SingleScreen(
     onDownload: (targets: List<String>) -> Unit,
     onCancelDownload: () -> Unit,
     onStartDownloader: () -> Unit,
-    onInvalidateDownloaded: (targets: List<Long>) -> Unit,
+    onInvalidateDownloaded: (targets: List<String>) -> Unit,
     onCancelInvalidateDownloaded: () -> Unit,
     onStartInvalidateDownloaded: () -> Unit,
     onDeleteTrack: (target: DomainTrack) -> Unit,
@@ -229,7 +229,8 @@ fun SingleScreen(
                 forceScrollToCurrent = forceScrollToCurrent,
                 onQueueMove = onQueueMove,
                 onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
-                onRemoveTrackFromQueue = onRemoveTrackFromQueue
+                onRemoveTrackFromQueue = onRemoveTrackFromQueue,
+                onToggleFavorite = onToggleFavorite,
             )
         }
     ) { paddingValues ->

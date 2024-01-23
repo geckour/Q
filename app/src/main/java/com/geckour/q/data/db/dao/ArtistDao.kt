@@ -65,8 +65,8 @@ interface ArtistDao {
     @Query("select dropboxPath from track where (artistId = :artistId or albumArtistId = :artistId) and dropboxPath is not null and (sourcePath is '' or sourcePath like 'https://%.dl.dropboxusercontent.com/%')")
     fun downloadableDropboxPaths(artistId: Long): Flow<List<String>>
 
-    @Query("select id from track where (artistId = :artistId or albumArtistId = :artistId)")
-    suspend fun getContainTrackIds(artistId: Long): List<Long>
+    @Query("select sourcePath from track where (artistId = :artistId or albumArtistId = :artistId)")
+    suspend fun getContainTrackIds(artistId: Long): List<String>
 
     @Transaction
     suspend fun upsert(db: DB, newArtist: Artist, durationToAdd: Long = 0): Long {
