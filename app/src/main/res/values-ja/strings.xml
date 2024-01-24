@@ -150,6 +150,8 @@
     <string name="dialog_title_dropbox_invalidate_downloaded">削除</string>
     <string name="dialog_desc_dropbox_invalidate_downloaded">端末からダウンロードしたファイルを削除しますか？</string>
 
+    <string name="dialog_switch_desc_filter_only_favorite">お気に入りのみ</string>
+
     <!-- Payment -->
     <string name="payment_desc">投げ銭を受け付けています</string>
     <string name="payment_action_pay">投げる</string>

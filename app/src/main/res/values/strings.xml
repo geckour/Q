@@ -156,6 +156,8 @@
     <string name="dialog_title_dropbox_invalidate_downloaded">Purge</string>
     <string name="dialog_desc_dropbox_invalidate_downloaded">Remove downloaded file from the device?</string>
 
+    <string name="dialog_switch_desc_filter_only_favorite">Only favorites</string>
+
     <!-- Track -->
     <string name="track_item_artist_and_album" translatable="false">%1$s - %2$s</string>
     <string name="track_file_info" translatable="false">%1$s・%2$dkbps・%3$.1fkHz</string>
