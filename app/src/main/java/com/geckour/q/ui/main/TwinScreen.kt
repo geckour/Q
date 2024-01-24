@@ -11,6 +11,8 @@ import androidx.compose.material.Card
 import androidx.compose.material.Scaffold
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -257,6 +259,7 @@ fun RowScope.TwinStartPage(
     onShowOptions: () -> Unit,
 ) {
     val scaffoldState = rememberScaffoldState()
+    val isSearchActive = remember { mutableStateOf(false) }
     Scaffold(
         modifier = Modifier
             .weight(1f)
@@ -267,8 +270,49 @@ fun RowScope.TwinStartPage(
                 title = topBarTitle,
                 optionMediaItem = optionMediaItem,
                 drawerState = scaffoldState.drawerState,
+                isSearchActive = isSearchActive.value,
                 onTapBar = onTapBar,
                 onToggleTheme = onToggleTheme,
+                onToggleFavorite = onToggleFavorite,
+                onShowOptions = onShowOptions,
+                onSetOptionMediaItem = onSetOptionMediaItem,
+            )
+        },
+        drawerContent = {
+            Drawer(
+                drawerState = scaffoldState.drawerState,
+                navController = navController,
+                selectedNav = selectedNav,
+                equalizerParams = equalizerParams,
+                onSelectNav = onSelectNav,
+                onShowDropboxDialog = onShowDropboxDialog,
+                onRetrieveMedia = onRetrieveMedia
+            )
+        }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .padding(paddingValues)
+                .background(color = QTheme.colors.colorBackground)
+                .fillMaxSize()
+        ) {
+            Library(
+                navController = navController,
+                scrollToTop = scrollToTop,
+                snackBarMessage = snackBarMessage,
+                isSearchActive = isSearchActive,
+                onCancelProgress = onCancelProgress,
+                onSelectNav = onSelectNav,
+                onChangeTopBarTitle = onChangeTopBarTitle,
+                onSelectArtist = onSelectArtist,
+                onSelectAlbum = onSelectAlbum,
+                onSelectTrack = onSelectTrack,
+                onSelectGenre = onSelectGenre,
+                onDownload = onDownload,
+                onInvalidateDownloaded = onInvalidateDownloaded,
+                onStartBilling = onStartBilling,
+                onSetOptionMediaItem = onSetOptionMediaItem,
+                onToggleFavorite = onToggleFavorite,
                 onSearchItemClicked = { item ->
                     when (item.type) {
                         SearchItem.SearchItemType.TRACK -> {
@@ -311,70 +355,44 @@ fun RowScope.TwinStartPage(
                         else -> Unit
                     }
                 },
-                onToggleFavorite = onToggleFavorite,
-                onShowOptions = onShowOptions,
-                onSetOptionMediaItem = onSetOptionMediaItem,
             )
-        },
-        drawerContent = {
-            Drawer(
-                drawerState = scaffoldState.drawerState,
+            Dialogs(
+                selectedTrack = selectedTrack,
+                selectedAlbum = selectedAlbum,
+                selectedArtist = selectedArtist,
+                selectedGenre = selectedGenre,
                 navController = navController,
-                selectedNav = selectedNav,
-                equalizerParams = equalizerParams,
-                onSelectNav = onSelectNav,
-                onShowDropboxDialog = onShowDropboxDialog,
-                onRetrieveMedia = onRetrieveMedia
+                currentDropboxItemList = currentDropboxItemList,
+                downloadTargets = downloadTargets,
+                invalidateDownloadedTargets = invalidateDownloadedTargets,
+                optionMediaItem = optionMediaItem,
+                showDropboxDialog = showDropboxDialog,
+                showResetShuffleDialog = showResetShuffleDialog,
+                showOptionsDialog = showOptionsDialog,
+                hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
+                onSelectTrack = onSelectTrack,
+                onSelectAlbum = onSelectAlbum,
+                onSelectArtist = onSelectArtist,
+                onSelectGenre = onSelectGenre,
+                onDeleteTrack = onDeleteTrack,
+                onExportLyric = onExportLyric,
+                onAttachLyric = onAttachLyric,
+                onDetachLyric = onDetachLyric,
+                onNewQueue = onNewQueue,
+                onStartAuthDropbox = onStartAuthDropbox,
+                onShowDropboxFolderChooser = onShowDropboxFolderChooser,
+                hideDropboxDialog = hideDropboxDialog,
+                startDropboxSync = startDropboxSync,
+                hideResetShuffleDialog = hideResetShuffleDialog,
+                onShuffle = onShuffle,
+                onResetShuffle = onResetShuffle,
+                onCloseOptionsDialog = onCloseOptionsDialog,
+                onCancelDownload = onCancelDownload,
+                onStartDownloader = onStartDownloader,
+                onCancelInvalidateDownloaded = onCancelInvalidateDownloaded,
+                onStartInvalidateDownloaded = onStartInvalidateDownloaded
             )
         }
-    ) { paddingValues ->
-        Library(
-            paddingValues = paddingValues,
-            navController = navController,
-            scrollToTop = scrollToTop,
-            selectedArtist = selectedArtist,
-            selectedAlbum = selectedAlbum,
-            selectedTrack = selectedTrack,
-            selectedGenre = selectedGenre,
-            currentDropboxItemList = currentDropboxItemList,
-            downloadTargets = downloadTargets,
-            invalidateDownloadedTargets = invalidateDownloadedTargets,
-            optionMediaItem = optionMediaItem,
-            snackBarMessage = snackBarMessage,
-            onCancelProgress = onCancelProgress,
-            showDropboxDialog = showDropboxDialog,
-            showResetShuffleDialog = showResetShuffleDialog,
-            showOptionsDialog = showOptionsDialog,
-            hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
-            onSelectNav = onSelectNav,
-            onChangeTopBarTitle = onChangeTopBarTitle,
-            onSelectArtist = onSelectArtist,
-            onSelectAlbum = onSelectAlbum,
-            onSelectTrack = onSelectTrack,
-            onSelectGenre = onSelectGenre,
-            onNewQueue = onNewQueue,
-            onDownload = onDownload,
-            onCancelDownload = onCancelDownload,
-            onStartDownloader = onStartDownloader,
-            onInvalidateDownloaded = onInvalidateDownloaded,
-            onCancelInvalidateDownloaded = onCancelInvalidateDownloaded,
-            onStartInvalidateDownloaded = onStartInvalidateDownloaded,
-            onDeleteTrack = onDeleteTrack,
-            onExportLyric = onExportLyric,
-            onAttachLyric = onAttachLyric,
-            onDetachLyric = onDetachLyric,
-            onStartAuthDropbox = onStartAuthDropbox,
-            onShowDropboxFolderChooser = onShowDropboxFolderChooser,
-            hideDropboxDialog = hideDropboxDialog,
-            startDropboxSync = startDropboxSync,
-            hideResetShuffleDialog = hideResetShuffleDialog,
-            onShuffle = onShuffle,
-            onResetShuffle = onResetShuffle,
-            onCloseOptionsDialog = onCloseOptionsDialog,
-            onStartBilling = onStartBilling,
-            onSetOptionMediaItem = onSetOptionMediaItem,
-            onToggleFavorite = onToggleFavorite,
-        )
     }
 }
 

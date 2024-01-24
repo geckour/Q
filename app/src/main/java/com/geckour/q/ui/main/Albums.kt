@@ -23,11 +23,14 @@ import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -38,20 +41,27 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun Albums(
     navController: NavController,
     artistId: Long = -1,
+    isSearchActive: MutableState<Boolean>,
+    query: MutableState<String>,
+    result: MutableState<List<SearchItem>>,
+    keyboardController: SoftwareKeyboardController?,
     changeTopBarTitle: (title: String) -> Unit,
     onSelectAlbum: (item: JoinedAlbum) -> Unit,
     onDownload: (dropboxPaths: List<String>) -> Unit,
     onInvalidateDownloaded: (albumId: Long) -> Unit,
     scrollToTop: Long,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
+    onSearchItemClicked: (item: SearchItem) -> Unit,
+    onSearchItemLongClicked: (item: SearchItem) -> Unit,
 ) {
     val db = DB.getInstance(LocalContext.current)
     val joinedAlbums by (
@@ -72,7 +82,20 @@ fun Albums(
         listState.animateScrollToItem(0)
     }
 
-    LazyColumn(state = listState) {
+    LazyColumn(
+        state = listState,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        item {
+            QSearchBar(
+                isSearchActive = isSearchActive,
+                query = query,
+                result = result,
+                keyboardController = keyboardController,
+                onSearchItemClicked = onSearchItemClicked,
+                onSearchItemLongClicked = onSearchItemLongClicked
+            )
+        }
         items(joinedAlbums) { joinedAlbum ->
             val containDropboxContent by db.albumDao()
                 .containDropboxContent(joinedAlbum.album.id)

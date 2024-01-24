@@ -21,14 +21,17 @@ import androidx.compose.material.IconButton
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,15 +41,26 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.domain.model.Genre
+import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getThumb
 import com.geckour.q.util.getTimeString
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
-fun Genres(navController: NavController, onSelectGenre: (item: Genre) -> Unit, scrollToTop: Long) {
+fun Genres(
+    navController: NavController,
+    isSearchActive: MutableState<Boolean>,
+    query: MutableState<String>,
+    result: MutableState<List<SearchItem>>,
+    keyboardController: SoftwareKeyboardController?,
+    onSelectGenre: (item: Genre) -> Unit,
+    scrollToTop: Long,
+    onSearchItemClicked: (item: SearchItem) -> Unit,
+    onSearchItemLongClicked: (item: SearchItem) -> Unit,
+) {
     val context = LocalContext.current
     val db = DB.getInstance(context)
     val genreNames by db.trackDao()
@@ -72,7 +86,20 @@ fun Genres(navController: NavController, onSelectGenre: (item: Genre) -> Unit, s
         listState.animateScrollToItem(0)
     }
 
-    LazyColumn(state = listState) {
+    LazyColumn(
+        state = listState,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        item {
+            QSearchBar(
+                isSearchActive = isSearchActive,
+                query = query,
+                result = result,
+                keyboardController = keyboardController,
+                onSearchItemClicked = onSearchItemClicked,
+                onSearchItemLongClicked = onSearchItemLongClicked
+            )
+        }
         items(genres) { genre ->
             Timber.d("qgeck genre: $genre")
             Column(
