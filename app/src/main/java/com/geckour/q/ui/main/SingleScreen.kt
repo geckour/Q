@@ -13,6 +13,7 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -66,6 +67,8 @@ fun SingleScreen(
     showResetShuffleDialog: Boolean,
     showOptionsDialog: Boolean,
     hasAlreadyShownDropboxSyncAlert: Boolean,
+    isSearchActive: MutableState<Boolean>,
+    isFavoriteOnly: MutableState<Boolean>,
     scrollToTop: Long,
     onSelectNav: (nav: Nav?) -> Unit,
     onTapBar: () -> Unit,
@@ -123,7 +126,6 @@ fun SingleScreen(
     val coroutineScope = rememberCoroutineScope()
     val scaffoldState = rememberBottomSheetScaffoldState()
     val bottomSheetHeightAngle = remember { Animatable(0f) }
-    val isSearchActive = remember { mutableStateOf(false) }
     LaunchedEffect(sourcePaths) {
         if (sourcePaths.isNotEmpty()) {
             bottomSheetHeightAngle.animateTo(
@@ -211,6 +213,7 @@ fun SingleScreen(
                 scrollToTop = scrollToTop,
                 snackBarMessage = snackBarMessage,
                 isSearchActive = isSearchActive,
+                isFavoriteOnly = isFavoriteOnly,
                 onCancelProgress = onCancelProgress,
                 onSelectNav = onSelectNav,
                 onChangeTopBarTitle = onChangeTopBarTitle,
@@ -280,6 +283,7 @@ fun SingleScreen(
                 showResetShuffleDialog = showResetShuffleDialog,
                 showOptionsDialog = showOptionsDialog,
                 hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
+                isFavoriteOnly = isFavoriteOnly,
                 onSelectTrack = onSelectTrack,
                 onSelectAlbum = onSelectAlbum,
                 onSelectArtist = onSelectArtist,

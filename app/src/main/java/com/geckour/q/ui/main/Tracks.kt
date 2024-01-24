@@ -59,6 +59,7 @@ fun Tracks(
     albumId: Long = -1,
     genreName: String? = null,
     isSearchActive: MutableState<Boolean>,
+    isFavoriteOnly: MutableState<Boolean>,
     query: MutableState<String>,
     result: MutableState<List<SearchItem>>,
     keyboardController: SoftwareKeyboardController?,
@@ -79,7 +80,6 @@ fun Tracks(
     }).collectAsState(initial = emptyList())
     val defaultTabBarTitle = stringResource(id = R.string.nav_track)
     val listState = rememberLazyListState()
-    var isFavoriteOnly by remember { mutableStateOf(false) }
 
     LaunchedEffect(joinedTracks) {
         changeTopBarTitle(
@@ -121,13 +121,13 @@ fun Tracks(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Switch(
-                    checked = isFavoriteOnly,
-                    onCheckedChange = { isFavoriteOnly = isFavoriteOnly.not() }
+                    checked = isFavoriteOnly.value,
+                    onCheckedChange = { isFavoriteOnly.value = isFavoriteOnly.value.not() }
                 )
             }
         }
         items(joinedTracks.let { joinedTracks ->
-            if (isFavoriteOnly) joinedTracks.filter { it.track.isFavorite } else joinedTracks
+            if (isFavoriteOnly.value) joinedTracks.filter { it.track.isFavorite } else joinedTracks
         }) { joinedTrack ->
             val domainTrack = joinedTrack.toDomainTrack()
             Surface(

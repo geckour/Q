@@ -57,6 +57,7 @@ fun Albums(
     navController: NavController,
     artistId: Long = -1,
     isSearchActive: MutableState<Boolean>,
+    isFavoriteOnly: MutableState<Boolean>,
     query: MutableState<String>,
     result: MutableState<List<SearchItem>>,
     keyboardController: SoftwareKeyboardController?,
@@ -76,7 +77,6 @@ fun Albums(
             ).collectAsState(initial = emptyList())
     val defaultTabBarTitle = stringResource(id = R.string.nav_album)
     val listState = rememberLazyListState()
-    var isFavoriteOnly by remember { mutableStateOf(false) }
 
     LaunchedEffect(joinedAlbums) {
         changeTopBarTitle(
@@ -115,13 +115,13 @@ fun Albums(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Switch(
-                    checked = isFavoriteOnly,
-                    onCheckedChange = { isFavoriteOnly = isFavoriteOnly.not() }
+                    checked = isFavoriteOnly.value,
+                    onCheckedChange = { isFavoriteOnly.value = isFavoriteOnly.value.not() }
                 )
             }
         }
         items(joinedAlbums.let { joinedAlbums ->
-            if (isFavoriteOnly) joinedAlbums.filter { it.album.isFavorite } else joinedAlbums
+            if (isFavoriteOnly.value) joinedAlbums.filter { it.album.isFavorite } else joinedAlbums
         }) { joinedAlbum ->
             val containDropboxContent by db.albumDao()
                 .containDropboxContent(joinedAlbum.album.id)

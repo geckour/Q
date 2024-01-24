@@ -38,6 +38,7 @@ fun Library(
     scrollToTop: Long,
     snackBarMessage: String?,
     isSearchActive: MutableState<Boolean>,
+    isFavoriteOnly: MutableState<Boolean>,
     onCancelProgress: (() -> Unit)?,
     onSelectNav: (nav: Nav?) -> Unit,
     onChangeTopBarTitle: (newTitle: String) -> Unit,
@@ -79,6 +80,7 @@ fun Library(
                 Artists(
                     navController = navController,
                     isSearchActive = isSearchActive,
+                    isFavoriteOnly = isFavoriteOnly,
                     query = query,
                     result = result,
                     keyboardController = keyboardController,
@@ -125,6 +127,7 @@ fun Library(
                     artistId = backStackEntry.arguments?.getLong("artistId")
                         ?: -1,
                     isSearchActive = isSearchActive,
+                    isFavoriteOnly = isFavoriteOnly,
                     query = query,
                     result = result,
                     keyboardController = keyboardController,
@@ -180,6 +183,7 @@ fun Library(
                     albumId = albumId,
                     genreName = genreName,
                     isSearchActive = isSearchActive,
+                    isFavoriteOnly = isFavoriteOnly,
                     query = query,
                     result = result,
                     keyboardController = keyboardController,

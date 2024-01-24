@@ -11,6 +11,7 @@ import androidx.compose.material.Card
 import androidx.compose.material.Scaffold
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -58,6 +59,8 @@ fun TwinScreen(
     showResetShuffleDialog: Boolean,
     showOptionsDialog: Boolean,
     hasAlreadyShownDropboxSyncAlert: Boolean,
+    isSearchActive: MutableState<Boolean>,
+    isFavoriteOnly: MutableState<Boolean>,
     scrollToTop: Long,
     onSelectNav: (nav: Nav?) -> Unit,
     onTapBar: () -> Unit,
@@ -133,6 +136,8 @@ fun TwinScreen(
             showResetShuffleDialog = showResetShuffleDialog,
             showOptionsDialog = showOptionsDialog,
             hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
+            isSearchActive = isSearchActive,
+            isFavoriteOnly = isFavoriteOnly,
             onSelectNav = onSelectNav,
             onChangeTopBarTitle = onChangeTopBarTitle,
             onTapBar = onTapBar,
@@ -220,6 +225,8 @@ fun RowScope.TwinStartPage(
     showResetShuffleDialog: Boolean,
     showOptionsDialog: Boolean,
     hasAlreadyShownDropboxSyncAlert: Boolean,
+    isSearchActive: MutableState<Boolean>,
+    isFavoriteOnly: MutableState<Boolean>,
     onSelectNav: (nav: Nav?) -> Unit,
     onChangeTopBarTitle: (newTitle: String) -> Unit,
     onTapBar: () -> Unit,
@@ -259,7 +266,6 @@ fun RowScope.TwinStartPage(
     onShowOptions: () -> Unit,
 ) {
     val scaffoldState = rememberScaffoldState()
-    val isSearchActive = remember { mutableStateOf(false) }
     Scaffold(
         modifier = Modifier
             .weight(1f)
@@ -301,6 +307,7 @@ fun RowScope.TwinStartPage(
                 scrollToTop = scrollToTop,
                 snackBarMessage = snackBarMessage,
                 isSearchActive = isSearchActive,
+                isFavoriteOnly = isFavoriteOnly,
                 onCancelProgress = onCancelProgress,
                 onSelectNav = onSelectNav,
                 onChangeTopBarTitle = onChangeTopBarTitle,
@@ -370,6 +377,7 @@ fun RowScope.TwinStartPage(
                 showResetShuffleDialog = showResetShuffleDialog,
                 showOptionsDialog = showOptionsDialog,
                 hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
+                isFavoriteOnly = isFavoriteOnly,
                 onSelectTrack = onSelectTrack,
                 onSelectAlbum = onSelectAlbum,
                 onSelectArtist = onSelectArtist,

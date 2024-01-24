@@ -335,6 +335,8 @@ class MainActivity : ComponentActivity() {
 
                 newMediaItem
             }
+            val isSearchActive = remember { mutableStateOf(false) }
+            val isFavoriteOnly = remember { mutableStateOf(false) }
 
             onLrcFileLoaded = {
                 if (attachLyricTargetTrackId > 0) {
@@ -518,6 +520,8 @@ class MainActivity : ComponentActivity() {
                                 rotateRepeatMode = viewModel::onClickRepeatButton,
                                 shuffleQueue = viewModel::onShuffle,
                                 resetShuffleQueue = viewModel::onResetShuffle,
+                                isSearchActive = isSearchActive,
+                                isFavoriteOnly = isFavoriteOnly,
                                 closeOptionsDialog = { showOptionsDialog = false },
                                 moveToCurrentIndex = {
                                     forceScrollToCurrent = System.currentTimeMillis()
@@ -624,6 +628,8 @@ class MainActivity : ComponentActivity() {
                                 currentDropboxItemList = currentDropboxItemList,
                                 downloadTargets = downloadTargets,
                                 invalidateDownloadedTargets = invalidateDownloadedTargets,
+                                isSearchActive = isSearchActive,
+                                isFavoriteOnly = isFavoriteOnly,
                                 snackBarMessage = progressMessage ?: snackBarMessage,
                                 forceScrollToCurrent = forceScrollToCurrent,
                                 showDropboxDialog = showDropboxDialog,

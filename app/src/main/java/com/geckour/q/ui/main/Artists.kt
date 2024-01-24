@@ -55,6 +55,7 @@ import com.geckour.q.util.getTimeString
 fun Artists(
     navController: NavController,
     isSearchActive: MutableState<Boolean>,
+    isFavoriteOnly: MutableState<Boolean>,
     query: MutableState<String>,
     result: MutableState<List<SearchItem>>,
     keyboardController: SoftwareKeyboardController?,
@@ -69,7 +70,6 @@ fun Artists(
     val db = DB.getInstance(LocalContext.current)
     val artists by db.artistDao().getAllOrientedAlbumAsync().collectAsState(initial = emptyList())
     val listState = rememberLazyListState()
-    var isFavoriteOnly by remember { mutableStateOf(false) }
 
     LaunchedEffect(scrollToTop) {
         listState.animateScrollToItem(0)
@@ -101,13 +101,13 @@ fun Artists(
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Switch(
-                    checked = isFavoriteOnly,
-                    onCheckedChange = { isFavoriteOnly = isFavoriteOnly.not() }
+                    checked = isFavoriteOnly.value,
+                    onCheckedChange = { isFavoriteOnly.value = isFavoriteOnly.value.not() }
                 )
             }
         }
         items(artists.let {
-                artists -> if (isFavoriteOnly) artists.filter { it.isFavorite } else artists
+                artists -> if (isFavoriteOnly.value) artists.filter { it.isFavorite } else artists
         }) { artist ->
             val containDropboxContent by db.artistDao()
                 .containDropboxContent(artist.id)
