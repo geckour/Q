@@ -18,6 +18,7 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Surface
+import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Download
@@ -29,6 +30,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -75,6 +79,7 @@ fun Tracks(
     }).collectAsState(initial = emptyList())
     val defaultTabBarTitle = stringResource(id = R.string.nav_track)
     val listState = rememberLazyListState()
+    var isFavoriteOnly by remember { mutableStateOf(false) }
 
     LaunchedEffect(joinedTracks) {
         changeTopBarTitle(
@@ -104,7 +109,26 @@ fun Tracks(
                 onSearchItemLongClicked = onSearchItemLongClicked
             )
         }
-        items(joinedTracks) { joinedTrack ->
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End
+            ) {
+                Text(
+                    text = stringResource(id = R.string.dialog_switch_desc_filter_only_favorite),
+                    fontSize = 12.sp
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Switch(
+                    checked = isFavoriteOnly,
+                    onCheckedChange = { isFavoriteOnly = isFavoriteOnly.not() }
+                )
+            }
+        }
+        items(joinedTracks.let { joinedTracks ->
+            if (isFavoriteOnly) joinedTracks.filter { it.track.isFavorite } else joinedTracks
+        }) { joinedTrack ->
             val domainTrack = joinedTrack.toDomainTrack()
             Surface(
                 elevation = 0.dp,
