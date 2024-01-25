@@ -20,6 +20,7 @@ import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.material.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -690,6 +691,7 @@ fun ArtistOptionDialog(
 @Composable
 fun AllArtistOptionDialog(
     onSelected: () -> Unit,
+    isFavoriteOnly: MutableState<Boolean>,
     onNewQueue: (
         queue: List<DomainTrack>,
         actionType: InsertActionType,
@@ -699,7 +701,6 @@ fun AllArtistOptionDialog(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    var isFavoriteOnly by remember { mutableStateOf(false) }
     Dialog(onDismissRequest = { onSelected() }) {
         Card(backgroundColor = QTheme.colors.colorBackground) {
             Column {
@@ -713,8 +714,8 @@ fun AllArtistOptionDialog(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Switch(
-                        checked = isFavoriteOnly,
-                        onCheckedChange = { isFavoriteOnly = isFavoriteOnly.not() }
+                        checked = isFavoriteOnly.value,
+                        onCheckedChange = { isFavoriteOnly.value = isFavoriteOnly.value.not() }
                     )
                 }
                 DialogListItem(
@@ -723,7 +724,7 @@ fun AllArtistOptionDialog(
                             val tracks =
                                 DB.getInstance(context).trackDao()
                                     .let {
-                                        if (isFavoriteOnly) it.getAllWithFavoriteArtist() else it.getAll()
+                                        if (isFavoriteOnly.value) it.getAllWithFavoriteArtist() else it.getAll()
                                     }
                                     .map { it.toDomainTrack() }
                             onNewQueue(
@@ -747,7 +748,7 @@ fun AllArtistOptionDialog(
                             val tracks =
                                 DB.getInstance(context).trackDao()
                                     .let {
-                                        if (isFavoriteOnly) it.getAllWithFavoriteArtist() else it.getAll()
+                                        if (isFavoriteOnly.value) it.getAllWithFavoriteArtist() else it.getAll()
                                     }
                                     .map { it.toDomainTrack() }
                             onNewQueue(
@@ -771,7 +772,7 @@ fun AllArtistOptionDialog(
                             val tracks =
                                 DB.getInstance(context).trackDao()
                                     .let {
-                                        if (isFavoriteOnly) it.getAllWithFavoriteArtist() else it.getAll()
+                                        if (isFavoriteOnly.value) it.getAllWithFavoriteArtist() else it.getAll()
                                     }
                                     .map { it.toDomainTrack() }
                             onNewQueue(
@@ -795,7 +796,7 @@ fun AllArtistOptionDialog(
                             val tracks =
                                 DB.getInstance(context).trackDao()
                                     .let {
-                                        if (isFavoriteOnly) it.getAllWithFavoriteArtist() else it.getAll()
+                                        if (isFavoriteOnly.value) it.getAllWithFavoriteArtist() else it.getAll()
                                     }
                                     .map { it.toDomainTrack() }
                             onNewQueue(
@@ -819,7 +820,7 @@ fun AllArtistOptionDialog(
                             val tracks =
                                 DB.getInstance(context).trackDao()
                                     .let {
-                                        if (isFavoriteOnly) it.getAllWithFavoriteArtist() else it.getAll()
+                                        if (isFavoriteOnly.value) it.getAllWithFavoriteArtist() else it.getAll()
                                     }
                                     .map { it.toDomainTrack() }
                             onNewQueue(
@@ -843,7 +844,7 @@ fun AllArtistOptionDialog(
                             val tracks =
                                 DB.getInstance(context).trackDao()
                                     .let {
-                                        if (isFavoriteOnly) it.getAllWithFavoriteArtist() else it.getAll()
+                                        if (isFavoriteOnly.value) it.getAllWithFavoriteArtist() else it.getAll()
                                     }
                                     .map { it.toDomainTrack() }
                             onNewQueue(
@@ -867,7 +868,7 @@ fun AllArtistOptionDialog(
                             val tracks =
                                 DB.getInstance(context).trackDao()
                                     .let {
-                                        if (isFavoriteOnly) it.getAllWithFavoriteArtist() else it.getAll()
+                                        if (isFavoriteOnly.value) it.getAllWithFavoriteArtist() else it.getAll()
                                     }
                                     .map { it.toDomainTrack() }
                             onNewQueue(
@@ -891,7 +892,7 @@ fun AllArtistOptionDialog(
                             val tracks =
                                 DB.getInstance(context).trackDao()
                                     .let {
-                                        if (isFavoriteOnly) it.getAllWithFavoriteArtist() else it.getAll()
+                                        if (isFavoriteOnly.value) it.getAllWithFavoriteArtist() else it.getAll()
                                     }
                                     .map { it.toDomainTrack() }
                             onNewQueue(
@@ -915,7 +916,7 @@ fun AllArtistOptionDialog(
                             val tracks =
                                 DB.getInstance(context).trackDao()
                                     .let {
-                                        if (isFavoriteOnly) it.getAllWithFavoriteArtist() else it.getAll()
+                                        if (isFavoriteOnly.value) it.getAllWithFavoriteArtist() else it.getAll()
                                     }
                                     .map { it.toDomainTrack() }
                             onNewQueue(
@@ -938,7 +939,7 @@ fun AllArtistOptionDialog(
                         coroutineScope.launch {
                             DB.getInstance(context).trackDao()
                                 .let {
-                                    if (isFavoriteOnly) it.getAllWithFavoriteArtist() else it.getAll()
+                                    if (isFavoriteOnly.value) it.getAllWithFavoriteArtist() else it.getAll()
                                 }
                                 .forEach {
                                     onDeleteTrack(it.toDomainTrack())
@@ -1537,6 +1538,11 @@ fun BoxScope.Dialogs(
     onCancelInvalidateDownloaded: () -> Unit,
     onStartInvalidateDownloaded: () -> Unit,
 ) {
+    val innerIsFavoriteOnly = remember { mutableStateOf(isFavoriteOnly.value) }
+    LaunchedEffect(isFavoriteOnly.value) {
+        innerIsFavoriteOnly.value = isFavoriteOnly.value
+    }
+
     selectedTrack?.let { domainTrack ->
         TrackOptionDialog(
             domainTrack = domainTrack,
@@ -1552,7 +1558,7 @@ fun BoxScope.Dialogs(
     selectedAlbum?.let { album ->
         AlbumOptionDialog(
             album = album,
-            isFavoriteOnly = isFavoriteOnly,
+            isFavoriteOnly = innerIsFavoriteOnly,
             onSelectAlbum = onSelectAlbum,
             onNewQueue = onNewQueue,
             onDeleteTrack = onDeleteTrack
@@ -1561,7 +1567,7 @@ fun BoxScope.Dialogs(
     selectedArtist?.let { artist ->
         ArtistOptionDialog(
             artist = artist,
-            isFavoriteOnly = isFavoriteOnly,
+            isFavoriteOnly = innerIsFavoriteOnly,
             onSelectArtist = onSelectArtist,
             onNewQueue = onNewQueue,
             onDeleteTrack = onDeleteTrack
@@ -1585,7 +1591,7 @@ fun BoxScope.Dialogs(
             is Album -> {
                 AlbumOptionDialog(
                     album = optionMediaItem,
-                    isFavoriteOnly = isFavoriteOnly,
+                    isFavoriteOnly = innerIsFavoriteOnly,
                     onSelectAlbum = { _ -> onCloseOptionsDialog() },
                     onNewQueue = onNewQueue,
                     onDeleteTrack = onDeleteTrack
@@ -1595,7 +1601,7 @@ fun BoxScope.Dialogs(
             is Artist -> {
                 ArtistOptionDialog(
                     artist = optionMediaItem,
-                    isFavoriteOnly = isFavoriteOnly,
+                    isFavoriteOnly = innerIsFavoriteOnly,
                     onSelectArtist = { _ -> onCloseOptionsDialog() },
                     onNewQueue = onNewQueue,
                     onDeleteTrack = onDeleteTrack
@@ -1605,6 +1611,7 @@ fun BoxScope.Dialogs(
             is AllArtists -> {
                 AllArtistOptionDialog(
                     onSelected = onCloseOptionsDialog,
+                    isFavoriteOnly = innerIsFavoriteOnly,
                     onNewQueue = onNewQueue,
                     onDeleteTrack = onDeleteTrack
                 )
