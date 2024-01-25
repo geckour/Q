@@ -9,6 +9,7 @@ import androidx.databinding.DataBindingUtil
 import com.geckour.q.R
 import com.geckour.q.databinding.ActivityLicenseBinding
 import com.geckour.q.domain.model.LicenseItem
+import kotlinx.collections.immutable.persistentListOf
 import org.koin.android.ext.android.inject
 
 class LicenseActivity : AppCompatActivity() {
@@ -25,7 +26,7 @@ class LicenseActivity : AppCompatActivity() {
 
         binding = DataBindingUtil.setContentView(this, R.layout.activity_license)
         binding.recyclerView.adapter = LicenseListAdapter(
-            listOf(
+            persistentListOf(
                 LicenseItem(
                     getString(R.string.license_name_koin),
                     getString(R.string.license_text_koin)

@@ -29,6 +29,9 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlin.math.abs
 
 @Composable
@@ -140,8 +143,8 @@ fun DoubleTrackSlider(
     }
 }
 
-private fun stepsToTickFractions(steps: Int): List<Float> {
-    return if (steps == 0) emptyList() else List(steps + 2) { it.toFloat() / (steps + 1) }
+private fun stepsToTickFractions(steps: Int): ImmutableList<Float> {
+    return if (steps == 0) persistentListOf() else List(steps + 2) { it.toFloat() / (steps + 1) }.toImmutableList()
 }
 
 @Composable

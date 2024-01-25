@@ -49,6 +49,9 @@ import com.geckour.q.util.searchAlbumByFuzzyTitle
 import com.geckour.q.util.searchArtistByFuzzyTitle
 import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.toDomainTrack
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
@@ -56,7 +59,7 @@ import kotlinx.coroutines.launch
 fun QSearchBar(
     isSearchActive: MutableState<Boolean>,
     query: MutableState<String>,
-    result: MutableState<List<SearchItem>>,
+    result: MutableState<ImmutableList<SearchItem>>,
     keyboardController: SoftwareKeyboardController?,
     onSearchItemClicked: (item: SearchItem) -> Unit,
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
@@ -94,7 +97,7 @@ fun QSearchBar(
         modifier = Modifier.padding(vertical = 8.dp)
     ) {
         LaunchedEffect(query.value) {
-            if (query.value.isEmpty()) result.value = emptyList()
+            if (query.value.isEmpty()) result.value = persistentListOf()
             else coroutineScope.launch { result.value = search(context, query.value) }
         }
         BackHandler(isSearchActive.value) {
@@ -173,7 +176,7 @@ private fun SearchResultItem(
     }
 }
 
-suspend fun search(context: Context, query: String): List<SearchItem> {
+suspend fun search(context: Context, query: String): ImmutableList<SearchItem> {
     val items = mutableListOf<SearchItem>()
     val db = DB.getInstance(context)
     val tracks = db.searchTrackByFuzzyTitle(query)
@@ -246,5 +249,5 @@ suspend fun search(context: Context, query: String): List<SearchItem> {
         items.addAll(genres)
     }
 
-    return items
+    return items.toImmutableList()
 }

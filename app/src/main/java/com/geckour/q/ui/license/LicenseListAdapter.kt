@@ -5,8 +5,9 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
 import com.geckour.q.databinding.ItemLicenseBinding
 import com.geckour.q.domain.model.LicenseItem
+import kotlinx.collections.immutable.ImmutableList
 
-class LicenseListAdapter(private val items: List<LicenseItem>) :
+class LicenseListAdapter(private val items: ImmutableList<LicenseItem>) :
         RecyclerView.Adapter<LicenseListAdapter.ViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder = ViewHolder(

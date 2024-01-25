@@ -33,6 +33,7 @@ import com.geckour.q.util.EqualizerParams
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType
+import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.sin
@@ -43,8 +44,8 @@ fun SingleScreen(
     navController: NavHostController,
     topBarTitle: String,
     optionMediaItem: MediaItem?,
-    sourcePaths: List<String>,
-    queue: List<DomainTrack>,
+    sourcePaths: ImmutableList<String>,
+    queue: ImmutableList<DomainTrack>,
     currentIndex: Int,
     currentPlaybackPosition: Long,
     currentBufferedPosition: Long,
@@ -58,9 +59,9 @@ fun SingleScreen(
     selectedArtist: Artist?,
     selectedGenre: Genre?,
     equalizerParams: EqualizerParams?,
-    currentDropboxItemList: Pair<String, List<FolderMetadata>>,
-    downloadTargets: List<String>,
-    invalidateDownloadedTargets: List<String>,
+    currentDropboxItemList: Pair<String, ImmutableList<FolderMetadata>>,
+    downloadTargets: ImmutableList<String>,
+    invalidateDownloadedTargets: ImmutableList<String>,
     snackBarMessage: String?,
     forceScrollToCurrent: Long,
     showDropboxDialog: Boolean,

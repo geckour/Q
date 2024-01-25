@@ -64,6 +64,9 @@ import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toDomainTracks
 import com.geckour.q.util.verifiedWithDropbox
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -242,7 +245,7 @@ class PlayerService : Service(), LifecycleOwner {
     private lateinit var db: DB
 
     private val cachedSourcePaths = mutableListOf<String>()
-    internal val sourcePathsFlow = MutableStateFlow(emptyList<String>())
+    internal val sourcePathsFlow = MutableStateFlow<ImmutableList<String>>(persistentListOf())
     internal val currentIndexFlow = MutableStateFlow(0)
 
     /**
@@ -478,7 +481,7 @@ class PlayerService : Service(), LifecycleOwner {
     }
 
     private fun onSourcesChanged() {
-        sourcePathsFlow.value = player.currentSourcePaths
+        sourcePathsFlow.value = player.currentSourcePaths.toImmutableList()
         currentIndexFlow.value = currentIndex
         playbackPositionFLow.value = player.currentPosition
         bufferedPositionFLow.value = player.bufferedPosition

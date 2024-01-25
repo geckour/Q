@@ -45,6 +45,9 @@ import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getThumb
 import com.geckour.q.util.getTimeString
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -54,7 +57,7 @@ fun Genres(
     navController: NavController,
     isSearchActive: MutableState<Boolean>,
     query: MutableState<String>,
-    result: MutableState<List<SearchItem>>,
+    result: MutableState<ImmutableList<SearchItem>>,
     keyboardController: SoftwareKeyboardController?,
     onSelectGenre: (item: Genre) -> Unit,
     scrollToTop: Long,
@@ -66,7 +69,7 @@ fun Genres(
     val genreNames by db.trackDao()
         .getAllGenreAsync()
         .collectAsState(initial = emptyList())
-    var genres by remember { mutableStateOf(emptyList<Genre>()) }
+    var genres by remember { mutableStateOf<ImmutableList<Genre>>(persistentListOf()) }
     val listState = rememberLazyListState()
 
     LaunchedEffect(genreNames) {
@@ -78,7 +81,7 @@ fun Genres(
                     genreName,
                     tracks.sumOf { it.track.duration }
                 )
-            }
+            }.toImmutableList()
         }
     }
 

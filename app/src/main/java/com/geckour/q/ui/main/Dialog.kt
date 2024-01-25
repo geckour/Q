@@ -52,6 +52,9 @@ import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.getDropboxCredential
 import com.geckour.q.util.setHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.toDomainTrack
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -77,7 +80,7 @@ fun TrackOptionDialog(
                 DialogListItem(
                     onClick = {
                         onNewQueue(
-                            listOf(domainTrack),
+                            persistentListOf(domainTrack),
                             InsertActionType.NEXT,
                             OrientedClassType.TRACK
                         )
@@ -93,7 +96,7 @@ fun TrackOptionDialog(
                 DialogListItem(
                     onClick = {
                         onNewQueue(
-                            listOf(domainTrack),
+                            persistentListOf(domainTrack),
                             InsertActionType.LAST,
                             OrientedClassType.TRACK
                         )
@@ -109,7 +112,7 @@ fun TrackOptionDialog(
                 DialogListItem(
                     onClick = {
                         onNewQueue(
-                            listOf(domainTrack),
+                            persistentListOf(domainTrack),
                             InsertActionType.OVERRIDE,
                             OrientedClassType.TRACK
                         )
@@ -1133,7 +1136,7 @@ fun GenreOptionDialog(
 @Composable
 fun DropboxDialog(
     hasAlreadyShownDropboxSyncAlert: Boolean,
-    currentDropboxItemList: Pair<String, List<FolderMetadata>>,
+    currentDropboxItemList: Pair<String, ImmutableList<FolderMetadata>>,
     onStartAuthDropbox: () -> Unit,
     onShowDropboxFolderChooser: (selectedFolder: FolderMetadata?) -> Unit,
     hideDropboxDialog: () -> Unit,
@@ -1151,7 +1154,9 @@ fun DropboxDialog(
                 onShowDropboxFolderChooser(null)
                 return
             }
-            var selectedHistory by remember { mutableStateOf(emptyList<FolderMetadata>()) }
+            var selectedHistory by remember {
+                mutableStateOf<ImmutableList<FolderMetadata>>(persistentListOf())
+            }
             Dialog(onDismissRequest = hideDropboxDialog) {
                 var needDownloaded by remember { mutableStateOf(false) }
                 Card(
@@ -1232,7 +1237,7 @@ fun DropboxDialog(
                                         color = QTheme.colors.colorTextPrimary,
                                         modifier = Modifier
                                             .clickable {
-                                                selectedHistory += it
+                                                selectedHistory = (selectedHistory.toList() + it).toImmutableList()
                                                 onShowDropboxFolderChooser(it)
                                             }
                                             .padding(
@@ -1249,7 +1254,7 @@ fun DropboxDialog(
                         ) {
                             val prev = {
                                 selectedHistory =
-                                    selectedHistory.dropLast(1)
+                                    selectedHistory.dropLast(1).toImmutableList()
                                 onShowDropboxFolderChooser(selectedHistory.lastOrNull())
                             }
                             BackHandler(selectedHistory.isNotEmpty()) {
@@ -1507,9 +1512,9 @@ fun BoxScope.Dialogs(
     selectedArtist: Artist?,
     selectedGenre: Genre?,
     navController: NavHostController,
-    currentDropboxItemList: Pair<String, List<FolderMetadata>>,
-    downloadTargets: List<String>,
-    invalidateDownloadedTargets: List<String>,
+    currentDropboxItemList: Pair<String, ImmutableList<FolderMetadata>>,
+    downloadTargets: ImmutableList<String>,
+    invalidateDownloadedTargets: ImmutableList<String>,
     optionMediaItem: MediaItem?,
     showDropboxDialog: Boolean,
     showResetShuffleDialog: Boolean,
@@ -1524,7 +1529,11 @@ fun BoxScope.Dialogs(
     onExportLyric: (domainTrack: DomainTrack) -> Unit,
     onAttachLyric: (trackId: Long) -> Unit,
     onDetachLyric: (trackId: Long) -> Unit,
-    onNewQueue: (queue: List<DomainTrack>, actionType: InsertActionType, classType: OrientedClassType) -> Unit,
+    onNewQueue: (
+        queue: List<DomainTrack>,
+        actionType: InsertActionType,
+        classType: OrientedClassType
+    ) -> Unit,
     onStartAuthDropbox: () -> Unit,
     onShowDropboxFolderChooser: (selectedFolder: FolderMetadata?) -> Unit,
     hideDropboxDialog: () -> Unit,

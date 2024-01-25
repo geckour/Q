@@ -5,10 +5,11 @@ import androidx.compose.runtime.Composable
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.util.ShuffleActionType
+import kotlinx.collections.immutable.ImmutableList
 
 @Composable
 fun PlayerSheet(
-    queue: List<DomainTrack>,
+    queue: ImmutableList<DomainTrack>,
     currentIndex: Int,
     currentPlaybackPosition: Long,
     currentBufferedPosition: Long,

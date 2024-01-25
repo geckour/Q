@@ -92,6 +92,9 @@ import com.geckour.q.worker.KEY_PROGRESS_REMAINING_FILES_SIZE
 import com.geckour.q.worker.KEY_PROGRESS_TITLE
 import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
@@ -298,15 +301,19 @@ class MainActivity : ComponentActivity() {
             var finishedWorkIdSet by remember { mutableStateOf(emptySet<UUID>()) }
             val hasAlreadyShownDropboxSyncAlert by context.getHasAlreadyShownDropboxSyncAlert()
                 .collectAsState(initial = false)
-            var downloadTargets by remember { mutableStateOf(emptyList<String>()) }
-            var invalidateDownloadedTargets by remember { mutableStateOf(emptyList<String>()) }
+            var downloadTargets by remember {
+                mutableStateOf<ImmutableList<String>>(persistentListOf())
+            }
+            var invalidateDownloadedTargets by remember {
+                mutableStateOf<ImmutableList<String>>(persistentListOf())
+            }
             var attachLyricTargetTrackId by remember { mutableLongStateOf(-1) }
             val snackBarMessage by viewModel.snackBarMessageFlow.collectAsState()
             val equalizerParams by context.getEqualizerParams().collectAsState(initial = null)
             var scrollToTop by remember { mutableLongStateOf(0L) }
             var showLyric by remember { mutableStateOf(false) }
             val currentDropboxItemList by viewModel.dropboxItemList.collectAsState(
-                initial = "" to emptyList()
+                initial = "" to persistentListOf()
             )
             val layoutType by layoutTypeFlow.collectAsState()
             var optionMediaItem by remember { mutableStateOf<MediaItem?>(null) }
@@ -469,7 +476,7 @@ class MainActivity : ComponentActivity() {
                                 topBarTitle = topBarTitle,
                                 optionMediaItem = optionMediaItem,
                                 sourcePaths = sourcePaths,
-                                queue = queue,
+                                queue = queue.toImmutableList(),
                                 currentIndex = currentIndex,
                                 currentPlaybackPosition = currentPlaybackPosition,
                                 currentBufferedPosition = currentBufferedPosition,
@@ -534,21 +541,23 @@ class MainActivity : ComponentActivity() {
                                 onRemoveTrackFromQueue = viewModel::onRemoveTrackFromQueue,
                                 onShowDropboxDialog = { showDropboxDialog = true },
                                 onRetrieveMedia = ::retrieveMedia,
-                                onDownload = { downloadTargets = it },
-                                onCancelDownload = { downloadTargets = emptyList() },
+                                onDownload = { downloadTargets = it.toImmutableList() },
+                                onCancelDownload = { downloadTargets = persistentListOf() },
                                 onStartDownloader = {
                                     enqueueDropboxDownloadWorker(downloadTargets)
-                                    downloadTargets = emptyList()
+                                    downloadTargets = persistentListOf()
                                 },
-                                onInvalidateDownloaded = { invalidateDownloadedTargets = it },
+                                onInvalidateDownloaded = {
+                                    invalidateDownloadedTargets = it.toImmutableList()
+                                },
                                 onCancelInvalidateDownloaded = {
-                                    invalidateDownloadedTargets = emptyList()
+                                    invalidateDownloadedTargets = persistentListOf()
                                 },
                                 onStartInvalidateDownloaded = {
                                     viewModel.purgeDownloaded(
                                         invalidateDownloadedTargets
                                     )
-                                    invalidateDownloadedTargets = emptyList()
+                                    invalidateDownloadedTargets = persistentListOf()
                                 },
                                 onDeleteTrack = viewModel::deleteTrack,
                                 onExportLyric = {
@@ -611,7 +620,7 @@ class MainActivity : ComponentActivity() {
                                 navController = navController,
                                 topBarTitle = topBarTitle,
                                 optionMediaItem = optionMediaItem,
-                                queue = queue,
+                                queue = queue.toImmutableList(),
                                 currentIndex = currentIndex,
                                 currentPlaybackPosition = currentPlaybackPosition,
                                 currentBufferedPosition = currentBufferedPosition,
@@ -676,21 +685,23 @@ class MainActivity : ComponentActivity() {
                                 onRemoveTrackFromQueue = viewModel::onRemoveTrackFromQueue,
                                 onShowDropboxDialog = { showDropboxDialog = true },
                                 onRetrieveMedia = ::retrieveMedia,
-                                onDownload = { downloadTargets = it },
-                                onCancelDownload = { downloadTargets = emptyList() },
+                                onDownload = { downloadTargets = it.toImmutableList() },
+                                onCancelDownload = { downloadTargets = persistentListOf() },
                                 onStartDownloader = {
                                     enqueueDropboxDownloadWorker(downloadTargets)
-                                    downloadTargets = emptyList()
+                                    downloadTargets = persistentListOf()
                                 },
-                                onInvalidateDownloaded = { invalidateDownloadedTargets = it },
+                                onInvalidateDownloaded = {
+                                    invalidateDownloadedTargets = it.toImmutableList()
+                                },
                                 onCancelInvalidateDownloaded = {
-                                    invalidateDownloadedTargets = emptyList()
+                                    invalidateDownloadedTargets = persistentListOf()
                                 },
                                 onStartInvalidateDownloaded = {
                                     viewModel.purgeDownloaded(
                                         invalidateDownloadedTargets
                                     )
-                                    invalidateDownloadedTargets = emptyList()
+                                    invalidateDownloadedTargets = persistentListOf()
                                 },
                                 onDeleteTrack = viewModel::deleteTrack,
                                 onExportLyric = {
@@ -905,7 +916,7 @@ class MainActivity : ComponentActivity() {
         ).enqueue()
     }
 
-    private fun enqueueDropboxDownloadWorker(targetPaths: List<String>) {
+    private fun enqueueDropboxDownloadWorker(targetPaths: ImmutableList<String>) {
         viewModel.workManager.beginUniqueWork(
             DROPBOX_DOWNLOAD_WORKER_NAME,
             ExistingWorkPolicy.KEEP,

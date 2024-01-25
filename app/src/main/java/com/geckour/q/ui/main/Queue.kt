@@ -66,6 +66,8 @@ import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.moved
 import com.geckour.q.util.removedAt
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
@@ -75,7 +77,7 @@ import org.burnoutcrew.reorderable.reorderable
 
 @Composable
 fun ColumnScope.Queue(
-    domainTracks: List<DomainTrack>,
+    domainTracks: ImmutableList<DomainTrack>,
     forceScrollToCurrent: Long,
     showLyric: Boolean,
     currentPlaybackPosition: Long,
@@ -93,7 +95,7 @@ fun ColumnScope.Queue(
         .collectAsState(initial = null)
     val lyricLinesForShowing = lyric.lyricLinesForShowing
     val reorderableState = rememberReorderableLazyListState(
-        onMove = { from, to -> items = items.moved(from.index, to.index) },
+        onMove = { from, to -> items = items.moved(from.index, to.index).toImmutableList() },
         onDragEnd = { from, to -> onQueueMove(from, to) }
     )
     var lyricListHeight by remember { mutableIntStateOf(0) }

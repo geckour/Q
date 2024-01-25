@@ -29,6 +29,8 @@ import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.util.toDomainTrack
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -58,7 +60,7 @@ fun Library(
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val query = remember { mutableStateOf("") }
-    val result = remember { mutableStateOf(emptyList<SearchItem>()) }
+    val result = remember { mutableStateOf<ImmutableList<SearchItem>>(persistentListOf()) }
 
     Column(
         modifier = Modifier.fillMaxSize()

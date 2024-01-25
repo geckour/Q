@@ -49,6 +49,7 @@ import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
+import kotlinx.collections.immutable.ImmutableList
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -57,7 +58,7 @@ fun Artists(
     isSearchActive: MutableState<Boolean>,
     isFavoriteOnly: MutableState<Boolean>,
     query: MutableState<String>,
-    result: MutableState<List<SearchItem>>,
+    result: MutableState<ImmutableList<SearchItem>>,
     keyboardController: SoftwareKeyboardController?,
     onSelectArtist: (item: Artist) -> Unit,
     onDownload: (dropboxPaths: List<String>) -> Unit,

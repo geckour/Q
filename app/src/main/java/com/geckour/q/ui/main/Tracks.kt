@@ -52,6 +52,7 @@ import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.isDownloaded
 import com.geckour.q.util.toDomainTrack
+import kotlinx.collections.immutable.ImmutableList
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -61,7 +62,7 @@ fun Tracks(
     isSearchActive: MutableState<Boolean>,
     isFavoriteOnly: MutableState<Boolean>,
     query: MutableState<String>,
-    result: MutableState<List<SearchItem>>,
+    result: MutableState<ImmutableList<SearchItem>>,
     keyboardController: SoftwareKeyboardController?,
     changeTopBarTitle: (title: String) -> Unit,
     onTrackSelected: (item: DomainTrack) -> Unit,

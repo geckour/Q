@@ -33,6 +33,9 @@ import com.geckour.q.util.setDropboxCredential
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.worker.DROPBOX_DOWNLOAD_WORKER_NAME
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -63,7 +66,7 @@ class MainViewModel(private val app: App) : ViewModel() {
 
     internal var isDropboxAuthOngoing = false
 
-    internal val currentSourcePathsFlow = MutableStateFlow(emptyList<String>())
+    internal val currentSourcePathsFlow = MutableStateFlow<ImmutableList<String>>(persistentListOf())
     internal val currentIndexFlow = MutableStateFlow(0)
     internal val currentQueueFlow = DB.getInstance(app).trackDao()
         .getAllAsync()
@@ -85,7 +88,7 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal val forceLoad = MutableLiveData<Unit>()
 
     private val dropboxItemListChannel =
-        Channel<Pair<String, List<FolderMetadata>>>(capacity = Channel.CONFLATED)
+        Channel<Pair<String, ImmutableList<FolderMetadata>>>(capacity = Channel.CONFLATED)
     internal val dropboxItemList = dropboxItemListChannel.receiveAsFlow()
 
     internal val loading = MutableStateFlow<Pair<Boolean, (() -> Unit)?>>(false to null)
@@ -449,13 +452,14 @@ class MainViewModel(private val app: App) : ViewModel() {
             dropboxItemListChannel.send(
                 currentDirTitle to result.entries.filterIsInstance<FolderMetadata>()
                     .sortedBy { it.name.lowercase() }
+                    .toImmutableList()
             )
         }
     }
 
     internal fun clearDropboxItemList() {
         viewModelScope.launch {
-            dropboxItemListChannel.send("" to emptyList())
+            dropboxItemListChannel.send("" to persistentListOf())
         }
     }
 
