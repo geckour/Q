@@ -1,28 +1,25 @@
 package com.geckour.q.util
 
-import android.app.Notification
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.icu.util.Calendar
 import android.net.Uri
-import android.support.v4.media.MediaMetadataCompat
-import android.support.v4.media.session.MediaSessionCompat
-import android.support.v4.media.session.PlaybackStateCompat
 import android.webkit.MimeTypeMap
-import androidx.core.app.NotificationCompat
 import androidx.core.content.FileProvider
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toFile
-import androidx.media.session.MediaButtonReceiver
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.MediaMetadata.PICTURE_TYPE_MEDIA
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
 import coil.Coil
 import coil.request.ImageRequest
 import coil.size.Scale
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.BuildConfig
-import com.geckour.q.R
 import com.geckour.q.data.db.BoolConverter
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
@@ -44,6 +41,7 @@ import java.io.FileOutputStream
 import java.io.InputStream
 import java.net.URLConnection
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import kotlin.random.Random
 
@@ -100,6 +98,9 @@ fun JoinedTrack.toDomainTrack(
     trackNum: Int? = null,
     nowPlaying: Boolean = false
 ): DomainTrack {
+    val calendar = track.releaseDate?.parseDateLong()?.let {
+        Calendar.getInstance().apply { time = Date(it) }
+    }
     return DomainTrack(
         "${random.nextLong()}-${track.id}",
         track.id,
@@ -111,6 +112,7 @@ fun JoinedTrack.toDomainTrack(
         track.title,
         track.titleSort,
         artist,
+        albumArtist,
         track.composer,
         track.composerSort,
         album.artworkUriString,
@@ -119,7 +121,9 @@ fun JoinedTrack.toDomainTrack(
         track.trackTotal,
         track.discNum,
         track.discTotal,
-        track.releaseDate,
+        calendar?.get(Calendar.YEAR),
+        calendar?.get(Calendar.MONTH),
+        calendar?.get(Calendar.DAY_OF_MONTH),
         track.genre,
         track.sourcePath,
         track.dropboxPath,
@@ -180,8 +184,17 @@ suspend fun List<String>.getThumb(context: Context): Bitmap? {
     return bitmap
 }
 
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-fun DomainTrack.getMediaItem(): MediaItem = MediaItem.fromUri(Uri.parse(sourcePath))
+fun String.getMediaItem(): MediaItem = MediaItem.Builder()
+    .setMediaId(this)
+    .setUri(Uri.parse(this))
+    .build()
+
+fun DomainTrack.getMediaItem(context: Context): MediaItem =
+    MediaItem.Builder()
+        .setMediaId(sourcePath)
+        .setUri(Uri.parse(sourcePath))
+        .setMediaMetadata(getMediaMetadata(context))
+        .build()
 
 fun List<DomainTrack>.orderModified(
     classType: OrientedClassType,
@@ -221,40 +234,27 @@ fun List<DomainTrack>.orderModified(
         }
 }
 
-suspend fun DomainTrack.getMediaMetadata(context: Context): MediaMetadataCompat =
-    MediaMetadataCompat.Builder()
-        .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaId.toString())
-        .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, sourcePath)
-        .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, title)
-        .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, artist.title)
-        .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, album.title)
-        .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
-        .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist.title)
-        .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album.title)
-        .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer)
-        .putString(MediaMetadataCompat.METADATA_KEY_DATE, releaseDate)
+fun DomainTrack.getMediaMetadata(context: Context): MediaMetadata =
+    MediaMetadata.Builder()
+        .setTitle(title)
+        .setDisplayTitle(title)
+        .setSubtitle(artist.title)
+        .setDescription(album.title)
+        .setArtist(artist.title)
+        .setAlbumArtist(albumArtist?.title)
+        .setAlbumTitle(album.title)
+        .setComposer(composer)
+        .setReleaseYear(releaseYear)
+        .setReleaseMonth(releaseMonth)
+        .setReleaseDay(releaseDay)
         .apply {
             val artworkUriString = getTempArtworkUriString(context)
-            val artwork = withContext(Dispatchers.IO) {
-                album.artworkUriString?.let {
-                    Coil.imageLoader(context)
-                        .execute(ImageRequest.Builder(context).data(it).build())
-                        .drawable
-                        ?.toBitmap()
-                }
-            }
-            putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, artwork)
-            putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, artworkUriString)
-            putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, artworkUriString)
-            trackNum?.let { putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, it.toLong()) }
-            trackTotal?.let { putLong(MediaMetadataCompat.METADATA_KEY_NUM_TRACKS, it.toLong()) }
-            discNum?.let { putLong(MediaMetadataCompat.METADATA_KEY_DISC_NUMBER, it.toLong()) }
-            releaseDate?.parseDateLong()?.let { putLong(MediaMetadataCompat.METADATA_KEY_YEAR, it) }
-            DB.getInstance(context).artistDao().get(album.artistId)?.title?.let {
-                putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ARTIST, it)
-            }
+            setArtworkUri(artworkUriString?.let { Uri.parse(it) })
+            trackNum?.let { setTrackNumber(it) }
+            trackTotal?.let { setTotalTrackCount(it) }
+            discNum?.let { setDiscNumber(it) }
+            discTotal?.let { setTotalDiscCount(it) }
         }
-        .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
         .build()
 
 fun String.parseDateLong(): Long? = catchAsNull {
@@ -280,78 +280,6 @@ fun DomainTrack.getTempArtworkUriString(context: Context): String? =
         return FileProvider.getUriForFile(context, BuildConfig.FILES_AUTHORITY, file)
             .toString()
     }
-
-fun getPlayerNotification(
-    context: Context,
-    mediaSession: MediaSessionCompat,
-    playing: Boolean
-): Notification {
-    val description = mediaSession.controller.metadata.description
-
-    return context.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER)
-        .setSmallIcon(R.drawable.ic_notification_player)
-        .setLargeIcon(description.iconBitmap)
-        .setContentTitle(description.title)
-        .setContentText(description.subtitle)
-        .setSubText(description.description)
-        .setOngoing(playing)
-        .setStyle(
-            androidx.media.app.NotificationCompat.MediaStyle()
-                .setShowActionsInCompactView(0, 1, 2)
-                .setMediaSession(mediaSession.sessionToken)
-        )
-        .setShowWhen(false)
-        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-        .setContentIntent(mediaSession.controller.sessionActivity)
-        .setDeleteIntent(
-            MediaButtonReceiver.buildMediaButtonPendingIntent(
-                context,
-                PlaybackStateCompat.ACTION_STOP
-            )
-        )
-        .addAction(
-            NotificationCompat.Action(
-                R.drawable.ic_backward,
-                context.getString(R.string.notification_action_prev),
-                MediaButtonReceiver.buildMediaButtonPendingIntent(
-                    context,
-                    PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
-                )
-            )
-        )
-        .addAction(
-            if (playing) {
-                NotificationCompat.Action(
-                    R.drawable.ic_pause,
-                    context.getString(R.string.notification_action_pause),
-                    MediaButtonReceiver.buildMediaButtonPendingIntent(
-                        context,
-                        PlaybackStateCompat.ACTION_PAUSE
-                    )
-                )
-            } else {
-                NotificationCompat.Action(
-                    R.drawable.ic_play,
-                    context.getString(R.string.notification_action_play),
-                    MediaButtonReceiver.buildMediaButtonPendingIntent(
-                        context,
-                        PlaybackStateCompat.ACTION_PLAY
-                    )
-                )
-            }
-        )
-        .addAction(
-            NotificationCompat.Action(
-                R.drawable.ic_forward,
-                context.getString(R.string.notification_action_next),
-                MediaButtonReceiver.buildMediaButtonPendingIntent(
-                    context,
-                    PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                )
-            )
-        )
-        .build()
-}
 
 fun Long.getTimeString(): String {
     val hour = this / 3600000

@@ -40,6 +40,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.navigation.compose.rememberNavController
 import androidx.window.layout.FoldingFeature
 import androidx.window.layout.WindowInfoTracker
@@ -107,6 +108,7 @@ import java.io.FileOutputStream
 import java.nio.charset.Charset
 import java.util.UUID
 
+@UnstableApi
 class MainActivity : ComponentActivity() {
 
     companion object {
@@ -121,11 +123,15 @@ class MainActivity : ComponentActivity() {
     private var onLrcFileLoaded: ((lyricLines: List<LyricLine>) -> Unit)? = null
     private var lrcString: String? = null
 
-    private val requestStoragePermission = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { onStoragePermissionRequestResult?.invoke(it) }
+    private val requestStoragePermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+            onStoragePermissionRequestResult?.invoke(it)
+        }
 
     private var onStoragePermissionRequestResult: ((isGranted: Boolean) -> Unit)? = null
+
+    private val requestNotificationPermission =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
 
     private val getContent =
         registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -219,6 +225,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        if (Build.VERSION.SDK_INT > 32 &&
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
 
         val layoutTypeFlow = WindowInfoTracker.getOrCreate(this)
             .windowLayoutInfo(this)
@@ -777,6 +789,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+
+        viewModel.initializeMediaController(this)
+    }
+
     override fun onResume() {
         super.onResume()
 
@@ -810,6 +828,12 @@ class MainActivity : ComponentActivity() {
         }
 
         viewModel.requestBillingInfoUpdate()
+    }
+
+    override fun onStop() {
+        viewModel.releaseMediaController()
+
+        super.onStop()
     }
 
     override fun onDestroy() {

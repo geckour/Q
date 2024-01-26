@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.BottomSheetScaffold
+import androidx.compose.material.DrawerValue
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.ModalDrawer
 import androidx.compose.material.rememberBottomSheetScaffoldState
+import androidx.compose.material.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -126,6 +129,7 @@ fun SingleScreen(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scaffoldState = rememberBottomSheetScaffoldState()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val bottomSheetHeightAngle = remember { Animatable(0f) }
     LaunchedEffect(sourcePaths) {
         if (sourcePaths.isNotEmpty()) {
@@ -136,177 +140,181 @@ fun SingleScreen(
         }
     }
 
-    BottomSheetScaffold(
-        scaffoldState = scaffoldState,
-        drawerContent = {
-            Drawer(
-                drawerState = scaffoldState.drawerState,
-                navController = navController,
-                selectedNav = selectedNav,
-                equalizerParams = equalizerParams,
-                onSelectNav = onSelectNav,
-                onShowDropboxDialog = onShowDropboxDialog,
-                onRetrieveMedia = onRetrieveMedia
-            )
-        },
+    ModalDrawer(
+        drawerState = drawerState,
         drawerElevation = 8.dp,
-        topBar = {
-            QTopBar(
-                title = topBarTitle,
-                optionMediaItem = optionMediaItem,
-                drawerState = scaffoldState.drawerState,
-                isSearchActive = isSearchActive.value,
-                onTapBar = onTapBar,
-                onToggleTheme = onToggleTheme,
-                onToggleFavorite = onToggleFavorite,
-                onShowOptions = onShowOptions,
-                onSetOptionMediaItem = onSetOptionMediaItem,
-            )
-        },
-        backgroundColor = QTheme.colors.colorBackground,
-        sheetBackgroundColor = QTheme.colors.colorBackgroundBottomSheet,
-        sheetPeekHeight = (144 + abs(sin(bottomSheetHeightAngle.value)) * 20).dp,
-        sheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
-        sheetElevation = 8.dp,
-        sheetContent = {
-            BackHandler(scaffoldState.bottomSheetState.isExpanded && scaffoldState.drawerState.isClosed) {
-                coroutineScope.launch { scaffoldState.bottomSheetState.collapse() }
+        drawerContent = {
+        Drawer(
+            drawerState = drawerState,
+            navController = navController,
+            selectedNav = selectedNav,
+            equalizerParams = equalizerParams,
+            onSelectNav = onSelectNav,
+            onShowDropboxDialog = onShowDropboxDialog,
+            onRetrieveMedia = onRetrieveMedia
+        )
+    }
+    ) {
+        BottomSheetScaffold(
+            scaffoldState = scaffoldState,
+            topBar = {
+                QTopBar(
+                    title = topBarTitle,
+                    optionMediaItem = optionMediaItem,
+                    drawerState = drawerState,
+                    isSearchActive = isSearchActive.value,
+                    onTapBar = onTapBar,
+                    onToggleTheme = onToggleTheme,
+                    onToggleFavorite = onToggleFavorite,
+                    onShowOptions = onShowOptions,
+                    onSetOptionMediaItem = onSetOptionMediaItem,
+                )
+            },
+            backgroundColor = QTheme.colors.colorBackground,
+            sheetBackgroundColor = QTheme.colors.colorBackgroundBottomSheet,
+            sheetPeekHeight = (144 + abs(sin(bottomSheetHeightAngle.value)) * 20).dp,
+            sheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
+            sheetElevation = 8.dp,
+            sheetContent = {
+                BackHandler(scaffoldState.bottomSheetState.isExpanded && drawerState.isClosed) {
+                    coroutineScope.launch { scaffoldState.bottomSheetState.collapse() }
+                }
+                PlayerSheet(
+                    queue = queue,
+                    currentIndex = currentIndex,
+                    currentPlaybackPosition = currentPlaybackPosition,
+                    currentBufferedPosition = currentBufferedPosition,
+                    currentPlaybackInfo = currentPlaybackInfo,
+                    currentRepeatMode = currentRepeatMode,
+                    isLoading = isLoading,
+                    showLyric = showLyric,
+                    onTogglePlayPause = onTogglePlayPause,
+                    onPrev = onPrev,
+                    onNext = onNext,
+                    onRewind = onRewind,
+                    onFastForward = onFastForward,
+                    resetPlaybackButton = resetPlaybackButton,
+                    onNewProgress = onNewProgress,
+                    rotateRepeatMode = rotateRepeatMode,
+                    shuffleQueue = shuffleQueue,
+                    resetShuffleQueue = resetShuffleQueue,
+                    moveToCurrentIndex = moveToCurrentIndex,
+                    clearQueue = clearQueue,
+                    onSelectTrack = onSelectTrack,
+                    onToggleShowLyrics = onToggleShowLyrics,
+                    forceScrollToCurrent = forceScrollToCurrent,
+                    onQueueMove = onQueueMove,
+                    onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
+                    onRemoveTrackFromQueue = onRemoveTrackFromQueue,
+                    onToggleFavorite = onToggleFavorite,
+                )
             }
-            PlayerSheet(
-                queue = queue,
-                currentIndex = currentIndex,
-                currentPlaybackPosition = currentPlaybackPosition,
-                currentBufferedPosition = currentBufferedPosition,
-                currentPlaybackInfo = currentPlaybackInfo,
-                currentRepeatMode = currentRepeatMode,
-                isLoading = isLoading,
-                showLyric = showLyric,
-                onTogglePlayPause = onTogglePlayPause,
-                onPrev = onPrev,
-                onNext = onNext,
-                onRewind = onRewind,
-                onFastForward = onFastForward,
-                resetPlaybackButton = resetPlaybackButton,
-                onNewProgress = onNewProgress,
-                rotateRepeatMode = rotateRepeatMode,
-                shuffleQueue = shuffleQueue,
-                resetShuffleQueue = resetShuffleQueue,
-                moveToCurrentIndex = moveToCurrentIndex,
-                clearQueue = clearQueue,
-                onSelectTrack = onSelectTrack,
-                onToggleShowLyrics = onToggleShowLyrics,
-                forceScrollToCurrent = forceScrollToCurrent,
-                onQueueMove = onQueueMove,
-                onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
-                onRemoveTrackFromQueue = onRemoveTrackFromQueue,
-                onToggleFavorite = onToggleFavorite,
-            )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .padding(paddingValues)
-                .background(color = QTheme.colors.colorBackground)
-                .fillMaxSize()
-        ) {
-            Library(
-                navController = navController,
-                scrollToTop = scrollToTop,
-                snackBarMessage = snackBarMessage,
-                isSearchActive = isSearchActive,
-                isFavoriteOnly = isFavoriteOnly,
-                onCancelProgress = onCancelProgress,
-                onSelectNav = onSelectNav,
-                onChangeTopBarTitle = onChangeTopBarTitle,
-                onSelectArtist = onSelectArtist,
-                onSelectAlbum = onSelectAlbum,
-                onSelectTrack = onSelectTrack,
-                onSelectGenre = onSelectGenre,
-                onDownload = onDownload,
-                onInvalidateDownloaded = onInvalidateDownloaded,
-                onStartBilling = onStartBilling,
-                onSetOptionMediaItem = onSetOptionMediaItem,
-                onToggleFavorite = onToggleFavorite,
-                onSearchItemClicked = { item ->
-                    when (item.type) {
-                        SearchItem.SearchItemType.TRACK -> {
-                            onSelectTrack(item.data as DomainTrack)
-                        }
+        ) { paddingValues ->
+            Box(
+                modifier = Modifier
+                    .padding(paddingValues)
+                    .background(color = QTheme.colors.colorBackground)
+                    .fillMaxSize()
+            ) {
+                Library(
+                    navController = navController,
+                    scrollToTop = scrollToTop,
+                    snackBarMessage = snackBarMessage,
+                    isSearchActive = isSearchActive,
+                    isFavoriteOnly = isFavoriteOnly,
+                    onCancelProgress = onCancelProgress,
+                    onSelectNav = onSelectNav,
+                    onChangeTopBarTitle = onChangeTopBarTitle,
+                    onSelectArtist = onSelectArtist,
+                    onSelectAlbum = onSelectAlbum,
+                    onSelectTrack = onSelectTrack,
+                    onSelectGenre = onSelectGenre,
+                    onDownload = onDownload,
+                    onInvalidateDownloaded = onInvalidateDownloaded,
+                    onStartBilling = onStartBilling,
+                    onSetOptionMediaItem = onSetOptionMediaItem,
+                    onToggleFavorite = onToggleFavorite,
+                    onSearchItemClicked = { item ->
+                        when (item.type) {
+                            SearchItem.SearchItemType.TRACK -> {
+                                onSelectTrack(item.data as DomainTrack)
+                            }
 
-                        SearchItem.SearchItemType.ALBUM -> {
-                            navController.navigate("tracks?albumId=${(item.data as Album).id}")
-                        }
+                            SearchItem.SearchItemType.ALBUM -> {
+                                navController.navigate("tracks?albumId=${(item.data as Album).id}")
+                            }
 
-                        SearchItem.SearchItemType.ARTIST -> {
-                            navController.navigate("albums?artistId=${(item.data as Artist).id}")
-                        }
+                            SearchItem.SearchItemType.ARTIST -> {
+                                navController.navigate("albums?artistId=${(item.data as Artist).id}")
+                            }
 
-                        SearchItem.SearchItemType.GENRE -> {
-                            navController.navigate("tracks?genreName=${(item.data as Genre).name}")
-                        }
+                            SearchItem.SearchItemType.GENRE -> {
+                                navController.navigate("tracks?genreName=${(item.data as Genre).name}")
+                            }
 
-                        else -> Unit
-                    }
-                },
-                onSearchItemLongClicked = { item ->
-                    when (item.type) {
-                        SearchItem.SearchItemType.TRACK -> {
-                            onSelectTrack(item.data as DomainTrack)
+                            else -> Unit
                         }
+                    },
+                    onSearchItemLongClicked = { item ->
+                        when (item.type) {
+                            SearchItem.SearchItemType.TRACK -> {
+                                onSelectTrack(item.data as DomainTrack)
+                            }
 
-                        SearchItem.SearchItemType.ALBUM -> {
-                            onSelectAlbum(item.data as Album)
+                            SearchItem.SearchItemType.ALBUM -> {
+                                onSelectAlbum(item.data as Album)
+                            }
+
+                            SearchItem.SearchItemType.ARTIST -> {
+                                onSelectArtist(item.data as Artist)
+                            }
+
+                            SearchItem.SearchItemType.GENRE -> {
+                                onSelectGenre(item.data as Genre)
+                            }
+
+                            else -> Unit
                         }
-
-                        SearchItem.SearchItemType.ARTIST -> {
-                            onSelectArtist(item.data as Artist)
-                        }
-
-                        SearchItem.SearchItemType.GENRE -> {
-                            onSelectGenre(item.data as Genre)
-                        }
-
-                        else -> Unit
-                    }
-                },
-            )
-            Dialogs(
-                selectedTrack = selectedTrack,
-                selectedAlbum = selectedAlbum,
-                selectedArtist = selectedArtist,
-                selectedGenre = selectedGenre,
-                navController = navController,
-                currentDropboxItemList = currentDropboxItemList,
-                downloadTargets = downloadTargets,
-                invalidateDownloadedTargets = invalidateDownloadedTargets,
-                optionMediaItem = optionMediaItem,
-                showDropboxDialog = showDropboxDialog,
-                showResetShuffleDialog = showResetShuffleDialog,
-                showOptionsDialog = showOptionsDialog,
-                hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
-                isFavoriteOnly = isFavoriteOnly,
-                onSelectTrack = onSelectTrack,
-                onSelectAlbum = onSelectAlbum,
-                onSelectArtist = onSelectArtist,
-                onSelectGenre = onSelectGenre,
-                onDeleteTrack = onDeleteTrack,
-                onExportLyric = onExportLyric,
-                onAttachLyric = onAttachLyric,
-                onDetachLyric = onDetachLyric,
-                onNewQueue = onNewQueue,
-                onStartAuthDropbox = onStartAuthDropbox,
-                onShowDropboxFolderChooser = onShowDropboxFolderChooser,
-                hideDropboxDialog = hideDropboxDialog,
-                startDropboxSync = startDropboxSync,
-                hideResetShuffleDialog = hideResetShuffleDialog,
-                onShuffle = shuffleQueue,
-                onResetShuffle = resetShuffleQueue,
-                onCloseOptionsDialog = closeOptionsDialog,
-                onCancelDownload = onCancelDownload,
-                onStartDownloader = onStartDownloader,
-                onCancelInvalidateDownloaded = onCancelInvalidateDownloaded,
-                onStartInvalidateDownloaded = onStartInvalidateDownloaded
-            )
+                    },
+                )
+                Dialogs(
+                    selectedTrack = selectedTrack,
+                    selectedAlbum = selectedAlbum,
+                    selectedArtist = selectedArtist,
+                    selectedGenre = selectedGenre,
+                    navController = navController,
+                    currentDropboxItemList = currentDropboxItemList,
+                    downloadTargets = downloadTargets,
+                    invalidateDownloadedTargets = invalidateDownloadedTargets,
+                    optionMediaItem = optionMediaItem,
+                    showDropboxDialog = showDropboxDialog,
+                    showResetShuffleDialog = showResetShuffleDialog,
+                    showOptionsDialog = showOptionsDialog,
+                    hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
+                    isFavoriteOnly = isFavoriteOnly,
+                    onSelectTrack = onSelectTrack,
+                    onSelectAlbum = onSelectAlbum,
+                    onSelectArtist = onSelectArtist,
+                    onSelectGenre = onSelectGenre,
+                    onDeleteTrack = onDeleteTrack,
+                    onExportLyric = onExportLyric,
+                    onAttachLyric = onAttachLyric,
+                    onDetachLyric = onDetachLyric,
+                    onNewQueue = onNewQueue,
+                    onStartAuthDropbox = onStartAuthDropbox,
+                    onShowDropboxFolderChooser = onShowDropboxFolderChooser,
+                    hideDropboxDialog = hideDropboxDialog,
+                    startDropboxSync = startDropboxSync,
+                    hideResetShuffleDialog = hideResetShuffleDialog,
+                    onShuffle = shuffleQueue,
+                    onResetShuffle = resetShuffleQueue,
+                    onCloseOptionsDialog = closeOptionsDialog,
+                    onCancelDownload = onCancelDownload,
+                    onStartDownloader = onStartDownloader,
+                    onCancelInvalidateDownloaded = onCancelInvalidateDownloaded,
+                    onStartInvalidateDownloaded = onStartInvalidateDownloaded
+                )
+            }
         }
     }
 }

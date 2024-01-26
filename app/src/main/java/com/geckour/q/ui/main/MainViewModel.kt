@@ -3,15 +3,25 @@ package com.geckour.q.ui.main
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
-import android.content.ServiceConnection
+import android.content.SharedPreferences
+import android.media.audiofx.Equalizer
 import android.net.Uri
-import android.os.IBinder
-import android.view.KeyEvent
+import android.os.Bundle
 import androidx.core.net.toFile
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.C
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.Timeline
+import androidx.media3.common.Tracks
+import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.HttpDataSource
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionToken
 import androidx.work.WorkManager
 import com.dropbox.core.android.Auth
 import com.dropbox.core.v2.files.FolderMetadata
@@ -22,17 +32,32 @@ import com.geckour.q.data.BillingApiClient
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.PlaybackButton
+import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.service.PlayerService
+import com.geckour.q.util.EqualizerParams
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.QueueInfo
 import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.ShuffleActionType
+import com.geckour.q.util.catchAsNull
+import com.geckour.q.util.dropboxCachePathPattern
+import com.geckour.q.util.getEqualizerEnabled
+import com.geckour.q.util.getEqualizerParams
+import com.geckour.q.util.getMediaItem
 import com.geckour.q.util.obtainDbxClient
+import com.geckour.q.util.orderModified
+import com.geckour.q.util.removedAt
 import com.geckour.q.util.setDropboxCredential
+import com.geckour.q.util.setEqualizerParams
 import com.geckour.q.util.toDomainTrack
+import com.geckour.q.util.toDomainTracks
+import com.geckour.q.util.verifiedWithDropbox
 import com.geckour.q.worker.DROPBOX_DOWNLOAD_WORKER_NAME
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.MoreExecutors
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -41,13 +66,24 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import timber.log.Timber
+import java.io.FileNotFoundException
 
-class MainViewModel(private val app: App) : ViewModel() {
+@UnstableApi
+class MainViewModel(
+    private val app: App,
+    private val sharedPreferences: SharedPreferences
+) : ViewModel() {
 
     companion object {
 
@@ -62,11 +98,13 @@ class MainViewModel(private val app: App) : ViewModel() {
                 mediaRetrieveWorkInfo + downloadWorkInfo
             }
 
-    private var isBoundService = false
+    private lateinit var mediaControllerFuture: ListenableFuture<MediaController>
+    private var equalizer: Equalizer? = null
 
     internal var isDropboxAuthOngoing = false
 
-    internal val currentSourcePathsFlow = MutableStateFlow<ImmutableList<String>>(persistentListOf())
+    internal val currentSourcePathsFlow =
+        MutableStateFlow<ImmutableList<String>>(persistentListOf())
     internal val currentIndexFlow = MutableStateFlow(0)
     internal val currentQueueFlow = DB.getInstance(app).trackDao()
         .getAllAsync()
@@ -85,6 +123,9 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal val currentRepeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
     internal var snackBarMessageFlow = MutableStateFlow<String?>(null)
 
+    private var notifyPlaybackPositionJob: Job = Job()
+    private var notifyBufferedPositionJob: Job = Job()
+
     internal val forceLoad = MutableLiveData<Unit>()
 
     private val dropboxItemListChannel =
@@ -93,133 +134,20 @@ class MainViewModel(private val app: App) : ViewModel() {
 
     internal val loading = MutableStateFlow<Pair<Boolean, (() -> Unit)?>>(false to null)
 
-    private var onSubmitQueue: ((queueInfo: QueueInfo) -> Unit)? = null
+    private var onSubmitQueue: ((insertTo: Int, newQueue: List<MediaItem>) -> Unit)? = null
+    private var onPrepare: (() -> Unit)? = null
     private var onMoveQueuePosition: ((from: Int, to: Int) -> Unit)? = null
-    private var onRemoveQueueByIndex: ((index: Int) -> Unit)? = null
-    internal var onRemoveQueueBySourcePath: ((sourcePath: String) -> Unit)? = null
-    internal var onRemoveQueueByTrack: (suspend (track: DomainTrack) -> Unit)? = null
+    private var onRemoveQueue: ((index: Int) -> Unit)? = null
     private var onShuffleQueue: ((type: ShuffleActionType?) -> Unit)? = null
     private var onResetQueueOrder: (() -> Unit)? = null
-    private var onClearQueue: ((keepCurrentIfPlaying: Boolean) -> Unit)? = null
+    private var onClearQueue: ((positionToKeep: Int) -> Unit)? = null
+    private var onSetRepeatMode: ((repeatMode: Int) -> Unit)? = null
     private var onRotateRepeatMode: (() -> Unit)? = null
     private var onPause: (() -> Unit)? = null
-    private var onResetQueuePosition: ((position: Int) -> Unit)? = null
+    private var onResetQueueIndex: ((force: Boolean, position: Int) -> Unit)? = null
     private var onSeek: ((progress: Long) -> Unit)? = null
-    private var onNewMediaButton: ((event: KeyEvent) -> Unit)? = null
-
-    private val serviceConnection = object : ServiceConnection {
-
-        override fun onServiceConnected(name: ComponentName?, service: IBinder?) {
-            if (name == ComponentName(app, PlayerService::class.java)) {
-                Timber.d("qgeck called onServiceConnected")
-                isBoundService = true
-
-                val playerService = (service as? PlayerService.PlayerBinder)?.service ?: return
-
-                viewModelScope.launch {
-                    playerService.loadStateFlow.collect { (loading, onAbort) ->
-                        onLoadStateChanged(loading, onAbort)
-                    }
-                }
-                viewModelScope.launch {
-                    playerService.sourcePathsFlow.collect {
-                        currentSourcePathsFlow.value = it
-                    }
-                }
-                viewModelScope.launch {
-                    playerService.currentIndexFlow.collect { index ->
-                        currentIndexFlow.value = index
-                    }
-                }
-                viewModelScope.launch {
-                    playerService.playbackPositionFLow.collect {
-                        currentPlaybackPositionFlow.value = it
-                    }
-                }
-                viewModelScope.launch {
-                    playerService.bufferedPositionFLow.collect {
-                        currentBufferedPositionFlow.value = it
-                    }
-                }
-                viewModelScope.launch {
-                    playerService.playbackInfoFlow.collect {
-                        currentPlaybackInfoFlow.value = it
-                    }
-                }
-                viewModelScope.launch {
-                    playerService.repeatModeFlow.collect {
-                        currentRepeatModeFlow.value = it
-                    }
-                }
-                viewModelScope.launch {
-                    playerService.onDestroyFlow.collect { onPlayerDestroyed() }
-                }
-
-                onSubmitQueue = {
-                    viewModelScope.launch {
-                        playerService.submitQueue(it)
-                    }
-                }
-                onMoveQueuePosition = { from, to ->
-                    playerService.moveQueuePosition(from, to)
-                }
-                onRemoveQueueByIndex = {
-                    playerService.removeQueue(it)
-                }
-                onRemoveQueueBySourcePath = {
-                    playerService.removeQueue(it)
-                }
-                onRemoveQueueByTrack = {
-                    playerService.removeQueue(it)
-                }
-                onShuffleQueue = {
-                    playerService.shuffle(it)
-                }
-                onResetQueueOrder = {
-                    playerService.resetQueueOrder()
-                }
-                onClearQueue = {
-                    playerService.clear(it)
-                }
-                onRotateRepeatMode = {
-                    playerService.rotateRepeatMode()
-                }
-                onPause = {
-                    playerService.pause()
-                }
-                onResetQueuePosition = { position ->
-                    playerService.resetQueuePosition(position)
-                }
-                onSeek = {
-                    playerService.seek(it)
-                }
-                onNewMediaButton = {
-                    playerService.onMediaButtonEvent(it)
-                }
-            }
-        }
-
-        override fun onServiceDisconnected(name: ComponentName?) {
-            if (name == ComponentName(app, PlayerService::class.java)) {
-                Timber.d("qgeck called onServiceDisconnected")
-                onPlayerDestroyed()
-            }
-        }
-
-        override fun onBindingDied(name: ComponentName?) {
-            super.onBindingDied(name)
-            if (name == ComponentName(app, PlayerService::class.java)) {
-                onPlayerDestroyed()
-            }
-        }
-
-        override fun onNullBinding(name: ComponentName?) {
-            super.onNullBinding(name)
-            if (name == ComponentName(app, PlayerService::class.java)) {
-                onPlayerDestroyed()
-            }
-        }
-    }
+    private var onNewMediaButton: ((playbackButton: PlaybackButton) -> Unit)? = null
+    private var onSetEqualizer: ((enabled: Boolean) -> Unit)? = null
 
     private val billingApiClient = BillingApiClient(
         app,
@@ -275,16 +203,494 @@ class MainViewModel(private val app: App) : ViewModel() {
     )
 
     init {
-        bindPlayer()
+        viewModelScope.launch {
+            app.getEqualizerParams().collectLatest { params ->
+                params?.let { reflectEqualizerSettings(it) }
+            }
+        }
+        viewModelScope.launch {
+            app.getEqualizerEnabled().collectLatest { enabled ->
+                onSetEqualizer?.invoke(enabled)
+            }
+        }
     }
 
-    override fun onCleared() {
-        Timber.d("qgeck MainViewModel is cleared")
+    internal fun initializeMediaController(context: Context) {
+        mediaControllerFuture = MediaController.Builder(
+            context,
+            SessionToken(context, ComponentName(context, PlayerService::class.java))
+        )
+            .buildAsync()
 
-        unbindPlayer()
-        PlayerService.destroy(app)
+        mediaControllerFuture.addListener(
+            {
+                val mediaController =
+                    if (mediaControllerFuture.isDone && mediaControllerFuture.isCancelled.not()) {
+                        mediaControllerFuture.get()
+                    } else return@addListener
 
-        super.onCleared()
+                mediaController.addListener(object : Player.Listener {
+
+                    var lastMediaItem: MediaItem? = null
+
+                    override fun onTracksChanged(tracks: Tracks) {
+                        super.onTracksChanged(tracks)
+
+                        Timber.d(
+                            "qgeck player tracks changed: ${
+                                tracks.groups.map { group ->
+                                    List(
+                                        group.length
+                                    ) { group.getTrackFormat(it) }
+                                }
+                            }"
+                        )
+
+                        onSourceChanged(mediaController)
+                    }
+
+                    override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = Unit
+
+                    override fun onTimelineChanged(timeline: Timeline, reason: Int) {
+                        super.onTimelineChanged(timeline, reason)
+
+                        Timber.d("qgeck player on timeline changed: $timeline, $reason")
+
+                        onSourceChanged(mediaController)
+                    }
+
+                    override fun onPlaybackStateChanged(playbackState: Int) {
+                        super.onPlaybackStateChanged(playbackState)
+
+                        Timber.d(
+                            "qgeck player playback state: ${
+                                when (playbackState) {
+                                    Player.STATE_IDLE -> "STATE_IDLE"
+                                    Player.STATE_BUFFERING -> "STATE_BUFFERING"
+                                    Player.STATE_READY -> "STATE_READY"
+                                    Player.STATE_ENDED -> "STATE_ENDED"
+                                    else -> "UNKNOWN"
+                                }
+                            }"
+                        )
+
+                        onSourceChanged(mediaController)
+
+                        if (mediaController.currentIndex == mediaController.mediaItemCount - 1
+                            && playbackState == Player.STATE_ENDED
+                            && mediaController.repeatMode == Player.REPEAT_MODE_OFF
+                        ) {
+                            mediaController.stop()
+                        }
+
+                        if (playbackState == Player.STATE_READY && mediaController.playWhenReady) {
+                            notifyPlaybackPositionJob.cancel()
+                            notifyPlaybackPositionJob = viewModelScope.launch {
+                                while (this.isActive) {
+                                    currentPlaybackPositionFlow.value =
+                                        mediaController.currentPosition
+                                    delay(100)
+                                }
+                            }
+                            if (mediaController.currentMediaItem != lastMediaItem) {
+                                lastMediaItem = mediaController.currentMediaItem
+                                increasePlaybackCount(mediaController)
+                            }
+                        }
+                    }
+
+                    override fun onPlayWhenReadyChanged(
+                        playWhenReady: Boolean,
+                        reason: Int
+                    ) {
+                        super.onPlayWhenReadyChanged(playWhenReady, reason)
+
+                        Timber.d("qgeck player play when ready: $playWhenReady")
+
+                        onSourceChanged(mediaController)
+
+                        if (mediaController.playbackState == Player.STATE_READY && playWhenReady) {
+                            notifyPlaybackPositionJob.cancel()
+                            notifyPlaybackPositionJob = viewModelScope.launch {
+                                while (this.isActive) {
+                                    currentPlaybackPositionFlow.value =
+                                        mediaController.currentPosition
+                                    delay(100)
+                                }
+                            }
+                            if (mediaController.currentMediaItem != lastMediaItem) {
+                                lastMediaItem = mediaController.currentMediaItem
+                                increasePlaybackCount(mediaController)
+                            }
+                        }
+                    }
+
+                    override fun onRepeatModeChanged(repeatMode: Int) {
+                        super.onRepeatModeChanged(repeatMode)
+
+                        currentRepeatModeFlow.value = repeatMode
+                    }
+
+                    override fun onPositionDiscontinuity(
+                        oldPosition: Player.PositionInfo,
+                        newPosition: Player.PositionInfo,
+                        reason: Int
+                    ) {
+                        super.onPositionDiscontinuity(oldPosition, newPosition, reason)
+
+                        currentPlaybackPositionFlow.value = newPosition.positionMs
+                    }
+
+                    override fun onPlayerError(error: PlaybackException) {
+                        super.onPlayerError(error)
+
+                        Timber.e(error)
+                        FirebaseCrashlytics.getInstance().recordException(error)
+
+                        val currentPlayWhenReady = mediaController.playWhenReady
+                        mediaController.pause()
+                        if (verifyByCauseIfNeeded(mediaController, error).not()) {
+                            removeQueue(mediaController.currentIndex)
+                        }
+                        if (currentPlayWhenReady) mediaController.play()
+                    }
+
+                    override fun onAudioSessionIdChanged(audioSessionId: Int) {
+                        super.onAudioSessionIdChanged(audioSessionId)
+
+                        onSetEqualizer = { enabled ->
+                            setEqualizer(if (enabled) audioSessionId else null)
+                        }
+                    }
+                })
+                onSubmitQueue = { insertTo, newQueue ->
+                    mediaController.addMediaItems(insertTo, newQueue)
+                }
+                onPrepare = {
+                    mediaController.prepare()
+                }
+                onClearQueue = { positionToKeep ->
+                    if (positionToKeep !in 0 until mediaController.mediaItemCount) {
+                        mediaController.clearMediaItems()
+                    } else {
+                        mediaController.removeMediaItems(0, positionToKeep)
+                        mediaController.removeMediaItems(1, mediaController.mediaItemCount)
+                    }
+                }
+                onSetRepeatMode = {
+                    mediaController.repeatMode = it
+                }
+                onRotateRepeatMode = {
+                    mediaController.repeatMode = when (mediaController.repeatMode) {
+                        Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
+                        Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
+                        Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_OFF
+                        else -> throw IllegalStateException()
+                    }
+                }
+                onRemoveQueue = { index ->
+                    if (index in 0 until mediaController.mediaItemCount &&
+                        (index != mediaController.currentIndex ||
+                                mediaController.playWhenReady.not() ||
+                                (mediaController.playbackState != Player.STATE_READY &&
+                                        mediaController.playbackState != Player.STATE_BUFFERING))
+                    ) {
+                        mediaController.removeMediaItem(index)
+                    }
+                }
+                onMoveQueuePosition = { from, to ->
+                    val sourceRange = 0 until mediaController.mediaItemCount
+                    if (from != to && from in sourceRange && to in sourceRange) {
+                        mediaController.moveMediaItem(from, to)
+                    }
+                }
+                onShuffleQueue = {
+                    shuffle(mediaController, it)
+                }
+                onResetQueueOrder = {
+                    resetQueueOrder(mediaController)
+                }
+                onPause = {
+                    mediaController.pause()
+                }
+                onResetQueueIndex = { force, index ->
+                    if (force || mediaController.currentIndex != index) {
+                        forceIndex(mediaController, index)
+                    }
+                }
+                onSeek = {
+                    mediaController.seekTo(it)
+                }
+                onNewMediaButton = {
+                    when (it) {
+                        PlaybackButton.PLAY -> mediaController.play()
+                        PlaybackButton.PAUSE -> mediaController.pause()
+                        PlaybackButton.NEXT -> mediaController.seekToNext()
+                        PlaybackButton.PREV -> mediaController.seekToPrevious()
+                        PlaybackButton.FF -> mediaController.seekForward()
+                        PlaybackButton.REWIND -> mediaController.seekBack()
+                        PlaybackButton.UNDEFINED -> mediaController.sendCustomCommand(
+                            SessionCommand(
+                                PlayerService.ACTION_COMMAND_STOP_FAST_SEEK,
+                                Bundle.EMPTY
+                            ),
+                            Bundle.EMPTY
+                        )
+                    }
+                }
+
+                mediaController.sendCustomCommand(
+                    SessionCommand(
+                        PlayerService.ACTION_COMMAND_RESTORE_STATE,
+                        Bundle.EMPTY
+                    ),
+                    Bundle.EMPTY
+                )
+            },
+            MoreExecutors.directExecutor()
+        )
+    }
+
+    internal fun releaseMediaController() {
+        MediaController.releaseFuture(mediaControllerFuture)
+    }
+
+    private suspend fun submitQueue(
+        queueInfo: QueueInfo,
+        positionToKeep: Int? = null,
+        needSorted: Boolean = true,
+    ) {
+        var alive = true
+        onLoadStateChanged(state = true, onAbort = { alive = false })
+
+        val newQueue = queueInfo.queue
+            .let {
+                when {
+                    needSorted -> it.orderModified(
+                        queueInfo.metadata.classType,
+                        queueInfo.metadata.actionType
+                    )
+
+                    else -> it
+                }
+            }
+            .map { track ->
+                if (alive.not()) {
+                    onLoadStateChanged(state = false, onAbort = null)
+                    return
+                }
+                (obtainDbxClient(app).take(1).lastOrNull()?.let {
+                    track.verifiedWithDropbox(app, it)
+                } ?: track)
+                    .sourcePath
+                    .getMediaItem()
+            }
+        when (queueInfo.metadata.actionType) {
+            InsertActionType.OVERRIDE,
+            InsertActionType.SHUFFLE_OVERRIDE,
+            InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
+                if (positionToKeep == null) clear()
+                else onClearQueue?.invoke(positionToKeep)
+            }
+
+            else -> Unit
+        }
+        when (queueInfo.metadata.actionType) {
+            InsertActionType.NEXT,
+            InsertActionType.OVERRIDE,
+            InsertActionType.SHUFFLE_NEXT,
+            InsertActionType.SHUFFLE_OVERRIDE,
+            InsertActionType.SHUFFLE_SIMPLE_NEXT,
+            InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
+                onSubmitQueue?.invoke(currentIndexFlow.value + 1, newQueue)
+            }
+
+            InsertActionType.LAST,
+            InsertActionType.SHUFFLE_LAST,
+            InsertActionType.SHUFFLE_SIMPLE_LAST -> {
+                onSubmitQueue?.invoke(currentSourcePathsFlow.value.size, newQueue)
+            }
+        }
+
+        onLoadStateChanged(state = false, onAbort = null)
+
+        onPrepare?.invoke()
+    }
+
+    private fun clear(keepCurrentIfPlaying: Boolean = true) {
+        val needToKeepCurrent = keepCurrentIfPlaying
+                && currentPlaybackInfoFlow.value.second == Player.STATE_READY
+                && currentPlaybackInfoFlow.value.first
+        onClearQueue?.invoke(if (needToKeepCurrent) currentIndexFlow.value else -1)
+    }
+
+    /**
+     * @param with: first: old, second: new
+     */
+    private fun replace(
+        mediaController: MediaController,
+        with: List<Pair<DomainTrack, DomainTrack>>
+    ) {
+        if (with.isEmpty()) return
+
+        viewModelScope.launch {
+            with.forEach { withTrack ->
+                val index = currentSourcePathsFlow.value
+                    .indexOfFirst { it == withTrack.first.sourcePath }
+                FirebaseCrashlytics.getInstance()
+                    .log("replace source path: ${withTrack.second.sourcePath}")
+                removeQueue(index)
+                mediaController.addMediaItem(
+                    index,
+                    withTrack.second.sourcePath.getMediaItem()
+                )
+            }
+        }
+    }
+
+    private fun removeQueue(position: Int) {
+        onRemoveQueue?.invoke(position)
+    }
+
+    private fun removeQueue(sourcePath: String) {
+        val position = currentSourcePathsFlow.value.indexOfFirst { it == sourcePath }
+        removeQueue(position)
+    }
+
+    private suspend fun removeQueue(track: DomainTrack) {
+        val position = currentSourcePathsFlow.value
+            .indexOfFirst { it.toDomainTrack(db)?.id == track.id }
+        removeQueue(position)
+    }
+
+    private fun shuffle(mediaController: MediaController, actionType: ShuffleActionType? = null) {
+        viewModelScope.launch {
+            val currentQueue = currentSourcePathsFlow.value
+            if (mediaController.mediaItemCount > 0 && mediaController.mediaItemCount == currentQueue.size) {
+                val shuffled = when (actionType) {
+                    null,
+                    ShuffleActionType.SHUFFLE_SIMPLE -> {
+                        currentQueue.shuffled()
+                    }
+
+                    ShuffleActionType.SHUFFLE_ALBUM_ORIENTED -> {
+                        currentQueue.toDomainTracks(db)
+                            .groupBy { it.album.id }
+                            .map { it.value }
+                            .shuffled()
+                            .flatten()
+                            .map { it.sourcePath }
+                    }
+
+                    ShuffleActionType.SHUFFLE_ARTIST_ORIENTED -> {
+                        currentQueue.toDomainTracks(db)
+                            .groupBy { it.artist.id }
+                            .map { it.value }
+                            .shuffled()
+                            .flatten()
+                            .map { it.sourcePath }
+                    }
+                }
+
+                reorderQueue(mediaController, shuffled)
+            }
+        }
+    }
+
+    private fun resetQueueOrder(mediaController: MediaController) {
+        if (mediaController.mediaItemCount < 1) return
+        viewModelScope.launch {
+            val sourcePaths = currentSourcePathsFlow.value
+            val cachedSourcePaths =
+                sharedPreferences.getString(PlayerService.PREF_KEY_PLAYER_STATE, null)
+                    ?.let { catchAsNull { Json.decodeFromString<PlayerState>(it) } }
+                    ?.sourcePaths
+                    .orEmpty()
+            val isCacheValid =
+                sourcePaths.size == cachedSourcePaths.size &&
+                        sourcePaths.containsAll(cachedSourcePaths)
+            if (isCacheValid.not()) return@launch
+
+            reorderQueue(mediaController, cachedSourcePaths)
+        }
+    }
+
+    private fun reorderQueue(mediaController: MediaController, newSourcePaths: List<String>) {
+        viewModelScope.launch {
+            val currentIndex = mediaController.currentIndex.coerceAtLeast(0)
+            val targetIndex = newSourcePaths.indexOfFirst {
+                it == currentSourcePathsFlow.value.getOrNull(currentIndex)
+            }.coerceAtLeast(0)
+            submitQueue(
+                QueueInfo(
+                    QueueMetadata(
+                        InsertActionType.OVERRIDE,
+                        OrientedClassType.TRACK
+                    ),
+                    newSourcePaths.removedAt(targetIndex).toDomainTracks(db)
+                ),
+                currentIndex
+            )
+            onMoveQueuePosition?.invoke(currentIndex, targetIndex)
+        }
+    }
+
+    private fun forceIndex(mediaController: MediaController, index: Int) {
+        val windowIndex =
+            mediaController.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
+        mediaController.seekToDefaultPosition(windowIndex + index)
+    }
+
+    private fun increasePlaybackCount(mediaController: MediaController) = viewModelScope.launch {
+        mediaController.currentMediaItem?.toDomainTrack(db)
+            ?.let { track ->
+                db.trackDao().increasePlaybackCount(track.id)
+                db.albumDao().increasePlaybackCount(track.album.id)
+                db.artistDao().increasePlaybackCount(track.artist.id)
+            }
+    }
+
+    private fun verifyByCauseIfNeeded(
+        mediaController: MediaController,
+        throwable: Throwable
+    ): Boolean {
+        var aborted = false
+        val isTarget =
+            throwable.getCausesRecursively().any {
+                (it as? HttpDataSource.InvalidResponseCodeException?)?.responseCode == 410 ||
+                        (it is FileNotFoundException &&
+                                currentSourcePathsFlow.value
+                                    .getOrNull(mediaController.currentIndex)
+                                    ?.matches(dropboxCachePathPattern) == true)
+            }
+        if (isTarget) {
+            viewModelScope.launch {
+                onLoadStateChanged(state = true, onAbort = { aborted = true })
+                val index = mediaController.currentIndex
+                val position = mediaController.currentPosition
+                val replacingPairs = currentSourcePathsFlow.value
+                    .mapNotNull { path ->
+                        if (aborted) return@launch
+                        val track = path.toDomainTrack(db) ?: return@mapNotNull null
+                        val new = obtainDbxClient(app).firstOrNull()?.let {
+                            track.verifiedWithDropbox(app, it)
+                        } ?: return@mapNotNull null
+                        track to new
+                    }
+                replace(mediaController, replacingPairs)
+
+                forceIndex(mediaController, index)
+                onSeek?.invoke(position)
+
+                onLoadStateChanged(state = false, onAbort = null)
+            }
+            return true
+        }
+        return false
+    }
+
+    private fun Throwable.getCausesRecursively(initial: List<Throwable> = emptyList()): List<Throwable> {
+        return cause?.let { it.getCausesRecursively(initial + it) } ?: initial
     }
 
     fun onNewQueue(
@@ -293,7 +699,7 @@ class MainViewModel(private val app: App) : ViewModel() {
         classType: OrientedClassType
     ) {
         viewModelScope.launch {
-            onSubmitQueue?.invoke(QueueInfo(QueueMetadata(actionType, classType), domainTracks))
+            submitQueue(QueueInfo(QueueMetadata(actionType, classType), domainTracks))
         }
     }
 
@@ -302,8 +708,9 @@ class MainViewModel(private val app: App) : ViewModel() {
     }
 
     fun onRemoveTrackFromQueue(domainTrack: DomainTrack) {
-        val index = currentSourcePathsFlow.value.indexOf(domainTrack.sourcePath)
-        onRemoveQueueByIndex?.invoke(index)
+        viewModelScope.launch {
+            removeQueue(domainTrack)
+        }
     }
 
     fun onShuffle(actionType: ShuffleActionType? = null) {
@@ -337,34 +744,89 @@ class MainViewModel(private val app: App) : ViewModel() {
     }
 
     fun onClickClearQueueButton() {
-        onClearQueue?.invoke(true)
+        clear()
     }
 
     fun onClickRepeatButton() {
         onRotateRepeatMode?.invoke()
     }
 
-    private fun bindPlayer() {
-        if (isBoundService.not()) {
-            app.bindService(
-                PlayerService.createIntent(app),
-                serviceConnection,
-                Context.BIND_AUTO_CREATE
-            )
+    private fun setEqualizer(audioSessionId: Int?) {
+        viewModelScope.launch {
+            if (audioSessionId != null && audioSessionId != C.AUDIO_SESSION_ID_UNSET) {
+                if (equalizer == null) {
+                    try {
+                        equalizer = Equalizer(0, audioSessionId).also { eq ->
+                            if (app.getEqualizerParams().take(1).lastOrNull() == null) {
+                                app.setEqualizerParams(
+                                    EqualizerParams(
+                                        levelRange = eq.bandLevelRange.let {
+                                            it.first().toInt() to it.last().toInt()
+                                        },
+                                        bands = List(eq.numberOfBands.toInt()) { index ->
+                                            EqualizerParams.Band(
+                                                freqRange = eq.getBandFreqRange(index.toShort())
+                                                    .let { it.first() to it.last() },
+                                                centerFreq = eq.getCenterFreq(index.toShort()),
+                                                level = 0
+                                            )
+                                        }
+                                    )
+                                )
+                            }
+                        }
+                    } catch (t: Throwable) {
+                        Timber.e(t)
+                    }
+                }
+                app.getEqualizerParams().take(1).lastOrNull()?.let {
+                    reflectEqualizerSettings(it)
+                }
+                equalizer?.enabled = app.getEqualizerEnabled().take(1).lastOrNull() == true
+            } else {
+                equalizer?.enabled = false
+            }
         }
     }
 
-    private fun unbindPlayer() {
-        try {
-            app.startService(PlayerService.createIntent(app))
-        } catch (t: Throwable) {
-            Timber.e(t)
+    private fun reflectEqualizerSettings(equalizerParams: EqualizerParams) {
+        equalizerParams.bands.forEachIndexed { i, band ->
+            try {
+                equalizer?.setBandLevel(i.toShort(), band.level.toShort())
+            } catch (t: Throwable) {
+                Timber.e(t)
+            }
         }
-        if (isBoundService) app.unbindService(serviceConnection)
     }
 
-    internal fun onPlayerDestroyed() {
-        isBoundService = false
+    private fun onSourceChanged(
+        mediaController: MediaController
+    ) = viewModelScope.launch {
+        currentSourcePathsFlow.value =
+            List(mediaController.mediaItemCount) {
+                mediaController.getMediaItemAt(it).mediaId
+            }.filter { it.isNotBlank() }.toImmutableList()
+        currentIndexFlow.value = mediaController.currentIndex
+        currentPlaybackPositionFlow.value = mediaController.currentPosition
+        currentBufferedPositionFlow.value = mediaController.bufferedPosition
+        currentPlaybackInfoFlow.value =
+            mediaController.playWhenReady to mediaController.playbackState
+        currentRepeatModeFlow.value = mediaController.repeatMode
+        notifyBufferedPositionJob.cancel()
+        notifyBufferedPositionJob = viewModelScope.launch {
+            while (this.isActive) {
+                currentBufferedPositionFlow.value = mediaController.bufferedPosition
+                delay(100)
+            }
+        }
+
+        mediaController.sendCustomCommand(
+            SessionCommand(
+                PlayerService.ACTION_COMMAND_STORE_STATE,
+                Bundle.EMPTY
+            ),
+            Bundle.EMPTY
+        )
     }
 
     internal fun checkDBIsEmpty(onEmpty: () -> Unit) {
@@ -377,7 +839,7 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal fun deleteTrack(domainTrack: DomainTrack) {
         viewModelScope.launch {
             purgeDownloaded(listOf(domainTrack.sourcePath)).join()
-            onRemoveQueueByTrack?.invoke(domainTrack)
+            removeQueue(domainTrack)
 
             db.trackDao().deleteIncludingRootIfEmpty(db, domainTrack.id)
         }
@@ -389,7 +851,7 @@ class MainViewModel(private val app: App) : ViewModel() {
         }
         currentSourcePathsFlow.value.forEach { sourcePath ->
             if (targetSourcePaths.any { it == sourcePath }) {
-                onRemoveQueueBySourcePath?.invoke(sourcePath)
+                removeQueue(sourcePath)
             }
         }
         runCatching {
@@ -403,13 +865,13 @@ class MainViewModel(private val app: App) : ViewModel() {
         }
     }
 
-    internal fun onLoadStateChanged(state: Boolean, onAbort: (() -> Unit)? = null) {
+    private fun onLoadStateChanged(state: Boolean, onAbort: (() -> Unit)? = null) {
         viewModelScope.launch { loading.emit(state to onAbort) }
     }
 
     internal fun onChangeRequestedTrackInQueue(domainTrack: DomainTrack) {
-        val position = currentSourcePathsFlow.value.indexOf(domainTrack.sourcePath)
-        onResetQueuePosition?.invoke(position)
+        val index = currentSourcePathsFlow.value.indexOf(domainTrack.sourcePath)
+        onResetQueueIndex?.invoke(false, index)
     }
 
     internal fun onNewSeekBarProgress(progress: Long) {
@@ -417,20 +879,7 @@ class MainViewModel(private val app: App) : ViewModel() {
     }
 
     internal fun onNewPlaybackButton(playbackButton: PlaybackButton) {
-        onNewMediaButton?.invoke(
-            KeyEvent(
-                if (playbackButton == PlaybackButton.UNDEFINED) KeyEvent.ACTION_UP else KeyEvent.ACTION_DOWN,
-                when (playbackButton) {
-                    PlaybackButton.PLAY -> KeyEvent.KEYCODE_MEDIA_PLAY
-                    PlaybackButton.PAUSE -> KeyEvent.KEYCODE_MEDIA_PAUSE
-                    PlaybackButton.NEXT -> KeyEvent.KEYCODE_MEDIA_NEXT
-                    PlaybackButton.PREV -> KeyEvent.KEYCODE_MEDIA_PREVIOUS
-                    PlaybackButton.FF -> KeyEvent.KEYCODE_MEDIA_FAST_FORWARD
-                    PlaybackButton.REWIND -> KeyEvent.KEYCODE_MEDIA_REWIND
-                    PlaybackButton.UNDEFINED -> KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE
-                }
-            )
-        )
+        onNewMediaButton?.invoke(playbackButton)
     }
 
     internal suspend fun storeDropboxApiToken() {
@@ -476,4 +925,7 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal suspend fun emitSnackBarMessage(message: String?) {
         snackBarMessageFlow.emit(message)
     }
+
+    val MediaController.currentIndex
+        get() = if (currentMediaItemIndex == -1) 0 else currentMediaItemIndex
 }
