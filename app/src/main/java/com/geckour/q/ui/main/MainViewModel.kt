@@ -310,14 +310,6 @@ class MainViewModel(
                         onSourceChanged(mediaController)
 
                         if (mediaController.playbackState == Player.STATE_READY && playWhenReady) {
-                            notifyPlaybackPositionJob.cancel()
-                            notifyPlaybackPositionJob = viewModelScope.launch {
-                                while (this.isActive) {
-                                    currentPlaybackPositionFlow.value =
-                                        mediaController.currentPosition
-                                    delay(100)
-                                }
-                            }
                             if (mediaController.currentMediaItem != lastMediaItem) {
                                 lastMediaItem = mediaController.currentMediaItem
                                 increasePlaybackCount(mediaController)
@@ -446,6 +438,8 @@ class MainViewModel(
                     ),
                     Bundle.EMPTY
                 )
+
+                onSourceChanged(mediaController)
             },
             MoreExecutors.directExecutor()
         )
@@ -812,6 +806,14 @@ class MainViewModel(
         currentPlaybackInfoFlow.value =
             mediaController.playWhenReady to mediaController.playbackState
         currentRepeatModeFlow.value = mediaController.repeatMode
+        notifyPlaybackPositionJob.cancel()
+        notifyPlaybackPositionJob = viewModelScope.launch {
+            while (this.isActive) {
+                currentPlaybackPositionFlow.value =
+                    mediaController.currentPosition
+                delay(100)
+            }
+        }
         notifyBufferedPositionJob.cancel()
         notifyBufferedPositionJob = viewModelScope.launch {
             while (this.isActive) {
@@ -819,14 +821,6 @@ class MainViewModel(
                 delay(100)
             }
         }
-
-        mediaController.sendCustomCommand(
-            SessionCommand(
-                PlayerService.ACTION_COMMAND_STORE_STATE,
-                Bundle.EMPTY
-            ),
-            Bundle.EMPTY
-        )
     }
 
     internal fun checkDBIsEmpty(onEmpty: () -> Unit) {

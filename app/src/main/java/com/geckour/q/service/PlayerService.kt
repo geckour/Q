@@ -16,7 +16,6 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
-import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
@@ -24,28 +23,21 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
-import androidx.media3.session.MediaController
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ConnectionResult
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
-import androidx.media3.ui.PlayerNotificationManager
 import com.geckour.q.App
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.ui.LauncherActivity
-import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.QueueInfo
-import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.catchAsNull
 import com.geckour.q.util.currentSourcePaths
 import com.geckour.q.util.getMediaItem
 import com.geckour.q.util.toDomainTrack
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
-import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -65,7 +57,6 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
 
         private const val NOTIFICATION_ID_PLAYER = 320
 
-        const val ACTION_COMMAND_STORE_STATE = "action_command_store_state"
         const val ACTION_COMMAND_RESTORE_STATE = "action_command_restore_state"
         const val ACTION_COMMAND_STOP_FAST_SEEK = "action_command_stop_fast_seek"
         private const val ACTION_COMMAND_TOGGLE_FAVORITE = "action_command_toggle_favorite"
@@ -87,7 +78,6 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
             ConnectionResult.AcceptedResultBuilder(session)
                 .setAvailableSessionCommands(
                     ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
-                        .add(SessionCommand(ACTION_COMMAND_STORE_STATE, Bundle.EMPTY))
                         .add(SessionCommand(ACTION_COMMAND_RESTORE_STATE, Bundle.EMPTY))
                         .add(SessionCommand(ACTION_COMMAND_STOP_FAST_SEEK, Bundle.EMPTY))
                         .add(SessionCommand(ACTION_COMMAND_TOGGLE_FAVORITE, Bundle.EMPTY))
@@ -103,11 +93,6 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         ): ListenableFuture<SessionResult> {
             if (customCommand.commandCode == SessionCommand.COMMAND_CODE_CUSTOM) {
                 return when (customCommand.customAction) {
-                    ACTION_COMMAND_STORE_STATE -> {
-                        storeState()
-                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
-                    }
-
                     ACTION_COMMAND_RESTORE_STATE -> {
                         restoreState()
                         Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
@@ -141,7 +126,6 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
     private lateinit var forwardingPlayer: Player
 
     private lateinit var mediaSession: MediaSession
-    private lateinit var playerNotificationManager: PlayerNotificationManager
     private val currentIndex
         get() =
             if (player.currentMediaItemIndex == -1) 0
@@ -292,7 +276,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         player.clearMediaItems()
         dispatcher.onServicePreSuperOnDestroy()
         player.release()
-        playerNotificationManager.setPlayer(null)
+        mediaSession.release()
 
         super.onDestroy()
     }
