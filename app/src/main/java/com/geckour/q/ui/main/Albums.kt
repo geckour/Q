@@ -52,7 +52,7 @@ import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
 import kotlinx.collections.immutable.ImmutableList
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Albums(
     navController: NavController,

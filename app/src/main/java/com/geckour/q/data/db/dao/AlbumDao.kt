@@ -43,7 +43,7 @@ interface AlbumDao {
     suspend fun findByTitle(title: String): JoinedAlbum?
 
     @Transaction
-    @Query("select * from album")
+    @Query("select * from album order by titleSort collate nocase")
     fun getAllAsync(): Flow<List<JoinedAlbum>>
 
     @Transaction
@@ -51,7 +51,7 @@ interface AlbumDao {
     suspend fun getAllByArtistId(artistId: Long): List<JoinedAlbum>
 
     @Transaction
-    @Query("select * from album where artistId = :artistId")
+    @Query("select * from album where artistId = :artistId order by titleSort collate nocase")
     fun getAllByArtistIdAsync(artistId: Long): Flow<List<JoinedAlbum>>
 
     @Transaction
