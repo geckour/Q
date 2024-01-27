@@ -1,6 +1,7 @@
 package com.geckour.q.service
 
 import android.app.PendingIntent
+import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -411,6 +412,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
 
     private val sharedPreferences by inject<SharedPreferences>()
 
+    private var stoppingSelf = false
     private var aliveSubmitQueueTask = false
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession =
@@ -519,7 +521,9 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        if (player.isPlaying.not() || player.mediaItemCount == 0) {
+        if ((player.playWhenReady.not() && player.playbackState != Player.STATE_READY) ||
+            player.mediaItemCount == 0
+        ) {
             stopSelf()
         }
 
@@ -528,6 +532,8 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
 
     override fun onDestroy() {
         Timber.d("qgeck onDestroy called")
+
+        stoppingSelf = true
 
         stop()
         player.stop()
@@ -541,6 +547,8 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
     }
 
     private fun onStateChanged() {
+        if (stoppingSelf) return
+
         val state = PlayerState(
             player.playWhenReady,
             player.currentSourcePaths,
@@ -919,6 +927,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
     fun stop() {
         pause()
         forceIndex(0)
+        stopForeground(Service.STOP_FOREGROUND_REMOVE)
     }
 
     fun next() {
