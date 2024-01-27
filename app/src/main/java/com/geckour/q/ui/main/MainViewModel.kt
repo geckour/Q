@@ -427,7 +427,7 @@ class MainViewModel(
     }
 
     fun onClickClearQueueButton() {
-        onClearQueue?.invoke(false)
+        onClearQueue?.invoke(true)
     }
 
     fun onClickRepeatButton() {
@@ -499,10 +499,6 @@ class MainViewModel(
             }
             db.trackDao().clearAllSourcePaths(targetSourcePaths)
         }
-    }
-
-    private fun onLoadStateChanged(state: Boolean, onAbort: (() -> Unit)? = null) {
-        viewModelScope.launch { loading.emit(state to onAbort) }
     }
 
     internal fun onChangeRequestedTrackInQueue(domainTrack: DomainTrack) {
