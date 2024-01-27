@@ -26,10 +26,7 @@
     <string name="notification_title_sleep_timer">おやすみタイマー</string>
     <string name="notification_text_sleep_timer">残り: %s</string>
     <string name="notification_text_sleep_timer_with_tolerance">残り: %1$s ± %2$s</string>
-    <string name="notification_action_prev">前へ</string>
-    <string name="notification_action_play">再生</string>
-    <string name="notification_action_pause">停止</string>
-    <string name="notification_action_next">次へ</string>
+    <string name="notification_action_toggle_favorite">お気に入りを切り替え</string>
 
     <!-- Indicator -->
     <string name="syncing">ライブラリを同期中…</string>

@@ -514,7 +514,7 @@ val ExoPlayer.currentSourcePaths: List<String>
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 suspend fun MediaItem.toDomainTrack(db: DB): DomainTrack? =
-    localConfiguration?.uri?.toString()?.toDomainTrack(db)
+    (localConfiguration?.uri ?: mediaId).toString().toDomainTrack(db)
 
 suspend fun String.toDomainTrack(db: DB): DomainTrack? =
     db.trackDao().getBySourcePath(this)?.toDomainTrack()

@@ -29,10 +29,7 @@
     <string name="notification_title_sleep_timer">Sleep timer</string>
     <string name="notification_text_sleep_timer">Remaining: %s</string>
     <string name="notification_text_sleep_timer_with_tolerance">Remaining: %1$s ± %2$s</string>
-    <string name="notification_action_prev">PREV</string>
-    <string name="notification_action_play">PLAY</string>
-    <string name="notification_action_pause">PAUSE</string>
-    <string name="notification_action_next">NEXT</string>
+    <string name="notification_action_toggle_favorite">Toggle favorite</string>
 
     <!-- Indicator -->
     <string name="syncing">Syncing library…</string>
