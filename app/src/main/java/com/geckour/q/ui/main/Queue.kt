@@ -293,7 +293,7 @@ fun QueueItem(
             } else {
                 Spacer(modifier = Modifier.width(16.dp))
             }
-            Column(modifier = Modifier.padding(top = 16.dp)) {
+            Column(modifier = Modifier.padding(top = 20.dp)) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -346,27 +346,22 @@ fun QueueItem(
                     }
                 }
                 Row(
-                    modifier = Modifier.height(16.dp),
+                    modifier = Modifier.height(20.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.width(48.dp),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = (index + 1).toString(),
-                            color = QTheme.colors.colorTextPrimary,
-                            fontSize = 10.sp
-                        )
-                    }
+                    Text(
+                        text = (index + 1).toString(),
+                        color = QTheme.colors.colorTextPrimary,
+                        fontSize = 10.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.width(48.dp)
+                    )
                     Text(
                         text = "${domainTrack.codec}・${domainTrack.bitrate}kbps・${domainTrack.sampleRate}kHz",
                         color = if (domainTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
                         fontSize = 10.sp,
                         textAlign = TextAlign.End,
-                        modifier = Modifier
-                            .weight(1f)
-                            .width(IntrinsicSize.Max),
+                        modifier = Modifier.weight(1f)
                     )
                     Text(
                         text = domainTrack.durationString,
