@@ -29,11 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.SoftwareKeyboardController
@@ -51,6 +47,7 @@ import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.coroutines.flow.map
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -75,7 +72,11 @@ fun Albums(
     val joinedAlbums by (
             if (artistId < 1) db.albumDao().getAllAsync()
             else db.albumDao().getAllByArtistIdAsync(artistId)
-            ).collectAsState(initial = emptyList())
+            )
+        .map { joinedAlbums ->
+            if (isFavoriteOnly.value) joinedAlbums.filter { it.album.isFavorite } else joinedAlbums
+        }
+        .collectAsState(initial = emptyList())
     val defaultTabBarTitle = stringResource(id = R.string.nav_album)
     val listState = rememberLazyListState()
 
@@ -121,9 +122,7 @@ fun Albums(
                 )
             }
         }
-        items(joinedAlbums.let { joinedAlbums ->
-            if (isFavoriteOnly.value) joinedAlbums.filter { it.album.isFavorite } else joinedAlbums
-        }) { joinedAlbum ->
+        items(joinedAlbums) { joinedAlbum ->
             val containDropboxContent by db.albumDao()
                 .containDropboxContent(joinedAlbum.album.id)
                 .collectAsState(initial = false)

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.Icon
@@ -28,11 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.SoftwareKeyboardController
@@ -50,8 +47,9 @@ import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.coroutines.flow.map
 
-@OptIn(ExperimentalFoundationApi::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Artists(
     navController: NavController,
@@ -69,7 +67,9 @@ fun Artists(
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
 ) {
     val db = DB.getInstance(LocalContext.current)
-    val artists by db.artistDao().getAllOrientedAlbumAsync().collectAsState(initial = emptyList())
+    val artists by db.artistDao().getAllOrientedAlbumAsync()
+        .map { artists -> if (isFavoriteOnly.value) artists.filter { it.isFavorite } else artists }
+        .collectAsState(initial = emptyList())
     val listState = rememberLazyListState()
 
     LaunchedEffect(scrollToTop) {
@@ -107,9 +107,7 @@ fun Artists(
                 )
             }
         }
-        items(artists.let {
-                artists -> if (isFavoriteOnly.value) artists.filter { it.isFavorite } else artists
-        }) { artist ->
+        items(artists) { artist ->
             val containDropboxContent by db.artistDao()
                 .containDropboxContent(artist.id)
                 .collectAsState(initial = false)

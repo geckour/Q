@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.Card
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
@@ -30,13 +29,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -53,8 +47,9 @@ import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.isDownloaded
 import com.geckour.q.util.toDomainTrack
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.coroutines.flow.map
 
-@OptIn(ExperimentalMaterialApi::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun Tracks(
     albumId: Long = -1,
@@ -78,7 +73,11 @@ fun Tracks(
         albumId > 0 -> db.trackDao().getAllByAlbumAsync(albumId)
         genreName != null -> db.trackDao().getAllByGenreNameAsync(genreName)
         else -> db.trackDao().getAllAsync()
-    }).collectAsState(initial = emptyList())
+    })
+        .map { joinedTracks ->
+            if (isFavoriteOnly.value) joinedTracks.filter { it.track.isFavorite } else joinedTracks
+        }
+        .collectAsState(initial = emptyList())
     val defaultTabBarTitle = stringResource(id = R.string.nav_track)
     val listState = rememberLazyListState()
 
@@ -127,9 +126,7 @@ fun Tracks(
                 )
             }
         }
-        items(joinedTracks.let { joinedTracks ->
-            if (isFavoriteOnly.value) joinedTracks.filter { it.track.isFavorite } else joinedTracks
-        }) { joinedTrack ->
+        items(joinedTracks) { joinedTrack ->
             val domainTrack = joinedTrack.toDomainTrack()
             Surface(
                 elevation = 0.dp,

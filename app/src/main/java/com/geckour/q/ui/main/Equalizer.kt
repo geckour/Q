@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.Button
 import androidx.compose.material.Divider
-import androidx.compose.material.Slider
 import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -121,12 +120,15 @@ fun Equalizer() {
                                         }
                                     }
                                     .width(300.dp),
-                                primaryProgressFraction = params.toRatio(levels.getOrNull(index) ?: 0),
+                                primaryProgressFraction = params.toRatio(
+                                    levels.getOrNull(index) ?: 0
+                                ),
                                 steps = params.levelRange.second - params.levelRange.first,
                                 primaryTrackColor = QTheme.colors.colorButtonNormal,
                                 onSeekEnded = {
                                     levels =
-                                        levels.toMutableList().apply { this[index] = params.normalizedLevel(it) }
+                                        levels.toMutableList()
+                                            .apply { this[index] = params.normalizedLevel(it) }
                                     updateEqualizerSettingJob.cancel()
                                     updateEqualizerSettingJob = coroutineScope.launch {
                                         equalizerParams?.let { params ->
