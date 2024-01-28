@@ -536,10 +536,9 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         stoppingSelf = true
 
         stop()
-        player.stop()
-        player.clearMediaItems()
         dispatcher.onServicePreSuperOnDestroy()
         player.removeListener(playerListener)
+        player.stop()
         player.release()
         mediaSession.release()
 
