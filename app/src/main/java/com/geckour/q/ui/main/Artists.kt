@@ -107,7 +107,10 @@ fun Artists(
                 )
             }
         }
-        items(artists) { artist ->
+        items(
+            artists,
+            key = { it.id }
+        ) { artist ->
             val containDropboxContent by db.artistDao()
                 .containDropboxContent(artist.id)
                 .collectAsState(initial = false)

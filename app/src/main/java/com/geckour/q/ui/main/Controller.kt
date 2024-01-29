@@ -34,6 +34,7 @@ import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -166,7 +167,7 @@ fun Controller(
                                     modifier = Modifier
                                         .clickable(
                                             onClick = { onToggleFavorite(currentTrack) },
-                                            interactionSource = MutableInteractionSource(),
+                                            interactionSource = remember { MutableInteractionSource() },
                                             indication = rememberRipple(bounded = false)
                                         )
                                         .padding(8.dp)
@@ -201,7 +202,7 @@ fun Controller(
                                 modifier = Modifier
                                     .clickable(
                                         onClick = cancelLoad,
-                                        interactionSource = MutableInteractionSource(),
+                                        interactionSource = remember { MutableInteractionSource() },
                                         indication = rememberRipple(bounded = false)
                                     )
                                     .padding(8.dp)
@@ -306,7 +307,7 @@ fun Controller(
                                 modifier = Modifier
                                     .clickable(
                                         onClick = rotateRepeatMode,
-                                        interactionSource = MutableInteractionSource(),
+                                        interactionSource = remember { MutableInteractionSource() },
                                         indication = rememberRipple(bounded = false)
                                     )
                                     .padding(8.dp)
@@ -320,7 +321,7 @@ fun Controller(
                                     .combinedClickable(
                                         onClick = { shuffleQueue(null) },
                                         onLongClick = resetShuffleQueue,
-                                        interactionSource = MutableInteractionSource(),
+                                        interactionSource = remember { MutableInteractionSource() },
                                         indication = rememberRipple(bounded = false)
                                     )
                                     .padding(8.dp)

@@ -126,7 +126,10 @@ fun Tracks(
                 )
             }
         }
-        items(joinedTracks) { joinedTrack ->
+        items(
+            joinedTracks,
+            key = { it.track.id }
+        ) { joinedTrack ->
             val domainTrack = joinedTrack.toDomainTrack()
             Surface(
                 elevation = 0.dp,

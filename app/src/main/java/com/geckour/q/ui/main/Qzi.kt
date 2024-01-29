@@ -63,7 +63,7 @@ fun Qzi(onClick: (item: JoinedTrack) -> Unit) {
             Column(
                 modifier = (if (track != null) contentModifier.clickable(
                     onClick = { onClick(track) },
-                    interactionSource = MutableInteractionSource(),
+                    interactionSource = remember { MutableInteractionSource() },
                     indication = rememberRipple(bounded = false)
                 ) else contentModifier)
             ) {

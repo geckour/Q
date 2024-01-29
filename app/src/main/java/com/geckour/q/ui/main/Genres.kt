@@ -102,7 +102,10 @@ fun Genres(
                 onSearchItemLongClicked = onSearchItemLongClicked
             )
         }
-        items(genres) { genre ->
+        items(
+            genres,
+            key = { it.name }
+        ) { genre ->
             Timber.d("qgeck genre: $genre")
             Column(
                 modifier = Modifier

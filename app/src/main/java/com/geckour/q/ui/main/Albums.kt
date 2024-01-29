@@ -122,7 +122,10 @@ fun Albums(
                 )
             }
         }
-        items(joinedAlbums) { joinedAlbum ->
+        items(
+            joinedAlbums,
+            key = { it.album.id }
+        ) { joinedAlbum ->
             val containDropboxContent by db.albumDao()
                 .containDropboxContent(joinedAlbum.album.id)
                 .collectAsState(initial = false)
