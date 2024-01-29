@@ -9,7 +9,7 @@ import org.koin.dsl.module
 
 val viewModelModule = module {
     viewModel {
-        MainViewModel(app = androidApplication() as App, sharedPreferences = get())
+        MainViewModel(app = androidApplication() as App)
     }
     viewModel {
         InstantPlayerViewModel(app = androidApplication() as App)

@@ -28,6 +28,7 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.CommandButton
+import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ConnectionResult
 import androidx.media3.session.MediaSessionService
@@ -481,6 +482,8 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
             }
 
             override fun addMediaItems(index: Int, mediaItems: MutableList<MediaItem>) {
+                Timber.d("qgeck addMediaItems forwarded")
+
                 lifecycleScope.launch {
                     val trackDao = db.trackDao()
                     val fullMediaItems = mediaItems.mapNotNull {
@@ -492,8 +495,6 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
 
                     Timber.d("qgeck added full media items")
                 }
-
-                Timber.d("qgeck called addMediaItems")
             }
         }
         mediaSession = MediaSession.Builder(this, forwardingPlayer)
@@ -507,6 +508,12 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                 )
             )
             .build()
+
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider.Builder(this)
+                .build()
+                .apply { setSmallIcon(R.drawable.ic_notification_player) }
+        )
 
         lifecycleScope.launch {
             getEqualizerParams().collectLatest { params ->

@@ -3,7 +3,6 @@ package com.geckour.q.ui.main
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
-import android.content.SharedPreferences
 import android.net.Uri
 import android.os.Bundle
 import androidx.core.net.toFile
@@ -14,7 +13,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
-import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
@@ -53,11 +51,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
-@UnstableApi
-class MainViewModel(
-    private val app: App,
-    private val sharedPreferences: SharedPreferences
-) : ViewModel() {
+class MainViewModel(private val app: App) : ViewModel() {
 
     companion object {
 
