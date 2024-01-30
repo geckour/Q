@@ -390,7 +390,7 @@ fun Controller(
                     .padding(bottom = 2.dp, start = 16.dp, end = 16.dp)
             ) {
                 Text(
-                    text = routeInfo?.name ?: "This device",
+                    text = routeInfo?.name ?: stringResource(id = R.string.default_device_name),
                     fontSize = 10.sp,
                     color = QTheme.colors.colorTextPrimary,
                     modifier = Modifier.weight(1f)

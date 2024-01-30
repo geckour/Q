@@ -224,6 +224,7 @@ fun SingleScreen(
                     snackBarMessage = snackBarMessage,
                     isSearchActive = isSearchActive,
                     isFavoriteOnly = isFavoriteOnly,
+                    routeInfo = routeInfo,
                     onCancelProgress = onCancelProgress,
                     onSelectNav = onSelectNav,
                     onChangeTopBarTitle = onChangeTopBarTitle,

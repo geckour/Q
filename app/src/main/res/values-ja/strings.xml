@@ -7,6 +7,8 @@
     <string name="app_theme_light">ライト</string>
     <string name="app_theme_dark">ダーク</string>
 
+    <string name="default_device_name">端末のスピーカー</string>
+
     <!-- Drawer -->
     <string name="drawer_open">開</string>
     <string name="drawer_close">閉</string>
@@ -202,6 +204,8 @@
     <string name="equalizer_switch_enabled">ON</string>
     <string name="equalizer_switch_disabled">OFF</string>
     <string name="equalizer_flatten">リセット</string>
+    <string name="equalizer_set_as_default_for_the_device">%s\nのデフォルトに設定する</string>
+    <string name="equalizer_clear_default_for_the_device">%s\nのデフォルトを解除する</string>
 
     <!-- Metadata Editor -->
     <string name="metadata_edit_dialog_title">曲情報を編集</string>

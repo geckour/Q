@@ -10,6 +10,8 @@
     <string name="app_theme_light">Light</string>
     <string name="app_theme_dark">Dark</string>
 
+    <string name="default_device_name">This device\'s speaker</string>
+
     <!-- Drawer -->
     <string name="drawer_open">Open</string>
     <string name="drawer_close">Close</string>
@@ -218,6 +220,8 @@
     <string name="equalizer_switch_enabled">Enabled</string>
     <string name="equalizer_switch_disabled">Disabled</string>
     <string name="equalizer_flatten">Flatten</string>
+    <string name="equalizer_set_as_default_for_the_device">Set as default for\n%s</string>
+    <string name="equalizer_clear_default_for_the_device">Clear default for\n%s</string>
 
     <!-- Metadata Editor -->
     <string name="metadata_edit_dialog_title">Edit metadata</string>

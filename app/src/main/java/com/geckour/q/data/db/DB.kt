@@ -9,11 +9,15 @@ import androidx.room.TypeConverter
 import androidx.room.TypeConverters
 import com.geckour.q.data.db.dao.AlbumDao
 import com.geckour.q.data.db.dao.ArtistDao
+import com.geckour.q.data.db.dao.EqualizerPresetDao
 import com.geckour.q.data.db.dao.LyricDao
 import com.geckour.q.data.db.dao.TrackDao
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.AudioDeviceEqualizerInfo
 import com.geckour.q.data.db.model.Bool
+import com.geckour.q.data.db.model.EqualizerLevelRatio
+import com.geckour.q.data.db.model.EqualizerPreset
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.data.db.model.Track
@@ -22,11 +26,19 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 @Database(
-    entities = [Track::class, Album::class, Artist::class, Lyric::class],
-    version = 3,
+    entities = [
+        Track::class,
+        Album::class,
+        Artist::class,
+        Lyric::class,
+        EqualizerPreset::class,
+        EqualizerLevelRatio::class,
+    ],
+    version = 4,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
+        AutoMigration(from = 3, to = 4),
     ]
 )
 @TypeConverters(BoolConverter::class, LyricLineConverter::class)
@@ -40,9 +52,9 @@ abstract class DB : RoomDatabase() {
 
         fun getInstance(context: Context): DB =
             instance ?: synchronized(this) {
-                Room.databaseBuilder(context, DB::class.java, DB_NAME).build().apply {
-                    instance = this
-                }
+                Room.databaseBuilder(context, DB::class.java, DB_NAME)
+                    .build()
+                    .apply { instance = this }
             }
     }
 
@@ -50,6 +62,7 @@ abstract class DB : RoomDatabase() {
     abstract fun albumDao(): AlbumDao
     abstract fun artistDao(): ArtistDao
     abstract fun lyricDao(): LyricDao
+    abstract fun equalizerPresetDao(): EqualizerPresetDao
 }
 
 internal class BoolConverter {

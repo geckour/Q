@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -41,6 +42,7 @@ private val hasAlreadyShownDropboxSyncAlertKey =
 private val dropboxCredentialKey = stringPreferencesKey("key_dropbox_credential")
 private val equalizerEnabledKey = booleanPreferencesKey("key_equalizer_enabled")
 private val equalizerParamsKey = stringPreferencesKey("key_equalizer_params")
+private val selectedEqualizerPresetIdKey = longPreferencesKey("key_selected_equalizer_preset_id")
 
 fun Context.getIsNightMode(): Flow<Boolean> = dataStore.data.map {
     it[isNightModeKey] ?: false
@@ -88,4 +90,12 @@ fun Context.getEqualizerParams(): Flow<EqualizerParams?> = dataStore.data.map { 
 
 suspend fun Context.setEqualizerParams(equalizerParams: EqualizerParams?) {
     dataStore.edit { pref -> pref[equalizerParamsKey] = equalizerParams?.let { Json.encodeToString(it) }.orEmpty() }
+}
+
+fun Context.getSelectedEqualizerPresetId(): Flow<Long> = dataStore.data.map {
+    it[selectedEqualizerPresetIdKey] ?: 0
+}
+
+suspend fun Context.setSelectedEqualizerPresetId(selectedPresetId: Long?) {
+    dataStore.edit { it[selectedEqualizerPresetIdKey] = selectedPresetId ?: 0 }
 }

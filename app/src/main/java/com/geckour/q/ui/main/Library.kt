@@ -26,6 +26,7 @@ import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
+import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.util.toDomainTrack
 import kotlinx.collections.immutable.ImmutableList
@@ -39,6 +40,7 @@ fun Library(
     snackBarMessage: String?,
     isSearchActive: MutableState<Boolean>,
     isFavoriteOnly: MutableState<Boolean>,
+    routeInfo: QAudioDeviceInfo?,
     onCancelProgress: (() -> Unit)?,
     onSelectNav: (nav: Nav?) -> Unit,
     onChangeTopBarTitle: (newTitle: String) -> Unit,
@@ -251,7 +253,7 @@ fun Library(
                     onChangeTopBarTitle(topBarTitle)
                     onSetOptionMediaItem(null)
                 }
-                Equalizer()
+                Equalizer(routeInfo = routeInfo)
             }
         }
         QSnackBar(

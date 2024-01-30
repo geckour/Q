@@ -38,6 +38,8 @@ import androidx.media3.session.SessionResult
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.EqualizerLevelRatio
+import com.geckour.q.data.db.model.EqualizerPreset
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.ui.LauncherActivity
@@ -53,6 +55,7 @@ import com.geckour.q.util.dropboxCachePathPattern
 import com.geckour.q.util.getEqualizerEnabled
 import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getMediaItem
+import com.geckour.q.util.getSelectedEqualizerPresetId
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.orderModified
 import com.geckour.q.util.removedAt
@@ -67,6 +70,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.flow.take
@@ -534,9 +538,15 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         setEqualizer(player.audioSessionId)
 
         lifecycleScope.launch {
-            getEqualizerParams().collectLatest { params ->
-                params?.let { reflectEqualizerSettings(it) }
-            }
+            db.equalizerPresetDao().getEqualizerPresets()
+                .combine(getSelectedEqualizerPresetId()) { presets, selectedId ->
+                    presets.entries.toList().firstOrNull { it.key.id == selectedId }
+                }
+                .collectLatest { preset ->
+                    preset ?: return@collectLatest
+                    val params = getEqualizerParams().take(1).lastOrNull() ?: return@collectLatest
+                    reflectEqualizerSettings(params = params, equalizerPresetMapEntry = preset)
+                }
         }
         lifecycleScope.launch {
             getEqualizerEnabled().collectLatest { enabled ->
@@ -910,7 +920,13 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                     }
                 }
                 getEqualizerParams().take(1).lastOrNull()?.let {
-                    reflectEqualizerSettings(it)
+                    val selectedPresetId =
+                        getSelectedEqualizerPresetId().take(1).lastOrNull() ?: return@let
+                    val preset =
+                        db.equalizerPresetDao()
+                            .getEqualizerPreset(selectedPresetId).entries.firstOrNull()
+                            ?: return@let
+                    reflectEqualizerSettings(params = it, equalizerPresetMapEntry = preset)
                 }
                 equalizer?.enabled = getEqualizerEnabled().take(1).lastOrNull() == true
             } else {
@@ -919,10 +935,16 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         }
     }
 
-    private fun reflectEqualizerSettings(equalizerParams: EqualizerParams) {
-        equalizerParams.bands.forEachIndexed { i, band ->
+    private fun reflectEqualizerSettings(
+        params: EqualizerParams,
+        equalizerPresetMapEntry: Map.Entry<EqualizerPreset, List<EqualizerLevelRatio>>
+    ) {
+        equalizerPresetMapEntry.value.forEachIndexed { i, ratio ->
             try {
-                equalizer?.setBandLevel(i.toShort(), band.level.toShort())
+                equalizer?.setBandLevel(
+                    i.toShort(),
+                    params.normalizedLevel(ratio = ratio.ratio).toShort()
+                )
             } catch (t: Throwable) {
                 Timber.e(t)
             }
