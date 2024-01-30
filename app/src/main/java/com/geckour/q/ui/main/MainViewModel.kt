@@ -3,8 +3,11 @@ package com.geckour.q.ui.main
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.net.Uri
 import android.os.Bundle
+import androidx.core.content.getSystemService
 import androidx.core.net.toFile
 import androidx.core.os.bundleOf
 import androidx.lifecycle.MutableLiveData
@@ -16,6 +19,8 @@ import androidx.media3.common.Tracks
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
+import androidx.mediarouter.media.MediaRouteSelector
+import androidx.mediarouter.media.MediaRouter
 import androidx.work.WorkManager
 import com.dropbox.core.android.Auth
 import com.dropbox.core.v2.files.FolderMetadata
@@ -26,6 +31,7 @@ import com.geckour.q.data.BillingApiClient
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.PlaybackButton
+import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.service.PlayerService
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -65,6 +71,8 @@ class MainViewModel(private val app: App) : ViewModel() {
             .combine(workManager.getWorkInfosForUniqueWorkFlow(DROPBOX_DOWNLOAD_WORKER_NAME)) { mediaRetrieveWorkInfo, downloadWorkInfo ->
                 mediaRetrieveWorkInfo + downloadWorkInfo
             }
+    private val mediaRouter = MediaRouter.getInstance(app)
+    private val audioManager = app.getSystemService<AudioManager>()
 
     private lateinit var mediaControllerFuture: ListenableFuture<MediaController>
 
@@ -88,7 +96,13 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal val currentBufferedPositionFlow = MutableStateFlow(0L)
     internal val currentPlaybackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
     internal val currentRepeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
-    internal var snackBarMessageFlow = MutableStateFlow<String?>(null)
+    internal val snackBarMessageFlow = MutableStateFlow<String?>(null)
+    private val mediaRouteInfoListFlow = MutableStateFlow<List<MediaRouter.RouteInfo>>(emptyList())
+    private val audioDeviceInfoListFlow = MutableStateFlow<List<AudioDeviceInfo>>(emptyList())
+    internal val qAudioDeviceInfoListFlow =
+        mediaRouteInfoListFlow.combine(audioDeviceInfoListFlow) { first, second ->
+            getQAudioDeviceInfoList(first, second)
+        }
 
     private var notifyPlaybackPositionJob: Job = Job()
     private var notifyBufferedPositionJob: Job = Job()
@@ -165,6 +179,102 @@ class MainViewModel(private val app: App) : ViewModel() {
             }
         }
     )
+
+    private val mediaRouterCallback = object : MediaRouter.Callback() {
+
+        override fun onRouteSelected(
+            router: MediaRouter,
+            route: MediaRouter.RouteInfo,
+            reason: Int
+        ) {
+            super.onRouteSelected(router, route, reason)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onRouteUnselected(
+            router: MediaRouter,
+            route: MediaRouter.RouteInfo,
+            reason: Int
+        ) {
+            super.onRouteUnselected(router, route, reason)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onRouteAdded(router: MediaRouter, route: MediaRouter.RouteInfo) {
+            super.onRouteAdded(router, route)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onRouteRemoved(router: MediaRouter, route: MediaRouter.RouteInfo) {
+            super.onRouteRemoved(router, route)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onRouteChanged(router: MediaRouter, route: MediaRouter.RouteInfo) {
+            super.onRouteChanged(router, route)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onProviderAdded(router: MediaRouter, provider: MediaRouter.ProviderInfo) {
+            super.onProviderAdded(router, provider)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onProviderRemoved(router: MediaRouter, provider: MediaRouter.ProviderInfo) {
+            super.onProviderRemoved(router, provider)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onProviderChanged(router: MediaRouter, provider: MediaRouter.ProviderInfo) {
+            super.onProviderChanged(router, provider)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+    }
+
+    init {
+        onUpdateQAudioDeviceInfoList()
+        mediaRouter.addCallback(
+            MediaRouteSelector.EMPTY,
+            mediaRouterCallback,
+            MediaRouter.CALLBACK_FLAG_PERFORM_ACTIVE_SCAN
+        )
+    }
+
+    override fun onCleared() {
+        mediaRouter.removeCallback(mediaRouterCallback)
+
+        super.onCleared()
+    }
+
+    private fun onUpdateQAudioDeviceInfoList(router: MediaRouter = mediaRouter) {
+        mediaRouteInfoListFlow.value = router.routes
+        updateAudioDeviceInfoList()
+    }
+
+    private fun updateAudioDeviceInfoList() {
+        audioDeviceInfoListFlow.value =
+            audioManager?.getDevices(AudioManager.GET_DEVICES_OUTPUTS)?.toList().orEmpty()
+    }
+
+    private fun getQAudioDeviceInfoList(
+        mediaRouteInfoList: List<MediaRouter.RouteInfo>,
+        audioDeviceInfoList: List<AudioDeviceInfo>
+    ) = mediaRouteInfoList.flatMap { mediaRouteInfo ->
+        audioDeviceInfoList.map { audioDeviceInfo ->
+            QAudioDeviceInfo.from(
+                mediaRouteInfo = mediaRouteInfo,
+                audioDeviceInfo = audioDeviceInfo
+            )
+        }
+    }
 
     internal fun initializeMediaController(context: Context) {
         mediaControllerFuture = MediaController.Builder(
@@ -372,7 +482,7 @@ class MainViewModel(private val app: App) : ViewModel() {
         MediaController.releaseFuture(mediaControllerFuture)
     }
 
-    fun onNewQueue(
+    internal fun onNewQueue(
         domainTracks: List<DomainTrack>,
         actionType: InsertActionType,
         classType: OrientedClassType
@@ -380,51 +490,51 @@ class MainViewModel(private val app: App) : ViewModel() {
         onSubmitQueue?.invoke(actionType, classType, domainTracks.map { it.sourcePath })
     }
 
-    fun onQueueMove(from: Int, to: Int) {
+    internal fun onQueueMove(from: Int, to: Int) {
         onMoveQueuePosition?.invoke(from, to)
     }
 
-    fun onRemoveTrackFromQueue(domainTrack: DomainTrack) {
+    internal fun onRemoveTrackFromQueue(domainTrack: DomainTrack) {
         viewModelScope.launch {
             onRemoveQueue?.invoke(domainTrack.sourcePath)
         }
     }
 
-    fun onShuffle(actionType: ShuffleActionType? = null) {
+    internal fun onShuffle(actionType: ShuffleActionType? = null) {
         onShuffleQueue?.invoke(actionType)
     }
 
-    fun onResetShuffle() {
+    internal fun onResetShuffle() {
         onResetQueueOrder?.invoke()
     }
 
-    fun onPlayOrPause(playing: Boolean?) {
+    internal fun onPlayOrPause(playing: Boolean?) {
         onNewPlaybackButton(if (playing == true) PlaybackButton.PAUSE else PlaybackButton.PLAY)
     }
 
-    fun onNext() {
+    internal fun onNext() {
         onNewPlaybackButton(PlaybackButton.NEXT)
     }
 
-    fun onPrev() {
+    internal fun onPrev() {
         onNewPlaybackButton(PlaybackButton.PREV)
     }
 
-    fun onFF(): Boolean {
+    internal fun onFF(): Boolean {
         onNewPlaybackButton(PlaybackButton.FF)
         return true
     }
 
-    fun onRewind(): Boolean {
+    internal fun onRewind(): Boolean {
         onNewPlaybackButton(PlaybackButton.REWIND)
         return true
     }
 
-    fun onClickClearQueueButton() {
+    internal fun onClickClearQueueButton() {
         onClearQueue?.invoke(true)
     }
 
-    fun onClickRepeatButton() {
+    internal fun onClickRepeatButton() {
         onRotateRepeatMode?.invoke()
     }
 

@@ -130,7 +130,7 @@ class MainActivity : ComponentActivity() {
 
     private var onStoragePermissionRequestResult: ((isGranted: Boolean) -> Unit)? = null
 
-    private val requestNotificationPermission =
+    private val requestPermissionWithoutResultHandling =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
 
     private val getContent =
@@ -227,9 +227,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         if (Build.VERSION.SDK_INT > 32 &&
-            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
         ) {
-            requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            requestPermissionWithoutResultHandling.launch(
+                Manifest.permission.POST_NOTIFICATIONS
+            )
         }
 
         val layoutTypeFlow = WindowInfoTracker.getOrCreate(this)
@@ -356,6 +359,8 @@ class MainActivity : ComponentActivity() {
             }
             val isSearchActive = remember { mutableStateOf(false) }
             val isFavoriteOnly = remember { mutableStateOf(false) }
+            val qAudioDeviceInfoList by viewModel.qAudioDeviceInfoListFlow
+                .collectAsState(emptyList())
 
             onLrcFileLoaded = {
                 if (attachLyricTargetTrackId > 0) {
@@ -495,6 +500,7 @@ class MainActivity : ComponentActivity() {
                                 currentPlaybackInfo = currentPlaybackInfo,
                                 currentRepeatMode = currentRepeatMode,
                                 isLoading = isLoading,
+                                routeInfo = qAudioDeviceInfoList.lastOrNull { it.selected },
                                 showLyric = showLyric,
                                 selectedNav = selectedNav,
                                 selectedTrack = selectedTrack,
@@ -639,6 +645,7 @@ class MainActivity : ComponentActivity() {
                                 currentPlaybackInfo = currentPlaybackInfo,
                                 currentRepeatMode = currentRepeatMode,
                                 isLoading = isLoading,
+                                routeInfo = qAudioDeviceInfoList.lastOrNull { it.selected },
                                 showLyric = showLyric,
                                 selectedNav = selectedNav,
                                 selectedTrack = selectedTrack,

@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.runtime.Composable
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.util.ShuffleActionType
 import kotlinx.collections.immutable.ImmutableList
 
@@ -16,6 +17,7 @@ fun PlayerSheet(
     currentPlaybackInfo: Pair<Boolean, Int>,
     currentRepeatMode: Int,
     isLoading: Pair<Boolean, (() -> Unit)?>,
+    routeInfo: QAudioDeviceInfo?,
     showLyric: Boolean,
     onTogglePlayPause: () -> Unit,
     onPrev: () -> Unit,
@@ -50,6 +52,7 @@ fun PlayerSheet(
             playbackInfo = currentPlaybackInfo,
             repeatMode = currentRepeatMode,
             isLoading = isLoading.first,
+            routeInfo = routeInfo,
             showLyric = showLyric,
             onTogglePlayPause = onTogglePlayPause,
             onPrev = onPrev,

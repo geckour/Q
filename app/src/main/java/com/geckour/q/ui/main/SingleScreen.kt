@@ -17,7 +17,6 @@ import androidx.compose.material.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
@@ -30,6 +29,7 @@ import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
+import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.EqualizerParams
@@ -55,6 +55,7 @@ fun SingleScreen(
     currentPlaybackInfo: Pair<Boolean, Int>,
     currentRepeatMode: Int,
     isLoading: Pair<Boolean, (() -> Unit)?>,
+    routeInfo: QAudioDeviceInfo?,
     showLyric: Boolean,
     selectedNav: Nav?,
     selectedTrack: DomainTrack?,
@@ -144,16 +145,16 @@ fun SingleScreen(
         drawerState = drawerState,
         drawerElevation = 8.dp,
         drawerContent = {
-        Drawer(
-            drawerState = drawerState,
-            navController = navController,
-            selectedNav = selectedNav,
-            equalizerParams = equalizerParams,
-            onSelectNav = onSelectNav,
-            onShowDropboxDialog = onShowDropboxDialog,
-            onRetrieveMedia = onRetrieveMedia
-        )
-    }
+            Drawer(
+                drawerState = drawerState,
+                navController = navController,
+                selectedNav = selectedNav,
+                equalizerParams = equalizerParams,
+                onSelectNav = onSelectNav,
+                onShowDropboxDialog = onShowDropboxDialog,
+                onRetrieveMedia = onRetrieveMedia
+            )
+        }
     ) {
         BottomSheetScaffold(
             scaffoldState = scaffoldState,
@@ -187,6 +188,7 @@ fun SingleScreen(
                     currentPlaybackInfo = currentPlaybackInfo,
                     currentRepeatMode = currentRepeatMode,
                     isLoading = isLoading,
+                    routeInfo = routeInfo,
                     showLyric = showLyric,
                     onTogglePlayPause = onTogglePlayPause,
                     onPrev = onPrev,

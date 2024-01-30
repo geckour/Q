@@ -54,6 +54,7 @@ import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.ui.DoubleTrackSlider
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.ShuffleActionType
@@ -74,6 +75,7 @@ fun Controller(
     playbackInfo: Pair<Boolean, Int>,
     repeatMode: Int,
     isLoading: Boolean,
+    routeInfo: QAudioDeviceInfo?,
     showLyric: Boolean,
     onTogglePlayPause: () -> Unit,
     onPrev: () -> Unit,
@@ -382,21 +384,30 @@ fun Controller(
                         .width(60.dp)
                 )
             }
-            Text(
-                text = currentTrack?.let {
-                    stringResource(
-                        id = R.string.track_file_info,
-                        it.codec,
-                        it.bitrate,
-                        it.sampleRate
-                    )
-                }.orEmpty(),
-                fontSize = 10.sp,
-                color = QTheme.colors.colorTextPrimary,
+            Row(
                 modifier = Modifier
                     .align(Alignment.End)
-                    .padding(bottom = 2.dp, end = 16.dp)
-            )
+                    .padding(bottom = 2.dp, start = 16.dp, end = 16.dp)
+            ) {
+                Text(
+                    text = routeInfo?.name ?: "This device",
+                    fontSize = 10.sp,
+                    color = QTheme.colors.colorTextPrimary,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    text = currentTrack?.let {
+                        stringResource(
+                            id = R.string.track_file_info,
+                            it.codec,
+                            it.bitrate,
+                            it.sampleRate
+                        )
+                    }.orEmpty(),
+                    fontSize = 10.sp,
+                    color = QTheme.colors.colorTextPrimary
+                )
+            }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(

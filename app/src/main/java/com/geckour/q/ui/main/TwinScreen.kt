@@ -12,8 +12,6 @@ import androidx.compose.material.Scaffold
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -24,6 +22,7 @@ import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
+import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.EqualizerParams
@@ -44,6 +43,7 @@ fun TwinScreen(
     currentPlaybackInfo: Pair<Boolean, Int>,
     currentRepeatMode: Int,
     isLoading: Pair<Boolean, (() -> Unit)?>,
+    routeInfo: QAudioDeviceInfo?,
     showLyric: Boolean,
     selectedNav: Nav?,
     selectedTrack: DomainTrack?,
@@ -181,6 +181,7 @@ fun TwinScreen(
             currentPlaybackInfo = currentPlaybackInfo,
             currentRepeatMode = currentRepeatMode,
             isLoading = isLoading,
+            routeInfo = routeInfo,
             showLyric = showLyric,
             onTogglePlayPause = onTogglePlayPause,
             onPrev = onPrev,
@@ -414,6 +415,7 @@ fun RowScope.TwinEndPage(
     currentPlaybackInfo: Pair<Boolean, Int>,
     currentRepeatMode: Int,
     isLoading: Pair<Boolean, (() -> Unit)?>,
+    routeInfo: QAudioDeviceInfo?,
     showLyric: Boolean,
     onTogglePlayPause: () -> Unit,
     onPrev: () -> Unit,
@@ -454,6 +456,7 @@ fun RowScope.TwinEndPage(
                 currentPlaybackInfo = currentPlaybackInfo,
                 currentRepeatMode = currentRepeatMode,
                 isLoading = isLoading,
+                routeInfo = routeInfo,
                 showLyric = showLyric,
                 onTogglePlayPause = onTogglePlayPause,
                 onPrev = onPrev,

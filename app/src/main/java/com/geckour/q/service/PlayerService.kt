@@ -26,6 +26,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
@@ -229,6 +230,20 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
 
         override fun onAudioSessionIdChanged(audioSessionId: Int) {
             super.onAudioSessionIdChanged(audioSessionId)
+            Timber.d("qgeck audio session ID: $audioSessionId")
+
+            setEqualizer(audioSessionId)
+        }
+    }
+
+    private val playerAnalyticsListener = object : AnalyticsListener {
+
+        override fun onAudioSessionIdChanged(
+            eventTime: AnalyticsListener.EventTime,
+            audioSessionId: Int
+        ) {
+            super.onAudioSessionIdChanged(eventTime, audioSessionId)
+            Timber.d("qgeck audio session ID: $audioSessionId")
 
             setEqualizer(audioSessionId)
         }
@@ -443,6 +458,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                         .build(),
                     true
                 )
+                addAnalyticsListener(playerAnalyticsListener)
             }
         forwardingPlayer = object : ForwardingPlayer(player) {
 
@@ -515,6 +531,8 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                 .apply { setSmallIcon(R.drawable.ic_notification_player) }
         )
 
+        setEqualizer(player.audioSessionId)
+
         lifecycleScope.launch {
             getEqualizerParams().collectLatest { params ->
                 params?.let { reflectEqualizerSettings(it) }
@@ -545,6 +563,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         stop()
         dispatcher.onServicePreSuperOnDestroy()
         player.removeListener(playerListener)
+        player.removeAnalyticsListener(playerAnalyticsListener)
         player.stop()
         player.release()
         mediaSession.release()

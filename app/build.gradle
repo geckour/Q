@@ -161,6 +161,7 @@ dependencies {
     implementation 'androidx.preference:preference-ktx:1.2.1'
     implementation "androidx.browser:browser:1.7.0"
     implementation "androidx.window:window:1.2.0"
+    implementation "androidx.mediarouter:mediarouter:1.6.0"
 
     // KTX
     implementation 'androidx.fragment:fragment-ktx:1.6.2'

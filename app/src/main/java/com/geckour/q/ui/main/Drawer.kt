@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.Divider
 import androidx.compose.material.DrawerState
-import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.Text
 import androidx.compose.material.ripple.rememberRipple
@@ -119,7 +118,6 @@ fun DrawerSectionHeader(title: String) {
     )
 }
 
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun Drawer(
     drawerState: DrawerState,
