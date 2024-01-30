@@ -17,9 +17,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.Button
 import androidx.compose.material.Divider
 import androidx.compose.material.Icon
@@ -56,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.AudioDeviceEqualizerInfo
 import com.geckour.q.data.db.model.EqualizerLevelRatio
 import com.geckour.q.data.db.model.EqualizerPreset
 import com.geckour.q.domain.model.QAudioDeviceInfo
@@ -67,6 +68,7 @@ import com.geckour.q.util.setEqualizerEnabled
 import com.geckour.q.util.setSelectedEqualizerPresetId
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -83,7 +85,24 @@ fun Equalizer(routeInfo: QAudioDeviceInfo?) {
     var updateEqualizerPresetJob by remember { mutableStateOf<Job>(Job()) }
     var sliderHeight by remember { mutableIntStateOf(0) }
     var labelHeight by remember { mutableIntStateOf(0) }
-    val presetsLazyListState = rememberLazyListState()
+    val audioDeviceEqualizerInfo by db.audioDeviceEqualizerInfoDao()
+        .get(
+            routeId = routeInfo?.routeId ?: "",
+            deviceId = routeInfo?.id ?: 0
+        ).collectAsState(initial = null)
+    val presetsLazyListState by
+    remember {
+        derivedStateOf {
+            val equalizerInfo = audioDeviceEqualizerInfo
+            LazyListState(
+                firstVisibleItemIndex = if (equalizerInfo?.defaultEqualizerPresetId != null) {
+                    equalizerPresets?.entries
+                        ?.indexOfFirst { it.key.id == equalizerInfo.defaultEqualizerPresetId }
+                        ?: 0
+                } else 0
+            )
+        }
+    }
     val firstVisiblePresetIndex by remember {
         derivedStateOf {
             presetsLazyListState.layoutInfo
@@ -111,6 +130,10 @@ fun Equalizer(routeInfo: QAudioDeviceInfo?) {
 
     val params = equalizerParams ?: return
     val presetMap = equalizerPresets ?: return
+
+    LaunchedEffect(audioDeviceEqualizerInfo) {
+        Timber.d("qgeck audioDeviceEqualizerInfo: $audioDeviceEqualizerInfo")
+    }
 
     LaunchedEffect(equalizerPresets, equalizerParams) {
         if (presetMap.isEmpty()) {
@@ -146,10 +169,34 @@ fun Equalizer(routeInfo: QAudioDeviceInfo?) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             routeInfo?.let {
-                Button(onClick = { /*TODO*/ }) {
+                val preset = selectedPreset ?: return@let
+                val info = audioDeviceEqualizerInfo
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            if (info?.defaultEqualizerPresetId == null || info.defaultEqualizerPresetId != selectedPreset?.key?.id) {
+                                db.audioDeviceEqualizerInfoDao().upsert(
+                                    info?.copy(defaultEqualizerPresetId = preset.key.id)
+                                        ?: AudioDeviceEqualizerInfo(
+                                            id = 0,
+                                            routeId = it.routeId,
+                                            deviceAddress = it.address,
+                                            deviceId = it.id,
+                                            defaultEqualizerPresetId = preset.key.id
+                                        )
+                                )
+                            } else {
+                                db.audioDeviceEqualizerInfoDao()
+                                    .upsert(info.copy(defaultEqualizerPresetId = null))
+                            }
+                        }
+                    }
+                ) {
                     Text(
                         text = stringResource(
-                            id = R.string.equalizer_set_as_default_for_the_device,
+                            id = if (info?.defaultEqualizerPresetId == null || info.defaultEqualizerPresetId != selectedPreset?.key?.id) {
+                                R.string.equalizer_set_as_default_for_the_device
+                            } else R.string.equalizer_clear_default_for_the_device,
                             it.name
                         )
                     )

@@ -6,6 +6,7 @@ import android.content.Context
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import androidx.core.content.getSystemService
 import androidx.core.net.toFile
@@ -56,6 +57,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 class MainViewModel(private val app: App) : ViewModel() {
 
@@ -99,9 +101,12 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal val snackBarMessageFlow = MutableStateFlow<String?>(null)
     private val mediaRouteInfoListFlow = MutableStateFlow<List<MediaRouter.RouteInfo>>(emptyList())
     private val audioDeviceInfoListFlow = MutableStateFlow<List<AudioDeviceInfo>>(emptyList())
+    private val activeAudioDeviceInfoFlow = MutableStateFlow<AudioDeviceInfo?>(null)
     internal val qAudioDeviceInfoListFlow =
         mediaRouteInfoListFlow.combine(audioDeviceInfoListFlow) { first, second ->
-            getQAudioDeviceInfoList(first, second)
+            first to second
+        }.combine(activeAudioDeviceInfoFlow) { (first, second), third ->
+            getQAudioDeviceInfoList(first, second, third)
         }
 
     private var notifyPlaybackPositionJob: Job = Job()
@@ -257,6 +262,10 @@ class MainViewModel(private val app: App) : ViewModel() {
     private fun onUpdateQAudioDeviceInfoList(router: MediaRouter = mediaRouter) {
         mediaRouteInfoListFlow.value = router.routes
         updateAudioDeviceInfoList()
+        activeAudioDeviceInfoFlow.value =
+            if (Build.VERSION.SDK_INT > 30) {
+                audioManager?.activePlaybackConfigurations?.firstOrNull { it.audioDeviceInfo != null }?.audioDeviceInfo
+            } else null
     }
 
     private fun updateAudioDeviceInfoList() {
@@ -266,15 +275,24 @@ class MainViewModel(private val app: App) : ViewModel() {
 
     private fun getQAudioDeviceInfoList(
         mediaRouteInfoList: List<MediaRouter.RouteInfo>,
-        audioDeviceInfoList: List<AudioDeviceInfo>
+        audioDeviceInfoList: List<AudioDeviceInfo>,
+        activeAudioDeviceInfo: AudioDeviceInfo?,
     ) = mediaRouteInfoList.flatMap { mediaRouteInfo ->
         audioDeviceInfoList.map { audioDeviceInfo ->
             QAudioDeviceInfo.from(
                 mediaRouteInfo = mediaRouteInfo,
-                audioDeviceInfo = audioDeviceInfo
+                audioDeviceInfo = audioDeviceInfo,
+                activeAudioDeviceInfo = activeAudioDeviceInfo
             )
         }
-    }
+    }.let { qAudioDeviceInfoList ->
+        val selectedMediaRouteInfo =
+            mediaRouteInfoList.firstOrNull { it.isSelected } ?: return@let qAudioDeviceInfoList
+        if (qAudioDeviceInfoList.none { it.selected }) {
+            qAudioDeviceInfoList +
+                    QAudioDeviceInfo.getDefaultQAudioDeviceInfo(app, selectedMediaRouteInfo)
+        } else qAudioDeviceInfoList
+    }.apply { Timber.d("qgeck Q audio device info list: $this") }
 
     internal fun initializeMediaController(context: Context) {
         mediaControllerFuture = MediaController.Builder(

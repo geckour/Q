@@ -9,6 +9,7 @@ import androidx.room.TypeConverter
 import androidx.room.TypeConverters
 import com.geckour.q.data.db.dao.AlbumDao
 import com.geckour.q.data.db.dao.ArtistDao
+import com.geckour.q.data.db.dao.AudioDeviceEqualizerInfoDao
 import com.geckour.q.data.db.dao.EqualizerPresetDao
 import com.geckour.q.data.db.dao.LyricDao
 import com.geckour.q.data.db.dao.TrackDao
@@ -33,12 +34,14 @@ import kotlinx.serialization.json.Json
         Lyric::class,
         EqualizerPreset::class,
         EqualizerLevelRatio::class,
+        AudioDeviceEqualizerInfo::class,
     ],
-    version = 4,
+    version = 5,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
         AutoMigration(from = 3, to = 4),
+        AutoMigration(from = 4, to = 5),
     ]
 )
 @TypeConverters(BoolConverter::class, LyricLineConverter::class)
@@ -63,6 +66,7 @@ abstract class DB : RoomDatabase() {
     abstract fun artistDao(): ArtistDao
     abstract fun lyricDao(): LyricDao
     abstract fun equalizerPresetDao(): EqualizerPresetDao
+    abstract fun audioDeviceEqualizerInfoDao(): AudioDeviceEqualizerInfoDao
 }
 
 internal class BoolConverter {

@@ -542,10 +542,10 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                 .combine(getSelectedEqualizerPresetId()) { presets, selectedId ->
                     presets.entries.toList().firstOrNull { it.key.id == selectedId }
                 }
-                .collectLatest { preset ->
-                    preset ?: return@collectLatest
+                .collectLatest { selectedPreset ->
+                    selectedPreset ?: return@collectLatest
                     val params = getEqualizerParams().take(1).lastOrNull() ?: return@collectLatest
-                    reflectEqualizerSettings(params = params, equalizerPresetMapEntry = preset)
+                    reflectEqualizerSettings(params = params, equalizerPresetMapEntry = selectedPreset)
                 }
         }
         lifecycleScope.launch {
