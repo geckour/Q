@@ -206,6 +206,8 @@
     <string name="equalizer_flatten">リセット</string>
     <string name="equalizer_set_as_default_for_the_device">%s\nのデフォルトに設定する</string>
     <string name="equalizer_clear_default_for_the_device">%s\nのデフォルトを解除する</string>
+    <string name="equalizer_preset_label_edit">編集</string>
+    <string name="equalizer_preset_label_confirm">決定</string>
 
     <!-- Metadata Editor -->
     <string name="metadata_edit_dialog_title">曲情報を編集</string>

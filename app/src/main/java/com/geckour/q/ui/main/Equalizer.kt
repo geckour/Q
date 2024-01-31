@@ -21,6 +21,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.text2.BasicTextField2
+import androidx.compose.foundation.text2.TextFieldDecorator
+import androidx.compose.foundation.text2.input.TextFieldLineLimits
+import androidx.compose.foundation.text2.input.rememberTextFieldState
 import androidx.compose.material.Button
 import androidx.compose.material.Divider
 import androidx.compose.material.Icon
@@ -29,6 +33,8 @@ import androidx.compose.material.Switch
 import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -42,6 +48,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
@@ -50,8 +59,10 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -173,20 +184,21 @@ fun Equalizer(routeInfo: QAudioDeviceInfo?) {
             db = db,
             equalizerEnabled = equalizerEnabled,
             equalizerParams = params,
-            selectedPreset = selectedPreset
+            selectedPresetLevelRatios = selectedPreset?.value
         )
         Spacer(modifier = Modifier.height(20.dp))
         BottomController(
             db = db,
             equalizerParams = params,
-            equalizerPresetsMap = presetsMap,
+            equalizerPresetsSize = presetsMap.size,
             selectedPreset = selectedPreset
         )
         Spacer(modifier = Modifier.height(20.dp))
         EqualizerPresetSelector(
+            db = db,
             presetsLazyListState = presetsLazyListState,
             equalizerPresetsMap = presetsMap,
-            selectedPreset = selectedPreset
+            selectedPresetId = selectedPreset?.key?.id
         )
     }
 }
@@ -258,7 +270,7 @@ fun ColumnScope.EqualizerSubstance(
     db: DB,
     equalizerEnabled: Boolean,
     equalizerParams: EqualizerParams,
-    selectedPreset: Map.Entry<EqualizerPreset, List<EqualizerLevelRatio>>?
+    selectedPresetLevelRatios: List<EqualizerLevelRatio>?
 ) {
     val coroutineScope = rememberCoroutineScope()
     var updateEqualizerPresetJob by remember { mutableStateOf<Job>(Job()) }
@@ -288,7 +300,7 @@ fun ColumnScope.EqualizerSubstance(
         ) {
             val ratios by remember {
                 derivedStateOf {
-                    selectedPreset?.value
+                    selectedPresetLevelRatios
                         ?.map { it.ratio }
                         ?: List(equalizerParams.bands.size) { 0.5f }
                 }
@@ -326,8 +338,8 @@ fun ColumnScope.EqualizerSubstance(
                         onSeekEnded = { newRatio ->
                             updateEqualizerPresetJob.cancel()
                             updateEqualizerPresetJob = coroutineScope.launch {
-                                val preset = selectedPreset ?: return@launch
-                                preset.value.getOrNull(index)?.let { equalizerLevelRatio ->
+                                val presetLevelRatios = selectedPresetLevelRatios ?: return@launch
+                                presetLevelRatios.getOrNull(index)?.let { equalizerLevelRatio ->
                                     db.equalizerPresetDao().upsertEqualizerLevelRatio(
                                         equalizerLevelRatio.copy(ratio = newRatio)
                                     )
@@ -361,7 +373,7 @@ fun ColumnScope.EqualizerSubstance(
 private fun ColumnScope.BottomController(
     db: DB,
     equalizerParams: EqualizerParams,
-    equalizerPresetsMap: Map<EqualizerPreset, List<EqualizerLevelRatio>>,
+    equalizerPresetsSize: Int,
     selectedPreset: Map.Entry<EqualizerPreset, List<EqualizerLevelRatio>>?,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -373,7 +385,7 @@ private fun ColumnScope.BottomController(
         Box(modifier = Modifier.size(24.dp)) {
             Spacer(modifier = Modifier.size(24.dp))
             androidx.compose.animation.AnimatedVisibility(
-                visible = equalizerPresetsMap.size > 1,
+                visible = equalizerPresetsSize > 1,
                 enter = fadeIn(),
                 exit = fadeOut()
             ) {
@@ -431,7 +443,7 @@ private fun ColumnScope.BottomController(
                                 ratio = 0.5f
                             )
                         },
-                        overrideLabelById = { id -> "temporary $id" }
+                        overrideLabelById = { id -> "Preset $id" }
                     )
                 }
             },
@@ -445,9 +457,10 @@ private fun ColumnScope.BottomController(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun EqualizerPresetSelector(
+    db: DB,
     presetsLazyListState: LazyListState,
     equalizerPresetsMap: Map<EqualizerPreset, List<EqualizerLevelRatio>>,
-    selectedPreset: Map.Entry<EqualizerPreset, List<EqualizerLevelRatio>>?
+    selectedPresetId: Long?
 ) {
     LazyRow(
         modifier = Modifier.fillMaxWidth(),
@@ -457,64 +470,124 @@ private fun EqualizerPresetSelector(
         horizontalArrangement = Arrangement.Center
     ) {
         itemsIndexed(equalizerPresetsMap.entries.toList()) { index, equalizerPreset ->
-            val isSelected = equalizerPreset.key.id == selectedPreset?.key?.id
-            if (isSelected) {
+            Box(contentAlignment = Alignment.Center) {
+                val isSelected = equalizerPreset.key.id == selectedPresetId
+
+                Spacer(modifier = Modifier.height(with(LocalDensity.current) { 33.sp.toDp() }))
                 Row {
                     Spacer(
                         modifier = Modifier.width(
                             if (equalizerPresetsMap.size > 1 && index == 0) {
-                                (LocalConfiguration.current.screenWidthDp * 0.3).dp
+                                (LocalConfiguration.current.screenWidthDp * 0.25).dp
                             } else 0.dp
                         )
                     )
-                    Text(
-                        text = equalizerPreset.key.label,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Bold,
-                        textAlign = TextAlign.Center,
-                        color = QTheme.colors.colorTextPrimary,
-                        modifier = Modifier
-                            .width((LocalConfiguration.current.screenWidthDp * 0.4).dp)
-                            .padding(horizontal = 4.dp)
-                    )
-                    Spacer(
-                        modifier = Modifier.width(
-                            if (equalizerPresetsMap.size > 1 && index == equalizerPresetsMap.size - 1) {
-                                (LocalConfiguration.current.screenWidthDp * 0.3).dp
-                            } else 0.dp
+                    if (isSelected) {
+                        EqualizerPresetNameTextField(
+                            db,
+                            equalizerPreset.key
                         )
-                    )
-                }
-            } else {
-                Box(contentAlignment = Alignment.Center) {
-                    Spacer(modifier = Modifier.height(with(LocalDensity.current) { 33.sp.toDp() }))
-                    Row {
-                        Spacer(
-                            modifier = Modifier.width(
-                                if (equalizerPresetsMap.size > 1 && index == 0) {
-                                    (LocalConfiguration.current.screenWidthDp * 0.3).dp
-                                } else 0.dp
-                            )
-                        )
+                    } else {
                         Text(
                             text = equalizerPreset.key.label,
                             fontSize = 16.sp,
                             color = QTheme.colors.colorTextPrimary.copy(alpha = 0.7f),
                             textAlign = TextAlign.Center,
                             modifier = Modifier
-                                .width((LocalConfiguration.current.screenWidthDp * 0.4).dp)
+                                .width((LocalConfiguration.current.screenWidthDp * 0.5).dp)
                                 .padding(horizontal = 4.dp)
                         )
-                        Spacer(
-                            modifier = Modifier.width(
-                                if (equalizerPresetsMap.size > 1 && index == equalizerPresetsMap.size - 1) {
-                                    (LocalConfiguration.current.screenWidthDp * 0.3).dp
-                                } else 0.dp
-                            )
+                    }
+                    Spacer(
+                        modifier = Modifier.width(
+                            if (equalizerPresetsMap.size > 1 && index == equalizerPresetsMap.size - 1) {
+                                (LocalConfiguration.current.screenWidthDp * 0.25).dp
+                            } else 0.dp
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun EqualizerPresetNameTextField(db: DB, equalizerPreset: EqualizerPreset) {
+    val coroutineScope = rememberCoroutineScope()
+    var editing by remember { mutableStateOf(false) }
+
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+            .width((LocalConfiguration.current.screenWidthDp * 0.5).dp)
+            .padding(horizontal = 4.dp)
+    ) {
+        val textFieldState = rememberTextFieldState(initialText = equalizerPreset.label)
+
+        if (editing) {
+            val textFieldFocusRequester by remember { mutableStateOf(FocusRequester()) }
+
+            BasicTextField2(
+                state = textFieldState,
+                textStyle = TextStyle(
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    color = QTheme.colors.colorTextPrimary
+                ),
+                cursorBrush = SolidColor(value = QTheme.colors.colorTextPrimary),
+                decorator = {
+                    Column {
+                        it()
+                        Divider(
+                            color = QTheme.colors.colorPrimary,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                },
+                lineLimits = TextFieldLineLimits.SingleLine,
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(textFieldFocusRequester)
+            )
+
+            LaunchedEffect(editing) {
+                textFieldFocusRequester.requestFocus()
+            }
+        } else {
+            Text(
+                text = equalizerPreset.label,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                color = QTheme.colors.colorTextPrimary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+        }
+        IconButton(
+            onClick = {
+                if (editing) {
+                    coroutineScope.launch {
+                        db.equalizerPresetDao().upsertEqualizerPreset(
+                            equalizerPreset.copy(label = textFieldState.text.toString())
                         )
                     }
                 }
+                editing = editing.not()
             }
+        ) {
+            Icon(
+                imageVector = if (editing) Icons.Default.Done else Icons.Default.Edit,
+                contentDescription = stringResource(
+                    id = if (editing) R.string.equalizer_preset_label_confirm else R.string.equalizer_preset_label_edit
+                ),
+                modifier = Modifier.size(20.dp),
+                tint = QTheme.colors.colorTextPrimary
+            )
         }
     }
 }
