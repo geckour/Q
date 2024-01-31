@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text2.BasicTextField2
-import androidx.compose.foundation.text2.TextFieldDecorator
 import androidx.compose.foundation.text2.input.TextFieldLineLimits
 import androidx.compose.foundation.text2.input.rememberTextFieldState
 import androidx.compose.material.Button
@@ -274,87 +273,121 @@ fun ColumnScope.EqualizerSubstance(
 ) {
     val coroutineScope = rememberCoroutineScope()
     var updateEqualizerPresetJob by remember { mutableStateOf<Job>(Job()) }
-    var sliderHeight by remember { mutableIntStateOf(0) }
-    var labelHeight by remember { mutableIntStateOf(0) }
+    val screenWidth = LocalConfiguration.current.screenWidthDp
+    var boxHeight by remember { mutableIntStateOf(screenWidth) }
+    var labelWidthMap by remember { mutableStateOf(emptyMap<Int, Int>()) }
 
     Box(
         modifier = Modifier
             .padding(horizontal = 16.dp, vertical = 20.dp)
             .weight(1f)
-            .onGloballyPositioned { sliderHeight = it.size.height }
     ) {
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .height(with(LocalDensity.current) { (sliderHeight - labelHeight).toDp() })
-                .padding(vertical = 6.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            repeat(5) {
-                Divider(color = QTheme.colors.colorPrimary)
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            val ratios by remember {
-                derivedStateOf {
-                    selectedPresetLevelRatios
-                        ?.map { it.ratio }
-                        ?: List(equalizerParams.bands.size) { 0.5f }
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .onGloballyPositioned { boxHeight = it.size.height }
+            ) {
+                Column(
+                    Modifier
+                        .matchParentSize()
+                        .padding(vertical = 6.dp),
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    repeat(5) {
+                        Divider(color = QTheme.colors.colorPrimary)
+                    }
+                }
+                Row(
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier.matchParentSize()
+                ) {
+                    val ratios by remember {
+                        derivedStateOf {
+                            selectedPresetLevelRatios
+                                ?.map { it.ratio }
+                                ?: List(equalizerParams.bands.size) { 0.5f }
+                        }
+                    }
+                    ratios.forEachIndexed { index, ratio ->
+                        Box(contentAlignment = Alignment.Center) {
+                            Spacer(
+                                modifier = Modifier.width(
+                                    with(LocalDensity.current) {
+                                        labelWidthMap.maxOfOrNull { it.value }?.toDp()
+                                    } ?: 0.dp
+                                )
+                            )
+                            DoubleTrackSlider(
+                                modifier = Modifier
+                                    .padding(0.dp)
+                                    .graphicsLayer {
+                                        rotationZ = 270f
+                                        transformOrigin = TransformOrigin(0f, 0f)
+                                    }
+                                    .layout { measurable, constraints ->
+                                        val placeable = measurable.measure(
+                                            Constraints(
+                                                minWidth = constraints.minHeight,
+                                                maxWidth = constraints.maxHeight,
+                                                minHeight = constraints.minWidth,
+                                                maxHeight = constraints.maxHeight,
+                                            )
+                                        )
+                                        layout(placeable.height, placeable.width) {
+                                            placeable.place(-placeable.width, 0)
+                                        }
+                                    }
+                                    .width(with(LocalDensity.current) { boxHeight.toDp() }),
+                                primaryProgressFraction = ratio,
+                                steps = equalizerParams.levelRange.second - equalizerParams.levelRange.first,
+                                primaryTrackColor = QTheme.colors.colorButtonNormal,
+                                onSeekEnded = { newRatio ->
+                                    updateEqualizerPresetJob.cancel()
+                                    updateEqualizerPresetJob = coroutineScope.launch {
+                                        selectedPresetLevelRatios?.getOrNull(index)
+                                            ?.let { equalizerLevelRatio ->
+                                                db.equalizerPresetDao().upsertEqualizerLevelRatio(
+                                                    equalizerLevelRatio.copy(ratio = newRatio)
+                                                )
+                                            }
+                                    }
+                                }
+                            )
+                        }
+                    }
                 }
             }
-            equalizerParams.bands.forEachIndexed { index, band ->
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    DoubleTrackSlider(
-                        modifier = Modifier
-                            .padding(0.dp)
-                            .graphicsLayer {
-                                rotationZ = 270f
-                                transformOrigin = TransformOrigin(0f, 0f)
-                            }
-                            .layout { measurable, constraints ->
-                                val placeable = measurable.measure(
-                                    Constraints(
-                                        minWidth = constraints.minHeight,
-                                        maxWidth = constraints.maxHeight,
-                                        minHeight = constraints.minWidth,
-                                        maxHeight = constraints.maxHeight,
+            selectedPresetLevelRatios?.let {
+                Row(
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    it.indices
+                        .mapNotNull { index -> equalizerParams.bands.getOrNull(index) }
+                        .forEachIndexed { index, band ->
+                            Box(contentAlignment = Alignment.Center) {
+                                Spacer(
+                                    modifier = Modifier.width(
+                                        with(LocalDensity.current) {
+                                            labelWidthMap.maxOfOrNull { it.value }?.toDp()
+                                        } ?: 0.dp
                                     )
                                 )
-                                layout(placeable.height, placeable.width) {
-                                    placeable.place(-placeable.width, 0)
-                                }
-                            }
-                            .width(
-                                with(LocalDensity.current) {
-                                    (sliderHeight - labelHeight).toDp()
-                                }
-                            ),
-                        primaryProgressFraction = ratios.getOrNull(index) ?: 0.5f,
-                        steps = equalizerParams.levelRange.second - equalizerParams.levelRange.first,
-                        primaryTrackColor = QTheme.colors.colorButtonNormal,
-                        onSeekEnded = { newRatio ->
-                            updateEqualizerPresetJob.cancel()
-                            updateEqualizerPresetJob = coroutineScope.launch {
-                                val presetLevelRatios = selectedPresetLevelRatios ?: return@launch
-                                presetLevelRatios.getOrNull(index)?.let { equalizerLevelRatio ->
-                                    db.equalizerPresetDao().upsertEqualizerLevelRatio(
-                                        equalizerLevelRatio.copy(ratio = newRatio)
-                                    )
-                                }
+                                Text(
+                                    text = "${(band.centerFreq / 1000)}kHz",
+                                    fontSize = 12.sp,
+                                    color = QTheme.colors.colorTextPrimary,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.onGloballyPositioned {
+                                        labelWidthMap = labelWidthMap.toMutableMap().apply {
+                                            this[index] = it.size.width
+                                        }
+                                    }
+                                )
                             }
                         }
-                    )
-                    Text(
-                        text = "${(band.centerFreq / 1000)}kHz",
-                        fontSize = 12.sp,
-                        color = QTheme.colors.colorTextPrimary,
-                        modifier = Modifier.onGloballyPositioned {
-                            labelHeight = it.size.height
-                        }
-                    )
                 }
             }
         }
