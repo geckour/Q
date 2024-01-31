@@ -77,6 +77,7 @@ class MainViewModel(private val app: App) : ViewModel() {
     private val audioManager = app.getSystemService<AudioManager>()
 
     private lateinit var mediaControllerFuture: ListenableFuture<MediaController>
+    private var mediaController: MediaController? = null
 
     internal var isDropboxAuthOngoing = false
 
@@ -120,17 +121,53 @@ class MainViewModel(private val app: App) : ViewModel() {
 
     internal val loading = MutableStateFlow<Pair<Boolean, (() -> Unit)?>>(false to null)
 
-    private var onSubmitQueue: ((actionType: InsertActionType, classType: OrientedClassType, newQueue: List<String>) -> Unit)? =
-        null
-    private var onMoveQueuePosition: ((from: Int, to: Int) -> Unit)? = null
-    private var onRemoveQueue: ((sourcePath: String) -> Unit)? = null
-    private var onShuffleQueue: ((type: ShuffleActionType?) -> Unit)? = null
-    private var onResetQueueOrder: (() -> Unit)? = null
-    private var onClearQueue: ((needToKeepCurrent: Boolean) -> Unit)? = null
-    private var onRotateRepeatMode: (() -> Unit)? = null
-    private var onResetQueueIndex: ((force: Boolean, position: Int) -> Unit)? = null
-    private var onSeek: ((progress: Long) -> Unit)? = null
-    private var onNewMediaButton: ((playbackButton: PlaybackButton) -> Unit)? = null
+    private val playerListener = object : Player.Listener {
+
+        override fun onTracksChanged(tracks: Tracks) {
+            super.onTracksChanged(tracks)
+
+            onSourceChanged()
+        }
+
+        override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = Unit
+
+        override fun onTimelineChanged(timeline: Timeline, reason: Int) {
+            super.onTimelineChanged(timeline, reason)
+
+            onSourceChanged()
+        }
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            super.onPlaybackStateChanged(playbackState)
+
+            onSourceChanged()
+        }
+
+        override fun onPlayWhenReadyChanged(
+            playWhenReady: Boolean,
+            reason: Int
+        ) {
+            super.onPlayWhenReadyChanged(playWhenReady, reason)
+
+            onSourceChanged()
+        }
+
+        override fun onRepeatModeChanged(repeatMode: Int) {
+            super.onRepeatModeChanged(repeatMode)
+
+            currentRepeatModeFlow.value = repeatMode
+        }
+
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int
+        ) {
+            super.onPositionDiscontinuity(oldPosition, newPosition, reason)
+
+            onSourceChanged()
+        }
+    }
 
     private val billingApiClient = BillingApiClient(
         app,
@@ -298,205 +335,33 @@ class MainViewModel(private val app: App) : ViewModel() {
         mediaControllerFuture = MediaController.Builder(
             context,
             SessionToken(context, ComponentName(context, PlayerService::class.java))
-        )
-            .buildAsync()
+        ).buildAsync()
 
         mediaControllerFuture.addListener(
             {
-                val mediaController =
+                mediaController =
                     if (mediaControllerFuture.isDone && mediaControllerFuture.isCancelled.not()) {
-                        mediaControllerFuture.get()
-                    } else return@addListener
+                        mediaControllerFuture.get().apply {
+                            addListener(playerListener)
 
-                mediaController.addListener(object : Player.Listener {
-
-                    override fun onTracksChanged(tracks: Tracks) {
-                        super.onTracksChanged(tracks)
-
-                        onSourceChanged(mediaController)
-                    }
-
-                    override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = Unit
-
-                    override fun onTimelineChanged(timeline: Timeline, reason: Int) {
-                        super.onTimelineChanged(timeline, reason)
-
-                        onSourceChanged(mediaController)
-                    }
-
-                    override fun onPlaybackStateChanged(playbackState: Int) {
-                        super.onPlaybackStateChanged(playbackState)
-
-                        onSourceChanged(mediaController)
-                    }
-
-                    override fun onPlayWhenReadyChanged(
-                        playWhenReady: Boolean,
-                        reason: Int
-                    ) {
-                        super.onPlayWhenReadyChanged(playWhenReady, reason)
-
-                        onSourceChanged(mediaController)
-                    }
-
-                    override fun onRepeatModeChanged(repeatMode: Int) {
-                        super.onRepeatModeChanged(repeatMode)
-
-                        currentRepeatModeFlow.value = repeatMode
-                    }
-
-                    override fun onPositionDiscontinuity(
-                        oldPosition: Player.PositionInfo,
-                        newPosition: Player.PositionInfo,
-                        reason: Int
-                    ) {
-                        super.onPositionDiscontinuity(oldPosition, newPosition, reason)
-
-                        currentPlaybackPositionFlow.value = newPosition.positionMs
-                    }
-                })
-                onSubmitQueue = { actionType, classType, newQueue ->
-                    loading.value = true to {
-                        mediaController.sendCustomCommand(
-                            SessionCommand(
-                                PlayerService.ACTION_COMMAND_CANCEL_SUBMIT,
+                            sendCustomCommand(
+                                SessionCommand(
+                                    PlayerService.ACTION_COMMAND_RESTORE_STATE,
+                                    Bundle.EMPTY
+                                ),
                                 Bundle.EMPTY
-                            ),
-                            Bundle.EMPTY
-                        )
-                        loading.value = false to null
-                    }
-                    mediaController.sendCustomCommand(
-                        SessionCommand(
-                            PlayerService.ACTION_COMMAND_SUBMIT_QUEUE,
-                            Bundle.EMPTY
-                        ),
-                        bundleOf(
-                            PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_ACTION_TYPE to actionType,
-                            PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_CLASS_TYPE to classType,
-                            PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_QUEUE to newQueue
-                        )
-                    )
-                }
-                onRemoveQueue = {
-                    mediaController.sendCustomCommand(
-                        SessionCommand(
-                            PlayerService.ACTION_COMMAND_REMOVE_QUEUE,
-                            Bundle.EMPTY
-                        ),
-                        bundleOf(PlayerService.ACTION_EXTRA_REMOVE_QUEUE_TARGET_SOURCE_PATH to it)
-                    )
-                }
-                onClearQueue = { needToKeepCurrent ->
-                    mediaController.sendCustomCommand(
-                        SessionCommand(
-                            PlayerService.ACTION_COMMAND_CLEAR_QUEUE,
-                            Bundle.EMPTY
-                        ),
-                        bundleOf(PlayerService.ACTION_EXTRA_CLEAR_QUEUE_NEED_TO_KEEP_CURRENT to needToKeepCurrent)
-                    )
-                }
-                onMoveQueuePosition = { from, to ->
-                    mediaController.sendCustomCommand(
-                        SessionCommand(
-                            PlayerService.ACTION_COMMAND_MOVE_QUEUE,
-                            Bundle.EMPTY
-                        ),
-                        bundleOf(
-                            PlayerService.ACTION_EXTRA_MOVE_QUEUE_FROM to from,
-                            PlayerService.ACTION_EXTRA_MOVE_QUEUE_TO to to
-                        )
-                    )
-                }
-                onShuffleQueue = {
-                    mediaController.sendCustomCommand(
-                        SessionCommand(
-                            PlayerService.ACTION_COMMAND_SHUFFLE_QUEUE,
-                            Bundle.EMPTY
-                        ),
-                        bundleOf(PlayerService.ACTION_EXTRA_SHUFFLE_ACTION_TYPE to it)
-                    )
-                }
-                onResetQueueOrder = {
-                    mediaController.sendCustomCommand(
-                        SessionCommand(
-                            PlayerService.ACTION_COMMAND_RESET_QUEUE_ORDER,
-                            Bundle.EMPTY
-                        ),
-                        Bundle.EMPTY
-                    )
-                }
-                onResetQueueIndex = { force, index ->
-                    mediaController.sendCustomCommand(
-                        SessionCommand(
-                            PlayerService.ACTION_COMMAND_RESET_QUEUE_INDEX,
-                            Bundle.EMPTY
-                        ),
-                        bundleOf(
-                            PlayerService.ACTION_EXTRA_RESET_QUEUE_INDEX_FORCE to force,
-                            PlayerService.ACTION_EXTRA_RESET_QUEUE_INDEX_INDEX to index
-                        )
-                    )
-                }
-                onRotateRepeatMode = {
-                    mediaController.sendCustomCommand(
-                        SessionCommand(
-                            PlayerService.ACTION_COMMAND_ROTATE_REPEAT_MODE,
-                            Bundle.EMPTY
-                        ),
-                        Bundle.EMPTY
-                    )
-                }
-                onSeek = {
-                    mediaController.seekTo(it)
-                }
-                onNewMediaButton = {
-                    when (it) {
-                        PlaybackButton.PLAY -> mediaController.play()
-                        PlaybackButton.PAUSE -> mediaController.pause()
-                        PlaybackButton.NEXT -> mediaController.seekToNext()
-                        PlaybackButton.PREV -> mediaController.seekToPrevious()
-                        PlaybackButton.FF -> mediaController.sendCustomCommand(
-                            SessionCommand(
-                                PlayerService.ACTION_COMMAND_FAST_FORWARD,
-                                Bundle.EMPTY
-                            ),
-                            Bundle.EMPTY
-                        )
+                            )
 
-                        PlaybackButton.REWIND -> mediaController.sendCustomCommand(
-                            SessionCommand(
-                                PlayerService.ACTION_COMMAND_REWIND,
-                                Bundle.EMPTY
-                            ),
-                            Bundle.EMPTY
-                        )
-
-                        PlaybackButton.UNDEFINED -> mediaController.sendCustomCommand(
-                            SessionCommand(
-                                PlayerService.ACTION_COMMAND_STOP_FAST_SEEK,
-                                Bundle.EMPTY
-                            ),
-                            Bundle.EMPTY
-                        )
-                    }
-                }
-
-                mediaController.sendCustomCommand(
-                    SessionCommand(
-                        PlayerService.ACTION_COMMAND_RESTORE_STATE,
-                        Bundle.EMPTY
-                    ),
-                    Bundle.EMPTY
-                )
-
-                onSourceChanged(mediaController)
+                            onSourceChanged()
+                        }
+                    } else null
             },
             MoreExecutors.directExecutor()
         )
     }
 
     internal fun releaseMediaController() {
+        mediaController?.removeListener(playerListener)
         MediaController.releaseFuture(mediaControllerFuture)
     }
 
@@ -505,25 +370,82 @@ class MainViewModel(private val app: App) : ViewModel() {
         actionType: InsertActionType,
         classType: OrientedClassType
     ) {
-        onSubmitQueue?.invoke(actionType, classType, domainTracks.map { it.sourcePath })
+        val mediaController = this.mediaController ?: return
+
+        loading.value = true to {
+            mediaController.sendCustomCommand(
+                SessionCommand(
+                    PlayerService.ACTION_COMMAND_CANCEL_SUBMIT,
+                    Bundle.EMPTY
+                ),
+                Bundle.EMPTY
+            )
+            loading.value = false to null
+        }
+        mediaController.sendCustomCommand(
+            SessionCommand(
+                PlayerService.ACTION_COMMAND_SUBMIT_QUEUE,
+                Bundle.EMPTY
+            ),
+            bundleOf(
+                PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_ACTION_TYPE to actionType,
+                PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_CLASS_TYPE to classType,
+                PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_QUEUE to domainTracks.map { it.sourcePath }
+            )
+        )
     }
 
     internal fun onQueueMove(from: Int, to: Int) {
-        onMoveQueuePosition?.invoke(from, to)
+        mediaController?.sendCustomCommand(
+            SessionCommand(
+                PlayerService.ACTION_COMMAND_MOVE_QUEUE,
+                Bundle.EMPTY
+            ),
+            bundleOf(
+                PlayerService.ACTION_EXTRA_MOVE_QUEUE_FROM to from,
+                PlayerService.ACTION_EXTRA_MOVE_QUEUE_TO to to
+            )
+        )
     }
 
     internal fun onRemoveTrackFromQueue(domainTrack: DomainTrack) {
+        onRemoveTrackFromQueue(domainTrack.sourcePath)
+    }
+
+    private fun onRemoveTrackFromQueue(sourcePath: String) {
+        val mediaController = this.mediaController ?: return
+
         viewModelScope.launch {
-            onRemoveQueue?.invoke(domainTrack.sourcePath)
+            mediaController.sendCustomCommand(
+                SessionCommand(
+                    PlayerService.ACTION_COMMAND_REMOVE_QUEUE,
+                    Bundle.EMPTY
+                ),
+                bundleOf(
+                    PlayerService.ACTION_EXTRA_REMOVE_QUEUE_TARGET_SOURCE_PATH to sourcePath,
+                )
+            )
         }
     }
 
     internal fun onShuffle(actionType: ShuffleActionType? = null) {
-        onShuffleQueue?.invoke(actionType)
+        mediaController?.sendCustomCommand(
+            SessionCommand(
+                PlayerService.ACTION_COMMAND_SHUFFLE_QUEUE,
+                Bundle.EMPTY
+            ),
+            bundleOf(PlayerService.ACTION_EXTRA_SHUFFLE_ACTION_TYPE to actionType)
+        )
     }
 
     internal fun onResetShuffle() {
-        onResetQueueOrder?.invoke()
+        mediaController?.sendCustomCommand(
+            SessionCommand(
+                PlayerService.ACTION_COMMAND_RESET_QUEUE_ORDER,
+                Bundle.EMPTY
+            ),
+            Bundle.EMPTY
+        )
     }
 
     internal fun onPlayOrPause(playing: Boolean?) {
@@ -549,16 +471,28 @@ class MainViewModel(private val app: App) : ViewModel() {
     }
 
     internal fun onClickClearQueueButton() {
-        onClearQueue?.invoke(true)
+        mediaController?.sendCustomCommand(
+            SessionCommand(
+                PlayerService.ACTION_COMMAND_CLEAR_QUEUE,
+                Bundle.EMPTY
+            ),
+            bundleOf(PlayerService.ACTION_EXTRA_CLEAR_QUEUE_NEED_TO_KEEP_CURRENT to true)
+        )
     }
 
     internal fun onClickRepeatButton() {
-        onRotateRepeatMode?.invoke()
+        mediaController?.sendCustomCommand(
+            SessionCommand(
+                PlayerService.ACTION_COMMAND_ROTATE_REPEAT_MODE,
+                Bundle.EMPTY
+            ),
+            Bundle.EMPTY
+        )
     }
 
-    private fun onSourceChanged(
-        mediaController: MediaController
-    ) = viewModelScope.launch {
+    private fun onSourceChanged() = viewModelScope.launch {
+        val mediaController = this@MainViewModel.mediaController ?: return@launch
+
         loading.value = false to null
         currentSourcePathsFlow.value =
             List(mediaController.mediaItemCount) {
@@ -597,7 +531,7 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal fun deleteTrack(domainTrack: DomainTrack) {
         viewModelScope.launch {
             purgeDownloaded(listOf(domainTrack.sourcePath)).join()
-            onRemoveQueue?.invoke(domainTrack.sourcePath)
+            onRemoveTrackFromQueue(domainTrack)
 
             db.trackDao().deleteIncludingRootIfEmpty(db, domainTrack.id)
         }
@@ -605,11 +539,11 @@ class MainViewModel(private val app: App) : ViewModel() {
 
     internal fun purgeDownloaded(targetSourcePaths: List<String>): Job = viewModelScope.launch {
         if (targetSourcePaths.contains(currentSourcePathsFlow.value.getOrNull(currentIndexFlow.value))) {
-            onNewMediaButton?.invoke(PlaybackButton.PAUSE)
+            onNewPlaybackButton(PlaybackButton.PAUSE)
         }
         currentSourcePathsFlow.value.forEach { sourcePath ->
             if (targetSourcePaths.any { it == sourcePath }) {
-                onRemoveQueue?.invoke(sourcePath)
+                onRemoveTrackFromQueue(sourcePath)
             }
         }
         runCatching {
@@ -625,15 +559,54 @@ class MainViewModel(private val app: App) : ViewModel() {
 
     internal fun onChangeRequestedTrackInQueue(domainTrack: DomainTrack) {
         val index = currentSourcePathsFlow.value.indexOf(domainTrack.sourcePath)
-        onResetQueueIndex?.invoke(false, index)
+        mediaController?.sendCustomCommand(
+            SessionCommand(
+                PlayerService.ACTION_COMMAND_RESET_QUEUE_INDEX,
+                Bundle.EMPTY
+            ),
+            bundleOf(
+                PlayerService.ACTION_EXTRA_RESET_QUEUE_INDEX_FORCE to false,
+                PlayerService.ACTION_EXTRA_RESET_QUEUE_INDEX_INDEX to index
+            )
+        )
     }
 
     internal fun onNewSeekBarProgress(progress: Long) {
-        onSeek?.invoke(progress)
+        mediaController?.seekTo(progress)
     }
 
     internal fun onNewPlaybackButton(playbackButton: PlaybackButton) {
-        onNewMediaButton?.invoke(playbackButton)
+        val mediaController = this.mediaController ?: return
+
+        when (playbackButton) {
+            PlaybackButton.PLAY -> mediaController.play()
+            PlaybackButton.PAUSE -> mediaController.pause()
+            PlaybackButton.NEXT -> mediaController.seekToNext()
+            PlaybackButton.PREV -> mediaController.seekToPrevious()
+            PlaybackButton.FF -> mediaController.sendCustomCommand(
+                SessionCommand(
+                    PlayerService.ACTION_COMMAND_FAST_FORWARD,
+                    Bundle.EMPTY
+                ),
+                Bundle.EMPTY
+            )
+
+            PlaybackButton.REWIND -> mediaController.sendCustomCommand(
+                SessionCommand(
+                    PlayerService.ACTION_COMMAND_REWIND,
+                    Bundle.EMPTY
+                ),
+                Bundle.EMPTY
+            )
+
+            PlaybackButton.UNDEFINED -> mediaController.sendCustomCommand(
+                SessionCommand(
+                    PlayerService.ACTION_COMMAND_STOP_FAST_SEEK,
+                    Bundle.EMPTY
+                ),
+                Bundle.EMPTY
+            )
+        }
     }
 
     internal suspend fun storeDropboxApiToken() {

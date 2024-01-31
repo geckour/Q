@@ -56,6 +56,12 @@ abstract class DB : RoomDatabase() {
         fun getInstance(context: Context): DB =
             instance ?: synchronized(this) {
                 Room.databaseBuilder(context, DB::class.java, DB_NAME)
+//                    .setQueryCallback(
+//                        { sqlQuery, bindArgs ->
+//                            Timber.d("qgeck DB query: $sqlQuery, args: $bindArgs")
+//                        },
+//                        Executors.newSingleThreadExecutor()
+//                    )
                     .build()
                     .apply { instance = this }
             }
