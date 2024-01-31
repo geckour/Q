@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text2.BasicTextField2
 import androidx.compose.foundation.text2.input.TextFieldLineLimits
 import androidx.compose.foundation.text2.input.rememberTextFieldState
@@ -47,6 +49,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
@@ -81,7 +84,6 @@ import com.geckour.q.util.setSelectedEqualizerPresetId
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Equalizer(routeInfo: QAudioDeviceInfo?) {
     val context = LocalContext.current
@@ -98,20 +100,8 @@ fun Equalizer(routeInfo: QAudioDeviceInfo?) {
             deviceId = routeInfo?.id ?: -1,
             deviceAddress = routeInfo?.address
         ).collectAsState(initial = null)
-    val presetsLazyListState by
-    remember {
-        derivedStateOf {
-            val equalizerInfo = audioDeviceEqualizerInfo
-            LazyListState(
-                firstVisibleItemIndex = if (equalizerInfo?.defaultEqualizerPresetId != null) {
-                    equalizerPresetsMap?.entries
-                        ?.indexOfFirst { it.key.id == equalizerInfo.defaultEqualizerPresetId }
-                        ?: 0
-                } else 0
-            )
-        }
-    }
-    val firstVisiblePresetIndex by remember {
+    val presetsLazyListState = rememberLazyListState()
+    val centerVisiblePresetIndex by remember {
         derivedStateOf {
             presetsLazyListState.layoutInfo
                 .let { layoutInfo ->
@@ -130,22 +120,38 @@ fun Equalizer(routeInfo: QAudioDeviceInfo?) {
                 }
         }
     }
-    val selectedPreset by remember {
+    val normalizedCenterVisiblePresetIndex by remember {
         derivedStateOf {
-            equalizerPresetsMap?.entries?.toList()?.getOrNull(firstVisiblePresetIndex)
+            if (presetsLazyListState.layoutInfo.totalItemsCount > 2 &&
+                centerVisiblePresetIndex !in 1 until presetsLazyListState.layoutInfo.totalItemsCount - 1
+            ) {
+                centerVisiblePresetIndex.coerceIn(1 until presetsLazyListState.layoutInfo.totalItemsCount - 1)
+            } else centerVisiblePresetIndex
         }
     }
+    val selectedPreset by remember {
+        derivedStateOf {
+            equalizerPresetsMap?.entries
+                ?.toList()
+                ?.getOrNull(normalizedCenterVisiblePresetIndex - 1)
+        }
+    }
+    var selectedPresetCache by remember { mutableStateOf(selectedPreset) }
 
     val params = equalizerParams ?: return
     val presetsMap = equalizerPresetsMap ?: return
 
-    LaunchedEffect(equalizerPresetsMap, equalizerParams) {
+    val presetItemOffset = with(LocalDensity.current) {
+        (LocalConfiguration.current.screenWidthDp.dp.toPx() * -0.25).toInt()
+    }
+
+    LaunchedEffect(presetsMap, equalizerParams) {
         if (presetsMap.isEmpty()) {
             db.equalizerPresetDao()
                 .addEqualizerPreset(
                     equalizerPreset = EqualizerPreset(
                         id = 0,
-                        label = "temporary 1"
+                        label = "Preset 1"
                     ),
                     equalizerLevelRatios = params.bands.map {
                         EqualizerLevelRatio(
@@ -155,14 +161,28 @@ fun Equalizer(routeInfo: QAudioDeviceInfo?) {
                             ratio = params.toRatio(it.level)
                         )
                     },
-                    overrideLabelById = { id -> "temporary $id" }
+                    overrideLabelById = { id -> "Preset $id" }
                 )
         }
     }
 
     LaunchedEffect(selectedPreset) {
         selectedPreset?.let {
+            selectedPresetCache = it
             context.setSelectedEqualizerPresetId(it.key.id)
+        }
+    }
+
+    LaunchedEffect(audioDeviceEqualizerInfo) {
+        val index = getDefaultPresetIndex(
+            audioDeviceEqualizerInfo = audioDeviceEqualizerInfo ?: return@LaunchedEffect,
+            equalizerPresets = presetsMap.keys.toList()
+        ) + 1
+        if (index > 0 && normalizedCenterVisiblePresetIndex != index) {
+            presetsLazyListState.scrollToItem(
+                index = index,
+                scrollOffset = presetItemOffset
+            )
         }
     }
 
@@ -183,7 +203,7 @@ fun Equalizer(routeInfo: QAudioDeviceInfo?) {
             db = db,
             equalizerEnabled = equalizerEnabled,
             equalizerParams = params,
-            selectedPresetLevelRatios = selectedPreset?.value
+            selectedPresetLevelRatios = { selectedPreset?.value }
         )
         Spacer(modifier = Modifier.height(20.dp))
         BottomController(
@@ -197,7 +217,7 @@ fun Equalizer(routeInfo: QAudioDeviceInfo?) {
             db = db,
             presetsLazyListState = presetsLazyListState,
             equalizerPresetsMap = presetsMap,
-            selectedPresetId = selectedPreset?.key?.id
+            selectedPresetId = selectedPreset?.key?.id ?: selectedPresetCache?.key?.id
         )
     }
 }
@@ -214,42 +234,42 @@ fun TopController(
     val coroutineScope = rememberCoroutineScope()
 
     Row(verticalAlignment = Alignment.CenterVertically) {
-        routeInfo?.let {
-            selectedPreset ?: return@let
-            Button(
-                onClick = {
-                    coroutineScope.launch {
-                        if (audioDeviceEqualizerInfo?.defaultEqualizerPresetId == null || audioDeviceEqualizerInfo.defaultEqualizerPresetId != selectedPreset.key.id) {
-                            db.audioDeviceEqualizerInfoDao().upsert(
-                                audioDeviceEqualizerInfo?.copy(defaultEqualizerPresetId = selectedPreset.key.id)
-                                    ?: AudioDeviceEqualizerInfo(
-                                        id = 0,
-                                        routeId = it.routeId,
-                                        deviceAddress = it.address,
-                                        deviceId = it.id,
-                                        defaultEqualizerPresetId = selectedPreset.key.id
-                                    )
-                            )
-                        } else {
-                            db.audioDeviceEqualizerInfoDao()
-                                .deleteBy(
-                                    routeId = it.routeId,
-                                    deviceAddress = it.address,
-                                    deviceId = it.id,
+        Button(
+            modifier = Modifier.alpha(if (routeInfo == null) 0f else 1f),
+            onClick = {
+                routeInfo ?: return@Button
+                selectedPreset ?: return@Button
+                coroutineScope.launch {
+                    if (audioDeviceEqualizerInfo?.defaultEqualizerPresetId == null || audioDeviceEqualizerInfo.defaultEqualizerPresetId != selectedPreset.key.id) {
+                        db.audioDeviceEqualizerInfoDao().upsert(
+                            audioDeviceEqualizerInfo?.copy(defaultEqualizerPresetId = selectedPreset.key.id)
+                                ?: AudioDeviceEqualizerInfo(
+                                    id = 0,
+                                    routeId = routeInfo.routeId,
+                                    deviceAddress = routeInfo.address,
+                                    deviceId = routeInfo.id,
+                                    defaultEqualizerPresetId = selectedPreset.key.id
                                 )
-                        }
+                        )
+                    } else {
+                        db.audioDeviceEqualizerInfoDao()
+                            .deleteBy(
+                                routeId = routeInfo.routeId,
+                                deviceAddress = routeInfo.address,
+                                deviceId = routeInfo.id,
+                            )
                     }
                 }
-            ) {
-                Text(
-                    text = stringResource(
-                        id = if (audioDeviceEqualizerInfo?.defaultEqualizerPresetId == null || audioDeviceEqualizerInfo.defaultEqualizerPresetId != selectedPreset.key.id) {
-                            R.string.equalizer_set_as_default_for_the_device
-                        } else R.string.equalizer_clear_default_for_the_device,
-                        it.name
-                    )
-                )
             }
+        ) {
+            Text(
+                text = stringResource(
+                    id = if (audioDeviceEqualizerInfo?.defaultEqualizerPresetId == null || audioDeviceEqualizerInfo.defaultEqualizerPresetId != selectedPreset?.key?.id) {
+                        R.string.equalizer_set_as_default_for_the_device
+                    } else R.string.equalizer_clear_default_for_the_device,
+                    routeInfo?.name.orEmpty()
+                )
+            )
         }
         Spacer(modifier = Modifier.weight(1f))
         Text(
@@ -269,12 +289,13 @@ fun ColumnScope.EqualizerSubstance(
     db: DB,
     equalizerEnabled: Boolean,
     equalizerParams: EqualizerParams,
-    selectedPresetLevelRatios: List<EqualizerLevelRatio>?
+    selectedPresetLevelRatios: () -> List<EqualizerLevelRatio>?
 ) {
     val coroutineScope = rememberCoroutineScope()
     var updateEqualizerPresetJob by remember { mutableStateOf<Job>(Job()) }
     val screenWidth = LocalConfiguration.current.screenWidthDp
     var boxHeight by remember { mutableIntStateOf(screenWidth) }
+    var labelHeight by remember { mutableIntStateOf(0) }
     var labelWidthMap by remember { mutableStateOf(emptyMap<Int, Int>()) }
 
     Box(
@@ -305,7 +326,7 @@ fun ColumnScope.EqualizerSubstance(
                 ) {
                     val ratios by remember {
                         derivedStateOf {
-                            selectedPresetLevelRatios
+                            selectedPresetLevelRatios()
                                 ?.map { it.ratio }
                                 ?: List(equalizerParams.bands.size) { 0.5f }
                         }
@@ -346,7 +367,8 @@ fun ColumnScope.EqualizerSubstance(
                                 onSeekEnded = { newRatio ->
                                     updateEqualizerPresetJob.cancel()
                                     updateEqualizerPresetJob = coroutineScope.launch {
-                                        selectedPresetLevelRatios?.getOrNull(index)
+                                        selectedPresetLevelRatios()
+                                            ?.getOrNull(index)
                                             ?.let { equalizerLevelRatio ->
                                                 db.equalizerPresetDao().upsertEqualizerLevelRatio(
                                                     equalizerLevelRatio.copy(ratio = newRatio)
@@ -359,35 +381,44 @@ fun ColumnScope.EqualizerSubstance(
                     }
                 }
             }
-            selectedPresetLevelRatios?.let {
-                Row(
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    it.indices
-                        .mapNotNull { index -> equalizerParams.bands.getOrNull(index) }
-                        .forEachIndexed { index, band ->
-                            Box(contentAlignment = Alignment.Center) {
-                                Spacer(
-                                    modifier = Modifier.width(
-                                        with(LocalDensity.current) {
-                                            labelWidthMap.maxOfOrNull { it.value }?.toDp()
-                                        } ?: 0.dp
+            Box {
+                Spacer(
+                    modifier = Modifier
+                        .height(with(LocalDensity.current) { labelHeight.toDp() })
+                )
+                selectedPresetLevelRatios()?.let {
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        it.indices
+                            .mapNotNull { index -> equalizerParams.bands.getOrNull(index) }
+                            .forEachIndexed { index, band ->
+                                Box(contentAlignment = Alignment.Center) {
+                                    Spacer(
+                                        modifier = Modifier.width(
+                                            with(LocalDensity.current) {
+                                                labelWidthMap
+                                                    .maxOfOrNull { it.value }
+                                                    ?.toDp()
+                                            } ?: 0.dp
+                                        )
                                     )
-                                )
-                                Text(
-                                    text = "${(band.centerFreq / 1000)}kHz",
-                                    fontSize = 12.sp,
-                                    color = QTheme.colors.colorTextPrimary,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.onGloballyPositioned {
-                                        labelWidthMap = labelWidthMap.toMutableMap().apply {
-                                            this[index] = it.size.width
+                                    Text(
+                                        text = "${(band.centerFreq / 1000)}kHz",
+                                        fontSize = 12.sp,
+                                        color = QTheme.colors.colorTextPrimary,
+                                        textAlign = TextAlign.Center,
+                                        modifier = Modifier.onGloballyPositioned {
+                                            labelHeight = it.size.height
+                                            labelWidthMap = labelWidthMap.toMutableMap().apply {
+                                                this[index] = it.size.width
+                                            }
                                         }
-                                    }
-                                )
+                                    )
+                                }
                             }
-                        }
+                    }
                 }
             }
         }
@@ -495,6 +526,7 @@ private fun EqualizerPresetSelector(
     equalizerPresetsMap: Map<EqualizerPreset, List<EqualizerLevelRatio>>,
     selectedPresetId: Long?
 ) {
+    var textFieldHeight by remember { mutableIntStateOf(0) }
     LazyRow(
         modifier = Modifier.fillMaxWidth(),
         state = presetsLazyListState,
@@ -502,44 +534,41 @@ private fun EqualizerPresetSelector(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center
     ) {
-        itemsIndexed(equalizerPresetsMap.entries.toList()) { index, equalizerPreset ->
+        item {
+            Spacer(modifier = Modifier.width((LocalConfiguration.current.screenWidthDp * 0.5).dp))
+        }
+        itemsIndexed(equalizerPresetsMap.entries.toList()) { index, equalizerPresetEntry ->
             Box(contentAlignment = Alignment.Center) {
-                val isSelected = equalizerPreset.key.id == selectedPresetId
+                val isSelected = equalizerPresetEntry.key.id == selectedPresetId
 
-                Spacer(modifier = Modifier.height(with(LocalDensity.current) { 33.sp.toDp() }))
-                Row {
-                    Spacer(
-                        modifier = Modifier.width(
-                            if (equalizerPresetsMap.size > 1 && index == 0) {
-                                (LocalConfiguration.current.screenWidthDp * 0.25).dp
-                            } else 0.dp
-                        )
+                Spacer(
+                    modifier = Modifier.height(
+                        with(LocalDensity.current) { textFieldHeight.toDp() }
                     )
-                    if (isSelected) {
-                        EqualizerPresetNameTextField(
-                            db,
-                            equalizerPreset.key
-                        )
-                    } else {
-                        Text(
-                            text = equalizerPreset.key.label,
-                            fontSize = 16.sp,
-                            color = QTheme.colors.colorTextPrimary.copy(alpha = 0.7f),
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .width((LocalConfiguration.current.screenWidthDp * 0.5).dp)
-                                .padding(horizontal = 4.dp)
-                        )
-                    }
-                    Spacer(
-                        modifier = Modifier.width(
-                            if (equalizerPresetsMap.size > 1 && index == equalizerPresetsMap.size - 1) {
-                                (LocalConfiguration.current.screenWidthDp * 0.25).dp
-                            } else 0.dp
-                        )
+                )
+                if (isSelected) {
+                    EqualizerPresetNameTextField(
+                        modifier = Modifier.onGloballyPositioned {
+                            textFieldHeight = it.size.height
+                        },
+                        db = db,
+                        equalizerPreset = equalizerPresetEntry.key
+                    )
+                } else {
+                    Text(
+                        text = equalizerPresetEntry.key.label,
+                        fontSize = 16.sp,
+                        color = QTheme.colors.colorTextPrimary.copy(alpha = 0.7f),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .width((LocalConfiguration.current.screenWidthDp * 0.5).dp)
+                            .padding(horizontal = 4.dp)
                     )
                 }
             }
+        }
+        item {
+            Spacer(modifier = Modifier.width((LocalConfiguration.current.screenWidthDp * 0.5).dp))
         }
     }
 }
@@ -547,17 +576,31 @@ private fun EqualizerPresetSelector(
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun EqualizerPresetNameTextField(db: DB, equalizerPreset: EqualizerPreset) {
+fun EqualizerPresetNameTextField(
+    modifier: Modifier = Modifier,
+    db: DB,
+    equalizerPreset: EqualizerPreset
+) {
     val coroutineScope = rememberCoroutineScope()
     var editing by remember { mutableStateOf(false) }
+    val textFieldState = rememberTextFieldState(initialText = equalizerPreset.label)
+    val onSave: () -> Unit = {
+        if (editing) {
+            coroutineScope.launch {
+                db.equalizerPresetDao().upsertEqualizerPreset(
+                    equalizerPreset.copy(label = textFieldState.text.toString())
+                )
+            }
+        }
+        editing = editing.not()
+    }
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
+        modifier = modifier
             .width((LocalConfiguration.current.screenWidthDp * 0.5).dp)
             .padding(horizontal = 4.dp)
     ) {
-        val textFieldState = rememberTextFieldState(initialText = equalizerPreset.label)
 
         if (editing) {
             val textFieldFocusRequester by remember { mutableStateOf(FocusRequester()) }
@@ -581,6 +624,12 @@ fun EqualizerPresetNameTextField(db: DB, equalizerPreset: EqualizerPreset) {
                     }
                 },
                 lineLimits = TextFieldLineLimits.SingleLine,
+                keyboardActions = KeyboardActions(
+                    onDone = { onSave() },
+                    onGo = { onSave() },
+                    onNext = { onSave() },
+                    onSend = { onSave() }
+                ),
                 modifier = Modifier
                     .weight(1f)
                     .focusRequester(textFieldFocusRequester)
@@ -602,16 +651,7 @@ fun EqualizerPresetNameTextField(db: DB, equalizerPreset: EqualizerPreset) {
             )
         }
         IconButton(
-            onClick = {
-                if (editing) {
-                    coroutineScope.launch {
-                        db.equalizerPresetDao().upsertEqualizerPreset(
-                            equalizerPreset.copy(label = textFieldState.text.toString())
-                        )
-                    }
-                }
-                editing = editing.not()
-            }
+            onClick = onSave
         ) {
             Icon(
                 imageVector = if (editing) Icons.Default.Done else Icons.Default.Edit,
@@ -624,3 +664,9 @@ fun EqualizerPresetNameTextField(db: DB, equalizerPreset: EqualizerPreset) {
         }
     }
 }
+
+private fun getDefaultPresetIndex(
+    audioDeviceEqualizerInfo: AudioDeviceEqualizerInfo,
+    equalizerPresets: List<EqualizerPreset>
+): Int =
+    equalizerPresets.indexOfFirst { it.id == audioDeviceEqualizerInfo.defaultEqualizerPresetId }
