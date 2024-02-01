@@ -46,7 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -150,7 +150,7 @@ fun ColumnScope.Queue(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
-                    .onGloballyPositioned { lyricListHeight = it.size.height }
+                    .onSizeChanged { lyricListHeight = it.height }
             ) {
                 item {
                     Row(

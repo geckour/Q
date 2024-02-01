@@ -17,9 +17,13 @@ import androidx.compose.material.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.dropbox.core.v2.files.FolderMetadata
@@ -132,6 +136,8 @@ fun SingleScreen(
     val scaffoldState = rememberBottomSheetScaffoldState()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val bottomSheetHeightAngle = remember { Animatable(0f) }
+    var libraryHeight by remember { mutableIntStateOf(0) }
+
     LaunchedEffect(sourcePaths) {
         if (sourcePaths.isNotEmpty()) {
             bottomSheetHeightAngle.animateTo(
@@ -181,6 +187,7 @@ fun SingleScreen(
                     coroutineScope.launch { scaffoldState.bottomSheetState.collapse() }
                 }
                 PlayerSheet(
+                    maxHeight = libraryHeight,
                     queue = queue,
                     currentIndex = currentIndex,
                     currentPlaybackPosition = currentPlaybackPosition,
@@ -217,6 +224,9 @@ fun SingleScreen(
                     .padding(paddingValues)
                     .background(color = QTheme.colors.colorBackground)
                     .fillMaxSize()
+                    .onSizeChanged {
+                        libraryHeight = it.height
+                    }
             ) {
                 Library(
                     navController = navController,

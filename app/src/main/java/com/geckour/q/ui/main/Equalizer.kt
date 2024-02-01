@@ -56,7 +56,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -311,7 +311,7 @@ fun ColumnScope.EqualizerSubstance(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
-                    .onGloballyPositioned { boxHeight = it.size.height }
+                    .onSizeChanged { boxHeight = it.height }
             ) {
                 Column(
                     Modifier
@@ -412,11 +412,10 @@ fun ColumnScope.EqualizerSubstance(
                                         fontSize = 12.sp,
                                         color = QTheme.colors.colorTextPrimary,
                                         textAlign = TextAlign.Center,
-                                        modifier = Modifier.onGloballyPositioned {
-                                            labelHeight = it.size.height
-                                            labelWidthMap = labelWidthMap.toMutableMap().apply {
-                                                this[index] = it.size.width
-                                            }
+                                        modifier = Modifier.onSizeChanged {
+                                            labelHeight = it.height
+                                            labelWidthMap = labelWidthMap.toMutableMap()
+                                                .apply { this[index] = it.width }
                                         }
                                     )
                                 }
@@ -551,9 +550,7 @@ private fun EqualizerPresetSelector(
                 )
                 if (isSelected) {
                     EqualizerPresetNameTextField(
-                        modifier = Modifier.onGloballyPositioned {
-                            textFieldHeight = it.size.height
-                        },
+                        modifier = Modifier.onSizeChanged { textFieldHeight = it.height },
                         db = db,
                         equalizerPreset = equalizerPresetEntry.key
                     )

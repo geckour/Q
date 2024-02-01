@@ -1,7 +1,12 @@
 package com.geckour.q.ui.main
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.coerceAtLeast
+import androidx.compose.ui.unit.dp
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.QAudioDeviceInfo
@@ -10,6 +15,7 @@ import kotlinx.collections.immutable.ImmutableList
 
 @Composable
 fun PlayerSheet(
+    maxHeight: Int? = null,
     queue: ImmutableList<DomainTrack>,
     currentIndex: Int,
     currentPlaybackPosition: Long,
@@ -39,7 +45,14 @@ fun PlayerSheet(
     onRemoveTrackFromQueue: (track: DomainTrack) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
-    Column {
+    Column(
+        modifier = if (maxHeight == null) Modifier else {
+            Modifier.heightIn(
+                max = (with(LocalDensity.current) { maxHeight.toDp() } + 144.dp - 36.dp)
+                    .coerceAtLeast(288.dp)
+            )
+        }
+    ) {
         Controller(
             currentTrack = queue.getOrNull(currentIndex),
             progress = currentPlaybackPosition,
