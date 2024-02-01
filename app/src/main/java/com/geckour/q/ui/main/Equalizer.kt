@@ -20,7 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text2.BasicTextField2
@@ -79,11 +79,13 @@ import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.EqualizerParams
 import com.geckour.q.util.getEqualizerEnabled
 import com.geckour.q.util.getEqualizerParams
+import com.geckour.q.util.getSelectedEqualizerPresetId
 import com.geckour.q.util.setEqualizerEnabled
 import com.geckour.q.util.setSelectedEqualizerPresetId
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.lastOrNull
+import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.launch
-import timber.log.Timber
 
 @Composable
 fun Equalizer(routeInfo: QAudioDeviceInfo?) {
@@ -168,23 +170,23 @@ fun Equalizer(routeInfo: QAudioDeviceInfo?) {
     }
 
     LaunchedEffect(selectedPreset) {
+        if (centerVisiblePresetIndex < 1) return@LaunchedEffect
         selectedPreset?.let {
             selectedPresetCache = it
             context.setSelectedEqualizerPresetId(it.key.id)
         }
     }
 
-    LaunchedEffect(audioDeviceEqualizerInfo) {
-        val index = getDefaultPresetIndex(
-            audioDeviceEqualizerInfo = audioDeviceEqualizerInfo ?: return@LaunchedEffect,
-            equalizerPresets = presetsMap.keys.toList()
-        ) + 1
-        if (centerVisiblePresetIndex != index) {
-            presetsLazyListState.scrollToItem(
-                index = index,
-                scrollOffset = presetItemOffset
-            )
-        }
+    LaunchedEffect(Unit) {
+        presetsLazyListState.scrollToItem(
+            index = presetsMap.keys
+                .indexOfFirst {
+                    it.id == context.getSelectedEqualizerPresetId().take(1).lastOrNull()
+                }
+                .coerceAtLeast(0) + 1,
+            scrollOffset = presetItemOffset,
+        )
+        return@LaunchedEffect
     }
 
     Column(
@@ -538,7 +540,7 @@ private fun EqualizerPresetSelector(
         item {
             Spacer(modifier = Modifier.width((LocalConfiguration.current.screenWidthDp * 0.5).dp))
         }
-        itemsIndexed(equalizerPresetsMap.entries.toList()) { index, equalizerPresetEntry ->
+        items(equalizerPresetsMap.entries.toList()) { equalizerPresetEntry ->
             Box(contentAlignment = Alignment.Center) {
                 val isSelected = equalizerPresetEntry.key.id == selectedPresetId
 
@@ -573,7 +575,6 @@ private fun EqualizerPresetSelector(
         }
     }
 }
-
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -665,9 +666,3 @@ fun EqualizerPresetNameTextField(
         }
     }
 }
-
-private fun getDefaultPresetIndex(
-    audioDeviceEqualizerInfo: AudioDeviceEqualizerInfo,
-    equalizerPresets: List<EqualizerPreset>
-): Int =
-    equalizerPresets.indexOfFirst { it.id == audioDeviceEqualizerInfo.defaultEqualizerPresetId }.coerceAtLeast(0)
