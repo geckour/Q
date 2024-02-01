@@ -35,6 +35,7 @@ import org.apache.commons.io.FileUtils
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import org.jaudiotagger.tag.images.ArtworkFactory
+import timber.log.Timber
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
@@ -557,9 +558,8 @@ suspend fun DomainTrack.verifiedWithDropbox(
             || (sourcePath.matches(dropboxUrlPattern).not()
                     && Uri.parse(sourcePath).toFile().exists().not())
         ) {
-            val currentTime = System.currentTimeMillis()
             val url = client.files().getTemporaryLink(dropboxPath).link
-            val expiredAt = currentTime + DROPBOX_EXPIRES_IN
+            val expiredAt = System.currentTimeMillis() + DROPBOX_EXPIRES_IN
 
             val trackDao = DB.getInstance(context).trackDao()
             trackDao.get(id)?.let { joinedTrack ->

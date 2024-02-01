@@ -83,6 +83,7 @@ import com.geckour.q.util.setEqualizerEnabled
 import com.geckour.q.util.setSelectedEqualizerPresetId
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @Composable
 fun Equalizer(routeInfo: QAudioDeviceInfo?) {
@@ -178,7 +179,7 @@ fun Equalizer(routeInfo: QAudioDeviceInfo?) {
             audioDeviceEqualizerInfo = audioDeviceEqualizerInfo ?: return@LaunchedEffect,
             equalizerPresets = presetsMap.keys.toList()
         ) + 1
-        if (index > 0 && normalizedCenterVisiblePresetIndex != index) {
+        if (centerVisiblePresetIndex != index) {
             presetsLazyListState.scrollToItem(
                 index = index,
                 scrollOffset = presetItemOffset
@@ -669,4 +670,4 @@ private fun getDefaultPresetIndex(
     audioDeviceEqualizerInfo: AudioDeviceEqualizerInfo,
     equalizerPresets: List<EqualizerPreset>
 ): Int =
-    equalizerPresets.indexOfFirst { it.id == audioDeviceEqualizerInfo.defaultEqualizerPresetId }
+    equalizerPresets.indexOfFirst { it.id == audioDeviceEqualizerInfo.defaultEqualizerPresetId }.coerceAtLeast(0)

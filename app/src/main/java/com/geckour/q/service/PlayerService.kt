@@ -223,13 +223,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
 
             Timber.e(error)
             FirebaseCrashlytics.getInstance().recordException(error)
-
-            val currentPlayWhenReady = player.playWhenReady
-            pause()
-            if (verifyByCauseIfNeeded(error).not()) {
-                removeQueue(currentIndex)
-            }
-            if (currentPlayWhenReady) play()
+            verifyByCauseIfNeeded(error)
         }
 
         override fun onAudioSessionIdChanged(audioSessionId: Int) {
@@ -545,7 +539,10 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                 .collectLatest { selectedPreset ->
                     selectedPreset ?: return@collectLatest
                     val params = getEqualizerParams().take(1).lastOrNull() ?: return@collectLatest
-                    reflectEqualizerSettings(params = params, equalizerPresetMapEntry = selectedPreset)
+                    reflectEqualizerSettings(
+                        params = params,
+                        equalizerPresetMapEntry = selectedPreset
+                    )
                 }
         }
         lifecycleScope.launch {
@@ -716,22 +713,14 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
     }
 
     /**
-     * @param with: first: old, second: new
+     * @param with: first: index, second: new
      */
-    private fun replace(with: List<Pair<DomainTrack, DomainTrack>>) {
+    private fun replace(with: List<Pair<Int, DomainTrack>>) {
         if (with.isEmpty()) return
 
         lifecycleScope.launch {
-            with.forEach { withTrack ->
-                val index = player.currentSourcePaths
-                    .indexOfFirst { it == withTrack.first.sourcePath }
-                FirebaseCrashlytics.getInstance()
-                    .log("replace source path: ${withTrack.second.sourcePath}")
-                removeQueue(index)
-                player.addMediaItem(
-                    index,
-                    withTrack.second.sourcePath.getMediaItem()
-                )
+            with.forEach { (index, track) ->
+                player.replaceMediaItem(index, track.sourcePath.getMediaItem())
             }
         }
     }
@@ -743,7 +732,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         player.moveMediaItem(from, to)
     }
 
-    fun removeQueue(position: Int) {
+    private fun removeQueue(position: Int) {
         if (position !in 0 until player.mediaItemCount ||
             player.playWhenReady
             && (player.playbackState == Player.STATE_READY || player.playbackState == Player.STATE_BUFFERING)
@@ -856,35 +845,39 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
             }
     }
 
-    private fun verifyByCauseIfNeeded(throwable: Throwable): Boolean {
+    private fun verifyByCauseIfNeeded(throwable: Throwable) {
         val isTarget =
             throwable.getCausesRecursively().any {
-                (it as? HttpDataSource.InvalidResponseCodeException?)?.responseCode == 410 ||
+                it is HttpDataSource.InvalidResponseCodeException ||
                         (it is FileNotFoundException &&
                                 player.currentSourcePaths
                                     .getOrNull(currentIndex)
                                     ?.matches(dropboxCachePathPattern) == true)
             }
+
         if (isTarget) {
             lifecycleScope.launch {
                 val index = currentIndex
                 val position = player.currentPosition
                 val replacingPairs = player.currentSourcePaths
-                    .mapNotNull { path ->
-                        val track = path.toDomainTrack(db) ?: return@mapNotNull null
+                    .mapIndexedNotNull { i, path ->
+                        val track = path.toDomainTrack(db) ?: return@mapIndexedNotNull null
                         val new = obtainDbxClient(this@PlayerService).firstOrNull()?.let {
-                            track.verifiedWithDropbox(this@PlayerService, it)
-                        } ?: return@mapNotNull null
-                        track to new
+                            track.verifiedWithDropbox(this@PlayerService, it, true)
+                        } ?: return@mapIndexedNotNull null
+                        i to new
                     }
                 replace(replacingPairs)
 
                 forceIndex(index)
                 player.seekTo(position)
             }
-            return true
+
+            return
         }
-        return false
+
+        pause()
+        removeQueue(currentIndex)
     }
 
     private fun Throwable.getCausesRecursively(initial: List<Throwable> = emptyList()): List<Throwable> {
