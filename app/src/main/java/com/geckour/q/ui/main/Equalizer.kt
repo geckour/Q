@@ -22,10 +22,8 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text2.BasicTextField2
-import androidx.compose.foundation.text2.input.TextFieldLineLimits
-import androidx.compose.foundation.text2.input.rememberTextFieldState
 import androidx.compose.material.Button
 import androidx.compose.material.Divider
 import androidx.compose.material.Icon
@@ -61,8 +59,10 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Constraints
@@ -187,6 +187,13 @@ fun Equalizer(routeInfo: QAudioDeviceInfo?) {
             scrollOffset = presetItemOffset,
         )
         return@LaunchedEffect
+    }
+
+    LaunchedEffect(presetsMap.size) {
+        presetsLazyListState.animateScrollToItem(
+            index = normalizedCenterVisiblePresetIndex,
+            scrollOffset = presetItemOffset
+        )
     }
 
     Column(
@@ -582,12 +589,19 @@ fun EqualizerPresetNameTextField(
 ) {
     val coroutineScope = rememberCoroutineScope()
     var editing by remember { mutableStateOf(false) }
-    val textFieldState = rememberTextFieldState(initialText = equalizerPreset.label)
+    var textFieldValue by remember {
+        mutableStateOf(
+            TextFieldValue(
+                text = equalizerPreset.label,
+                selection = TextRange(equalizerPreset.label.length)
+            )
+        )
+    }
     val onSave: () -> Unit = {
         if (editing) {
             coroutineScope.launch {
                 db.equalizerPresetDao().upsertEqualizerPreset(
-                    equalizerPreset.copy(label = textFieldState.text.toString())
+                    equalizerPreset.copy(label = textFieldValue.text)
                 )
             }
         }
@@ -604,8 +618,9 @@ fun EqualizerPresetNameTextField(
         if (editing) {
             val textFieldFocusRequester by remember { mutableStateOf(FocusRequester()) }
 
-            BasicTextField2(
-                state = textFieldState,
+            BasicTextField(
+                value = textFieldValue,
+                onValueChange = { textFieldValue = it },
                 textStyle = TextStyle(
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
@@ -613,7 +628,7 @@ fun EqualizerPresetNameTextField(
                     color = QTheme.colors.colorTextPrimary
                 ),
                 cursorBrush = SolidColor(value = QTheme.colors.colorTextPrimary),
-                decorator = {
+                decorationBox = {
                     Column {
                         it()
                         Divider(
@@ -622,7 +637,7 @@ fun EqualizerPresetNameTextField(
                         )
                     }
                 },
-                lineLimits = TextFieldLineLimits.SingleLine,
+                singleLine = true,
                 keyboardActions = KeyboardActions(
                     onDone = { onSave() },
                     onGo = { onSave() },
