@@ -23,6 +23,7 @@ import androidx.media3.session.SessionToken
 import androidx.mediarouter.media.MediaRouteSelector
 import androidx.mediarouter.media.MediaRouter
 import androidx.work.WorkManager
+import androidx.work.await
 import com.dropbox.core.android.Auth
 import com.dropbox.core.v2.files.FolderMetadata
 import com.dropbox.core.v2.files.Metadata
@@ -42,8 +43,6 @@ import com.geckour.q.util.setDropboxCredential
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.worker.DROPBOX_DOWNLOAD_WORKER_NAME
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
-import com.google.common.util.concurrent.ListenableFuture
-import com.google.common.util.concurrent.MoreExecutors
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -76,7 +75,6 @@ class MainViewModel(private val app: App) : ViewModel() {
     private val mediaRouter = MediaRouter.getInstance(app)
     private val audioManager = app.getSystemService<AudioManager>()
 
-    private lateinit var mediaControllerFuture: ListenableFuture<MediaController>
     private var mediaController: MediaController? = null
 
     internal var isDropboxAuthOngoing = false
@@ -332,37 +330,31 @@ class MainViewModel(private val app: App) : ViewModel() {
     }.apply { Timber.d("qgeck Q audio device info list: $this") }
 
     internal fun initializeMediaController(context: Context) {
-        mediaControllerFuture = MediaController.Builder(
-            context,
-            SessionToken(context, ComponentName(context, PlayerService::class.java))
-        ).buildAsync()
+        viewModelScope.launch {
+            mediaController = MediaController.Builder(
+                context,
+                SessionToken(context, ComponentName(context, PlayerService::class.java))
+            ).buildAsync()
+                .await()
+                .apply {
+                    addListener(playerListener)
 
-        mediaControllerFuture.addListener(
-            {
-                mediaController =
-                    if (mediaControllerFuture.isDone && mediaControllerFuture.isCancelled.not()) {
-                        mediaControllerFuture.get().apply {
-                            addListener(playerListener)
+                    sendCustomCommand(
+                        SessionCommand(
+                            PlayerService.ACTION_COMMAND_RESTORE_STATE,
+                            Bundle.EMPTY
+                        ),
+                        Bundle.EMPTY
+                    )
 
-                            sendCustomCommand(
-                                SessionCommand(
-                                    PlayerService.ACTION_COMMAND_RESTORE_STATE,
-                                    Bundle.EMPTY
-                                ),
-                                Bundle.EMPTY
-                            )
-
-                            onSourceChanged()
-                        }
-                    } else null
-            },
-            MoreExecutors.directExecutor()
-        )
+                    onSourceChanged()
+                }
+        }
     }
 
     internal fun releaseMediaController() {
         mediaController?.removeListener(playerListener)
-        MediaController.releaseFuture(mediaControllerFuture)
+        mediaController?.release()
     }
 
     internal fun onNewQueue(
