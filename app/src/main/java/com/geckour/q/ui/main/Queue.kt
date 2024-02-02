@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -22,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.Button
 import androidx.compose.material.Divider
 import androidx.compose.material.ExperimentalMaterialApi
@@ -88,9 +88,9 @@ fun ColumnScope.Queue(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val db = DB.getInstance(context)
     var items by remember { mutableStateOf(domainTracks) }
-    val lyric by DB.getInstance(context)
-        .lyricDao()
+    val lyric by db.lyricDao()
         .getLyricFlowByTrackId(domainTracks.firstOrNull { it.nowPlaying }?.id ?: -1)
         .collectAsState(initial = null)
     val lyricLinesForShowing = lyric.lyricLinesForShowing
@@ -111,126 +111,130 @@ fun ColumnScope.Queue(
     }
 
     if (showLyric) {
-        if (lyric?.lines.isNullOrEmpty()) {
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxSize()
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "歌詞が設定されていないか読み込めませんでした",
-                    fontSize = 20.sp,
-                    color = QTheme.colors.colorTextPrimary
+        var currentIndex by remember { mutableIntStateOf(-1) }
+        val listState = rememberLazyListState()
+        val density = LocalDensity.current
+
+        LaunchedEffect(currentPlaybackPosition) {
+            currentIndex =
+                if (lyricLinesForShowing.all { it.lyricLine.timing == 0L }) -1
+                else lyricLinesForShowing.indexOfLast {
+                    it.lyricLine.timing < currentPlaybackPosition
+                }
+        }
+        LaunchedEffect(currentIndex, lyricListHeight) {
+            if (isInEditMode.not() && currentIndex > -1) {
+                listState.animateScrollToItem(
+                    currentIndex + 1,
+                    -lyricListHeight / 2 + with(density) { 22.dp.roundToPx() }
                 )
             }
-        } else {
-            var currentIndex by remember { mutableIntStateOf(-1) }
-            val listState = rememberLazyListState()
-            val density = LocalDensity.current
-
-            LaunchedEffect(currentPlaybackPosition) {
-                currentIndex =
-                    if (lyricLinesForShowing.all { it.lyricLine.timing == 0L }) -1
-                    else lyricLinesForShowing.indexOfLast {
-                        it.lyricLine.timing < currentPlaybackPosition
-                    }
-            }
-            LaunchedEffect(currentIndex, lyricListHeight) {
-                if (isInEditMode.not() && currentIndex > -1) {
-                    listState.animateScrollToItem(
-                        currentIndex + 1,
-                        -lyricListHeight / 2 + with(density) { 22.dp.roundToPx() }
-                    )
-                }
-            }
-            LazyColumn(
-                state = listState,
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .onSizeChanged { lyricListHeight = it.height }
-            ) {
-                item {
-                    Row(
-                        modifier = Modifier
-                            .padding(horizontal = 24.dp)
-                            .fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Button(onClick = { isInEditMode = isInEditMode.not() }) {
-                            Text(
-                                text = if (isInEditMode) "完了" else "編集",
-                                color = QTheme.colors.colorTextPrimary
-                            )
-                        }
-                    }
-                }
-                if (isInEditMode) {
-                    item {
-                        NewLyricLineInputBox(
-                            onSubmit = { newSentence ->
-                                lyric?.let {
-                                    coroutineScope.launch {
-                                        DB.getInstance(context).lyricDao().upsertLyric(
-                                            it.copy(
-                                                lines = lyricLinesForShowing.map { it.lyricLine } +
-                                                        LyricLine(
-                                                            currentPlaybackPosition,
-                                                            newSentence
-                                                        )
-                                            )
-                                        )
-                                    }
-                                }
-                            }
+        }
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .onSizeChanged { lyricListHeight = it.height }
+        ) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .padding(horizontal = 24.dp)
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Button(onClick = { isInEditMode = isInEditMode.not() }) {
+                        Text(
+                            text = if (isInEditMode) "完了" else "編集",
+                            color = QTheme.colors.colorTextPrimary
                         )
                     }
                 }
-                items(lyricLinesForShowing) { indexedLyricLine ->
-                    if (isInEditMode) EditableLrcItem(
-                        line = indexedLyricLine,
-                        currentPlaybackPosition = currentPlaybackPosition,
-                        onUpdateLine = { index, newLine ->
-                            lyric?.let {
-                                coroutineScope.launch {
-                                    DB.getInstance(context)
-                                        .lyricDao()
-                                        .upsertLyric(
-                                            it.copy(
-                                                lines = lyricLinesForShowing.toMutableList()
-                                                    .apply {
-                                                        set(
-                                                            index,
-                                                            IndexedLyricLine(index, newLine)
-                                                        )
-                                                    }
-                                                    .map { it.lyricLine }
-                                            )
+            }
+            if (isInEditMode) {
+                item {
+                    NewLyricLineInputBox(
+                        onSubmit = { newSentence ->
+                            coroutineScope.launch {
+                                (lyric ?: domainTracks.firstOrNull { it.nowPlaying }
+                                    ?.id
+                                    ?.let {
+                                        val newLyric =
+                                            Lyric(id = 0, trackId = it, lines = emptyList())
+                                        val id = db.lyricDao().upsertLyric(newLyric)
+                                        newLyric.copy(id = id)
+                                    })?.let {
+                                    db.lyricDao().upsertLyric(
+                                        it.copy(
+                                            lines = lyricLinesForShowing.map { it.lyricLine } +
+                                                    LyricLine(
+                                                        currentPlaybackPosition,
+                                                        newSentence
+                                                    )
                                         )
+                                    )
                                 }
                             }
-                        },
-                        onDeleteLine = { index ->
-                            lyric?.let {
-                                coroutineScope.launch {
-                                    DB.getInstance(context)
-                                        .lyricDao()
-                                        .upsertLyric(
-                                            it.copy(
-                                                lines = lyricLinesForShowing.removedAt(index)
-                                                    .map { it.lyricLine }
-                                            )
-                                        )
-                                }
-                            }
-                        })
-                    else LrcItem(
-                        lyric = indexedLyricLine.lyricLine.sentence,
-                        indexedLyricLine.index == currentIndex
+                        }
                     )
                 }
+            } else if (lyric?.lines.isNullOrEmpty()) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp, vertical = 40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "歌詞が設定されていないか読み込めませんでした",
+                            fontSize = 20.sp,
+                            color = QTheme.colors.colorTextPrimary
+                        )
+                    }
+                }
+            }
+            items(lyricLinesForShowing) { indexedLyricLine ->
+                if (isInEditMode) EditableLrcItem(
+                    line = indexedLyricLine,
+                    currentPlaybackPosition = currentPlaybackPosition,
+                    onUpdateLine = { index, newLine ->
+                        lyric?.let {
+                            coroutineScope.launch {
+                                db.lyricDao()
+                                    .upsertLyric(
+                                        it.copy(
+                                            lines = lyricLinesForShowing.toMutableList()
+                                                .apply {
+                                                    set(
+                                                        index,
+                                                        IndexedLyricLine(index, newLine)
+                                                    )
+                                                }
+                                                .map { it.lyricLine }
+                                        )
+                                    )
+                            }
+                        }
+                    },
+                    onDeleteLine = { index ->
+                        lyric?.let {
+                            coroutineScope.launch {
+                                db.lyricDao()
+                                    .upsertLyric(
+                                        it.copy(
+                                            lines = lyricLinesForShowing.removedAt(index)
+                                                .map { it.lyricLine }
+                                        )
+                                    )
+                            }
+                        }
+                    })
+                else LrcItem(
+                    lyric = indexedLyricLine.lyricLine.sentence,
+                    indexedLyricLine.index == currentIndex
+                )
             }
         }
     } else {
@@ -389,6 +393,24 @@ fun NewLyricLineInputBox(onSubmit: (newLine: String) -> Unit) {
                 .defaultMinSize(minWidth = 0.dp, minHeight = 0.dp),
             value = text,
             onValueChange = { text = it },
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    onSubmit(text)
+                    text = ""
+                },
+                onGo = {
+                    onSubmit(text)
+                    text = ""
+                },
+                onNext = {
+                    onSubmit(text)
+                    text = ""
+                },
+                onSend = {
+                    onSubmit(text)
+                    text = ""
+                },
+            ),
             singleLine = true,
             textStyle = TextStyle(fontSize = 16.sp, color = QTheme.colors.colorTextPrimary),
             cursorBrush = SolidColor(QTheme.colors.colorTextSecondary),
