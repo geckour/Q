@@ -8,10 +8,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Card
+import androidx.compose.material.DrawerValue
 import androidx.compose.material.Scaffold
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -30,6 +32,7 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.coroutines.launch
 
 @Composable
 fun TwinScreen(
@@ -300,6 +303,7 @@ fun RowScope.TwinStartPage(
             )
         }
     ) { paddingValues ->
+        val coroutineScope = rememberCoroutineScope()
         Box(
             modifier = Modifier
                 .padding(paddingValues)
@@ -313,6 +317,9 @@ fun RowScope.TwinStartPage(
                 isSearchActive = isSearchActive,
                 isFavoriteOnly = isFavoriteOnly,
                 routeInfo = routeInfo,
+                onBackHandle = if (scaffoldState.drawerState.currentValue == DrawerValue.Open) {
+                    { coroutineScope.launch { scaffoldState.drawerState.close() } }
+                } else null,
                 onCancelProgress = onCancelProgress,
                 onSelectNav = onSelectNav,
                 onChangeTopBarTitle = onChangeTopBarTitle,

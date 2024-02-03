@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.BottomSheetScaffold
+import androidx.compose.material.BottomSheetValue
 import androidx.compose.material.DrawerValue
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.ModalDrawer
@@ -183,9 +184,6 @@ fun SingleScreen(
             sheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
             sheetElevation = 8.dp,
             sheetContent = {
-                BackHandler(scaffoldState.bottomSheetState.isExpanded && drawerState.isClosed) {
-                    coroutineScope.launch { scaffoldState.bottomSheetState.collapse() }
-                }
                 PlayerSheet(
                     maxHeight = libraryHeight,
                     queue = queue,
@@ -235,6 +233,9 @@ fun SingleScreen(
                     isSearchActive = isSearchActive,
                     isFavoriteOnly = isFavoriteOnly,
                     routeInfo = routeInfo,
+                    onBackHandle = if (scaffoldState.bottomSheetState.currentValue == BottomSheetValue.Expanded) {
+                        { coroutineScope.launch { scaffoldState.bottomSheetState.collapse() } }
+                    } else null,
                     onCancelProgress = onCancelProgress,
                     onSelectNav = onSelectNav,
                     onChangeTopBarTitle = onChangeTopBarTitle,

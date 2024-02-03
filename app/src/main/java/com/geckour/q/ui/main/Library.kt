@@ -1,5 +1,6 @@
 package com.geckour.q.ui.main
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -41,6 +42,7 @@ fun Library(
     isSearchActive: MutableState<Boolean>,
     isFavoriteOnly: MutableState<Boolean>,
     routeInfo: QAudioDeviceInfo?,
+    onBackHandle: (() -> Unit)?,
     onCancelProgress: (() -> Unit)?,
     onSelectNav: (nav: Nav?) -> Unit,
     onChangeTopBarTitle: (newTitle: String) -> Unit,
@@ -73,6 +75,9 @@ fun Library(
                 .fillMaxSize()
         ) {
             composable("artists") {
+                BackHandler(enabled = onBackHandle != null) {
+                    onBackHandle?.invoke()
+                }
                 val topBarTitle = stringResource(id = R.string.nav_artist)
                 LaunchedEffect(navController.currentDestination) {
                     onSelectNav(Nav.ARTIST)
@@ -114,6 +119,9 @@ fun Library(
                     }
                 )
             ) { backStackEntry ->
+                BackHandler(enabled = onBackHandle != null) {
+                    onBackHandle?.invoke()
+                }
                 val artistId = backStackEntry.arguments?.getLong("artistId")
                     ?: -1
                 LaunchedEffect(artistId) {
@@ -170,6 +178,9 @@ fun Library(
                     }
                 )
             ) { backStackEntry ->
+                BackHandler(enabled = onBackHandle != null) {
+                    onBackHandle?.invoke()
+                }
                 val albumId = backStackEntry.arguments?.getLong("albumId") ?: -1
                 val genreName = backStackEntry.arguments?.getString("genreName")
                 LaunchedEffect(albumId) {
@@ -208,6 +219,9 @@ fun Library(
                 )
             }
             composable("genres") {
+                BackHandler(enabled = onBackHandle != null) {
+                    onBackHandle?.invoke()
+                }
                 val topBarTitle = stringResource(id = R.string.nav_genre)
                 LaunchedEffect(navController.currentDestination) {
                     onSelectNav(Nav.GENRE)
@@ -227,6 +241,9 @@ fun Library(
                 )
             }
             composable("qzi") {
+                BackHandler(enabled = onBackHandle != null) {
+                    onBackHandle?.invoke()
+                }
                 val topBarTitle = stringResource(id = R.string.nav_fortune)
                 LaunchedEffect(navController.currentDestination) {
                     onSelectNav(null)
@@ -238,6 +255,9 @@ fun Library(
                 )
             }
             composable("pay") {
+                BackHandler(enabled = onBackHandle != null) {
+                    onBackHandle?.invoke()
+                }
                 val topBarTitle = stringResource(id = R.string.nav_pay)
                 LaunchedEffect(navController.currentDestination) {
                     onSelectNav(Nav.PAY)
@@ -247,6 +267,9 @@ fun Library(
                 Pay(onStartBilling = onStartBilling)
             }
             composable("equalizer") {
+                BackHandler(enabled = onBackHandle != null) {
+                    onBackHandle?.invoke()
+                }
                 val topBarTitle = stringResource(id = R.string.nav_equalizer)
                 LaunchedEffect(navController.currentDestination) {
                     onSelectNav(Nav.EQUALIZER)
