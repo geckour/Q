@@ -5,12 +5,14 @@ import android.media.AudioDeviceInfo
 import android.os.Build
 import androidx.mediarouter.media.MediaRouter
 import com.geckour.q.R
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class QAudioDeviceInfo(
     val routeId: String,
     val address: String?,
-    val id: Int,
-    val name: String,
+    val audioDeviceId: Int,
+    val audioDeviceName: String,
     val selected: Boolean
 ) {
 
@@ -26,19 +28,44 @@ data class QAudioDeviceInfo(
             return QAudioDeviceInfo(
                 routeId = mediaRouteInfo.id,
                 address = audioDeviceAddress,
-                id = audioDeviceInfo.id,
-                name = audioDeviceInfo.productName.toString(),
+                audioDeviceId = audioDeviceInfo.id,
+                audioDeviceName = audioDeviceInfo.productName.toString(),
                 selected = activeAudioDeviceInfo?.let { it.id == audioDeviceInfo.id }
                     ?: (mediaRouteInfo.isSelected &&
                             mediaRouteInfo.name == audioDeviceInfo.productName.toString())
             )
         }
 
-        fun getDefaultQAudioDeviceInfo(context: Context, mediaRouteInfo: MediaRouter.RouteInfo) = QAudioDeviceInfo(
+        fun get(
+            context: Context,
+            mediaRouteInfoList: List<MediaRouter.RouteInfo>,
+            audioDeviceInfoList: List<AudioDeviceInfo>,
+            activeAudioDeviceInfo: AudioDeviceInfo?,
+        ) = mediaRouteInfoList.flatMap { mediaRouteInfo ->
+            audioDeviceInfoList.map { audioDeviceInfo ->
+                from(
+                    mediaRouteInfo = mediaRouteInfo,
+                    audioDeviceInfo = audioDeviceInfo,
+                    activeAudioDeviceInfo = activeAudioDeviceInfo
+                )
+            }
+        }.let { qAudioDeviceInfoList ->
+            val selectedMediaRouteInfo =
+                mediaRouteInfoList.firstOrNull { it.isSelected } ?: return@let qAudioDeviceInfoList
+            if (qAudioDeviceInfoList.none { it.selected }) {
+                qAudioDeviceInfoList +
+                        getDefaultQAudioDeviceInfo(context, selectedMediaRouteInfo)
+            } else qAudioDeviceInfoList
+        }
+
+        fun getDefaultQAudioDeviceInfo(
+            context: Context,
+            mediaRouteInfo: MediaRouter.RouteInfo
+        ) = QAudioDeviceInfo(
             routeId = mediaRouteInfo.id,
             address = null,
-            id = 0,
-            name = context.getString(R.string.default_device_name),
+            audioDeviceId = 0,
+            audioDeviceName = context.getString(R.string.default_device_name),
             selected = true
         )
     }

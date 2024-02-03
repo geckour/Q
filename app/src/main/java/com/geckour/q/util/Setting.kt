@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.geckour.q.domain.model.QAudioDeviceInfo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
@@ -24,7 +25,8 @@ data class EqualizerParams(
     fun normalizedLevel(ratio: Float): Int =
         levelRange.first + ((levelRange.second - levelRange.first) * ratio).toInt()
 
-    fun toRatio(level: Int): Float = (level.toFloat() - levelRange.first) / (levelRange.second - levelRange.first)
+    fun toRatio(level: Int): Float =
+        (level.toFloat() - levelRange.first) / (levelRange.second - levelRange.first)
 
     @Serializable
     data class Band(
@@ -43,6 +45,7 @@ private val dropboxCredentialKey = stringPreferencesKey("key_dropbox_credential"
 private val equalizerEnabledKey = booleanPreferencesKey("key_equalizer_enabled")
 private val equalizerParamsKey = stringPreferencesKey("key_equalizer_params")
 private val selectedEqualizerPresetIdKey = longPreferencesKey("key_selected_equalizer_preset_id")
+private val selectedQAudioDeviceInfoKey = stringPreferencesKey("key_selected_q_audio_device_info")
 
 fun Context.getIsNightMode(): Flow<Boolean> = dataStore.data.map {
     it[isNightModeKey] ?: false
@@ -85,11 +88,13 @@ suspend fun Context.setEqualizerEnabled(enabled: Boolean) {
 }
 
 fun Context.getEqualizerParams(): Flow<EqualizerParams?> = dataStore.data.map { preferences ->
-    preferences[equalizerParamsKey]?.let { catchAsNull { Json.decodeFromString(it) }  }
+    preferences[equalizerParamsKey]?.let { catchAsNull { Json.decodeFromString(it) } }
 }
 
 suspend fun Context.setEqualizerParams(equalizerParams: EqualizerParams?) {
-    dataStore.edit { pref -> pref[equalizerParamsKey] = equalizerParams?.let { Json.encodeToString(it) }.orEmpty() }
+    dataStore.edit { preferences ->
+        preferences[equalizerParamsKey] = equalizerParams?.let { Json.encodeToString(it) }.orEmpty()
+    }
 }
 
 fun Context.getSelectedEqualizerPresetId(): Flow<Long> = dataStore.data.map {
@@ -98,4 +103,16 @@ fun Context.getSelectedEqualizerPresetId(): Flow<Long> = dataStore.data.map {
 
 suspend fun Context.setSelectedEqualizerPresetId(selectedPresetId: Long?) {
     dataStore.edit { it[selectedEqualizerPresetIdKey] = selectedPresetId ?: 0 }
+}
+
+fun Context.getActiveQAudioDeviceInfo(): Flow<QAudioDeviceInfo?> =
+    dataStore.data.map { preferences ->
+        preferences[selectedQAudioDeviceInfoKey]?.let { catchAsNull { Json.decodeFromString(it) } }
+    }
+
+suspend fun Context.setActiveQAudioDeviceInfo(qAudioDeviceInfo: QAudioDeviceInfo?) {
+    dataStore.edit { preferences ->
+        preferences[selectedQAudioDeviceInfoKey] =
+            qAudioDeviceInfo?.let { Json.encodeToString(it) }.orEmpty()
+    }
 }

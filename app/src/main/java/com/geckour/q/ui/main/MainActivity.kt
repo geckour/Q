@@ -64,13 +64,13 @@ import com.geckour.q.domain.model.LayoutType
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.PlaybackButton
-import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.ui.compose.ColorBackground
 import com.geckour.q.ui.compose.ColorBackgroundInverse
 import com.geckour.q.ui.compose.ColorPrimaryDark
 import com.geckour.q.ui.compose.ColorPrimaryDarkInverse
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.dbxRequestConfig
+import com.geckour.q.util.getActiveQAudioDeviceInfo
 import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getExtension
 import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
@@ -360,8 +360,7 @@ class MainActivity : ComponentActivity() {
             }
             val isSearchActive = remember { mutableStateOf(false) }
             val isFavoriteOnly = remember { mutableStateOf(false) }
-            val qAudioDeviceInfoList by viewModel.qAudioDeviceInfoListFlow
-                .collectAsState(emptyList())
+            val activeQAudioDeviceInfo by getActiveQAudioDeviceInfo().collectAsState(initial = null)
 
             onLrcFileLoaded = {
                 if (attachLyricTargetTrackId > 0) {
@@ -501,7 +500,7 @@ class MainActivity : ComponentActivity() {
                                 currentPlaybackInfo = currentPlaybackInfo,
                                 currentRepeatMode = currentRepeatMode,
                                 isLoading = isLoading,
-                                routeInfo = qAudioDeviceInfoList.lastOrNull { it.selected },
+                                routeInfo = activeQAudioDeviceInfo,
                                 showLyric = showLyric,
                                 selectedNav = selectedNav,
                                 selectedTrack = selectedTrack,
@@ -646,7 +645,7 @@ class MainActivity : ComponentActivity() {
                                 currentPlaybackInfo = currentPlaybackInfo,
                                 currentRepeatMode = currentRepeatMode,
                                 isLoading = isLoading,
-                                routeInfo = qAudioDeviceInfoList.lastOrNull { it.selected },
+                                routeInfo = activeQAudioDeviceInfo,
                                 showLyric = showLyric,
                                 selectedNav = selectedNav,
                                 selectedTrack = selectedTrack,

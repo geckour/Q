@@ -66,7 +66,7 @@ fun Genres(
     val context = LocalContext.current
     val db = DB.getInstance(context)
     val genreNames by db.trackDao()
-        .getAllGenreAsync()
+        .getAllGenreAsFlow()
         .collectAsState(initial = emptyList())
     var genres by remember { mutableStateOf<ImmutableList<Genre>>(persistentListOf()) }
     val listState = rememberLazyListState()

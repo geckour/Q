@@ -72,8 +72,6 @@ class MainViewModel(private val app: App) : ViewModel() {
             .combine(workManager.getWorkInfosForUniqueWorkFlow(DROPBOX_DOWNLOAD_WORKER_NAME)) { mediaRetrieveWorkInfo, downloadWorkInfo ->
                 mediaRetrieveWorkInfo + downloadWorkInfo
             }
-    private val mediaRouter = MediaRouter.getInstance(app)
-    private val audioManager = app.getSystemService<AudioManager>()
 
     private var mediaController: MediaController? = null
 
@@ -83,7 +81,7 @@ class MainViewModel(private val app: App) : ViewModel() {
         MutableStateFlow<ImmutableList<String>>(persistentListOf())
     internal val currentIndexFlow = MutableStateFlow(0)
     internal val currentQueueFlow = DB.getInstance(app).trackDao()
-        .getAllAsync()
+        .getAllAsFlow()
         .combine(currentSourcePathsFlow) { allTracks, currentSourcePaths ->
             allTracks to currentSourcePaths
         }
@@ -98,15 +96,6 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal val currentPlaybackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
     internal val currentRepeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
     internal val snackBarMessageFlow = MutableStateFlow<String?>(null)
-    private val mediaRouteInfoListFlow = MutableStateFlow<List<MediaRouter.RouteInfo>>(emptyList())
-    private val audioDeviceInfoListFlow = MutableStateFlow<List<AudioDeviceInfo>>(emptyList())
-    private val activeAudioDeviceInfoFlow = MutableStateFlow<AudioDeviceInfo?>(null)
-    internal val qAudioDeviceInfoListFlow =
-        mediaRouteInfoListFlow.combine(audioDeviceInfoListFlow) { first, second ->
-            first to second
-        }.combine(activeAudioDeviceInfoFlow) { (first, second), third ->
-            getQAudioDeviceInfoList(first, second, third)
-        }
 
     private var notifyPlaybackPositionJob: Job = Job()
     private var notifyBufferedPositionJob: Job = Job()
@@ -219,115 +208,6 @@ class MainViewModel(private val app: App) : ViewModel() {
             }
         }
     )
-
-    private val mediaRouterCallback = object : MediaRouter.Callback() {
-
-        override fun onRouteSelected(
-            router: MediaRouter,
-            route: MediaRouter.RouteInfo,
-            reason: Int
-        ) {
-            super.onRouteSelected(router, route, reason)
-
-            onUpdateQAudioDeviceInfoList(router)
-        }
-
-        override fun onRouteUnselected(
-            router: MediaRouter,
-            route: MediaRouter.RouteInfo,
-            reason: Int
-        ) {
-            super.onRouteUnselected(router, route, reason)
-
-            onUpdateQAudioDeviceInfoList(router)
-        }
-
-        override fun onRouteAdded(router: MediaRouter, route: MediaRouter.RouteInfo) {
-            super.onRouteAdded(router, route)
-
-            onUpdateQAudioDeviceInfoList(router)
-        }
-
-        override fun onRouteRemoved(router: MediaRouter, route: MediaRouter.RouteInfo) {
-            super.onRouteRemoved(router, route)
-
-            onUpdateQAudioDeviceInfoList(router)
-        }
-
-        override fun onRouteChanged(router: MediaRouter, route: MediaRouter.RouteInfo) {
-            super.onRouteChanged(router, route)
-
-            onUpdateQAudioDeviceInfoList(router)
-        }
-
-        override fun onProviderAdded(router: MediaRouter, provider: MediaRouter.ProviderInfo) {
-            super.onProviderAdded(router, provider)
-
-            onUpdateQAudioDeviceInfoList(router)
-        }
-
-        override fun onProviderRemoved(router: MediaRouter, provider: MediaRouter.ProviderInfo) {
-            super.onProviderRemoved(router, provider)
-
-            onUpdateQAudioDeviceInfoList(router)
-        }
-
-        override fun onProviderChanged(router: MediaRouter, provider: MediaRouter.ProviderInfo) {
-            super.onProviderChanged(router, provider)
-
-            onUpdateQAudioDeviceInfoList(router)
-        }
-    }
-
-    init {
-        onUpdateQAudioDeviceInfoList()
-        mediaRouter.addCallback(
-            MediaRouteSelector.EMPTY,
-            mediaRouterCallback,
-            MediaRouter.CALLBACK_FLAG_PERFORM_ACTIVE_SCAN
-        )
-    }
-
-    override fun onCleared() {
-        mediaRouter.removeCallback(mediaRouterCallback)
-
-        super.onCleared()
-    }
-
-    private fun onUpdateQAudioDeviceInfoList(router: MediaRouter = mediaRouter) {
-        mediaRouteInfoListFlow.value = router.routes
-        updateAudioDeviceInfoList()
-        activeAudioDeviceInfoFlow.value =
-            if (Build.VERSION.SDK_INT > 30) {
-                audioManager?.activePlaybackConfigurations?.firstOrNull { it.audioDeviceInfo != null }?.audioDeviceInfo
-            } else null
-    }
-
-    private fun updateAudioDeviceInfoList() {
-        audioDeviceInfoListFlow.value =
-            audioManager?.getDevices(AudioManager.GET_DEVICES_OUTPUTS)?.toList().orEmpty()
-    }
-
-    private fun getQAudioDeviceInfoList(
-        mediaRouteInfoList: List<MediaRouter.RouteInfo>,
-        audioDeviceInfoList: List<AudioDeviceInfo>,
-        activeAudioDeviceInfo: AudioDeviceInfo?,
-    ) = mediaRouteInfoList.flatMap { mediaRouteInfo ->
-        audioDeviceInfoList.map { audioDeviceInfo ->
-            QAudioDeviceInfo.from(
-                mediaRouteInfo = mediaRouteInfo,
-                audioDeviceInfo = audioDeviceInfo,
-                activeAudioDeviceInfo = activeAudioDeviceInfo
-            )
-        }
-    }.let { qAudioDeviceInfoList ->
-        val selectedMediaRouteInfo =
-            mediaRouteInfoList.firstOrNull { it.isSelected } ?: return@let qAudioDeviceInfoList
-        if (qAudioDeviceInfoList.none { it.selected }) {
-            qAudioDeviceInfoList +
-                    QAudioDeviceInfo.getDefaultQAudioDeviceInfo(app, selectedMediaRouteInfo)
-        } else qAudioDeviceInfoList
-    }.apply { Timber.d("qgeck Q audio device info list: $this") }
 
     internal fun initializeMediaController(context: Context) {
         viewModelScope.launch {

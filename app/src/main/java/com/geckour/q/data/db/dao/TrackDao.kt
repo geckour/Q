@@ -84,7 +84,7 @@ interface TrackDao {
 
     @Transaction
     @Query("select * from track where ignored != :ignore order by titleSort collate nocase")
-    fun getAllAsync(ignore: Bool = Bool.UNDEFINED): Flow<List<JoinedTrack>>
+    fun getAllAsFlow(ignore: Bool = Bool.UNDEFINED): Flow<List<JoinedTrack>>
 
     @Transaction
     @Query("select * from track where title like :title")
@@ -100,7 +100,7 @@ interface TrackDao {
 
     @Transaction
     @Query("select * from track where albumId = :albumId and ignored != :ignore order by discNum, trackNum")
-    fun getAllByAlbumAsync(
+    fun getAllByAlbumAsFlow(
         albumId: Long,
         ignore: Bool = Bool.UNDEFINED
     ): Flow<List<JoinedTrack>>
@@ -111,7 +111,7 @@ interface TrackDao {
 
     @Transaction
     @Query("select * from track where genre = :genreName")
-    fun getAllByGenreNameAsync(genreName: String): Flow<List<JoinedTrack>>
+    fun getAllByGenreNameAsFlow(genreName: String): Flow<List<JoinedTrack>>
 
     @Transaction
     @Query("select * from track where (artistId = :artistId or albumArtistId = :artistId) and ignored != :ignore")
@@ -123,7 +123,7 @@ interface TrackDao {
 
     @Transaction
     @Query("select distinct genre from track where genre is not null")
-    fun getAllGenreAsync(): Flow<List<String>>
+    fun getAllGenreAsFlow(): Flow<List<String>>
 
     @Transaction
     @Query("select distinct genre from track where genre is not null and genre like :name")
@@ -139,7 +139,7 @@ interface TrackDao {
     suspend fun count(): Int
 
     @Query("select count(*) from track")
-    fun countAsync(): Flow<Int>
+    fun countAsFlow(): Flow<Int>
 
     @Query("select lastModified from track order by lastModified desc limit 1")
     suspend fun getLatestModifiedEpochTime(): Long?

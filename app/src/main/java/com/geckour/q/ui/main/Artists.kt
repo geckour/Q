@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.Icon
@@ -67,7 +66,7 @@ fun Artists(
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
 ) {
     val db = DB.getInstance(LocalContext.current)
-    val artists by db.artistDao().getAllOrientedAlbumAsync()
+    val artists by db.artistDao().getAllOrientedAlbumAsFlow()
         .map { artists -> if (isFavoriteOnly.value) artists.filter { it.isFavorite } else artists }
         .collectAsState(initial = emptyList())
     val listState = rememberLazyListState()

@@ -70,9 +70,9 @@ fun Tracks(
 ) {
     val db = DB.getInstance(LocalContext.current)
     val joinedTracks by (when {
-        albumId > 0 -> db.trackDao().getAllByAlbumAsync(albumId)
-        genreName != null -> db.trackDao().getAllByGenreNameAsync(genreName)
-        else -> db.trackDao().getAllAsync()
+        albumId > 0 -> db.trackDao().getAllByAlbumAsFlow(albumId)
+        genreName != null -> db.trackDao().getAllByGenreNameAsFlow(genreName)
+        else -> db.trackDao().getAllAsFlow()
     })
         .map { joinedTracks ->
             if (isFavoriteOnly.value) joinedTracks.filter { it.track.isFavorite } else joinedTracks

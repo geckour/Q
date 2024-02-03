@@ -39,15 +39,6 @@ class App : Application() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannel() {
-        val channelPlayer =
-            NotificationChannel(
-                QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER.name,
-                getString(R.string.notification_channel_player),
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                this.description = getString(R.string.notification_channel_description_player)
-            }
-
         val channelRetriever =
             NotificationChannel(
                 QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER.name,
@@ -67,7 +58,6 @@ class App : Application() {
             }
 
         getSystemService(NotificationManager::class.java)?.apply {
-            createNotificationChannel(channelPlayer)
             createNotificationChannel(channelRetriever)
             createNotificationChannel(channelSleepTimer)
         }

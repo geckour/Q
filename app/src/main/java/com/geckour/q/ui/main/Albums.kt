@@ -70,8 +70,8 @@ fun Albums(
 ) {
     val db = DB.getInstance(LocalContext.current)
     val joinedAlbums by (
-            if (artistId < 1) db.albumDao().getAllAsync()
-            else db.albumDao().getAllByArtistIdAsync(artistId)
+            if (artistId < 1) db.albumDao().getAllAsFlow()
+            else db.albumDao().getAllByArtistIdAsFlow(artistId)
             )
         .map { joinedAlbums ->
             if (isFavoriteOnly.value) joinedAlbums.filter { it.album.isFavorite } else joinedAlbums

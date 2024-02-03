@@ -41,8 +41,8 @@ fun Qzi(onClick: (item: JoinedTrack) -> Unit) {
     val calendar = Calendar.getInstance(TimeZone.getDefault())
     val random = Random(calendar.get(Calendar.YEAR) * 1000L + calendar.get(Calendar.DAY_OF_YEAR))
     val db = DB.getInstance(LocalContext.current)
-    val tracks by db.trackDao().getAllAsync().collectAsState(initial = emptyList())
-    val trackCount by db.trackDao().countAsync().collectAsState(initial = 0)
+    val tracks by db.trackDao().getAllAsFlow().collectAsState(initial = emptyList())
+    val trackCount by db.trackDao().countAsFlow().collectAsState(initial = 0)
     val track = if (trackCount > 0) tracks.getOrNull(random.nextInt(trackCount)) else null
 
     Box(

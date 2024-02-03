@@ -5,11 +5,14 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.media.audiofx.Equalizer
 import android.os.Build
 import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.core.content.edit
+import androidx.core.content.getSystemService
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ServiceLifecycleDispatcher
@@ -35,6 +38,8 @@ import androidx.media3.session.MediaSession.ConnectionResult
 import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
+import androidx.mediarouter.media.MediaRouteSelector
+import androidx.mediarouter.media.MediaRouter
 import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -42,6 +47,7 @@ import com.geckour.q.data.db.model.EqualizerLevelRatio
 import com.geckour.q.data.db.model.EqualizerPreset
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.PlayerState
+import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.util.EqualizerParams
 import com.geckour.q.util.InsertActionType
@@ -52,6 +58,7 @@ import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.catchAsNull
 import com.geckour.q.util.currentSourcePaths
 import com.geckour.q.util.dropboxCachePathPattern
+import com.geckour.q.util.getActiveQAudioDeviceInfo
 import com.geckour.q.util.getEqualizerEnabled
 import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getMediaItem
@@ -59,7 +66,9 @@ import com.geckour.q.util.getSelectedEqualizerPresetId
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.orderModified
 import com.geckour.q.util.removedAt
+import com.geckour.q.util.setActiveQAudioDeviceInfo
 import com.geckour.q.util.setEqualizerParams
+import com.geckour.q.util.setSelectedEqualizerPresetId
 import com.geckour.q.util.toDomainTrack
 import com.geckour.q.util.toDomainTracks
 import com.geckour.q.util.verifiedWithDropbox
@@ -87,9 +96,6 @@ import java.io.FileNotFoundException
 class PlayerService : MediaSessionService(), LifecycleOwner {
 
     companion object {
-
-        private const val NOTIFICATION_ID_PLAYER = 320
-
         const val ACTION_COMMAND_SUBMIT_QUEUE = "action_command_submit_queue"
         const val ACTION_EXTRA_SUBMIT_QUEUE_ACTION_TYPE = "action_extra_submit_queue_action_type"
         const val ACTION_EXTRA_SUBMIT_QUEUE_CLASS_TYPE = "action_extra_submit_queue_class_type"
@@ -410,6 +416,65 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         }
     }
 
+    private val mediaRouterCallback = object : MediaRouter.Callback() {
+
+        override fun onRouteSelected(
+            router: MediaRouter,
+            route: MediaRouter.RouteInfo,
+            reason: Int
+        ) {
+            super.onRouteSelected(router, route, reason)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onRouteUnselected(
+            router: MediaRouter,
+            route: MediaRouter.RouteInfo,
+            reason: Int
+        ) {
+            super.onRouteUnselected(router, route, reason)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onRouteAdded(router: MediaRouter, route: MediaRouter.RouteInfo) {
+            super.onRouteAdded(router, route)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onRouteRemoved(router: MediaRouter, route: MediaRouter.RouteInfo) {
+            super.onRouteRemoved(router, route)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onRouteChanged(router: MediaRouter, route: MediaRouter.RouteInfo) {
+            super.onRouteChanged(router, route)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onProviderAdded(router: MediaRouter, provider: MediaRouter.ProviderInfo) {
+            super.onProviderAdded(router, provider)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onProviderRemoved(router: MediaRouter, provider: MediaRouter.ProviderInfo) {
+            super.onProviderRemoved(router, provider)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onProviderChanged(router: MediaRouter, provider: MediaRouter.ProviderInfo) {
+            super.onProviderChanged(router, provider)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+    }
+
     private lateinit var player: ExoPlayer
     private lateinit var forwardingPlayer: Player
 
@@ -419,6 +484,9 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         get() =
             if (player.currentMediaItemIndex == -1) 0
             else player.currentMediaItemIndex
+
+    private lateinit var mediaRouter: MediaRouter
+    private var audioManager: AudioManager? = null
 
     private lateinit var db: DB
 
@@ -529,6 +597,17 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                 .apply { setSmallIcon(R.drawable.ic_notification_player) }
         )
 
+        mediaRouter = MediaRouter.getInstance(this).apply {
+            addCallback(
+                MediaRouteSelector.EMPTY,
+                mediaRouterCallback,
+                MediaRouter.CALLBACK_FLAG_PERFORM_ACTIVE_SCAN
+            )
+        }
+        audioManager = getSystemService()
+
+        onUpdateQAudioDeviceInfoList()
+
         setEqualizer(player.audioSessionId)
 
         lifecycleScope.launch {
@@ -574,6 +653,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         player.stop()
         player.release()
         mediaSession.release()
+        mediaRouter.removeCallback(mediaRouterCallback)
 
         super.onDestroy()
     }
@@ -637,6 +717,51 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                 ?.set()
         }
     }
+
+    private fun onUpdateQAudioDeviceInfoList(router: MediaRouter = mediaRouter) {
+        val audioDeviceInfoList =
+            audioManager?.getDevices(AudioManager.GET_DEVICES_OUTPUTS)?.toList().orEmpty()
+        val activeAudioDeviceInfo =
+            if (Build.VERSION.SDK_INT > 30) {
+                audioManager?.activePlaybackConfigurations
+                    ?.firstOrNull { it.audioDeviceInfo != null }
+                    ?.audioDeviceInfo
+            } else null
+        val activeQAudioDeviceInfo =
+            getActiveQAudioDeviceInfo(router.routes, audioDeviceInfoList, activeAudioDeviceInfo)
+        lifecycleScope.launch {
+            setActiveQAudioDeviceInfo(activeQAudioDeviceInfo)
+            activeQAudioDeviceInfo?.let { info ->
+                db.audioDeviceEqualizerInfoDao()
+                    .get(info.routeId, info.audioDeviceId, info.address)
+                    ?.defaultEqualizerPresetId
+                    ?.let { setSelectedEqualizerPresetId(it) }
+            }
+        }
+    }
+
+    private fun getActiveQAudioDeviceInfo(
+        mediaRouteInfoList: List<MediaRouter.RouteInfo>,
+        audioDeviceInfoList: List<AudioDeviceInfo>,
+        activeAudioDeviceInfo: AudioDeviceInfo?,
+    ) = mediaRouteInfoList.flatMap { mediaRouteInfo ->
+        audioDeviceInfoList.mapNotNull { audioDeviceInfo ->
+            val info = QAudioDeviceInfo.from(
+                mediaRouteInfo = mediaRouteInfo,
+                audioDeviceInfo = audioDeviceInfo,
+                activeAudioDeviceInfo = activeAudioDeviceInfo
+            )
+            if (info.selected) info else null
+        }
+    }.lastOrNull().let { activeQAudioDeviceInfo ->
+        val selectedMediaRouteInfo =
+            mediaRouteInfoList.firstOrNull { it.isSelected } ?: return@let activeQAudioDeviceInfo
+        activeQAudioDeviceInfo ?: QAudioDeviceInfo.getDefaultQAudioDeviceInfo(
+            this,
+            selectedMediaRouteInfo
+        )
+    }
+
 
     private suspend fun submitQueue(
         queueInfo: QueueInfo,

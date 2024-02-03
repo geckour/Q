@@ -44,7 +44,7 @@ interface AlbumDao {
 
     @Transaction
     @Query("select * from album order by titleSort collate nocase")
-    fun getAllAsync(): Flow<List<JoinedAlbum>>
+    fun getAllAsFlow(): Flow<List<JoinedAlbum>>
 
     @Transaction
     @Query("select * from album where artistId = :artistId")
@@ -52,7 +52,7 @@ interface AlbumDao {
 
     @Transaction
     @Query("select * from album where artistId = :artistId order by titleSort collate nocase")
-    fun getAllByArtistIdAsync(artistId: Long): Flow<List<JoinedAlbum>>
+    fun getAllByArtistIdAsFlow(artistId: Long): Flow<List<JoinedAlbum>>
 
     @Transaction
     @Query("select * from album where title = :title and artistId = :artistId")

@@ -98,9 +98,9 @@ fun Equalizer(routeInfo: QAudioDeviceInfo?) {
         .getEqualizerPresets()
         .collectAsState(initial = null)
     val audioDeviceEqualizerInfo by db.audioDeviceEqualizerInfoDao()
-        .get(
+        .getAsFlow(
             routeId = routeInfo?.routeId ?: "",
-            deviceId = routeInfo?.id ?: -1,
+            deviceId = routeInfo?.audioDeviceId ?: -1,
             deviceAddress = routeInfo?.address
         ).collectAsState(initial = null)
     val presetsLazyListState = rememberLazyListState()
@@ -251,22 +251,21 @@ fun TopController(
                 selectedPreset ?: return@Button
                 coroutineScope.launch {
                     if (audioDeviceEqualizerInfo?.defaultEqualizerPresetId == null || audioDeviceEqualizerInfo.defaultEqualizerPresetId != selectedPreset.key.id) {
-                        db.audioDeviceEqualizerInfoDao().upsert(
-                            audioDeviceEqualizerInfo?.copy(defaultEqualizerPresetId = selectedPreset.key.id)
-                                ?: AudioDeviceEqualizerInfo(
-                                    id = 0,
-                                    routeId = routeInfo.routeId,
-                                    deviceAddress = routeInfo.address,
-                                    deviceId = routeInfo.id,
-                                    defaultEqualizerPresetId = selectedPreset.key.id
-                                )
+                        db.audioDeviceEqualizerInfoDao().upsertByCustomConflictDetection(
+                            AudioDeviceEqualizerInfo(
+                                id = 0,
+                                routeId = routeInfo.routeId,
+                                deviceAddress = routeInfo.address,
+                                deviceId = routeInfo.audioDeviceId,
+                                defaultEqualizerPresetId = selectedPreset.key.id
+                            )
                         )
                     } else {
                         db.audioDeviceEqualizerInfoDao()
                             .deleteBy(
                                 routeId = routeInfo.routeId,
                                 deviceAddress = routeInfo.address,
-                                deviceId = routeInfo.id,
+                                deviceId = routeInfo.audioDeviceId,
                             )
                     }
                 }
@@ -277,7 +276,7 @@ fun TopController(
                     id = if (audioDeviceEqualizerInfo?.defaultEqualizerPresetId == null || audioDeviceEqualizerInfo.defaultEqualizerPresetId != selectedPreset?.key?.id) {
                         R.string.equalizer_set_as_default_for_the_device
                     } else R.string.equalizer_clear_default_for_the_device,
-                    routeInfo?.name.orEmpty()
+                    routeInfo?.audioDeviceName.orEmpty()
                 )
             )
         }
