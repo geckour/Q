@@ -213,7 +213,8 @@ fun Equalizer(routeInfo: QAudioDeviceInfo?) {
             db = db,
             equalizerEnabled = equalizerEnabled,
             equalizerParams = params,
-            selectedPresetLevelRatios = selectedPreset?.value
+            selectedPresetLevelRatios = selectedPreset?.value,
+            getLatestSelectedPresetLevelRatios = { selectedPreset?.value }
         )
         Spacer(modifier = Modifier.height(20.dp))
         BottomController(
@@ -298,7 +299,8 @@ fun ColumnScope.EqualizerSubstance(
     db: DB,
     equalizerEnabled: Boolean,
     equalizerParams: EqualizerParams,
-    selectedPresetLevelRatios: List<EqualizerLevelRatio>?
+    selectedPresetLevelRatios: List<EqualizerLevelRatio>?,
+    getLatestSelectedPresetLevelRatios: () -> List<EqualizerLevelRatio>?
 ) {
     val coroutineScope = rememberCoroutineScope()
     var updateEqualizerPresetJob by remember { mutableStateOf<Job>(Job()) }
@@ -371,7 +373,8 @@ fun ColumnScope.EqualizerSubstance(
                                     onSeekEnded = { newRatio ->
                                         updateEqualizerPresetJob.cancel()
                                         updateEqualizerPresetJob = coroutineScope.launch {
-                                            selectedPresetLevelRatios.getOrNull(index)
+                                            getLatestSelectedPresetLevelRatios()
+                                                ?.getOrNull(index)
                                                 ?.let { equalizerLevelRatio ->
                                                     db.equalizerPresetDao()
                                                         .upsertEqualizerLevelRatio(
