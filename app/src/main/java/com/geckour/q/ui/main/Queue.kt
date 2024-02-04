@@ -2,6 +2,7 @@ package com.geckour.q.ui.main
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -82,6 +83,7 @@ fun ColumnScope.Queue(
     showLyric: Boolean,
     currentPlaybackPosition: Long,
     onQueueMove: (from: Int, to: Int) -> Unit,
+    onTrackSelected: (track: DomainTrack) -> Unit,
     onChangeRequestedTrackInQueue: (domainTrack: DomainTrack) -> Unit,
     onRemoveTrackFromQueue: (domainTrack: DomainTrack) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
@@ -255,6 +257,7 @@ fun ColumnScope.Queue(
                         domainTrack = domainTrack,
                         index = index,
                         isDragging = isDragging,
+                        onTrackSelected = onTrackSelected,
                         onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
                         onRemoveTrackFromQueue = onRemoveTrackFromQueue,
                         onToggleFavorite = onToggleFavorite,
@@ -272,6 +275,7 @@ fun QueueItem(
     domainTrack: DomainTrack,
     index: Int,
     isDragging: Boolean,
+    onTrackSelected: (track: DomainTrack) -> Unit,
     onChangeRequestedTrackInQueue: (domainTrack: DomainTrack) -> Unit,
     onRemoveTrackFromQueue: (domainTrack: DomainTrack) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
@@ -302,7 +306,9 @@ fun QueueItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     AsyncImage(
-                        modifier = Modifier.size(48.dp),
+                        modifier = Modifier
+                            .size(48.dp)
+                            .clickable { onTrackSelected(domainTrack) },
                         model = domainTrack.artworkUriString ?: R.drawable.ic_empty,
                         contentDescription = null
                     )

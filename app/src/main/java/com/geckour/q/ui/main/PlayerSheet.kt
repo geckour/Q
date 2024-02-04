@@ -88,6 +88,7 @@ fun PlayerSheet(
             domainTracks = queue,
             forceScrollToCurrent = forceScrollToCurrent,
             showLyric = showLyric,
+            onTrackSelected = onSelectTrack,
             currentPlaybackPosition = currentPlaybackPosition,
             onQueueMove = onQueueMove,
             onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
