@@ -103,11 +103,7 @@ fun QSearchBar(
         BackHandler(isSearchActive.value) {
             isSearchActive.value = false
         }
-        LazyColumn(
-            modifier = Modifier
-                .padding(bottom = 144.dp)
-                .fillMaxSize()
-        ) {
+        LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(result.value) { item ->
                 when (item.type) {
                     SearchItem.SearchItemType.CATEGORY -> SearchResultSectionHeader(title = item.title)
