@@ -58,7 +58,6 @@ import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.catchAsNull
 import com.geckour.q.util.currentSourcePaths
 import com.geckour.q.util.dropboxCachePathPattern
-import com.geckour.q.util.getActiveQAudioDeviceInfo
 import com.geckour.q.util.getEqualizerEnabled
 import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getMediaItem

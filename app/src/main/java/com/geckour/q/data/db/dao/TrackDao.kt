@@ -73,7 +73,7 @@ interface TrackDao {
     suspend fun getAll(ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
     @Transaction
-    @Query("select * from track inner join artist on track.artistId = artist.id inner join artist as albumArtist on track.albumArtistId = albumArtist.id inner join album on track.albumId = album.id where (albumArtist.isFavorite or artist.isFavorite or album.isFavorite or track.isFavorite) and ignored != :ignore")
+    @Query("select * from track inner join album on track.albumId = album.id inner join artist on album.artistId = artist.id where (track.isFavorite or album.isFavorite or artist.isFavorite) and ignored != :ignore")
     suspend fun getAllWithFavorite(ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
     @Query("select mediaId from track")
@@ -114,11 +114,11 @@ interface TrackDao {
     fun getAllByGenreNameAsFlow(genreName: String): Flow<List<JoinedTrack>>
 
     @Transaction
-    @Query("select * from track where (artistId = :artistId or albumArtistId = :artistId) and ignored != :ignore")
+    @Query("select * from track where (albumId in (select id from album where artistId = :artistId) or albumArtistId in (select id from album where artistId = :artistId)) and ignored != :ignore")
     suspend fun getAllByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
     @Transaction
-    @Query("select * from track inner join album on track.albumId = album.id where (track.artistId = :artistId or track.albumArtistId = :artistId) and (album.isFavorite or track.isFavorite) and ignored != :ignore")
+    @Query("select * from track inner join album on track.albumId = album.id where album.artistId = :artistId and (track.isFavorite or album.isFavorite) and track.ignored != :ignore")
     suspend fun getAllWithFavoriteByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
     @Transaction
