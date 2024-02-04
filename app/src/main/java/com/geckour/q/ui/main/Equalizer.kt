@@ -350,6 +350,7 @@ fun ColumnScope.EqualizerSubstance(
                                 )
                             )
                             DoubleTrackSlider(
+                                key = index,
                                 modifier = Modifier
                                     .padding(0.dp)
                                     .graphicsLayer {
