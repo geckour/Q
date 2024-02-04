@@ -8,33 +8,13 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-
-@Serializable
-data class EqualizerParams(
-    val levelRange: Pair<Int, Int>,
-    val bands: List<Band>
-) {
-
-    fun normalizedLevel(ratio: Float): Int =
-        levelRange.first + ((levelRange.second - levelRange.first) * ratio).toInt()
-
-    fun toRatio(level: Int): Float =
-        (level.toFloat() - levelRange.first) / (levelRange.second - levelRange.first)
-
-    @Serializable
-    data class Band(
-        val freqRange: Pair<Int, Int>,
-        val centerFreq: Int,
-        val level: Int
-    )
-}
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 private val isNightModeKey = booleanPreferencesKey("key_night-mode")

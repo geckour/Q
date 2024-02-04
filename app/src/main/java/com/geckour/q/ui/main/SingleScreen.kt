@@ -31,13 +31,13 @@ import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
-import com.geckour.q.util.EqualizerParams
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType

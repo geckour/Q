@@ -46,10 +46,10 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.EqualizerLevelRatio
 import com.geckour.q.data.db.model.EqualizerPreset
 import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.ui.LauncherActivity
-import com.geckour.q.util.EqualizerParams
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.QueueInfo
@@ -1024,8 +1024,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                                             EqualizerParams.Band(
                                                 freqRange = eq.getBandFreqRange(index.toShort())
                                                     .let { it.first() to it.last() },
-                                                centerFreq = eq.getCenterFreq(index.toShort()),
-                                                level = 0
+                                                centerFreq = eq.getCenterFreq(index.toShort())
                                             )
                                         }
                                     )

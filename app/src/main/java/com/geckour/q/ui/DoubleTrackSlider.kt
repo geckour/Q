@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.MaterialTheme
 import androidx.compose.material.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -53,18 +54,18 @@ fun DoubleTrackSlider(
 ) {
     val density = LocalDensity.current
     var trackWidth by remember { mutableStateOf(0.dp) }
-    var innerProgressFraction by remember(primaryProgressFraction) {
-        mutableFloatStateOf(primaryProgressFraction)
-    }
-    val tickFractions = remember(steps) {
-        stepsToTickFractions(steps)
+    var innerProgressFraction by remember { mutableFloatStateOf(primaryProgressFraction) }
+    val tickFractions = remember { stepsToTickFractions(steps) }
+
+    LaunchedEffect(primaryProgressFraction) {
+        innerProgressFraction = primaryProgressFraction
     }
 
     Box(
         modifier = modifier
             .pointerInput(key ?: Unit) {
-                detectTapGestures {
-                    val newValue = it.x
+                detectTapGestures { offset ->
+                    val newValue = offset.x
                         .coerceIn(0f..(trackWidth - thickness).toPx())
                         .toDp() / (trackWidth - thickness)
                     val resolvedValue = if (steps > 0) {
@@ -73,7 +74,7 @@ fun DoubleTrackSlider(
                         newValue
                     }
                     innerProgressFraction = resolvedValue
-                    onSeek?.invoke(resolvedValue)
+                    onSeekEnded?.invoke(resolvedValue) ?: onSeek?.invoke(resolvedValue)
                 }
             }
             .pointerInput(key ?: Unit) {

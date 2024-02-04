@@ -36,10 +36,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.geckour.q.R
+import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.ui.compose.ColorStrong
 import com.geckour.q.ui.compose.QTheme
-import com.geckour.q.util.EqualizerParams
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
