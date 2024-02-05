@@ -145,7 +145,7 @@ fun Tracks(
                 onClick = { onTrackSelected(domainTrack) }
             ) {
                 Row(
-                    modifier = Modifier.padding(start = 16.dp, top = 16.dp),
+                    modifier = Modifier.padding(start = 16.dp, top = 20.dp, end = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column(
@@ -181,7 +181,7 @@ fun Tracks(
                             }
                         }
                         Row(
-                            modifier = Modifier.height(16.dp),
+                            modifier = Modifier.height(20.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Row(

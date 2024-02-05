@@ -138,14 +138,12 @@ fun Artists(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(vertical = 8.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     AsyncImage(
                         model = artist.artworkUriString ?: R.drawable.ic_empty,
                         contentDescription = null,
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .size(40.dp)
+                        modifier = Modifier.size(40.dp)
                     )
                     Text(
                         text = artist.title,
