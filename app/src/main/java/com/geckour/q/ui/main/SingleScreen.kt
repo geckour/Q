@@ -1,6 +1,5 @@
 package com.geckour.q.ui.main
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -43,6 +42,7 @@ import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.launch
+import timber.log.Timber
 import kotlin.math.abs
 import kotlin.math.sin
 
@@ -184,8 +184,23 @@ fun SingleScreen(
             sheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
             sheetElevation = 8.dp,
             sheetContent = {
+                LaunchedEffect(scaffoldState.bottomSheetState.progress) {
+                    if (scaffoldState.bottomSheetState.progress != 1f) {
+                        Timber.d("qgeck offset: ${scaffoldState.bottomSheetState.requireOffset()}")
+                    }
+                }
                 PlayerSheet(
-                    maxHeight = libraryHeight,
+                    sheetProgress = if (scaffoldState.bottomSheetState.progress == 1f) {
+                        if (scaffoldState.bottomSheetState.targetValue == BottomSheetValue.Collapsed) 0f
+                        else 1f
+                    } else {
+                        if (scaffoldState.bottomSheetState.currentValue == BottomSheetValue.Collapsed) {
+                            scaffoldState.bottomSheetState.progress
+                        } else {
+                            1f - scaffoldState.bottomSheetState.progress
+                        }
+                    },
+                    libraryHeight = libraryHeight,
                     queue = queue,
                     currentIndex = currentIndex,
                     currentPlaybackPosition = currentPlaybackPosition,

@@ -15,7 +15,9 @@ import kotlinx.collections.immutable.ImmutableList
 
 @Composable
 fun PlayerSheet(
-    maxHeight: Int? = null,
+    isPortrait: Boolean = true,
+    sheetProgress: Float = 1f,
+    libraryHeight: Int? = null,
     queue: ImmutableList<DomainTrack>,
     currentIndex: Int,
     currentPlaybackPosition: Long,
@@ -46,14 +48,15 @@ fun PlayerSheet(
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     Column(
-        modifier = if (maxHeight == null) Modifier else {
+        modifier = if (libraryHeight == null) Modifier else {
             Modifier.heightIn(
-                max = (with(LocalDensity.current) { maxHeight.toDp() } + 144.dp - 36.dp)
+                max = (with(LocalDensity.current) { libraryHeight.toDp() } + 144.dp - 36.dp)
                     .coerceAtLeast(288.dp)
             )
         }
     ) {
         Controller(
+            sheetProgress = if (isPortrait) sheetProgress else 0f,
             currentTrack = queue.getOrNull(currentIndex),
             progress = currentPlaybackPosition,
             bufferProgress = currentBufferedPosition,

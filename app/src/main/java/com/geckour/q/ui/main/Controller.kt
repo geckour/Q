@@ -12,6 +12,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -51,6 +52,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.size.Dimension
+import coil.size.Size
 import com.geckour.q.R
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.MediaItem
@@ -63,10 +67,13 @@ import com.geckour.q.util.getTimeString
 import com.geckour.q.util.isDownloaded
 import com.geckour.q.util.setShouldShowCurrentRemain
 import kotlinx.coroutines.launch
+import kotlin.math.PI
+import kotlin.math.sin
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Controller(
+    sheetProgress: Float,
     currentTrack: DomainTrack?,
     progress: Long,
     bufferProgress: Long,
@@ -94,81 +101,250 @@ fun Controller(
     onToggleShowLyrics: () -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
+    val yProgress = sin(sheetProgress * PI.toFloat() / 2)
     Column {
-        Column(modifier = Modifier.height(144.dp)) {
-            Row {
+        Column(modifier = Modifier.height(144.dp + 142.dp * yProgress)) {
+            Box {
                 AsyncImage(
-                    model = currentTrack?.let { it.artworkUriString ?: R.drawable.ic_empty },
+                    model = currentTrack?.let {
+                        ImageRequest.Builder(LocalContext.current).data(it.artworkUriString).size(
+                            Size(width = Dimension.Undefined, height = Dimension.Undefined)
+                        ).build()
+                    } ?: R.drawable.ic_empty,
                     contentDescription = null,
                     contentScale = ContentScale.Inside,
                     modifier = Modifier
-                        .size(84.dp)
+                        .size(84.dp + 42.dp * sheetProgress)
                         .combinedClickable(
                             onClick = {},
                             onLongClick = { currentTrack?.let { onTrackSelected(it) } }
                         )
                 )
-                Column(
-                    modifier = Modifier
-                        .padding(horizontal = 8.dp)
-                        .height(100.dp),
-                    verticalArrangement = Arrangement.Top
-                ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                        ) {
-                            Text(
-                                text = currentTrack?.title.orEmpty(),
-                                fontSize = 16.sp,
-                                color = QTheme.colors.colorTextPrimary,
-                                modifier = Modifier.padding(top = 4.dp),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = currentTrack?.let { "${it.artist.title} - ${it.album.title}" }
-                                    .orEmpty(),
-                                fontSize = 14.sp,
-                                color = QTheme.colors.colorTextPrimary,
-                                modifier = Modifier.padding(top = 2.dp),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
+                Row(modifier = Modifier.padding(top = 126.dp * yProgress)) {
+                    Column(
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp)
+                            .height(100.dp),
+                        verticalArrangement = Arrangement.Top
+                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            val infiniteTransition = rememberInfiniteTransition(label = "")
-                            val degree by infiniteTransition.animateFloat(
-                                initialValue = 0f,
-                                targetValue = 360f,
-                                animationSpec = infiniteRepeatable(
-                                    animation = tween(
-                                        1000,
-                                        easing = LinearEasing
+                            Spacer(
+                                modifier = Modifier.width(
+                                    if (sheetProgress < 0.8f) 84.dp + 42.dp * sheetProgress
+                                    else 588.dp * (1f - sheetProgress)
+                                )
+                            )
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = currentTrack?.title.orEmpty(),
+                                    fontSize = 16.sp,
+                                    color = QTheme.colors.colorTextPrimary,
+                                    modifier = Modifier.padding(top = 4.dp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = currentTrack?.let { "${it.artist.title} - ${it.album.title}" }
+                                        .orEmpty(),
+                                    fontSize = 14.sp,
+                                    color = QTheme.colors.colorTextPrimary,
+                                    modifier = Modifier.padding(top = 2.dp),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                val infiniteTransition = rememberInfiniteTransition(label = "")
+                                val degree by infiniteTransition.animateFloat(
+                                    initialValue = 0f,
+                                    targetValue = 360f,
+                                    animationSpec = infiniteRepeatable(
+                                        animation = tween(
+                                            1000,
+                                            easing = LinearEasing
+                                        )
+                                    ),
+                                    label = ""
+                                )
+                                val queueStateIndicatorAlpha by animateFloatAsState(
+                                    targetValue = if (isLoading) 1f else 0f,
+                                    animationSpec = tween(200),
+                                    label = ""
+                                )
+                                val dropboxIndicatorAlpha by animateFloatAsState(
+                                    targetValue = if (currentTrack?.dropboxPath != null) 1f else 0f,
+                                    animationSpec = tween(200),
+                                    label = ""
+                                )
+                                currentTrack?.isFavorite?.let {
+                                    Icon(
+                                        imageVector = if (it) Icons.Default.Star else Icons.Default.StarBorder,
+                                        contentDescription = null,
+                                        tint = QTheme.colors.colorTextPrimary,
+                                        modifier = Modifier
+                                            .clickable(
+                                                onClick = { onToggleFavorite(currentTrack) },
+                                                interactionSource = remember { MutableInteractionSource() },
+                                                indication = rememberRipple(bounded = false)
+                                            )
+                                            .padding(8.dp)
+                                            .size(24.dp)
                                     )
-                                ),
-                                label = ""
-                            )
-                            val queueStateIndicatorAlpha by animateFloatAsState(
-                                targetValue = if (isLoading) 1f else 0f,
-                                animationSpec = tween(200),
-                                label = ""
-                            )
-                            val dropboxIndicatorAlpha by animateFloatAsState(
-                                targetValue = if (currentTrack?.dropboxPath != null) 1f else 0f,
-                                animationSpec = tween(200),
-                                label = ""
-                            )
-                            currentTrack?.isFavorite?.let {
+                                }
+                                if (currentTrack?.isDownloaded == true) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.DownloadForOffline,
+                                        contentDescription = null,
+                                        tint = QTheme.colors.colorTextPrimary,
+                                        modifier = Modifier
+                                            .padding(8.dp)
+                                            .size(24.dp)
+                                            .alpha(dropboxIndicatorAlpha)
+                                    )
+                                } else {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.ic_dropbox),
+                                        contentDescription = null,
+                                        tint = QTheme.colors.colorTextPrimary,
+                                        modifier = Modifier
+                                            .padding(8.dp)
+                                            .size(24.dp)
+                                            .alpha(dropboxIndicatorAlpha)
+                                    )
+                                }
                                 Icon(
-                                    imageVector = if (it) Icons.Default.Star else Icons.Default.StarBorder,
+                                    painter = painterResource(id = R.drawable.ic_empty),
                                     contentDescription = null,
                                     tint = QTheme.colors.colorTextPrimary,
                                     modifier = Modifier
                                         .clickable(
-                                            onClick = { onToggleFavorite(currentTrack) },
+                                            onClick = cancelLoad,
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = rememberRipple(bounded = false)
+                                        )
+                                        .padding(8.dp)
+                                        .size(24.dp)
+                                        .alpha(queueStateIndicatorAlpha)
+                                        .graphicsLayer {
+                                            rotationZ = degree
+                                        }
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            modifier = Modifier.fillMaxHeight(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Spacer(modifier = Modifier.width(84.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                horizontalArrangement = Arrangement.SpaceAround,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                val infiniteTransition = rememberInfiniteTransition(label = "")
+                                val degree by infiniteTransition.animateFloat(
+                                    initialValue = 360f,
+                                    targetValue = 0f,
+                                    animationSpec = infiniteRepeatable(
+                                        animation = tween(1000)
+                                    ),
+                                    label = ""
+                                )
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_backward),
+                                    contentDescription = null,
+                                    tint = QTheme.colors.colorButtonNormal,
+                                    modifier = Modifier
+                                        .pointerInput(Unit) {
+                                            detectTapGestures(
+                                                onLongPress = { onRewind() },
+                                                onTap = { onPrev() },
+                                                onPress = {
+                                                    awaitRelease()
+                                                    resetPlaybackButton()
+                                                }
+                                            )
+                                        }
+                                        .size(24.dp)
+                                )
+                                IconButton(
+                                    onClick = {
+                                        onTogglePlayPause()
+                                        resetPlaybackButton()
+                                    },
+                                    modifier = Modifier
+                                        .size(24.dp)
+                                        .graphicsLayer {
+                                            rotationZ =
+                                                if (playbackInfo.second == Player.STATE_BUFFERING) degree else 0f
+                                        }
+                                ) {
+                                    Icon(
+                                        painter = painterResource(
+                                            id = if (playbackInfo.first && playbackInfo.second == Player.STATE_READY) R.drawable.ic_pause else R.drawable.ic_play
+                                        ),
+                                        contentDescription = null,
+                                        tint = QTheme.colors.colorButtonNormal
+                                    )
+                                }
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_forward),
+                                    contentDescription = null,
+                                    tint = QTheme.colors.colorButtonNormal,
+                                    modifier = Modifier
+                                        .pointerInput(Unit) {
+                                            detectTapGestures(
+                                                onLongPress = { onFastForward() },
+                                                onTap = { onNext() },
+                                                onPress = {
+                                                    awaitRelease()
+                                                    resetPlaybackButton()
+                                                }
+                                            )
+                                        }
+                                        .size(24.dp)
+                                )
+                            }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.End,
+                                modifier = Modifier.width(84.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(
+                                        id = when (repeatMode) {
+                                            Player.REPEAT_MODE_OFF -> R.drawable.ic_repeat_off
+                                            Player.REPEAT_MODE_ALL -> R.drawable.ic_repeat
+                                            Player.REPEAT_MODE_ONE -> R.drawable.ic_repeat_one
+                                            else -> throw IllegalStateException()
+                                        }
+                                    ),
+                                    contentDescription = null,
+                                    tint = QTheme.colors.colorButtonNormal,
+                                    modifier = Modifier
+                                        .clickable(
+                                            onClick = rotateRepeatMode,
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = rememberRipple(bounded = false)
+                                        )
+                                        .padding(8.dp)
+                                        .size(24.dp)
+                                )
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_shuffle),
+                                    contentDescription = null,
+                                    tint = QTheme.colors.colorButtonNormal,
+                                    modifier = Modifier
+                                        .combinedClickable(
+                                            onClick = { shuffleQueue(null) },
+                                            onLongClick = resetShuffleQueue,
                                             interactionSource = remember { MutableInteractionSource() },
                                             indication = rememberRipple(bounded = false)
                                         )
@@ -176,159 +352,6 @@ fun Controller(
                                         .size(24.dp)
                                 )
                             }
-                            if (currentTrack?.isDownloaded == true) {
-                                Icon(
-                                    imageVector = Icons.Outlined.DownloadForOffline,
-                                    contentDescription = null,
-                                    tint = QTheme.colors.colorTextPrimary,
-                                    modifier = Modifier
-                                        .padding(8.dp)
-                                        .size(24.dp)
-                                        .alpha(dropboxIndicatorAlpha)
-                                )
-                            } else {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_dropbox),
-                                    contentDescription = null,
-                                    tint = QTheme.colors.colorTextPrimary,
-                                    modifier = Modifier
-                                        .padding(8.dp)
-                                        .size(24.dp)
-                                        .alpha(dropboxIndicatorAlpha)
-                                )
-                            }
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_empty),
-                                contentDescription = null,
-                                tint = QTheme.colors.colorTextPrimary,
-                                modifier = Modifier
-                                    .clickable(
-                                        onClick = cancelLoad,
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = rememberRipple(bounded = false)
-                                    )
-                                    .padding(8.dp)
-                                    .size(24.dp)
-                                    .alpha(queueStateIndicatorAlpha)
-                                    .graphicsLayer {
-                                        rotationZ = degree
-                                    }
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val infiniteTransition = rememberInfiniteTransition(label = "")
-                            val degree by infiniteTransition.animateFloat(
-                                initialValue = 360f,
-                                targetValue = 0f,
-                                animationSpec = infiniteRepeatable(
-                                    animation = tween(1000)
-                                ),
-                                label = ""
-                            )
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_backward),
-                                contentDescription = null,
-                                tint = QTheme.colors.colorButtonNormal,
-                                modifier = Modifier
-                                    .pointerInput(Unit) {
-                                        detectTapGestures(
-                                            onLongPress = { onRewind() },
-                                            onTap = { onPrev() },
-                                            onPress = {
-                                                awaitRelease()
-                                                resetPlaybackButton()
-                                            }
-                                        )
-                                    }
-                                    .size(24.dp)
-                            )
-                            IconButton(
-                                onClick = {
-                                    onTogglePlayPause()
-                                    resetPlaybackButton()
-                                },
-                                modifier = Modifier
-                                    .size(24.dp)
-                                    .graphicsLayer {
-                                        rotationZ =
-                                            if (playbackInfo.second == Player.STATE_BUFFERING) degree else 0f
-                                    }
-                            ) {
-                                Icon(
-                                    painter = painterResource(
-                                        id = if (playbackInfo.first && playbackInfo.second == Player.STATE_READY) R.drawable.ic_pause else R.drawable.ic_play
-                                    ),
-                                    contentDescription = null,
-                                    tint = QTheme.colors.colorButtonNormal
-                                )
-                            }
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_forward),
-                                contentDescription = null,
-                                tint = QTheme.colors.colorButtonNormal,
-                                modifier = Modifier
-                                    .pointerInput(Unit) {
-                                        detectTapGestures(
-                                            onLongPress = { onFastForward() },
-                                            onTap = { onNext() },
-                                            onPress = {
-                                                awaitRelease()
-                                                resetPlaybackButton()
-                                            }
-                                        )
-                                    }
-                                    .size(24.dp)
-                            )
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                painter = painterResource(
-                                    id = when (repeatMode) {
-                                        Player.REPEAT_MODE_OFF -> R.drawable.ic_repeat_off
-                                        Player.REPEAT_MODE_ALL -> R.drawable.ic_repeat
-                                        Player.REPEAT_MODE_ONE -> R.drawable.ic_repeat_one
-                                        else -> throw IllegalStateException()
-                                    }
-                                ),
-                                contentDescription = null,
-                                tint = QTheme.colors.colorButtonNormal,
-                                modifier = Modifier
-                                    .clickable(
-                                        onClick = rotateRepeatMode,
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = rememberRipple(bounded = false)
-                                    )
-                                    .padding(8.dp)
-                                    .size(24.dp)
-                            )
-                            Icon(
-                                painter = painterResource(id = R.drawable.ic_shuffle),
-                                contentDescription = null,
-                                tint = QTheme.colors.colorButtonNormal,
-                                modifier = Modifier
-                                    .combinedClickable(
-                                        onClick = { shuffleQueue(null) },
-                                        onLongClick = resetShuffleQueue,
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = rememberRipple(bounded = false)
-                                    )
-                                    .padding(8.dp)
-                                    .size(24.dp)
-                            )
                         }
                     }
                 }
@@ -390,7 +413,8 @@ fun Controller(
                     .padding(bottom = 2.dp, start = 16.dp, end = 16.dp)
             ) {
                 Text(
-                    text = routeInfo?.audioDeviceName ?: stringResource(id = R.string.default_device_name),
+                    text = routeInfo?.audioDeviceName
+                        ?: stringResource(id = R.string.default_device_name),
                     fontSize = 10.sp,
                     color = QTheme.colors.colorTextPrimary,
                     modifier = Modifier.weight(1f)

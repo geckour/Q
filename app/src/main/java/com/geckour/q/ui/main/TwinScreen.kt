@@ -13,8 +13,13 @@ import androidx.compose.material.Scaffold
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.dropbox.core.v2.files.FolderMetadata
@@ -447,18 +452,21 @@ fun RowScope.TwinEndPage(
     onRemoveTrackFromQueue: (track: DomainTrack) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
+    var isPortrait by remember { mutableStateOf(true) }
     Box(
         modifier = Modifier
             .background(color = QTheme.colors.colorBackground)
             .weight(1f)
             .fillMaxSize()
             .padding(start = 8.dp)
+            .onSizeChanged { isPortrait = it.height > it.width }
     ) {
         Card(
             backgroundColor = QTheme.colors.colorBackgroundBottomSheet,
             shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
         ) {
             PlayerSheet(
+                isPortrait = isPortrait,
                 queue = queue,
                 currentIndex = currentIndex,
                 currentPlaybackPosition = currentPlaybackPosition,
