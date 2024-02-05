@@ -1,5 +1,6 @@
 package com.geckour.q.data.db.dao
 
+import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -9,6 +10,7 @@ import androidx.room.Update
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.JoinedAlbum
+import com.geckour.q.data.db.model.Track
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -44,15 +46,15 @@ interface AlbumDao {
 
     @Transaction
     @Query("select * from album order by titleSort collate nocase")
-    fun getAllAsFlow(): Flow<List<JoinedAlbum>>
+    fun getAllAsPagingSource(): PagingSource<Int, JoinedAlbum>
 
     @Transaction
     @Query("select * from album where artistId = :artistId")
     suspend fun getAllByArtistId(artistId: Long): List<JoinedAlbum>
 
     @Transaction
-    @Query("select * from album where artistId = :artistId order by titleSort collate nocase")
-    fun getAllByArtistIdAsFlow(artistId: Long): Flow<List<JoinedAlbum>>
+    @Query("select * from album where album.artistId = :artistId order by titleSort collate nocase")
+    fun getAllByArtistIdAsPagingSource(artistId: Long): PagingSource<Int, JoinedAlbum>
 
     @Transaction
     @Query("select * from album where title = :title and artistId = :artistId")
@@ -83,12 +85,6 @@ interface AlbumDao {
             }
         }
     }
-
-    @Query("select exists(select 1 from track where albumId = :albumId and dropboxPath is not null)")
-    fun containDropboxContent(albumId: Long): Flow<Boolean>
-
-    @Query("select dropboxPath from track where albumId = :albumId and dropboxPath is not null and (sourcePath is '' or sourcePath like 'https://%.dl.dropboxusercontent.com/%')")
-    fun downloadableDropboxPaths(albumId: Long): Flow<List<String>>
 
     @Query("select sourcePath from track where albumId = :albumId")
     suspend fun getContainTrackIds(albumId: Long): List<String>

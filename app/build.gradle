@@ -157,6 +157,7 @@ dependencies {
     def aac_room_ver = '2.6.1'
     implementation "androidx.room:room-runtime:$aac_room_ver"
     implementation "androidx.room:room-ktx:$aac_room_ver"
+    implementation "androidx.room:room-paging:$aac_room_ver"
     ksp "androidx.room:room-compiler:$aac_room_ver"
     testImplementation "androidx.room:room-testing:$aac_room_ver"
 
@@ -199,6 +200,7 @@ dependencies {
     implementation "androidx.navigation:navigation-compose:2.7.6"
     implementation "androidx.compose.ui:ui-text-google-fonts:1.6.0"
     implementation "org.burnoutcrew.composereorderable:reorderable:0.9.6"
+    implementation "androidx.paging:paging-compose:3.2.1"
 
     // Hash
     implementation 'commons-codec:commons-codec:1.15'

@@ -11,9 +11,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Surface
@@ -29,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -38,6 +40,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.paging.LoadState
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.filter
 import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -46,6 +53,7 @@ import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
+import com.geckour.q.util.isDownloaded
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.map
 
@@ -69,18 +77,21 @@ fun Albums(
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
 ) {
     val db = DB.getInstance(LocalContext.current)
-    val joinedAlbums by (
-            if (artistId < 1) db.albumDao().getAllAsFlow()
-            else db.albumDao().getAllByArtistIdAsFlow(artistId)
-            )
-        .map { joinedAlbums ->
-            if (isFavoriteOnly.value) joinedAlbums.filter { it.album.isFavorite } else joinedAlbums
+    val pager = remember {
+        Pager(PagingConfig(pageSize = 30, enablePlaceholders = true)) {
+            if (artistId < 1) db.albumDao().getAllAsPagingSource()
+            else db.albumDao().getAllByArtistIdAsPagingSource(artistId)
         }
-        .collectAsState(initial = emptyList())
+    }
+    val lazyPagingItems =
+        (if (isFavoriteOnly.value) {
+            pager.flow.map { pagingData -> pagingData.filter { (album, _) -> album.isFavorite } }
+        } else pager.flow)
+            .collectAsLazyPagingItems()
     val defaultTabBarTitle = stringResource(id = R.string.nav_album)
     val listState = rememberLazyListState()
 
-    LaunchedEffect(joinedAlbums) {
+    LaunchedEffect(artistId) {
         changeTopBarTitle(
             if (artistId > 0) db.artistDao().get(artistId)?.title ?: defaultTabBarTitle
             else defaultTabBarTitle
@@ -122,16 +133,13 @@ fun Albums(
                 )
             }
         }
-        items(
-            joinedAlbums,
-            key = { it.album.id }
-        ) { joinedAlbum ->
-            val containDropboxContent by db.albumDao()
-                .containDropboxContent(joinedAlbum.album.id)
-                .collectAsState(initial = false)
-            val downloadableDropboxPaths by db.albumDao()
-                .downloadableDropboxPaths(joinedAlbum.album.id)
-                .collectAsState(emptyList())
+        items(lazyPagingItems.itemCount) { index ->
+            val joinedAlbum = lazyPagingItems[index] ?: return@items
+            val tracks by db.trackDao().getAllByAlbumAsFlow(joinedAlbum.album.id).collectAsState(initial = emptyList())
+            val containDropboxContent = tracks.any { it.dropboxPath != null }
+            val downloadableDropboxPaths = tracks.mapNotNull {
+                if (it.isDownloaded) null else it.dropboxPath
+            }
             Surface(
                 color = QTheme.colors.colorBackground,
                 elevation = 0.dp,
@@ -219,6 +227,15 @@ fun Albums(
                         )
                     }
                 }
+            }
+        }
+        if (lazyPagingItems.loadState.append == LoadState.Loading) {
+            item {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentWidth(Alignment.CenterHorizontally)
+                )
             }
         }
     }

@@ -10,9 +10,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
 import androidx.compose.material.Surface
@@ -28,6 +29,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -37,6 +40,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import androidx.paging.LoadState
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.filter
 import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -47,6 +55,7 @@ import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -65,10 +74,18 @@ fun Artists(
     onSearchItemClicked: (item: SearchItem) -> Unit,
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val db = DB.getInstance(LocalContext.current)
-    val artists by db.artistDao().getAllOrientedAlbumAsFlow()
-        .map { artists -> if (isFavoriteOnly.value) artists.filter { it.isFavorite } else artists }
-        .collectAsState(initial = emptyList())
+    val pager = remember {
+        Pager(PagingConfig(pageSize = 30, enablePlaceholders = true)) {
+            db.artistDao().getAllOrientedAlbumAsPagingSource()
+        }
+    }
+    val lazyPagingItems =
+        (if (isFavoriteOnly.value) {
+            pager.flow.map { pagingData -> pagingData.filter { it.isFavorite } }
+        } else pager.flow)
+            .collectAsLazyPagingItems()
     val listState = rememberLazyListState()
 
     LaunchedEffect(scrollToTop) {
@@ -106,16 +123,12 @@ fun Artists(
                 )
             }
         }
-        items(
-            artists,
-            key = { it.id }
-        ) { artist ->
-            val containDropboxContent by db.artistDao()
-                .containDropboxContent(artist.id)
+        items(lazyPagingItems.itemCount) { index ->
+            val artist = lazyPagingItems[index] ?: return@items
+            val showDownloadButton by db.artistDao().containDropboxContentAsFlow(artist.id)
                 .collectAsState(initial = false)
-            val downloadableDropboxPaths by db.artistDao()
-                .downloadableDropboxPaths(artist.id)
-                .collectAsState(initial = emptyList())
+            val allDownloaded by db.artistDao().isAllIncludingTracksDownloadedAsFlow(artist.id)
+                .collectAsState(initial = false)
             Surface(
                 color = QTheme.colors.colorBackground,
                 elevation = 0.dp,
@@ -149,20 +162,20 @@ fun Artists(
                         color = QTheme.colors.colorTextPrimary,
                         modifier = Modifier.padding(horizontal = 4.dp)
                     )
-                    if (containDropboxContent) {
+                    if (showDownloadButton) {
                         IconButton(
                             onClick = {
-                                if (downloadableDropboxPaths.isEmpty()) onInvalidateDownloaded(
-                                    artist.id
-                                )
-                                else onDownload(downloadableDropboxPaths)
+                                if (allDownloaded) onInvalidateDownloaded(artist.id)
+                                else coroutineScope.launch {
+                                    onDownload(db.trackDao().getAllDropboxPathsByArtist(artist.id))
+                                }
                             },
                             modifier = Modifier
                                 .padding(8.dp)
                                 .size(24.dp)
                         ) {
                             Icon(
-                                imageVector = if (downloadableDropboxPaths.isEmpty()) Icons.Outlined.DownloadForOffline else Icons.Outlined.Download,
+                                imageVector = if (allDownloaded) Icons.Outlined.DownloadForOffline else Icons.Outlined.Download,
                                 contentDescription = null,
                                 tint = QTheme.colors.colorTextPrimary
                             )
@@ -193,6 +206,15 @@ fun Artists(
                         )
                     }
                 }
+            }
+        }
+        if (lazyPagingItems.loadState.append == LoadState.Loading) {
+            item {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentWidth(Alignment.CenterHorizontally)
+                )
             }
         }
     }

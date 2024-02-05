@@ -1,5 +1,6 @@
 package com.geckour.q.data.db.dao
 
+import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -40,8 +41,14 @@ interface ArtistDao {
     @Query("select * from artist where title like :title")
     suspend fun findAllByTitle(title: String): List<Artist>
 
-    @Query("select * from artist where id in (select artistId from album group by id) order by titleSort collate nocase")
-    fun getAllOrientedAlbumAsFlow(): Flow<List<Artist>>
+    @Query("select * from artist where artist.id in (select artistId from album group by album.id) order by artist.titleSort collate nocase")
+    fun getAllOrientedAlbumAsPagingSource(): PagingSource<Int, Artist>
+
+    @Query("select exists(select 1 from track where track.dropboxPath is not null and track.albumId in (select id from album where album.artistId = :artistId group by album.id))")
+    fun containDropboxContentAsFlow(artistId: Long): Flow<Boolean>
+
+    @Query("select not exists(select 1 from track where track.dropboxPath is not null and (sourcePath is '' or sourcePath like 'https://%.dl.dropboxusercontent.com/%') and track.albumId in (select id from album where album.artistId = :artistId group by album.id))")
+    fun isAllIncludingTracksDownloadedAsFlow(artistId: Long): Flow<Boolean>
 
     @Query("select artworkUriString from album where artistId = :artistId and artworkUriString is not null order by playbackCount limit 1")
     suspend fun getThumbnailUriString(artistId: Long): String
@@ -58,12 +65,6 @@ interface ArtistDao {
         deleteAlbumByArtist(artistId)
         delete(artistId)
     }
-
-    @Query("select exists(select 1 from track where (artistId = :artistId or albumArtistId = :artistId) and dropboxPath is not null)")
-    fun containDropboxContent(artistId: Long): Flow<Boolean>
-
-    @Query("select dropboxPath from track where (artistId = :artistId or albumArtistId = :artistId) and dropboxPath is not null and (sourcePath is '' or sourcePath like 'https://%.dl.dropboxusercontent.com/%')")
-    fun downloadableDropboxPaths(artistId: Long): Flow<List<String>>
 
     @Query("select sourcePath from track where (artistId = :artistId or albumArtistId = :artistId)")
     suspend fun getContainTrackIds(artistId: Long): List<String>

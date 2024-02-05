@@ -10,9 +10,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.CircularProgressIndicator
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Icon
 import androidx.compose.material.IconButton
@@ -27,8 +28,7 @@ import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -37,6 +37,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.paging.LoadState
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.filter
 import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -69,19 +74,24 @@ fun Tracks(
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
 ) {
     val db = DB.getInstance(LocalContext.current)
-    val joinedTracks by (when {
-        albumId > 0 -> db.trackDao().getAllByAlbumAsFlow(albumId)
-        genreName != null -> db.trackDao().getAllByGenreNameAsFlow(genreName)
-        else -> db.trackDao().getAllAsFlow()
-    })
-        .map { joinedTracks ->
-            if (isFavoriteOnly.value) joinedTracks.filter { it.track.isFavorite } else joinedTracks
+    val pager = remember {
+        Pager(PagingConfig(pageSize = 20, enablePlaceholders = true)) {
+            when {
+                albumId > 0 -> db.trackDao().getAllByAlbumAsPagingSource(albumId)
+                genreName != null -> db.trackDao().getAllByGenreNameAsPagingSource(genreName)
+                else -> db.trackDao().getAllAsPagingSource()
+            }
         }
-        .collectAsState(initial = emptyList())
+    }
+    val lazyPagingItems =
+        (if (isFavoriteOnly.value) {
+            pager.flow.map { pagingData -> pagingData.filter { it.track.isFavorite } }
+        } else pager.flow)
+            .collectAsLazyPagingItems()
     val defaultTabBarTitle = stringResource(id = R.string.nav_track)
     val listState = rememberLazyListState()
 
-    LaunchedEffect(joinedTracks) {
+    LaunchedEffect(albumId, genreName) {
         changeTopBarTitle(
             when {
                 albumId > 0 -> db.albumDao().get(albumId)?.album?.title ?: defaultTabBarTitle
@@ -126,11 +136,9 @@ fun Tracks(
                 )
             }
         }
-        items(
-            joinedTracks,
-            key = { it.track.id }
-        ) { joinedTrack ->
-            val domainTrack = joinedTrack.toDomainTrack()
+        items(count = lazyPagingItems.itemCount) { index ->
+            val domainTrack = lazyPagingItems[index]?.toDomainTrack() ?: return@items
+
             Surface(
                 elevation = 0.dp,
                 color = QTheme.colors.colorBackground,
@@ -218,10 +226,10 @@ fun Tracks(
                             )
                         }
                     }
-                    if (joinedTrack.track.dropboxPath != null) {
+                    if (domainTrack.dropboxPath != null) {
                         IconButton(
                             onClick = {
-                                if (joinedTrack.track.isDownloaded) onInvalidateDownloaded(
+                                if (domainTrack.isDownloaded) onInvalidateDownloaded(
                                     domainTrack
                                 )
                                 else onDownload(domainTrack)
@@ -231,7 +239,7 @@ fun Tracks(
                                 .size(24.dp)
                         ) {
                             Icon(
-                                imageVector = if (joinedTrack.track.isDownloaded) Icons.Outlined.DownloadForOffline else Icons.Outlined.Download,
+                                imageVector = if (domainTrack.isDownloaded) Icons.Outlined.DownloadForOffline else Icons.Outlined.Download,
                                 contentDescription = null,
                                 tint = QTheme.colors.colorTextPrimary
                             )
@@ -244,12 +252,21 @@ fun Tracks(
                             .size(24.dp)
                     ) {
                         Icon(
-                            imageVector = if (joinedTrack.track.isFavorite) Icons.Outlined.Star else Icons.Outlined.StarBorder,
+                            imageVector = if (domainTrack.isFavorite) Icons.Outlined.Star else Icons.Outlined.StarBorder,
                             contentDescription = null,
                             tint = QTheme.colors.colorTextPrimary
                         )
                     }
                 }
+            }
+        }
+        if (lazyPagingItems.loadState.append == LoadState.Loading) {
+            item {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentWidth(Alignment.CenterHorizontally)
+                )
             }
         }
     }
