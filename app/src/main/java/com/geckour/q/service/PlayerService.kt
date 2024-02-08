@@ -697,23 +697,21 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         }
     }
 
-    private fun PlayerState.set() {
-        Timber.d("qgeck set state: $this")
-        lifecycleScope.launch {
-            player.setMediaItems(sourcePaths.map { it.getMediaItem() })
-            val windowIndex =
-                player.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
-            player.seekToDefaultPosition(windowIndex + currentIndex)
-            player.seekTo(progress)
-            player.repeatMode = repeatMode
-        }
-    }
-
     private fun restoreState() {
         if (player.playWhenReady.not()) {
-            sharedPreferences.getString(PREF_KEY_PLAYER_STATE, null)
+            val playerState = sharedPreferences.getString(PREF_KEY_PLAYER_STATE, null)
                 ?.let { catchAsNull { Json.decodeFromString<PlayerState>(it) } }
-                ?.set()
+                ?: return
+
+            Timber.d("qgeck set state: $playerState")
+            lifecycleScope.launch {
+                player.setMediaItems(playerState.sourcePaths.map { it.getMediaItem() })
+                val windowIndex =
+                    player.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
+                player.seekToDefaultPosition(windowIndex + playerState.currentIndex)
+                player.seekTo(playerState.progress)
+                player.repeatMode = playerState.repeatMode
+            }
         }
     }
 
