@@ -66,6 +66,7 @@ import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.moved
+import com.geckour.q.util.nonUpScaleSp
 import com.geckour.q.util.removedAt
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
@@ -321,19 +322,21 @@ fun QueueItem(
                         Text(
                             text = domainTrack.title,
                             color = if (domainTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
-                            fontSize = 16.sp
+                            fontSize = 16.sp,
+                            lineHeight = 24.nonUpScaleSp
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "${domainTrack.artist.title} - ${domainTrack.album.title}",
                             color = if (domainTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
-                            fontSize = 12.sp
+                            fontSize = 12.sp,
+                            lineHeight = 18.nonUpScaleSp
                         )
                     }
                     IconButton(
                         onClick = { onToggleFavorite(domainTrack) },
                         modifier = Modifier
-                            .padding(12.dp)
+                            .padding(8.dp)
                             .size(20.dp)
                     ) {
                         Icon(
@@ -345,7 +348,7 @@ fun QueueItem(
                     IconButton(
                         onClick = { onRemoveTrackFromQueue(domainTrack) },
                         modifier = Modifier
-                            .padding(12.dp)
+                            .padding(8.dp)
                             .size(20.dp)
                     ) {
                         Icon(
@@ -354,6 +357,7 @@ fun QueueItem(
                             tint = QTheme.colors.colorButtonNormal
                         )
                     }
+                    Spacer(modifier = Modifier.width(8.dp))
                 }
                 Row(
                     modifier = Modifier.height(20.dp),
@@ -362,21 +366,24 @@ fun QueueItem(
                     Text(
                         text = (index + 1).toString(),
                         color = QTheme.colors.colorTextPrimary,
-                        fontSize = 10.sp,
+                        fontSize = 10.nonUpScaleSp,
+                        lineHeight = 25.nonUpScaleSp,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.width(48.dp)
                     )
                     Text(
                         text = "${domainTrack.codec}・${domainTrack.bitrate}kbps・${domainTrack.sampleRate}kHz",
                         color = if (domainTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
-                        fontSize = 10.sp,
+                        fontSize = 10.nonUpScaleSp,
+                        lineHeight = 25.nonUpScaleSp,
                         textAlign = TextAlign.End,
                         modifier = Modifier.weight(1f)
                     )
                     Text(
                         text = domainTrack.durationString,
                         color = QTheme.colors.colorTextPrimary,
-                        fontSize = 12.sp,
+                        fontSize = 12.nonUpScaleSp,
+                        lineHeight = 18.nonUpScaleSp,
                         modifier = Modifier.padding(horizontal = 8.dp)
                     )
                 }
