@@ -24,8 +24,8 @@ android {
         applicationId "com.geckour.q"
         minSdk 24
         targetSdk 34
-        versionCode 35
-        versionName "2.11.0"
+        versionCode 36
+        versionName "2.12.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
         buildConfigField "String", keyNameDropBoxAppKey, getQuotedKey(keyNameDropBoxAppKey)
