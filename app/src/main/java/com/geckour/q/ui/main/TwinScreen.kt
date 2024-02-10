@@ -25,6 +25,7 @@ import androidx.navigation.NavHostController
 import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
+import com.geckour.q.domain.model.AllArtists
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.Genre
@@ -43,7 +44,7 @@ import kotlinx.coroutines.launch
 fun TwinScreen(
     navController: NavHostController,
     topBarTitle: String,
-    optionMediaItem: MediaItem?,
+    appBarOptionMediaItem: MediaItem?,
     queue: ImmutableList<DomainTrack>,
     currentIndex: Int,
     currentPlaybackPosition: Long,
@@ -57,6 +58,7 @@ fun TwinScreen(
     selectedTrack: DomainTrack?,
     selectedAlbum: Album?,
     selectedArtist: Artist?,
+    selectedAllArtists: AllArtists?,
     selectedGenre: Genre?,
     equalizerParams: EqualizerParams?,
     currentDropboxItemList: Pair<String, ImmutableList<FolderMetadata>>,
@@ -66,7 +68,6 @@ fun TwinScreen(
     forceScrollToCurrent: Long,
     showDropboxDialog: Boolean,
     showResetShuffleDialog: Boolean,
-    showOptionsDialog: Boolean,
     hasAlreadyShownDropboxSyncAlert: Boolean,
     isSearchActive: MutableState<Boolean>,
     isFavoriteOnly: MutableState<Boolean>,
@@ -78,6 +79,7 @@ fun TwinScreen(
     onSelectTrack: (track: DomainTrack?) -> Unit,
     onSelectAlbum: (album: Album?) -> Unit,
     onSelectArtist: (artist: Artist?) -> Unit,
+    onSelectAllArtists: (allArtists: AllArtists?) -> Unit,
     onSelectGenre: (genre: Genre?) -> Unit,
     onTogglePlayPause: () -> Unit,
     onPrev: () -> Unit,
@@ -89,7 +91,6 @@ fun TwinScreen(
     rotateRepeatMode: () -> Unit,
     shuffleQueue: (actionType: ShuffleActionType?) -> Unit,
     resetShuffleQueue: () -> Unit,
-    closeOptionsDialog: () -> Unit,
     moveToCurrentIndex: () -> Unit,
     clearQueue: () -> Unit,
     onToggleShowLyrics: () -> Unit,
@@ -122,15 +123,15 @@ fun TwinScreen(
     onCancelProgress: (() -> Unit)?,
     onSetOptionMediaItem: (mediaItem: MediaItem?) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
-    onShowOptions: () -> Unit,
 ) {
     Row {
         TwinStartPage(
             navController = navController,
             topBarTitle = topBarTitle,
-            optionMediaItem = optionMediaItem,
+            appBarOptionMediaItem = appBarOptionMediaItem,
             scrollToTop = scrollToTop,
             selectedNav = selectedNav,
+            selectedAllArtists = selectedAllArtists,
             selectedArtist = selectedArtist,
             selectedAlbum = selectedAlbum,
             selectedTrack = selectedTrack,
@@ -144,7 +145,6 @@ fun TwinScreen(
             onCancelProgress = onCancelProgress,
             showDropboxDialog = showDropboxDialog,
             showResetShuffleDialog = showResetShuffleDialog,
-            showOptionsDialog = showOptionsDialog,
             hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
             isSearchActive = isSearchActive,
             isFavoriteOnly = isFavoriteOnly,
@@ -152,6 +152,7 @@ fun TwinScreen(
             onChangeTopBarTitle = onChangeTopBarTitle,
             onTapBar = onTapBar,
             onToggleTheme = onToggleTheme,
+            onSelectAllArtists = onSelectAllArtists,
             onSelectArtist = onSelectArtist,
             onSelectAlbum = onSelectAlbum,
             onSelectTrack = onSelectTrack,
@@ -174,13 +175,11 @@ fun TwinScreen(
             hideResetShuffleDialog = hideResetShuffleDialog,
             onShuffle = shuffleQueue,
             onResetShuffle = resetShuffleQueue,
-            onCloseOptionsDialog = closeOptionsDialog,
             onShowDropboxDialog = onShowDropboxDialog,
             onRetrieveMedia = onRetrieveMedia,
             onStartBilling = onStartBilling,
             onSetOptionMediaItem = onSetOptionMediaItem,
             onToggleFavorite = onToggleFavorite,
-            onShowOptions = onShowOptions,
         )
         TwinEndPage(
             queue = queue,
@@ -219,9 +218,10 @@ fun TwinScreen(
 fun RowScope.TwinStartPage(
     navController: NavHostController,
     topBarTitle: String,
-    optionMediaItem: MediaItem?,
+    appBarOptionMediaItem: MediaItem?,
     scrollToTop: Long,
     selectedNav: Nav?,
+    selectedAllArtists: AllArtists?,
     selectedArtist: Artist?,
     selectedAlbum: Album?,
     selectedTrack: DomainTrack?,
@@ -235,7 +235,6 @@ fun RowScope.TwinStartPage(
     onCancelProgress: (() -> Unit)?,
     showDropboxDialog: Boolean,
     showResetShuffleDialog: Boolean,
-    showOptionsDialog: Boolean,
     hasAlreadyShownDropboxSyncAlert: Boolean,
     isSearchActive: MutableState<Boolean>,
     isFavoriteOnly: MutableState<Boolean>,
@@ -243,6 +242,7 @@ fun RowScope.TwinStartPage(
     onChangeTopBarTitle: (newTitle: String) -> Unit,
     onTapBar: () -> Unit,
     onToggleTheme: () -> Unit,
+    onSelectAllArtists: (allArtists: AllArtists?) -> Unit,
     onSelectArtist: (artist: Artist?) -> Unit,
     onSelectAlbum: (album: Album?) -> Unit,
     onSelectTrack: (track: DomainTrack?) -> Unit,
@@ -269,13 +269,11 @@ fun RowScope.TwinStartPage(
     hideResetShuffleDialog: () -> Unit,
     onShuffle: (actionType: ShuffleActionType?) -> Unit,
     onResetShuffle: () -> Unit,
-    onCloseOptionsDialog: () -> Unit,
     onShowDropboxDialog: () -> Unit,
     onRetrieveMedia: (onlyAdded: Boolean) -> Unit,
     onStartBilling: () -> Unit,
     onSetOptionMediaItem: (mediaItem: MediaItem?) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
-    onShowOptions: () -> Unit,
 ) {
     val scaffoldState = rememberScaffoldState()
     Scaffold(
@@ -286,14 +284,17 @@ fun RowScope.TwinStartPage(
         topBar = {
             QTopBar(
                 title = topBarTitle,
-                optionMediaItem = optionMediaItem,
+                appBarOptionMediaItem = appBarOptionMediaItem,
                 drawerState = scaffoldState.drawerState,
                 isSearchActive = isSearchActive.value,
                 onTapBar = onTapBar,
                 onToggleTheme = onToggleTheme,
                 onToggleFavorite = onToggleFavorite,
-                onShowOptions = onShowOptions,
                 onSetOptionMediaItem = onSetOptionMediaItem,
+                onSelectAllArtists = onSelectAllArtists,
+                onSelectArtist = onSelectArtist,
+                onSelectAlbum = onSelectAlbum,
+                onSelectTrack = onSelectTrack,
             )
         },
         drawerContent = {
@@ -384,21 +385,21 @@ fun RowScope.TwinStartPage(
                 selectedTrack = selectedTrack,
                 selectedAlbum = selectedAlbum,
                 selectedArtist = selectedArtist,
+                selectedAllArtists = selectedAllArtists,
                 selectedGenre = selectedGenre,
                 navController = navController,
                 isSearchActive = isSearchActive,
                 currentDropboxItemList = currentDropboxItemList,
                 downloadTargets = downloadTargets,
                 invalidateDownloadedTargets = invalidateDownloadedTargets,
-                optionMediaItem = optionMediaItem,
                 showDropboxDialog = showDropboxDialog,
                 showResetShuffleDialog = showResetShuffleDialog,
-                showOptionsDialog = showOptionsDialog,
                 hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
                 isFavoriteOnly = isFavoriteOnly,
                 onSelectTrack = onSelectTrack,
                 onSelectAlbum = onSelectAlbum,
                 onSelectArtist = onSelectArtist,
+                onSelectAllArtists = onSelectAllArtists,
                 onSelectGenre = onSelectGenre,
                 onDeleteTrack = onDeleteTrack,
                 onExportLyric = onExportLyric,
@@ -412,7 +413,6 @@ fun RowScope.TwinStartPage(
                 hideResetShuffleDialog = hideResetShuffleDialog,
                 onShuffle = onShuffle,
                 onResetShuffle = onResetShuffle,
-                onCloseOptionsDialog = onCloseOptionsDialog,
                 onCancelDownload = onCancelDownload,
                 onStartDownloader = onStartDownloader,
                 onCancelInvalidateDownloaded = onCancelInvalidateDownloaded,

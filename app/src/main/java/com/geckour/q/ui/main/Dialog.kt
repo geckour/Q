@@ -703,8 +703,8 @@ fun ArtistOptionDialog(
 
 @Composable
 fun AllArtistOptionDialog(
-    onSelected: () -> Unit,
     isFavoriteOnly: MutableState<Boolean>,
+    onSelected: (allArtists: AllArtists?) -> Unit,
     onNewQueue: (
         queue: List<DomainTrack>,
         actionType: InsertActionType,
@@ -714,7 +714,7 @@ fun AllArtistOptionDialog(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    Dialog(onDismissRequest = { onSelected() }) {
+    Dialog(onDismissRequest = { onSelected(null) }) {
         Card(backgroundColor = QTheme.colors.colorBackground) {
             Column {
                 Row(
@@ -745,7 +745,7 @@ fun AllArtistOptionDialog(
                                 InsertActionType.NEXT,
                                 OrientedClassType.ARTIST
                             )
-                            onSelected()
+                            onSelected(null)
                         }
                     }
                 ) {
@@ -769,7 +769,7 @@ fun AllArtistOptionDialog(
                                 InsertActionType.LAST,
                                 OrientedClassType.ARTIST
                             )
-                            onSelected()
+                            onSelected(null)
                         }
                     }
                 ) {
@@ -793,7 +793,7 @@ fun AllArtistOptionDialog(
                                 InsertActionType.OVERRIDE,
                                 OrientedClassType.ARTIST
                             )
-                            onSelected()
+                            onSelected(null)
                         }
                     }
                 ) {
@@ -817,7 +817,7 @@ fun AllArtistOptionDialog(
                                 InsertActionType.SHUFFLE_NEXT,
                                 OrientedClassType.ARTIST
                             )
-                            onSelected()
+                            onSelected(null)
                         }
                     }
                 ) {
@@ -841,7 +841,7 @@ fun AllArtistOptionDialog(
                                 InsertActionType.SHUFFLE_LAST,
                                 OrientedClassType.ARTIST
                             )
-                            onSelected()
+                            onSelected(null)
                         }
                     }
                 ) {
@@ -865,7 +865,7 @@ fun AllArtistOptionDialog(
                                 InsertActionType.SHUFFLE_OVERRIDE,
                                 OrientedClassType.ARTIST
                             )
-                            onSelected()
+                            onSelected(null)
                         }
                     }
                 ) {
@@ -889,7 +889,7 @@ fun AllArtistOptionDialog(
                                 InsertActionType.SHUFFLE_SIMPLE_NEXT,
                                 OrientedClassType.ARTIST
                             )
-                            onSelected()
+                            onSelected(null)
                         }
                     }
                 ) {
@@ -913,7 +913,7 @@ fun AllArtistOptionDialog(
                                 InsertActionType.SHUFFLE_SIMPLE_LAST,
                                 OrientedClassType.ARTIST
                             )
-                            onSelected()
+                            onSelected(null)
                         }
                     }
                 ) {
@@ -937,7 +937,7 @@ fun AllArtistOptionDialog(
                                 InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
                                 OrientedClassType.ARTIST
                             )
-                            onSelected()
+                            onSelected(null)
                         }
                     }
                 ) {
@@ -956,7 +956,7 @@ fun AllArtistOptionDialog(
                                 }
                                 .forEach {
                                     onDeleteTrack(it.toDomainTrack())
-                                    onSelected()
+                                    onSelected(null)
                                 }
                         }
                     }
@@ -1522,20 +1522,20 @@ fun BoxScope.Dialogs(
     selectedAlbum: Album?,
     selectedArtist: Artist?,
     selectedGenre: Genre?,
+    selectedAllArtists: AllArtists?,
     navController: NavHostController,
     isSearchActive: MutableState<Boolean>,
     currentDropboxItemList: Pair<String, ImmutableList<FolderMetadata>>,
     downloadTargets: ImmutableList<String>,
     invalidateDownloadedTargets: ImmutableList<String>,
-    optionMediaItem: MediaItem?,
     showDropboxDialog: Boolean,
     showResetShuffleDialog: Boolean,
-    showOptionsDialog: Boolean,
     hasAlreadyShownDropboxSyncAlert: Boolean,
     isFavoriteOnly: MutableState<Boolean>,
     onSelectTrack: (track: DomainTrack?) -> Unit,
     onSelectAlbum: (album: Album?) -> Unit,
     onSelectArtist: (artist: Artist?) -> Unit,
+    onSelectAllArtists: (allArtists: AllArtists?) -> Unit,
     onSelectGenre: (genre: Genre?) -> Unit,
     onDeleteTrack: (track: DomainTrack) -> Unit,
     onExportLyric: (domainTrack: DomainTrack) -> Unit,
@@ -1553,7 +1553,6 @@ fun BoxScope.Dialogs(
     hideResetShuffleDialog: () -> Unit,
     onShuffle: (actionType: ShuffleActionType) -> Unit,
     onResetShuffle: () -> Unit,
-    onCloseOptionsDialog: () -> Unit,
     onCancelDownload: () -> Unit,
     onStartDownloader: () -> Unit,
     onCancelInvalidateDownloaded: () -> Unit,
@@ -1597,53 +1596,13 @@ fun BoxScope.Dialogs(
             onDeleteTrack = onDeleteTrack
         )
     }
-    if (showOptionsDialog) {
-        when (optionMediaItem) {
-            is DomainTrack -> {
-                TrackOptionDialog(
-                    domainTrack = optionMediaItem,
-                    navController = navController,
-                    onSelectTrack = { _ -> onCloseOptionsDialog() },
-                    onNewQueue = { queue, actionType, classType ->
-                        isSearchActive.value = false
-                        onNewQueue(queue, actionType, classType)
-                    },
-                    onExportLyric = onExportLyric,
-                    onAttachLyric = onAttachLyric,
-                    onDetachLyric = onDetachLyric,
-                    onDeleteTrack = onDeleteTrack
-                )
-            }
-
-            is Album -> {
-                AlbumOptionDialog(
-                    album = optionMediaItem,
-                    isFavoriteOnly = innerIsFavoriteOnly,
-                    onSelectAlbum = { _ -> onCloseOptionsDialog() },
-                    onNewQueue = onNewQueue,
-                    onDeleteTrack = onDeleteTrack
-                )
-            }
-
-            is Artist -> {
-                ArtistOptionDialog(
-                    artist = optionMediaItem,
-                    isFavoriteOnly = innerIsFavoriteOnly,
-                    onSelectArtist = { _ -> onCloseOptionsDialog() },
-                    onNewQueue = onNewQueue,
-                    onDeleteTrack = onDeleteTrack
-                )
-            }
-
-            is AllArtists -> {
-                AllArtistOptionDialog(
-                    onSelected = onCloseOptionsDialog,
-                    isFavoriteOnly = innerIsFavoriteOnly,
-                    onNewQueue = onNewQueue,
-                    onDeleteTrack = onDeleteTrack
-                )
-            }
-        }
+    selectedAllArtists?.let {
+        AllArtistOptionDialog(
+            isFavoriteOnly = innerIsFavoriteOnly,
+            onSelected = onSelectAllArtists,
+            onNewQueue = onNewQueue,
+            onDeleteTrack = onDeleteTrack
+        )
     }
     selectedGenre?.let { genre ->
         GenreOptionDialog(

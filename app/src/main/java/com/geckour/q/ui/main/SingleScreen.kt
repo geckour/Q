@@ -29,6 +29,7 @@ import androidx.navigation.NavHostController
 import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
+import com.geckour.q.domain.model.AllArtists
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.Genre
@@ -51,7 +52,7 @@ import kotlin.math.sin
 fun SingleScreen(
     navController: NavHostController,
     topBarTitle: String,
-    optionMediaItem: MediaItem?,
+    appBarOptionMediaItem: MediaItem?,
     sourcePaths: ImmutableList<String>,
     queue: ImmutableList<DomainTrack>,
     currentIndex: Int,
@@ -66,6 +67,7 @@ fun SingleScreen(
     selectedTrack: DomainTrack?,
     selectedAlbum: Album?,
     selectedArtist: Artist?,
+    selectedAllArtists: AllArtists?,
     selectedGenre: Genre?,
     equalizerParams: EqualizerParams?,
     currentDropboxItemList: Pair<String, ImmutableList<FolderMetadata>>,
@@ -75,7 +77,6 @@ fun SingleScreen(
     forceScrollToCurrent: Long,
     showDropboxDialog: Boolean,
     showResetShuffleDialog: Boolean,
-    showOptionsDialog: Boolean,
     hasAlreadyShownDropboxSyncAlert: Boolean,
     isSearchActive: MutableState<Boolean>,
     isFavoriteOnly: MutableState<Boolean>,
@@ -87,6 +88,7 @@ fun SingleScreen(
     onSelectTrack: (track: DomainTrack?) -> Unit,
     onSelectAlbum: (album: Album?) -> Unit,
     onSelectArtist: (artist: Artist?) -> Unit,
+    onSelectAllArtists: (allArtists: AllArtists?) -> Unit,
     onSelectGenre: (genre: Genre?) -> Unit,
     onTogglePlayPause: () -> Unit,
     onPrev: () -> Unit,
@@ -97,7 +99,6 @@ fun SingleScreen(
     onNewProgress: (newProgress: Long) -> Unit,
     rotateRepeatMode: () -> Unit,
     shuffleQueue: (actionType: ShuffleActionType?) -> Unit,
-    closeOptionsDialog: () -> Unit,
     resetShuffleQueue: () -> Unit,
     moveToCurrentIndex: () -> Unit,
     clearQueue: () -> Unit,
@@ -131,7 +132,6 @@ fun SingleScreen(
     onCancelProgress: (() -> Unit)?,
     onSetOptionMediaItem: (mediaItem: MediaItem?) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
-    onShowOptions: () -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scaffoldState = rememberBottomSheetScaffoldState()
@@ -168,14 +168,17 @@ fun SingleScreen(
             topBar = {
                 QTopBar(
                     title = topBarTitle,
-                    optionMediaItem = optionMediaItem,
+                    appBarOptionMediaItem = appBarOptionMediaItem,
                     drawerState = drawerState,
                     isSearchActive = isSearchActive.value,
                     onTapBar = onTapBar,
                     onToggleTheme = onToggleTheme,
                     onToggleFavorite = onToggleFavorite,
-                    onShowOptions = onShowOptions,
                     onSetOptionMediaItem = onSetOptionMediaItem,
+                    onSelectAllArtists = onSelectAllArtists,
+                    onSelectArtist = onSelectArtist,
+                    onSelectAlbum = onSelectAlbum,
+                    onSelectTrack = onSelectTrack,
                 )
             },
             backgroundColor = QTheme.colors.colorBackground,
@@ -311,20 +314,20 @@ fun SingleScreen(
                     selectedAlbum = selectedAlbum,
                     selectedArtist = selectedArtist,
                     selectedGenre = selectedGenre,
+                    selectedAllArtists = selectedAllArtists,
                     navController = navController,
                     isSearchActive = isSearchActive,
                     currentDropboxItemList = currentDropboxItemList,
                     downloadTargets = downloadTargets,
                     invalidateDownloadedTargets = invalidateDownloadedTargets,
-                    optionMediaItem = optionMediaItem,
                     showDropboxDialog = showDropboxDialog,
                     showResetShuffleDialog = showResetShuffleDialog,
-                    showOptionsDialog = showOptionsDialog,
                     hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
                     isFavoriteOnly = isFavoriteOnly,
                     onSelectTrack = onSelectTrack,
                     onSelectAlbum = onSelectAlbum,
                     onSelectArtist = onSelectArtist,
+                    onSelectAllArtists = onSelectAllArtists,
                     onSelectGenre = onSelectGenre,
                     onDeleteTrack = onDeleteTrack,
                     onExportLyric = onExportLyric,
@@ -338,7 +341,6 @@ fun SingleScreen(
                     hideResetShuffleDialog = hideResetShuffleDialog,
                     onShuffle = shuffleQueue,
                     onResetShuffle = resetShuffleQueue,
-                    onCloseOptionsDialog = closeOptionsDialog,
                     onCancelDownload = onCancelDownload,
                     onStartDownloader = onStartDownloader,
                     onCancelInvalidateDownloaded = onCancelInvalidateDownloaded,

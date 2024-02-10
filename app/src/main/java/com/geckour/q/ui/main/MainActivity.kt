@@ -58,6 +58,7 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
+import com.geckour.q.domain.model.AllArtists
 import com.geckour.q.domain.model.DomainTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.LayoutType
@@ -305,10 +306,10 @@ class MainActivity : ComponentActivity() {
             var forceScrollToCurrent by remember { mutableLongStateOf(System.currentTimeMillis()) }
             var showDropboxDialog by remember { mutableStateOf(false) }
             var showResetShuffleDialog by remember { mutableStateOf(false) }
-            var showOptionsDialog by remember { mutableStateOf(false) }
             var selectedTrack by remember { mutableStateOf<DomainTrack?>(null) }
             var selectedAlbum by remember { mutableStateOf<Album?>(null) }
             var selectedArtist by remember { mutableStateOf<Artist?>(null) }
+            var selectedAllArtists by remember { mutableStateOf<AllArtists?>(null) }
             var selectedGenre by remember { mutableStateOf<Genre?>(null) }
             var selectedNav by remember { mutableStateOf<Nav?>(null) }
             val workInfoList by viewModel.workInfoListFlow
@@ -332,7 +333,7 @@ class MainActivity : ComponentActivity() {
                 initial = "" to persistentListOf()
             )
             val layoutType by layoutTypeFlow.collectAsState()
-            var optionMediaItem by remember { mutableStateOf<MediaItem?>(null) }
+            var appBarOptionMediaItem by remember { mutableStateOf<MediaItem?>(null) }
             val onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem? = { mediaItem ->
                 val newMediaItem = mediaItem.isFavoriteToggled()
                 coroutineScope.launch {
@@ -491,7 +492,7 @@ class MainActivity : ComponentActivity() {
                             SingleScreen(
                                 navController = navController,
                                 topBarTitle = topBarTitle,
-                                optionMediaItem = optionMediaItem,
+                                appBarOptionMediaItem = appBarOptionMediaItem,
                                 sourcePaths = sourcePaths,
                                 queue = queue.toImmutableList(),
                                 currentIndex = currentIndex,
@@ -506,6 +507,7 @@ class MainActivity : ComponentActivity() {
                                 selectedTrack = selectedTrack,
                                 selectedAlbum = selectedAlbum,
                                 selectedArtist = selectedArtist,
+                                selectedAllArtists = selectedAllArtists,
                                 selectedGenre = selectedGenre,
                                 equalizerParams = equalizerParams,
                                 currentDropboxItemList = currentDropboxItemList,
@@ -515,7 +517,6 @@ class MainActivity : ComponentActivity() {
                                 forceScrollToCurrent = forceScrollToCurrent,
                                 showDropboxDialog = showDropboxDialog,
                                 showResetShuffleDialog = showResetShuffleDialog,
-                                showOptionsDialog = showOptionsDialog,
                                 hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
                                 scrollToTop = scrollToTop,
                                 onSelectNav = { selectedNav = it },
@@ -529,6 +530,7 @@ class MainActivity : ComponentActivity() {
                                 onSelectTrack = { selectedTrack = it },
                                 onSelectAlbum = { selectedAlbum = it },
                                 onSelectArtist = { selectedArtist = it },
+                                onSelectAllArtists = { selectedAllArtists = it },
                                 onSelectGenre = { selectedGenre = it },
                                 onTogglePlayPause = {
                                     viewModel.onPlayOrPause(
@@ -547,7 +549,6 @@ class MainActivity : ComponentActivity() {
                                 resetShuffleQueue = viewModel::onResetShuffle,
                                 isSearchActive = isSearchActive,
                                 isFavoriteOnly = isFavoriteOnly,
-                                closeOptionsDialog = { showOptionsDialog = false },
                                 moveToCurrentIndex = {
                                     forceScrollToCurrent = System.currentTimeMillis()
                                 },
@@ -627,9 +628,8 @@ class MainActivity : ComponentActivity() {
                                 hideResetShuffleDialog = { showResetShuffleDialog = false },
                                 onStartBilling = { viewModel.startBilling(this@MainActivity) },
                                 onCancelProgress = onCancelProgress,
-                                onSetOptionMediaItem = { mediaItem -> optionMediaItem = mediaItem },
+                                onSetOptionMediaItem = { mediaItem -> appBarOptionMediaItem = mediaItem },
                                 onToggleFavorite = onToggleFavorite,
-                                onShowOptions = { showOptionsDialog = true },
                             )
                         }
 
@@ -637,7 +637,7 @@ class MainActivity : ComponentActivity() {
                             TwinScreen(
                                 navController = navController,
                                 topBarTitle = topBarTitle,
-                                optionMediaItem = optionMediaItem,
+                                appBarOptionMediaItem = appBarOptionMediaItem,
                                 queue = queue.toImmutableList(),
                                 currentIndex = currentIndex,
                                 currentPlaybackPosition = currentPlaybackPosition,
@@ -651,6 +651,7 @@ class MainActivity : ComponentActivity() {
                                 selectedTrack = selectedTrack,
                                 selectedAlbum = selectedAlbum,
                                 selectedArtist = selectedArtist,
+                                selectedAllArtists = selectedAllArtists,
                                 selectedGenre = selectedGenre,
                                 equalizerParams = equalizerParams,
                                 currentDropboxItemList = currentDropboxItemList,
@@ -662,7 +663,6 @@ class MainActivity : ComponentActivity() {
                                 forceScrollToCurrent = forceScrollToCurrent,
                                 showDropboxDialog = showDropboxDialog,
                                 showResetShuffleDialog = showResetShuffleDialog,
-                                showOptionsDialog = showOptionsDialog,
                                 hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
                                 scrollToTop = scrollToTop,
                                 onSelectNav = { selectedNav = it },
@@ -676,6 +676,7 @@ class MainActivity : ComponentActivity() {
                                 onSelectTrack = { selectedTrack = it },
                                 onSelectAlbum = { selectedAlbum = it },
                                 onSelectArtist = { selectedArtist = it },
+                                onSelectAllArtists = { selectedAllArtists = it },
                                 onSelectGenre = { selectedGenre = it },
                                 onTogglePlayPause = {
                                     viewModel.onPlayOrPause(
@@ -692,7 +693,6 @@ class MainActivity : ComponentActivity() {
                                 rotateRepeatMode = viewModel::onClickRepeatButton,
                                 shuffleQueue = viewModel::onShuffle,
                                 resetShuffleQueue = viewModel::onResetShuffle,
-                                closeOptionsDialog = { showOptionsDialog = false },
                                 moveToCurrentIndex = {
                                     forceScrollToCurrent = System.currentTimeMillis()
                                 },
@@ -772,9 +772,10 @@ class MainActivity : ComponentActivity() {
                                 hideResetShuffleDialog = { showResetShuffleDialog = false },
                                 onStartBilling = { viewModel.startBilling(this@MainActivity) },
                                 onCancelProgress = onCancelProgress,
-                                onSetOptionMediaItem = { mediaItem -> optionMediaItem = mediaItem },
+                                onSetOptionMediaItem = { mediaItem ->
+                                    appBarOptionMediaItem = mediaItem
+                                },
                                 onToggleFavorite = onToggleFavorite,
-                                onShowOptions = { showOptionsDialog = true },
                             )
                         }
                     }
