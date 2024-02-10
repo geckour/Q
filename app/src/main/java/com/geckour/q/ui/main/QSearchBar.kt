@@ -66,6 +66,18 @@ fun QSearchBar(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+
+    LaunchedEffect(query.value) {
+        if (query.value.isEmpty()) result.value = persistentListOf()
+        else coroutineScope.launch { result.value = search(context, query.value) }
+    }
+    LaunchedEffect(isSearchActive.value) {
+        if (isSearchActive.value.not()) query.value = ""
+    }
+    BackHandler(isSearchActive.value) {
+        isSearchActive.value = false
+    }
+
     DockedSearchBar(
         query = query.value,
         onQueryChange = { q -> query.value = q },
@@ -84,25 +96,16 @@ fun QSearchBar(
         leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null) },
         trailingIcon = {
             if (isSearchActive.value) {
-                IconButton(
-                    onClick = {
-                        query.value = ""
-                        isSearchActive.value = false
-                    }
-                ) {
-                    Icon(imageVector = Icons.Outlined.Cancel, contentDescription = null)
+                IconButton(onClick = { isSearchActive.value = false }) {
+                    Icon(
+                        imageVector = Icons.Outlined.Cancel,
+                        contentDescription = null
+                    )
                 }
             }
         },
         modifier = Modifier.padding(vertical = 8.dp)
     ) {
-        LaunchedEffect(query.value) {
-            if (query.value.isEmpty()) result.value = persistentListOf()
-            else coroutineScope.launch { result.value = search(context, query.value) }
-        }
-        BackHandler(isSearchActive.value) {
-            isSearchActive.value = false
-        }
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(result.value) { item ->
                 when (item.type) {
@@ -172,7 +175,7 @@ private fun SearchResultItem(
     }
 }
 
-suspend fun search(context: Context, query: String): ImmutableList<SearchItem> {
+private suspend fun search(context: Context, query: String): ImmutableList<SearchItem> {
     val items = mutableListOf<SearchItem>()
     val db = DB.getInstance(context)
     val tracks = db.searchTrackByFuzzyTitle(query)

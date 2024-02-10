@@ -386,6 +386,7 @@ fun RowScope.TwinStartPage(
                 selectedArtist = selectedArtist,
                 selectedGenre = selectedGenre,
                 navController = navController,
+                isSearchActive = isSearchActive,
                 currentDropboxItemList = currentDropboxItemList,
                 downloadTargets = downloadTargets,
                 invalidateDownloadedTargets = invalidateDownloadedTargets,
