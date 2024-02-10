@@ -218,15 +218,6 @@ class MainViewModel(private val app: App) : ViewModel() {
                 .await()
                 .apply {
                     addListener(playerListener)
-
-                    sendCustomCommand(
-                        SessionCommand(
-                            PlayerService.ACTION_COMMAND_RESTORE_STATE,
-                            Bundle.EMPTY
-                        ),
-                        Bundle.EMPTY
-                    )
-
                     onSourceChanged()
                 }
         }

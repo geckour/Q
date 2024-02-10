@@ -223,6 +223,18 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
             }
         }
 
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int
+        ) {
+            super.onPositionDiscontinuity(oldPosition, newPosition, reason)
+
+            Timber.d("qgeck player old position: ${oldPosition.positionMs} new position: ${newPosition.positionMs} discontinuity reason: $reason")
+
+            onStateChanged()
+        }
+
         override fun onPlayerError(error: PlaybackException) {
             super.onPlayerError(error)
 
@@ -493,7 +505,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
 
     private val sharedPreferences by inject<SharedPreferences>()
 
-    private var stoppingSelf = false
+    private var inPurge = false
     private var aliveSubmitQueueTask = false
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession =
@@ -628,12 +640,15 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                 setEqualizer(if (enabled) player.audioSessionId else null)
             }
         }
+
+        restoreState()
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        if ((player.playWhenReady.not() && player.playbackState != Player.STATE_READY) ||
+        if ((player.isPlaying.not()) ||
             player.mediaItemCount == 0
         ) {
+            purge()
             stopSelf()
         }
 
@@ -642,23 +657,27 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
 
     override fun onDestroy() {
         Timber.d("qgeck onDestroy called")
-
-        stoppingSelf = true
-
-        stop()
-        dispatcher.onServicePreSuperOnDestroy()
-        player.removeListener(playerListener)
-        player.removeAnalyticsListener(playerAnalyticsListener)
-        player.stop()
-        player.release()
-        mediaSession.release()
-        mediaRouter.removeCallback(mediaRouterCallback)
+        purge()
 
         super.onDestroy()
     }
 
+    private fun purge() {
+        Timber.d("qgeck purge called")
+        inPurge = true
+
+        dispatcher.onServicePreSuperOnDestroy()
+        player.removeListener(playerListener)
+        player.removeAnalyticsListener(playerAnalyticsListener)
+        mediaSession.release()
+        stop()
+        player.stop()
+        player.release()
+        mediaRouter.removeCallback(mediaRouterCallback)
+    }
+
     private fun onStateChanged() {
-        if (stoppingSelf) return
+        if (inPurge) return
 
         val state = PlayerState(
             player.playWhenReady,
@@ -669,7 +688,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
             player.repeatMode
         )
         Timber.d("qgeck storing state: $state")
-        sharedPreferences.edit {
+        sharedPreferences.edit(commit = true) {
             putString(PREF_KEY_PLAYER_STATE, Json.encodeToString(state))
         }
         lifecycleScope.launch {
@@ -698,20 +717,21 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
     }
 
     private fun restoreState() {
-        if (player.playWhenReady.not()) {
-            val playerState = sharedPreferences.getString(PREF_KEY_PLAYER_STATE, null)
-                ?.let { catchAsNull { Json.decodeFromString<PlayerState>(it) } }
-                ?: return
+        if (player.playWhenReady) player.playWhenReady = false
 
-            Timber.d("qgeck set state: $playerState")
-            lifecycleScope.launch {
-                player.setMediaItems(playerState.sourcePaths.map { it.getMediaItem() })
-                val windowIndex =
-                    player.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
-                player.seekToDefaultPosition(windowIndex + playerState.currentIndex)
-                player.seekTo(playerState.progress)
-                player.repeatMode = playerState.repeatMode
-            }
+        val playerState = sharedPreferences.getString(PREF_KEY_PLAYER_STATE, null)
+            ?.let { catchAsNull { Json.decodeFromString<PlayerState>(it) } }
+            ?: return
+
+        Timber.d("qgeck set state: $playerState")
+        lifecycleScope.launch {
+            player.setMediaItems(playerState.sourcePaths.map { it.getMediaItem() })
+            player.prepare()
+            val windowIndex =
+                player.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
+            player.seekToDefaultPosition(windowIndex + playerState.currentIndex)
+            player.seekTo(playerState.progress)
+            player.repeatMode = playerState.repeatMode
         }
     }
 
@@ -811,7 +831,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
             InsertActionType.LAST,
             InsertActionType.SHUFFLE_LAST,
             InsertActionType.SHUFFLE_SIMPLE_LAST -> {
-                player.addMediaItems(player.mediaItemCount, newQueue)
+                player.addMediaItems(newQueue)
             }
         }
 
