@@ -85,7 +85,7 @@ data class QueueMetadata(
 
 data class QueueInfo(
     val metadata: QueueMetadata,
-    val queue: List<UiTrack>
+    val queue: List<JoinedTrack>
 )
 
 fun JoinedTrack.toUiTrack(
@@ -208,10 +208,10 @@ fun JoinedTrack.getMediaItem(context: Context): MediaItem =
         .setMediaMetadata(getMediaMetadata(context))
         .build()
 
-fun List<UiTrack>.orderModified(
+fun List<JoinedTrack>.orderModified(
     classType: OrientedClassType,
     actionType: InsertActionType
-): List<UiTrack> {
+): List<JoinedTrack> {
     val simpleShuffleConditional = actionType in listOf(
         InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
         InsertActionType.SHUFFLE_SIMPLE_NEXT,
@@ -226,9 +226,9 @@ fun List<UiTrack>.orderModified(
     )
     return this.groupBy { it.album }
         .map { (album, tracks) ->
-            album to tracks.groupBy { it.discNum }
+            album to tracks.groupBy { it.track.discNum }
                 .map { (diskNum, track) ->
-                    diskNum to track.sortedBy { it.trackNum }
+                    diskNum to track.sortedBy { it.track.trackNum }
                 }
                 .sortedBy { it.first }
                 .flatMap { it.second }
@@ -589,43 +589,6 @@ suspend fun JoinedTrack.verifiedWithDropbox(
                     sourcePath = url,
                     dropboxExpiredAt = expiredAt
                 )
-            )
-        }
-
-        return@withContext null
-    }
-
-suspend fun UiTrack.verifiedWithDropbox(
-    context: Context,
-    client: DbxClientV2,
-    force: Boolean = false
-): UiTrack? =
-    withContext(Dispatchers.IO) {
-        dropboxPath ?: return@withContext null
-
-        if (force
-            || sourcePath.isBlank()
-            || (sourcePath.matches(dropboxUrlPattern)
-                    && (dropboxExpiredAt ?: 0) <= System.currentTimeMillis())
-            || (sourcePath.matches(dropboxUrlPattern).not()
-                    && Uri.parse(sourcePath).toFile().exists().not())
-        ) {
-            val url = client.files().getTemporaryLink(dropboxPath).link
-            val expiredAt = System.currentTimeMillis() + DROPBOX_EXPIRES_IN
-
-            val trackDao = DB.getInstance(context).trackDao()
-            trackDao.get(id)?.let { joinedTrack ->
-                trackDao.update(
-                    joinedTrack.track.copy(
-                        sourcePath = url,
-                        dropboxExpiredAt = expiredAt
-                    )
-                )
-            }
-
-            return@withContext copy(
-                sourcePath = url,
-                dropboxExpiredAt = expiredAt
             )
         }
 

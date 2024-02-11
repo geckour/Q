@@ -45,11 +45,10 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.EqualizerLevelRatio
 import com.geckour.q.data.db.model.EqualizerPreset
-import com.geckour.q.data.db.model.JoinedTrack
-import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.QAudioDeviceInfo
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -69,8 +68,8 @@ import com.geckour.q.util.removedAt
 import com.geckour.q.util.setActiveQAudioDeviceInfo
 import com.geckour.q.util.setEqualizerParams
 import com.geckour.q.util.setSelectedEqualizerPresetId
-import com.geckour.q.util.toUiTrack
 import com.geckour.q.util.toDomainTracks
+import com.geckour.q.util.toUiTrack
 import com.geckour.q.util.verifiedWithDropbox
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
@@ -315,7 +314,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                         lifecycleScope.launch {
                             val trackDao = db.trackDao()
                             val newQueue = sourcePaths.mapNotNull {
-                                trackDao.getBySourcePath(it)?.toUiTrack()
+                                trackDao.getBySourcePath(it)
                             }
                             submitQueue(QueueInfo(QueueMetadata(actionType, classType), newQueue))
                         }
@@ -809,6 +808,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                 (obtainDbxClient(this).take(1).lastOrNull()?.let {
                     track.verifiedWithDropbox(this, it)
                 } ?: track)
+                    .track
                     .sourcePath
                     .getMediaItem(this)
             }
@@ -855,19 +855,6 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         } else {
             player.removeMediaItems(0, positionToKeep)
             player.removeMediaItems(1, player.mediaItemCount)
-        }
-    }
-
-    /**
-     * @param with: first: index, second: new
-     */
-    private fun replace(with: List<Pair<Int, JoinedTrack>>) {
-        if (with.isEmpty()) return
-
-        lifecycleScope.launch {
-            with.forEach { (index, track) ->
-                player.replaceMediaItem(index, track.getMediaItem(this@PlayerService))
-            }
         }
     }
 
@@ -960,7 +947,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                         InsertActionType.OVERRIDE,
                         OrientedClassType.TRACK
                     ),
-                    newSourcePaths.removedAt(targetIndex).toDomainTracks(db)
+                    db.trackDao().getAllBySourcePaths(newSourcePaths.removedAt(targetIndex))
                 ),
                 currentIndex
             )
@@ -1005,25 +992,23 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
             lifecycleScope.launch {
                 val index = currentIndex
                 val position = player.currentPosition
-                val replacingPairs = player.currentSourcePaths
-                    .mapIndexedNotNull { i, path ->
-                        val track = db.trackDao().getBySourcePath(path) ?: return@mapIndexedNotNull null
-                        val new = obtainDbxClient(this@PlayerService).firstOrNull()?.let {
-                            track.verifiedWithDropbox(this@PlayerService, it, true)
-                        } ?: return@mapIndexedNotNull null
-                        i to new
-                    }
-                replace(replacingPairs)
+                val dropboxClient = obtainDbxClient(this@PlayerService)
+                    .firstOrNull()
+                    ?: return@launch
+                player.currentSourcePaths.getOrNull(currentIndex)?.let { sourcePath ->
+                    val track = db.trackDao().getBySourcePath(sourcePath) ?: return@let
+                    val new = track.verifiedWithDropbox(this@PlayerService, dropboxClient, true)
+                        ?.getMediaItem(this@PlayerService)
+                        ?: return@let
 
-                forceIndex(index)
-                player.seekTo(position)
+                    player.replaceMediaItem(index, new)
+                    player.seekTo(position)
+                }
             }
-
-            return
+        } else {
+            pause()
+            removeQueue(currentIndex)
         }
-
-        pause()
-        removeQueue(currentIndex)
     }
 
     private fun Throwable.getCausesRecursively(initial: List<Throwable> = emptyList()): List<Throwable> {
