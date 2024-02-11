@@ -2,23 +2,27 @@ package com.geckour.q.ui.main
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.BottomSheetValue
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
-import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.util.ShuffleActionType
 import kotlinx.collections.immutable.ImmutableList
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun PlayerSheet(
     isPortrait: Boolean = true,
     sheetProgress: Float = 1f,
     libraryHeight: Int? = null,
-    queue: ImmutableList<DomainTrack>,
+    bottomSheetValue: BottomSheetValue? = null,
+    queue: ImmutableList<UiTrack>,
     currentIndex: Int,
     currentPlaybackPosition: Long,
     currentBufferedPosition: Long,
@@ -39,12 +43,11 @@ fun PlayerSheet(
     resetShuffleQueue: () -> Unit,
     moveToCurrentIndex: () -> Unit,
     clearQueue: () -> Unit,
-    onSelectTrack: (track: DomainTrack) -> Unit,
+    onSelectTrack: (track: UiTrack) -> Unit,
     onToggleShowLyrics: () -> Unit,
-    forceScrollToCurrent: Long,
     onQueueMove: (from: Int, to: Int) -> Unit,
-    onChangeRequestedTrackInQueue: (track: DomainTrack) -> Unit,
-    onRemoveTrackFromQueue: (track: DomainTrack) -> Unit,
+    onChangeRequestedTrackInQueue: (track: UiTrack) -> Unit,
+    onRemoveTrackFromQueue: (track: UiTrack) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     Column(
@@ -88,8 +91,8 @@ fun PlayerSheet(
             onToggleFavorite = onToggleFavorite,
         )
         Queue(
-            domainTracks = queue,
-            forceScrollToCurrent = forceScrollToCurrent,
+            uiTracks = queue,
+            bottomSheetValue = bottomSheetValue,
             showLyric = showLyric,
             onTrackSelected = onSelectTrack,
             currentPlaybackPosition = currentPlaybackPosition,

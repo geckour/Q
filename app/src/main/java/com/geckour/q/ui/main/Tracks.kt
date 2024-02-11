@@ -45,12 +45,12 @@ import androidx.paging.filter
 import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.isDownloaded
-import com.geckour.q.util.toDomainTrack
+import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.map
 
@@ -65,9 +65,9 @@ fun Tracks(
     result: MutableState<ImmutableList<SearchItem>>,
     keyboardController: SoftwareKeyboardController?,
     changeTopBarTitle: (title: String) -> Unit,
-    onTrackSelected: (item: DomainTrack) -> Unit,
-    onDownload: (item: DomainTrack) -> Unit,
-    onInvalidateDownloaded: (item: DomainTrack) -> Unit,
+    onTrackSelected: (item: UiTrack) -> Unit,
+    onDownload: (item: UiTrack) -> Unit,
+    onInvalidateDownloaded: (item: UiTrack) -> Unit,
     scrollToTop: Long,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onSearchItemClicked: (item: SearchItem) -> Unit,
@@ -137,7 +137,7 @@ fun Tracks(
             }
         }
         items(count = lazyPagingItems.itemCount) { index ->
-            val domainTrack = lazyPagingItems[index]?.toDomainTrack() ?: return@items
+            val domainTrack = lazyPagingItems[index]?.toUiTrack() ?: return@items
 
             Surface(
                 elevation = 0.dp,

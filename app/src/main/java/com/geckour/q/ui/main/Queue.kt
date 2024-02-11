@@ -23,6 +23,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.material.BottomSheetValue
 import androidx.compose.material.Button
 import androidx.compose.material.Divider
 import androidx.compose.material.ExperimentalMaterialApi
@@ -61,7 +62,7 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
-import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
@@ -77,24 +78,25 @@ import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
 
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun ColumnScope.Queue(
-    domainTracks: ImmutableList<DomainTrack>,
-    forceScrollToCurrent: Long,
+    uiTracks: ImmutableList<UiTrack>,
+    bottomSheetValue: BottomSheetValue?,
     showLyric: Boolean,
     currentPlaybackPosition: Long,
     onQueueMove: (from: Int, to: Int) -> Unit,
-    onTrackSelected: (track: DomainTrack) -> Unit,
-    onChangeRequestedTrackInQueue: (domainTrack: DomainTrack) -> Unit,
-    onRemoveTrackFromQueue: (domainTrack: DomainTrack) -> Unit,
+    onTrackSelected: (track: UiTrack) -> Unit,
+    onChangeRequestedTrackInQueue: (uiTrack: UiTrack) -> Unit,
+    onRemoveTrackFromQueue: (uiTrack: UiTrack) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val db = DB.getInstance(context)
-    var items by remember { mutableStateOf(domainTracks) }
+    var items by remember { mutableStateOf(uiTracks) }
     val lyric by db.lyricDao()
-        .getLyricFlowByTrackId(domainTracks.firstOrNull { it.nowPlaying }?.id ?: -1)
+        .getLyricFlowByTrackId(uiTracks.firstOrNull { it.nowPlaying }?.id ?: -1)
         .collectAsState(initial = null)
     val lyricLinesForShowing = lyric.lyricLinesForShowing
     val reorderableState = rememberReorderableLazyListState(
@@ -105,11 +107,12 @@ fun ColumnScope.Queue(
 
     var isInEditMode by remember { mutableStateOf(false) }
 
-    LaunchedEffect(domainTracks) {
-        items = domainTracks
+    LaunchedEffect(uiTracks) {
+        items = uiTracks
     }
-    LaunchedEffect(forceScrollToCurrent) {
-        reorderableState.listState.animateScrollToItem(domainTracks.indexOfFirst { it.nowPlaying }
+    LaunchedEffect(bottomSheetValue) {
+        if (bottomSheetValue == BottomSheetValue.Expanded)
+        reorderableState.listState.animateScrollToItem(uiTracks.indexOfFirst { it.nowPlaying }
             .coerceAtLeast(0))
     }
 
@@ -160,7 +163,7 @@ fun ColumnScope.Queue(
                     NewLyricLineInputBox(
                         onSubmit = { newSentence ->
                             coroutineScope.launch {
-                                (lyric ?: domainTracks.firstOrNull { it.nowPlaying }
+                                (lyric ?: uiTracks.firstOrNull { it.nowPlaying }
                                     ?.id
                                     ?.let {
                                         val newLyric =
@@ -255,7 +258,7 @@ fun ColumnScope.Queue(
                     key = domainTrack.key
                 ) { isDragging ->
                     QueueItem(
-                        domainTrack = domainTrack,
+                        uiTrack = domainTrack,
                         index = index,
                         isDragging = isDragging,
                         onTrackSelected = onTrackSelected,
@@ -273,24 +276,24 @@ fun ColumnScope.Queue(
 @Composable
 fun QueueItem(
     modifier: Modifier = Modifier,
-    domainTrack: DomainTrack,
+    uiTrack: UiTrack,
     index: Int,
     isDragging: Boolean,
-    onTrackSelected: (track: DomainTrack) -> Unit,
-    onChangeRequestedTrackInQueue: (domainTrack: DomainTrack) -> Unit,
-    onRemoveTrackFromQueue: (domainTrack: DomainTrack) -> Unit,
+    onTrackSelected: (track: UiTrack) -> Unit,
+    onChangeRequestedTrackInQueue: (uiTrack: UiTrack) -> Unit,
+    onRemoveTrackFromQueue: (uiTrack: UiTrack) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     val elevation by animateDpAsState(targetValue = if (isDragging) 16.dp else 0.dp, label = "")
 
     Surface(
         elevation = elevation,
-        color = if (domainTrack.nowPlaying) QTheme.colors.colorWeekAccent else QTheme.colors.colorBackgroundBottomSheet,
-        onClick = { onChangeRequestedTrackInQueue(domainTrack) },
+        color = if (uiTrack.nowPlaying) QTheme.colors.colorWeekAccent else QTheme.colors.colorBackgroundBottomSheet,
+        onClick = { onChangeRequestedTrackInQueue(uiTrack) },
         modifier = modifier
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (domainTrack.nowPlaying) {
+            if (uiTrack.nowPlaying) {
                 Image(
                     painter = painterResource(id = R.drawable.ic_spectrum),
                     contentDescription = null,
@@ -309,8 +312,8 @@ fun QueueItem(
                     AsyncImage(
                         modifier = Modifier
                             .size(48.dp)
-                            .clickable { onTrackSelected(domainTrack) },
-                        model = domainTrack.artworkUriString ?: R.drawable.ic_empty,
+                            .clickable { onTrackSelected(uiTrack) },
+                        model = uiTrack.artworkUriString ?: R.drawable.ic_empty,
                         contentDescription = null
                     )
                     Column(
@@ -320,33 +323,33 @@ fun QueueItem(
                             .padding(horizontal = 12.dp)
                     ) {
                         Text(
-                            text = domainTrack.title,
-                            color = if (domainTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
+                            text = uiTrack.title,
+                            color = if (uiTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
                             fontSize = 16.sp,
                             lineHeight = 24.nonUpScaleSp
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "${domainTrack.artist.title} - ${domainTrack.album.title}",
-                            color = if (domainTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
+                            text = "${uiTrack.artist.title} - ${uiTrack.album.title}",
+                            color = if (uiTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
                             fontSize = 12.sp,
                             lineHeight = 18.nonUpScaleSp
                         )
                     }
                     IconButton(
-                        onClick = { onToggleFavorite(domainTrack) },
+                        onClick = { onToggleFavorite(uiTrack) },
                         modifier = Modifier
                             .padding(8.dp)
                             .size(20.dp)
                     ) {
                         Icon(
-                            imageVector = if (domainTrack.isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                            imageVector = if (uiTrack.isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
                             contentDescription = null,
                             tint = QTheme.colors.colorTextPrimary
                         )
                     }
                     IconButton(
-                        onClick = { onRemoveTrackFromQueue(domainTrack) },
+                        onClick = { onRemoveTrackFromQueue(uiTrack) },
                         modifier = Modifier
                             .padding(8.dp)
                             .size(20.dp)
@@ -372,15 +375,15 @@ fun QueueItem(
                         modifier = Modifier.width(48.dp)
                     )
                     Text(
-                        text = "${domainTrack.codec}・${domainTrack.bitrate}kbps・${domainTrack.sampleRate}kHz",
-                        color = if (domainTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
+                        text = "${uiTrack.codec}・${uiTrack.bitrate}kbps・${uiTrack.sampleRate}kHz",
+                        color = if (uiTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
                         fontSize = 10.nonUpScaleSp,
                         lineHeight = 25.nonUpScaleSp,
                         textAlign = TextAlign.End,
                         modifier = Modifier.weight(1f)
                     )
                     Text(
-                        text = domainTrack.durationString,
+                        text = uiTrack.durationString,
                         color = QTheme.colors.colorTextPrimary,
                         fontSize = 12.nonUpScaleSp,
                         lineHeight = 18.nonUpScaleSp,

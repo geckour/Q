@@ -3,12 +3,8 @@ package com.geckour.q.ui.main
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
-import android.media.AudioDeviceInfo
-import android.media.AudioManager
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import androidx.core.content.getSystemService
 import androidx.core.net.toFile
 import androidx.core.os.bundleOf
 import androidx.lifecycle.MutableLiveData
@@ -20,8 +16,6 @@ import androidx.media3.common.Tracks
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
-import androidx.mediarouter.media.MediaRouteSelector
-import androidx.mediarouter.media.MediaRouter
 import androidx.work.WorkManager
 import androidx.work.await
 import com.dropbox.core.android.Auth
@@ -31,16 +25,15 @@ import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.BillingApiClient
 import com.geckour.q.data.db.DB
-import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.PlaybackButton
-import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.service.PlayerService
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.setDropboxCredential
-import com.geckour.q.util.toDomainTrack
+import com.geckour.q.util.toUiTrack
 import com.geckour.q.worker.DROPBOX_DOWNLOAD_WORKER_NAME
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import kotlinx.collections.immutable.ImmutableList
@@ -56,7 +49,6 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import timber.log.Timber
 
 class MainViewModel(private val app: App) : ViewModel() {
 
@@ -88,7 +80,7 @@ class MainViewModel(private val app: App) : ViewModel() {
         .combine(currentIndexFlow) { (allTracks, currentSourcePaths), currentIndex ->
             currentSourcePaths.mapIndexedNotNull { index, sourcePath ->
                 allTracks.firstOrNull { it.track.sourcePath == sourcePath }
-                    ?.toDomainTrack(nowPlaying = currentIndex == index)
+                    ?.toUiTrack(nowPlaying = currentIndex == index)
             }
         }
     internal val currentPlaybackPositionFlow = MutableStateFlow(0L)
@@ -229,7 +221,7 @@ class MainViewModel(private val app: App) : ViewModel() {
     }
 
     internal fun onNewQueue(
-        domainTracks: List<DomainTrack>,
+        uiTracks: List<UiTrack>,
         actionType: InsertActionType,
         classType: OrientedClassType
     ) {
@@ -253,7 +245,7 @@ class MainViewModel(private val app: App) : ViewModel() {
             bundleOf(
                 PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_ACTION_TYPE to actionType,
                 PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_CLASS_TYPE to classType,
-                PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_QUEUE to domainTracks.map { it.sourcePath }
+                PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_QUEUE to uiTracks.map { it.sourcePath }
             )
         )
     }
@@ -271,8 +263,8 @@ class MainViewModel(private val app: App) : ViewModel() {
         )
     }
 
-    internal fun onRemoveTrackFromQueue(domainTrack: DomainTrack) {
-        onRemoveTrackFromQueue(domainTrack.sourcePath)
+    internal fun onRemoveTrackFromQueue(uiTrack: UiTrack) {
+        onRemoveTrackFromQueue(uiTrack.sourcePath)
     }
 
     private fun onRemoveTrackFromQueue(sourcePath: String) {
@@ -391,12 +383,12 @@ class MainViewModel(private val app: App) : ViewModel() {
         }
     }
 
-    internal fun deleteTrack(domainTrack: DomainTrack) {
+    internal fun deleteTrack(uiTrack: UiTrack) {
         viewModelScope.launch {
-            purgeDownloaded(listOf(domainTrack.sourcePath)).join()
-            onRemoveTrackFromQueue(domainTrack)
+            purgeDownloaded(listOf(uiTrack.sourcePath)).join()
+            onRemoveTrackFromQueue(uiTrack)
 
-            db.trackDao().deleteIncludingRootIfEmpty(db, domainTrack.id)
+            db.trackDao().deleteIncludingRootIfEmpty(db, uiTrack.id)
         }
     }
 
@@ -420,8 +412,8 @@ class MainViewModel(private val app: App) : ViewModel() {
         }
     }
 
-    internal fun onChangeRequestedTrackInQueue(domainTrack: DomainTrack) {
-        val index = currentSourcePathsFlow.value.indexOf(domainTrack.sourcePath)
+    internal fun onChangeRequestedTrackInQueue(uiTrack: UiTrack) {
+        val index = currentSourcePathsFlow.value.indexOf(uiTrack.sourcePath)
         mediaController?.sendCustomCommand(
             SessionCommand(
                 PlayerService.ACTION_COMMAND_RESET_QUEUE_INDEX,

@@ -23,9 +23,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.geckour.q.R
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
-import com.geckour.q.data.db.model.Track
 import com.geckour.q.domain.model.AllArtists
-import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.ui.compose.QTheme
 import kotlinx.coroutines.launch
@@ -40,7 +39,7 @@ fun QTopBar(
     onToggleTheme: () -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onSetOptionMediaItem: (mediaItem: MediaItem?) -> Unit,
-    onSelectTrack: (track: DomainTrack?) -> Unit,
+    onSelectTrack: (track: UiTrack?) -> Unit,
     onSelectAlbum: (album: Album?) -> Unit,
     onSelectArtist: (artist: Artist?) -> Unit,
     onSelectAllArtists: (allArtists: AllArtists?) -> Unit,
@@ -72,7 +71,7 @@ fun QTopBar(
                     val isFavorite = when (appBarOptionMediaItem) {
                         is Artist -> appBarOptionMediaItem.isFavorite
                         is Album -> appBarOptionMediaItem.isFavorite
-                        is DomainTrack -> appBarOptionMediaItem.isFavorite
+                        is UiTrack -> appBarOptionMediaItem.isFavorite
                         else -> null
                     }
                     if (isFavorite != null) {
@@ -106,7 +105,7 @@ fun QTopBar(
                                 is Album -> {
                                     onSelectAlbum(appBarOptionMediaItem)
                                 }
-                                is DomainTrack -> {
+                                is UiTrack -> {
                                     onSelectTrack(appBarOptionMediaItem)
                                 }
                                 else -> Unit

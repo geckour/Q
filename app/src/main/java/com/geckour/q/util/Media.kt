@@ -26,7 +26,7 @@ import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.DialogEditMetadataBinding
-import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.UiTrack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.commons.io.FileUtils
@@ -78,10 +78,6 @@ enum class OrientedClassType {
     GENRE
 }
 
-enum class PlayerControlCommand {
-    DESTROY
-}
-
 data class QueueMetadata(
     val actionType: InsertActionType,
     val classType: OrientedClassType
@@ -89,17 +85,15 @@ data class QueueMetadata(
 
 data class QueueInfo(
     val metadata: QueueMetadata,
-    val queue: List<DomainTrack>
+    val queue: List<UiTrack>
 )
 
-fun JoinedTrack.toDomainTrack(
+fun JoinedTrack.toUiTrack(
     trackNum: Int? = null,
     nowPlaying: Boolean = false
-): DomainTrack {
-    val calendar = track.releaseDate?.parseDateLong()?.let {
-        Calendar.getInstance().apply { time = Date(it) }
-    }
-    return DomainTrack(
+): UiTrack {
+    val (year, month, day) = dates
+    return UiTrack(
         "${random.nextLong()}-${track.id}",
         track.id,
         track.mediaId,
@@ -119,9 +113,9 @@ fun JoinedTrack.toDomainTrack(
         track.trackTotal,
         track.discNum,
         track.discTotal,
-        calendar?.get(Calendar.YEAR),
-        calendar?.get(Calendar.MONTH),
-        calendar?.get(Calendar.DAY_OF_MONTH),
+        year,
+        month,
+        day,
         track.genre,
         track.sourcePath,
         track.dropboxPath,
@@ -133,7 +127,20 @@ fun JoinedTrack.toDomainTrack(
     )
 }
 
-val DomainTrack.isDownloaded
+val JoinedTrack.dates: Triple<Int?, Int?, Int?>
+    get() {
+        val calendar = track.releaseDate?.parseDateLong()?.let {
+            Calendar.getInstance().apply { time = Date(it) }
+        }
+
+        return Triple(
+            calendar?.get(Calendar.YEAR),
+            calendar?.get(Calendar.MONTH),
+            calendar?.get(Calendar.DAY_OF_MONTH)
+        )
+    }
+
+val UiTrack.isDownloaded
     get() = dropboxPath != null && sourcePath.isNotBlank() && sourcePath.matches(dropboxUrlPattern)
         .not()
 
@@ -182,22 +189,29 @@ suspend fun List<String>.getThumb(context: Context): Bitmap? {
     return bitmap
 }
 
-fun String.getMediaItem(): MediaItem = MediaItem.Builder()
+suspend fun String.getMediaItem(context: Context): MediaItem =
+    DB.getInstance(context)
+        .trackDao()
+        .getBySourcePath(this)
+        ?.getMediaItem(context)
+        ?: this.getMediaItem()
+
+private fun String.getMediaItem(): MediaItem = MediaItem.Builder()
     .setMediaId(this)
     .setUri(Uri.parse(this))
     .build()
 
-fun DomainTrack.getMediaItem(context: Context): MediaItem =
+fun JoinedTrack.getMediaItem(context: Context): MediaItem =
     MediaItem.Builder()
-        .setMediaId(sourcePath)
-        .setUri(Uri.parse(sourcePath))
+        .setMediaId(track.sourcePath)
+        .setUri(Uri.parse(track.sourcePath))
         .setMediaMetadata(getMediaMetadata(context))
         .build()
 
-fun List<DomainTrack>.orderModified(
+fun List<UiTrack>.orderModified(
     classType: OrientedClassType,
     actionType: InsertActionType
-): List<DomainTrack> {
+): List<UiTrack> {
     val simpleShuffleConditional = actionType in listOf(
         InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
         InsertActionType.SHUFFLE_SIMPLE_NEXT,
@@ -232,28 +246,33 @@ fun List<DomainTrack>.orderModified(
         }
 }
 
-fun DomainTrack.getMediaMetadata(context: Context): MediaMetadata =
-    MediaMetadata.Builder()
-        .setTitle(title)
-        .setDisplayTitle(title)
+fun JoinedTrack.getMediaMetadata(context: Context): MediaMetadata {
+    val (year, month, day) = dates
+
+    return MediaMetadata.Builder()
+        .setTitle(track.title)
+        .setDisplayTitle(track.title)
         .setSubtitle(artist.title)
         .setDescription(album.title)
         .setArtist(artist.title)
         .setAlbumArtist(albumArtist?.title)
         .setAlbumTitle(album.title)
-        .setComposer(composer)
-        .setReleaseYear(releaseYear)
-        .setReleaseMonth(releaseMonth)
-        .setReleaseDay(releaseDay)
+        .setComposer(track.composer)
+        .setReleaseYear(year)
+        .setReleaseMonth(month)
+        .setReleaseDay(day)
         .apply {
-            val artworkUriString = getTempArtworkUriString(context)
+            val artworkUriString =
+                (track.artworkUriString ?: album.artworkUriString)
+                    .getTempArtworkUriString(context)
             setArtworkUri(artworkUriString?.let { Uri.parse(it) })
-            trackNum?.let { setTrackNumber(it) }
-            trackTotal?.let { setTotalTrackCount(it) }
-            discNum?.let { setDiscNumber(it) }
-            discTotal?.let { setTotalDiscCount(it) }
+            track.trackNum?.let { setTrackNumber(it) }
+            track.trackTotal?.let { setTotalTrackCount(it) }
+            track.discNum?.let { setDiscNumber(it) }
+            track.discTotal?.let { setTotalDiscCount(it) }
         }
         .build()
+}
 
 fun String.parseDateLong(): Long? = catchAsNull {
     SimpleDateFormat("yyyy-MM-dd", Locale.JAPAN).parse(this)?.time
@@ -263,8 +282,8 @@ fun String.parseDateLong(): Long? = catchAsNull {
     SimpleDateFormat("yyyy", Locale.JAPAN).parse(this)?.time
 }
 
-fun DomainTrack.getTempArtworkUriString(context: Context): String? =
-    album.artworkUriString?.let { uriString ->
+fun String?.getTempArtworkUriString(context: Context): String? =
+    this?.let { uriString ->
         val ext = MimeTypeMap.getFileExtensionFromUrl(uriString)
         val dirName = "images"
         val fileName = "temp_artwork.$ext"
@@ -511,18 +530,18 @@ val ExoPlayer.currentSourcePaths: List<String>
     }.filterNotNull()
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-suspend fun MediaItem.toDomainTrack(db: DB): DomainTrack? =
-    (localConfiguration?.uri ?: mediaId).toString().toDomainTrack(db)
+suspend fun MediaItem.toUiTrack(db: DB): UiTrack? =
+    (localConfiguration?.uri ?: mediaId).toString().toUiTrack(db)
 
-suspend fun String.toDomainTrack(db: DB): DomainTrack? =
-    db.trackDao().getBySourcePath(this)?.toDomainTrack()
+suspend fun String.toUiTrack(db: DB): UiTrack? =
+    db.trackDao().getBySourcePath(this)?.toUiTrack()
 
-suspend fun List<String>.toDomainTracks(db: DB): List<DomainTrack> =
-    db.trackDao().getAllBySourcePaths(this).map { it.toDomainTrack() }
+suspend fun List<String>.toDomainTracks(db: DB): List<UiTrack> =
+    db.trackDao().getAllBySourcePaths(this).map { it.toUiTrack() }
 
 fun com.geckour.q.domain.model.MediaItem?.isFavoriteToggled(): com.geckour.q.domain.model.MediaItem? =
     when (this) {
-        is DomainTrack -> {
+        is UiTrack -> {
             copy(isFavorite = isFavorite.not())
         }
 
@@ -537,14 +556,50 @@ fun com.geckour.q.domain.model.MediaItem?.isFavoriteToggled(): com.geckour.q.dom
         else -> null
     }
 
-/**
- * @return First value of `Pair` is the old (passed) sourcePath.
- */
-suspend fun DomainTrack.verifiedWithDropbox(
+suspend fun JoinedTrack.verifiedWithDropbox(
     context: Context,
     client: DbxClientV2,
     force: Boolean = false
-): DomainTrack? =
+): JoinedTrack? =
+    withContext(Dispatchers.IO) {
+        track.dropboxPath ?: return@withContext null
+
+        if (force
+            || track.sourcePath.isBlank()
+            || (track.sourcePath.matches(dropboxUrlPattern)
+                    && (track.dropboxExpiredAt ?: 0) <= System.currentTimeMillis())
+            || (track.sourcePath.matches(dropboxUrlPattern).not()
+                    && Uri.parse(track.sourcePath).toFile().exists().not())
+        ) {
+            val url = client.files().getTemporaryLink(track.dropboxPath).link
+            val expiredAt = System.currentTimeMillis() + DROPBOX_EXPIRES_IN
+
+            val trackDao = DB.getInstance(context).trackDao()
+            trackDao.get(track.id)?.let { joinedTrack ->
+                trackDao.update(
+                    joinedTrack.track.copy(
+                        sourcePath = url,
+                        dropboxExpiredAt = expiredAt
+                    )
+                )
+            }
+
+            return@withContext copy(
+                track = track.copy(
+                    sourcePath = url,
+                    dropboxExpiredAt = expiredAt
+                )
+            )
+        }
+
+        return@withContext null
+    }
+
+suspend fun UiTrack.verifiedWithDropbox(
+    context: Context,
+    client: DbxClientV2,
+    force: Boolean = false
+): UiTrack? =
     withContext(Dispatchers.IO) {
         dropboxPath ?: return@withContext null
 

@@ -61,7 +61,7 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Size
 import com.geckour.q.R
-import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.ui.DoubleTrackSlider
@@ -80,7 +80,7 @@ import kotlin.math.sin
 @Composable
 fun Controller(
     sheetProgress: Float,
-    currentTrack: DomainTrack?,
+    currentTrack: UiTrack?,
     progress: Long,
     bufferProgress: Long,
     queueTotalDuration: Long,
@@ -102,7 +102,7 @@ fun Controller(
     resetShuffleQueue: () -> Unit,
     moveToCurrentIndex: () -> Unit,
     clearQueue: () -> Unit,
-    onTrackSelected: (item: DomainTrack) -> Unit,
+    onTrackSelected: (item: UiTrack) -> Unit,
     cancelLoad: () -> Unit,
     onToggleShowLyrics: () -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
@@ -112,8 +112,8 @@ fun Controller(
     Column {
         Box(modifier = Modifier.height(144.dp + 142.dp * yProgress)) {
             AsyncImage(
-                model = currentTrack?.let {
-                    ImageRequest.Builder(LocalContext.current).data(it.artworkUriString).size(
+                model = currentTrack?.artworkUriString?.let {
+                    ImageRequest.Builder(LocalContext.current).data(it).size(
                         Size(width = 384, height = 384)
                     ).build()
                 } ?: R.drawable.ic_empty,

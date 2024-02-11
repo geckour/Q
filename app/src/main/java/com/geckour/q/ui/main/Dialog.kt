@@ -42,16 +42,15 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.AllArtists
-import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.Genre
-import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.getDropboxCredential
 import com.geckour.q.util.setHasAlreadyShownDropboxSyncAlert
-import com.geckour.q.util.toDomainTrack
+import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -61,18 +60,18 @@ import kotlinx.coroutines.runBlocking
 
 @Composable
 fun TrackOptionDialog(
-    domainTrack: DomainTrack,
+    uiTrack: UiTrack,
     navController: NavHostController,
-    onSelectTrack: (track: DomainTrack?) -> Unit,
+    onSelectTrack: (track: UiTrack?) -> Unit,
     onNewQueue: (
-        queue: List<DomainTrack>,
+        queue: List<UiTrack>,
         actionType: InsertActionType,
         classType: OrientedClassType
     ) -> Unit,
-    onExportLyric: (domainTrack: DomainTrack) -> Unit,
+    onExportLyric: (uiTrack: UiTrack) -> Unit,
     onAttachLyric: (trackId: Long) -> Unit,
     onDetachLyric: (trackId: Long) -> Unit,
-    onDeleteTrack: (track: DomainTrack) -> Unit
+    onDeleteTrack: (track: UiTrack) -> Unit
 ) {
     Dialog(onDismissRequest = { onSelectTrack(null) }) {
         Card(backgroundColor = QTheme.colors.colorBackground) {
@@ -80,7 +79,7 @@ fun TrackOptionDialog(
                 DialogListItem(
                     onClick = {
                         onNewQueue(
-                            persistentListOf(domainTrack),
+                            persistentListOf(uiTrack),
                             InsertActionType.NEXT,
                             OrientedClassType.TRACK
                         )
@@ -96,7 +95,7 @@ fun TrackOptionDialog(
                 DialogListItem(
                     onClick = {
                         onNewQueue(
-                            persistentListOf(domainTrack),
+                            persistentListOf(uiTrack),
                             InsertActionType.LAST,
                             OrientedClassType.TRACK
                         )
@@ -112,7 +111,7 @@ fun TrackOptionDialog(
                 DialogListItem(
                     onClick = {
                         onNewQueue(
-                            persistentListOf(domainTrack),
+                            persistentListOf(uiTrack),
                             InsertActionType.OVERRIDE,
                             OrientedClassType.TRACK
                         )
@@ -127,7 +126,7 @@ fun TrackOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        navController.navigate("albums?artistId=${domainTrack.artist.id}")
+                        navController.navigate("albums?artistId=${uiTrack.artist.id}")
                         onSelectTrack(null)
                     }
                 ) {
@@ -139,7 +138,7 @@ fun TrackOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        navController.navigate("tracks?albumId=${domainTrack.album.id}")
+                        navController.navigate("tracks?albumId=${uiTrack.album.id}")
                         onSelectTrack(null)
                     }
                 ) {
@@ -151,7 +150,7 @@ fun TrackOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        onExportLyric(domainTrack)
+                        onExportLyric(uiTrack)
                         onSelectTrack(null)
                     }
                 ) {
@@ -163,7 +162,7 @@ fun TrackOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        onAttachLyric(domainTrack.id)
+                        onAttachLyric(uiTrack.id)
                         onSelectTrack(null)
                     }
                 ) {
@@ -175,7 +174,7 @@ fun TrackOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        onDetachLyric(domainTrack.id)
+                        onDetachLyric(uiTrack.id)
                         onSelectTrack(null)
                     }
                 ) {
@@ -187,7 +186,7 @@ fun TrackOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        onDeleteTrack(domainTrack)
+                        onDeleteTrack(uiTrack)
                         onSelectTrack(null)
                     }
                 ) {
@@ -208,11 +207,11 @@ fun AlbumOptionDialog(
     isFavoriteOnly: MutableState<Boolean>,
     onSelectAlbum: (album: Album?) -> Unit,
     onNewQueue: (
-        queue: List<DomainTrack>,
+        queue: List<UiTrack>,
         actionType: InsertActionType,
         classType: OrientedClassType
     ) -> Unit,
-    onDeleteTrack: (track: DomainTrack) -> Unit
+    onDeleteTrack: (track: UiTrack) -> Unit
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -242,7 +241,7 @@ fun AlbumOptionDialog(
                                         if (isFavoriteOnly.value) it.getAllWithFavoriteByAlbum(album.id)
                                         else it.getAllByAlbum(album.id)
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.NEXT,
@@ -267,7 +266,7 @@ fun AlbumOptionDialog(
                                         if (isFavoriteOnly.value) it.getAllWithFavoriteByAlbum(album.id)
                                         else it.getAllByAlbum(album.id)
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.LAST,
@@ -292,7 +291,7 @@ fun AlbumOptionDialog(
                                         if (isFavoriteOnly.value) it.getAllWithFavoriteByAlbum(album.id)
                                         else it.getAllByAlbum(album.id)
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.OVERRIDE,
@@ -317,7 +316,7 @@ fun AlbumOptionDialog(
                                         if (isFavoriteOnly.value) it.getAllWithFavoriteByAlbum(album.id)
                                         else it.getAllByAlbum(album.id)
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_NEXT,
@@ -342,7 +341,7 @@ fun AlbumOptionDialog(
                                         if (isFavoriteOnly.value) it.getAllWithFavoriteByAlbum(album.id)
                                         else it.getAllByAlbum(album.id)
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_LAST,
@@ -367,7 +366,7 @@ fun AlbumOptionDialog(
                                         if (isFavoriteOnly.value) it.getAllWithFavoriteByAlbum(album.id)
                                         else it.getAllByAlbum(album.id)
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
@@ -392,7 +391,7 @@ fun AlbumOptionDialog(
                                     else it.getAllByAlbum(album.id)
                                 }
                                 .forEach {
-                                    onDeleteTrack(it.toDomainTrack())
+                                    onDeleteTrack(it.toUiTrack())
                                     onSelectAlbum(null)
                                 }
                         }
@@ -415,11 +414,11 @@ fun ArtistOptionDialog(
     isFavoriteOnly: MutableState<Boolean>,
     onSelectArtist: (artist: Artist?) -> Unit,
     onNewQueue: (
-        queue: List<DomainTrack>,
+        queue: List<UiTrack>,
         actionType: InsertActionType,
         classType: OrientedClassType
     ) -> Unit,
-    onDeleteTrack: (track: DomainTrack) -> Unit
+    onDeleteTrack: (track: UiTrack) -> Unit
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -450,7 +449,7 @@ fun ArtistOptionDialog(
                                             it.getAllWithFavoriteByArtist(artist.id)
                                         } else it.getAllByArtist(artist.id)
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.NEXT,
@@ -476,7 +475,7 @@ fun ArtistOptionDialog(
                                             it.getAllWithFavoriteByArtist(artist.id)
                                         } else it.getAllByArtist(artist.id)
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.LAST,
@@ -502,7 +501,7 @@ fun ArtistOptionDialog(
                                             it.getAllWithFavoriteByArtist(artist.id)
                                         } else it.getAllByArtist(artist.id)
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.OVERRIDE,
@@ -528,7 +527,7 @@ fun ArtistOptionDialog(
                                             it.getAllWithFavoriteByArtist(artist.id)
                                         } else it.getAllByArtist(artist.id)
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_NEXT,
@@ -554,7 +553,7 @@ fun ArtistOptionDialog(
                                             it.getAllWithFavoriteByArtist(artist.id)
                                         } else it.getAllByArtist(artist.id)
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_LAST,
@@ -580,7 +579,7 @@ fun ArtistOptionDialog(
                                             it.getAllWithFavoriteByArtist(artist.id)
                                         } else it.getAllByArtist(artist.id)
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_OVERRIDE,
@@ -606,7 +605,7 @@ fun ArtistOptionDialog(
                                             it.getAllWithFavoriteByArtist(artist.id)
                                         } else it.getAllByArtist(artist.id)
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_NEXT,
@@ -632,7 +631,7 @@ fun ArtistOptionDialog(
                                             it.getAllWithFavoriteByArtist(artist.id)
                                         } else it.getAllByArtist(artist.id)
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_LAST,
@@ -658,7 +657,7 @@ fun ArtistOptionDialog(
                                             it.getAllWithFavoriteByArtist(artist.id)
                                         } else it.getAllByArtist(artist.id)
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
@@ -684,7 +683,7 @@ fun ArtistOptionDialog(
                                     } else it.getAllByArtist(artist.id)
                                 }
                                 .forEach {
-                                    onDeleteTrack(it.toDomainTrack())
+                                    onDeleteTrack(it.toUiTrack())
                                     onSelectArtist(null)
                                 }
                         }
@@ -706,11 +705,11 @@ fun AllArtistOptionDialog(
     isFavoriteOnly: MutableState<Boolean>,
     onSelected: (allArtists: AllArtists?) -> Unit,
     onNewQueue: (
-        queue: List<DomainTrack>,
+        queue: List<UiTrack>,
         actionType: InsertActionType,
         classType: OrientedClassType
     ) -> Unit,
-    onDeleteTrack: (track: DomainTrack) -> Unit
+    onDeleteTrack: (track: UiTrack) -> Unit
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -739,7 +738,7 @@ fun AllArtistOptionDialog(
                                     .let {
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.NEXT,
@@ -763,7 +762,7 @@ fun AllArtistOptionDialog(
                                     .let {
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.LAST,
@@ -787,7 +786,7 @@ fun AllArtistOptionDialog(
                                     .let {
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.OVERRIDE,
@@ -811,7 +810,7 @@ fun AllArtistOptionDialog(
                                     .let {
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_NEXT,
@@ -835,7 +834,7 @@ fun AllArtistOptionDialog(
                                     .let {
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_LAST,
@@ -859,7 +858,7 @@ fun AllArtistOptionDialog(
                                     .let {
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_OVERRIDE,
@@ -883,7 +882,7 @@ fun AllArtistOptionDialog(
                                     .let {
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_NEXT,
@@ -907,7 +906,7 @@ fun AllArtistOptionDialog(
                                     .let {
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_LAST,
@@ -931,7 +930,7 @@ fun AllArtistOptionDialog(
                                     .let {
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
@@ -955,7 +954,7 @@ fun AllArtistOptionDialog(
                                     if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                 }
                                 .forEach {
-                                    onDeleteTrack(it.toDomainTrack())
+                                    onDeleteTrack(it.toUiTrack())
                                     onSelected(null)
                                 }
                         }
@@ -977,11 +976,11 @@ fun GenreOptionDialog(
     genre: Genre,
     onSelectGenre: (genre: Genre?) -> Unit,
     onNewQueue: (
-        queue: List<DomainTrack>,
+        queue: List<UiTrack>,
         actionType: InsertActionType,
         classType: OrientedClassType
     ) -> Unit,
-    onDeleteTrack: (track: DomainTrack) -> Unit
+    onDeleteTrack: (track: UiTrack) -> Unit
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -994,7 +993,7 @@ fun GenreOptionDialog(
                             val tracks =
                                 DB.getInstance(context).trackDao()
                                     .getAllByGenreName(genre.name)
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.NEXT,
@@ -1016,7 +1015,7 @@ fun GenreOptionDialog(
                             val tracks =
                                 DB.getInstance(context).trackDao()
                                     .getAllByGenreName(genre.name)
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.LAST,
@@ -1038,7 +1037,7 @@ fun GenreOptionDialog(
                             val tracks =
                                 DB.getInstance(context).trackDao()
                                     .getAllByGenreName(genre.name)
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.OVERRIDE,
@@ -1060,7 +1059,7 @@ fun GenreOptionDialog(
                             val tracks =
                                 DB.getInstance(context).trackDao()
                                     .getAllByGenreName(genre.name)
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_NEXT,
@@ -1082,7 +1081,7 @@ fun GenreOptionDialog(
                             val tracks =
                                 DB.getInstance(context).trackDao()
                                     .getAllByGenreName(genre.name)
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_LAST,
@@ -1104,7 +1103,7 @@ fun GenreOptionDialog(
                             val tracks =
                                 DB.getInstance(context).trackDao()
                                     .getAllByGenreName(genre.name)
-                                    .map { it.toDomainTrack() }
+                                    .map { it.toUiTrack() }
                             onNewQueue(
                                 tracks,
                                 InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
@@ -1126,7 +1125,7 @@ fun GenreOptionDialog(
                             DB.getInstance(context).trackDao()
                                 .getAllByGenreName(genre.name)
                                 .forEach {
-                                    onDeleteTrack(it.toDomainTrack())
+                                    onDeleteTrack(it.toUiTrack())
                                     onSelectGenre(null)
                                 }
                         }
@@ -1518,7 +1517,7 @@ fun ConfirmInvalidateDownloadedDialog(
 
 @Composable
 fun BoxScope.Dialogs(
-    selectedTrack: DomainTrack?,
+    selectedTrack: UiTrack?,
     selectedAlbum: Album?,
     selectedArtist: Artist?,
     selectedGenre: Genre?,
@@ -1532,17 +1531,17 @@ fun BoxScope.Dialogs(
     showResetShuffleDialog: Boolean,
     hasAlreadyShownDropboxSyncAlert: Boolean,
     isFavoriteOnly: MutableState<Boolean>,
-    onSelectTrack: (track: DomainTrack?) -> Unit,
+    onSelectTrack: (track: UiTrack?) -> Unit,
     onSelectAlbum: (album: Album?) -> Unit,
     onSelectArtist: (artist: Artist?) -> Unit,
     onSelectAllArtists: (allArtists: AllArtists?) -> Unit,
     onSelectGenre: (genre: Genre?) -> Unit,
-    onDeleteTrack: (track: DomainTrack) -> Unit,
-    onExportLyric: (domainTrack: DomainTrack) -> Unit,
+    onDeleteTrack: (track: UiTrack) -> Unit,
+    onExportLyric: (uiTrack: UiTrack) -> Unit,
     onAttachLyric: (trackId: Long) -> Unit,
     onDetachLyric: (trackId: Long) -> Unit,
     onNewQueue: (
-        queue: List<DomainTrack>,
+        queue: List<UiTrack>,
         actionType: InsertActionType,
         classType: OrientedClassType
     ) -> Unit,
@@ -1565,7 +1564,7 @@ fun BoxScope.Dialogs(
 
     selectedTrack?.let { domainTrack ->
         TrackOptionDialog(
-            domainTrack = domainTrack,
+            uiTrack = domainTrack,
             navController = navController,
             onSelectTrack = onSelectTrack,
             onNewQueue = { queue, actionType, classType ->

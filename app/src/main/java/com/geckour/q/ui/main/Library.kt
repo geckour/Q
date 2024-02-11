@@ -23,13 +23,13 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.AllArtists
-import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SearchItem
-import com.geckour.q.util.toDomainTrack
+import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.launch
@@ -48,7 +48,7 @@ fun Library(
     onChangeTopBarTitle: (newTitle: String) -> Unit,
     onSelectArtist: (artist: Artist?) -> Unit,
     onSelectAlbum: (album: Album?) -> Unit,
-    onSelectTrack: (track: DomainTrack?) -> Unit,
+    onSelectTrack: (track: UiTrack?) -> Unit,
     onSelectGenre: (genre: Genre?) -> Unit,
     onDownload: (targetTrackPaths: List<String>) -> Unit,
     onInvalidateDownloaded: (targetTrackIds: List<String>) -> Unit,
@@ -251,7 +251,7 @@ fun Library(
                     onSetOptionMediaItem(null)
                 }
                 Qzi(
-                    onClick = { onSelectTrack(it.toDomainTrack()) }
+                    onClick = { onSelectTrack(it.toUiTrack()) }
                 )
             }
             composable("pay") {

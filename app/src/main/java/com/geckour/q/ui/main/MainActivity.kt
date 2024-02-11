@@ -59,7 +59,7 @@ import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.domain.model.AllArtists
-import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.LayoutType
 import com.geckour.q.domain.model.MediaItem
@@ -306,7 +306,7 @@ class MainActivity : ComponentActivity() {
             var forceScrollToCurrent by remember { mutableLongStateOf(System.currentTimeMillis()) }
             var showDropboxDialog by remember { mutableStateOf(false) }
             var showResetShuffleDialog by remember { mutableStateOf(false) }
-            var selectedTrack by remember { mutableStateOf<DomainTrack?>(null) }
+            var selectedTrack by remember { mutableStateOf<UiTrack?>(null) }
             var selectedAlbum by remember { mutableStateOf<Album?>(null) }
             var selectedArtist by remember { mutableStateOf<Artist?>(null) }
             var selectedAllArtists by remember { mutableStateOf<AllArtists?>(null) }
@@ -338,7 +338,7 @@ class MainActivity : ComponentActivity() {
                 val newMediaItem = mediaItem.isFavoriteToggled()
                 coroutineScope.launch {
                     when (newMediaItem) {
-                        is DomainTrack -> {
+                        is UiTrack -> {
                             val trackDao = DB.getInstance(context).trackDao()
                             val newTrack = trackDao.get(newMediaItem.id)
                                 ?.track

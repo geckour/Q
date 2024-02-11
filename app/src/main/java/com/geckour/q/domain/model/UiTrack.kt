@@ -9,7 +9,7 @@ import kotlinx.serialization.Serializable
 
 @Parcelize
 @Serializable
-data class DomainTrack(
+data class UiTrack(
     val key: String,
     val id: Long,
     val mediaId: Long,

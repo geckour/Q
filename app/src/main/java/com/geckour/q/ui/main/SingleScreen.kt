@@ -30,7 +30,7 @@ import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.AllArtists
-import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.MediaItem
@@ -54,7 +54,7 @@ fun SingleScreen(
     topBarTitle: String,
     appBarOptionMediaItem: MediaItem?,
     sourcePaths: ImmutableList<String>,
-    queue: ImmutableList<DomainTrack>,
+    queue: ImmutableList<UiTrack>,
     currentIndex: Int,
     currentPlaybackPosition: Long,
     currentBufferedPosition: Long,
@@ -64,7 +64,7 @@ fun SingleScreen(
     routeInfo: QAudioDeviceInfo?,
     showLyric: Boolean,
     selectedNav: Nav?,
-    selectedTrack: DomainTrack?,
+    selectedTrack: UiTrack?,
     selectedAlbum: Album?,
     selectedArtist: Artist?,
     selectedAllArtists: AllArtists?,
@@ -85,7 +85,7 @@ fun SingleScreen(
     onTapBar: () -> Unit,
     onToggleTheme: () -> Unit,
     onChangeTopBarTitle: (title: String) -> Unit,
-    onSelectTrack: (track: DomainTrack?) -> Unit,
+    onSelectTrack: (track: UiTrack?) -> Unit,
     onSelectAlbum: (album: Album?) -> Unit,
     onSelectArtist: (artist: Artist?) -> Unit,
     onSelectAllArtists: (allArtists: AllArtists?) -> Unit,
@@ -104,13 +104,13 @@ fun SingleScreen(
     clearQueue: () -> Unit,
     onToggleShowLyrics: () -> Unit,
     onNewQueue: (
-        queue: List<DomainTrack>,
+        queue: List<UiTrack>,
         actionType: InsertActionType,
         classType: OrientedClassType
     ) -> Unit,
     onQueueMove: (from: Int, to: Int) -> Unit,
-    onChangeRequestedTrackInQueue: (target: DomainTrack) -> Unit,
-    onRemoveTrackFromQueue: (target: DomainTrack) -> Unit,
+    onChangeRequestedTrackInQueue: (target: UiTrack) -> Unit,
+    onRemoveTrackFromQueue: (target: UiTrack) -> Unit,
     onShowDropboxDialog: () -> Unit,
     onRetrieveMedia: (onlyAdded: Boolean) -> Unit,
     onDownload: (targets: List<String>) -> Unit,
@@ -119,8 +119,8 @@ fun SingleScreen(
     onInvalidateDownloaded: (targets: List<String>) -> Unit,
     onCancelInvalidateDownloaded: () -> Unit,
     onStartInvalidateDownloaded: () -> Unit,
-    onDeleteTrack: (target: DomainTrack) -> Unit,
-    onExportLyric: (domainTrack: DomainTrack) -> Unit,
+    onDeleteTrack: (target: UiTrack) -> Unit,
+    onExportLyric: (uiTrack: UiTrack) -> Unit,
     onAttachLyric: (targetTrackId: Long) -> Unit,
     onDetachLyric: (targetTrackId: Long) -> Unit,
     onStartAuthDropbox: () -> Unit,
@@ -204,6 +204,7 @@ fun SingleScreen(
                         }
                     },
                     libraryHeight = libraryHeight,
+                    bottomSheetValue = scaffoldState.bottomSheetState.currentValue,
                     queue = queue,
                     currentIndex = currentIndex,
                     currentPlaybackPosition = currentPlaybackPosition,
@@ -227,7 +228,6 @@ fun SingleScreen(
                     clearQueue = clearQueue,
                     onSelectTrack = onSelectTrack,
                     onToggleShowLyrics = onToggleShowLyrics,
-                    forceScrollToCurrent = forceScrollToCurrent,
                     onQueueMove = onQueueMove,
                     onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
                     onRemoveTrackFromQueue = onRemoveTrackFromQueue,
@@ -269,7 +269,7 @@ fun SingleScreen(
                     onSearchItemClicked = { item ->
                         when (item.type) {
                             SearchItem.SearchItemType.TRACK -> {
-                                onSelectTrack(item.data as DomainTrack)
+                                onSelectTrack(item.data as UiTrack)
                             }
 
                             SearchItem.SearchItemType.ALBUM -> {
@@ -290,7 +290,7 @@ fun SingleScreen(
                     onSearchItemLongClicked = { item ->
                         when (item.type) {
                             SearchItem.SearchItemType.TRACK -> {
-                                onSelectTrack(item.data as DomainTrack)
+                                onSelectTrack(item.data as UiTrack)
                             }
 
                             SearchItem.SearchItemType.ALBUM -> {

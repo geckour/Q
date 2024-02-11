@@ -45,7 +45,8 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.EqualizerLevelRatio
 import com.geckour.q.data.db.model.EqualizerPreset
-import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.data.db.model.JoinedTrack
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.QAudioDeviceInfo
@@ -68,7 +69,7 @@ import com.geckour.q.util.removedAt
 import com.geckour.q.util.setActiveQAudioDeviceInfo
 import com.geckour.q.util.setEqualizerParams
 import com.geckour.q.util.setSelectedEqualizerPresetId
-import com.geckour.q.util.toDomainTrack
+import com.geckour.q.util.toUiTrack
 import com.geckour.q.util.toDomainTracks
 import com.geckour.q.util.verifiedWithDropbox
 import com.google.common.util.concurrent.Futures
@@ -314,7 +315,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                         lifecycleScope.launch {
                             val trackDao = db.trackDao()
                             val newQueue = sourcePaths.mapNotNull {
-                                trackDao.getBySourcePath(it)?.toDomainTrack()
+                                trackDao.getBySourcePath(it)?.toUiTrack()
                             }
                             submitQueue(QueueInfo(QueueMetadata(actionType, classType), newQueue))
                         }
@@ -581,7 +582,6 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                     val trackDao = db.trackDao()
                     val fullMediaItems = mediaItems.mapNotNull {
                         trackDao.getBySourcePath(it.mediaId)
-                            ?.toDomainTrack()
                             ?.getMediaItem(this@PlayerService)
                     }
                     player.addMediaItems(index, fullMediaItems)
@@ -725,10 +725,14 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
 
         Timber.d("qgeck set state: $playerState")
         lifecycleScope.launch {
-            player.setMediaItems(playerState.sourcePaths.map { it.getMediaItem() })
+            player.setMediaItems(
+                playerState.sourcePaths
+                    .map { it.getMediaItem(this@PlayerService) }
+            )
             player.prepare()
-            val windowIndex =
-                player.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
+            val windowIndex = player.currentTimeline
+                .getFirstWindowIndex(false)
+                .coerceAtLeast(0)
             player.seekToDefaultPosition(windowIndex + playerState.currentIndex)
             player.seekTo(playerState.progress)
             player.repeatMode = playerState.repeatMode
@@ -806,7 +810,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                     track.verifiedWithDropbox(this, it)
                 } ?: track)
                     .sourcePath
-                    .getMediaItem()
+                    .getMediaItem(this)
             }
         when (queueInfo.metadata.actionType) {
             InsertActionType.OVERRIDE,
@@ -857,12 +861,12 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
     /**
      * @param with: first: index, second: new
      */
-    private fun replace(with: List<Pair<Int, DomainTrack>>) {
+    private fun replace(with: List<Pair<Int, JoinedTrack>>) {
         if (with.isEmpty()) return
 
         lifecycleScope.launch {
             with.forEach { (index, track) ->
-                player.replaceMediaItem(index, track.sourcePath.getMediaItem())
+                player.replaceMediaItem(index, track.getMediaItem(this@PlayerService))
             }
         }
     }
@@ -889,9 +893,9 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         removeQueue(position)
     }
 
-    suspend fun removeQueue(track: DomainTrack) {
+    suspend fun removeQueue(track: UiTrack) {
         val position = player.currentSourcePaths
-            .indexOfFirst { it.toDomainTrack(db)?.id == track.id }
+            .indexOfFirst { it.toUiTrack(db)?.id == track.id }
         removeQueue(position)
     }
 
@@ -979,7 +983,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
     }
 
     private fun increasePlaybackCount() = lifecycleScope.launch {
-        player.currentMediaItem?.toDomainTrack(db)
+        player.currentMediaItem?.toUiTrack(db)
             ?.let { track ->
                 db.trackDao().increasePlaybackCount(track.id)
                 db.albumDao().increasePlaybackCount(track.album.id)
@@ -1003,7 +1007,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                 val position = player.currentPosition
                 val replacingPairs = player.currentSourcePaths
                     .mapIndexedNotNull { i, path ->
-                        val track = path.toDomainTrack(db) ?: return@mapIndexedNotNull null
+                        val track = db.trackDao().getBySourcePath(path) ?: return@mapIndexedNotNull null
                         val new = obtainDbxClient(this@PlayerService).firstOrNull()?.let {
                             track.verifiedWithDropbox(this@PlayerService, it, true)
                         } ?: return@mapIndexedNotNull null
@@ -1130,7 +1134,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
 
     fun fastForward() {
         lifecycleScope.launch {
-            player.currentMediaItem?.toDomainTrack(db)?.let { track ->
+            player.currentMediaItem?.toUiTrack(db)?.let { track ->
                 seekJob.cancel()
                 seekJob = lifecycleScope.launch {
                     while (true) {
@@ -1172,14 +1176,14 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
 
     private fun seekToTail() {
         lifecycleScope.launch {
-            player.currentMediaItem?.toDomainTrack(db)?.duration?.let { player.seekTo(it) }
+            player.currentMediaItem?.toUiTrack(db)?.duration?.let { player.seekTo(it) }
         }
     }
 
     fun headOrPrev() {
         lifecycleScope.launch {
             val currentDuration =
-                player.currentMediaItem?.toDomainTrack(db)?.duration ?: return@launch
+                player.currentMediaItem?.toUiTrack(db)?.duration ?: return@launch
 
             if (currentIndex > 0 && player.contentPosition < currentDuration / 100) prev()
             else seekToHead()

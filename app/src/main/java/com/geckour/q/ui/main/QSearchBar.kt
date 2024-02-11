@@ -21,7 +21,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material3.DockedSearchBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.SearchBar
 import androidx.compose.material3.SearchBarDefaults
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
@@ -40,7 +39,7 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
-import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.SearchCategory
 import com.geckour.q.domain.model.SearchItem
@@ -48,7 +47,7 @@ import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.searchAlbumByFuzzyTitle
 import com.geckour.q.util.searchArtistByFuzzyTitle
 import com.geckour.q.util.searchTrackByFuzzyTitle
-import com.geckour.q.util.toDomainTrack
+import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -156,7 +155,7 @@ private fun SearchResultItem(
             .fillMaxWidth()
     ) {
         val artworkUriString = when (val data = item.data) {
-            is DomainTrack -> data.artworkUriString
+            is UiTrack -> data.artworkUriString
             is Album -> data.artworkUriString
             is Artist -> data.artworkUriString
             else -> null
@@ -183,7 +182,7 @@ private suspend fun search(context: Context, query: String): ImmutableList<Searc
         .map {
             SearchItem(
                 it.track.title,
-                it.toDomainTrack(),
+                it.toUiTrack(),
                 SearchItem.SearchItemType.TRACK
             )
         }

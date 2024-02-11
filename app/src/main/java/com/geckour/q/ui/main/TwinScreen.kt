@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Card
 import androidx.compose.material.DrawerValue
+import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.Scaffold
 import androidx.compose.material.rememberScaffoldState
 import androidx.compose.runtime.Composable
@@ -26,7 +27,7 @@ import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.AllArtists
-import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.MediaItem
@@ -45,7 +46,7 @@ fun TwinScreen(
     navController: NavHostController,
     topBarTitle: String,
     appBarOptionMediaItem: MediaItem?,
-    queue: ImmutableList<DomainTrack>,
+    queue: ImmutableList<UiTrack>,
     currentIndex: Int,
     currentPlaybackPosition: Long,
     currentBufferedPosition: Long,
@@ -55,7 +56,7 @@ fun TwinScreen(
     routeInfo: QAudioDeviceInfo?,
     showLyric: Boolean,
     selectedNav: Nav?,
-    selectedTrack: DomainTrack?,
+    selectedTrack: UiTrack?,
     selectedAlbum: Album?,
     selectedArtist: Artist?,
     selectedAllArtists: AllArtists?,
@@ -76,7 +77,7 @@ fun TwinScreen(
     onTapBar: () -> Unit,
     onToggleTheme: () -> Unit,
     onChangeTopBarTitle: (title: String) -> Unit,
-    onSelectTrack: (track: DomainTrack?) -> Unit,
+    onSelectTrack: (track: UiTrack?) -> Unit,
     onSelectAlbum: (album: Album?) -> Unit,
     onSelectArtist: (artist: Artist?) -> Unit,
     onSelectAllArtists: (allArtists: AllArtists?) -> Unit,
@@ -95,13 +96,13 @@ fun TwinScreen(
     clearQueue: () -> Unit,
     onToggleShowLyrics: () -> Unit,
     onNewQueue: (
-        queue: List<DomainTrack>,
+        queue: List<UiTrack>,
         actionType: InsertActionType,
         classType: OrientedClassType
     ) -> Unit,
     onQueueMove: (from: Int, to: Int) -> Unit,
-    onChangeRequestedTrackInQueue: (target: DomainTrack) -> Unit,
-    onRemoveTrackFromQueue: (target: DomainTrack) -> Unit,
+    onChangeRequestedTrackInQueue: (target: UiTrack) -> Unit,
+    onRemoveTrackFromQueue: (target: UiTrack) -> Unit,
     onShowDropboxDialog: () -> Unit,
     onRetrieveMedia: (onlyAdded: Boolean) -> Unit,
     onDownload: (targets: List<String>) -> Unit,
@@ -110,8 +111,8 @@ fun TwinScreen(
     onInvalidateDownloaded: (targets: List<String>) -> Unit,
     onCancelInvalidateDownloaded: () -> Unit,
     onStartInvalidateDownloaded: () -> Unit,
-    onDeleteTrack: (target: DomainTrack) -> Unit,
-    onExportLyric: (domainTrack: DomainTrack) -> Unit,
+    onDeleteTrack: (target: UiTrack) -> Unit,
+    onExportLyric: (uiTrack: UiTrack) -> Unit,
     onAttachLyric: (targetTrackId: Long) -> Unit,
     onDetachLyric: (targetTrackId: Long) -> Unit,
     onStartAuthDropbox: () -> Unit,
@@ -224,7 +225,7 @@ fun RowScope.TwinStartPage(
     selectedAllArtists: AllArtists?,
     selectedArtist: Artist?,
     selectedAlbum: Album?,
-    selectedTrack: DomainTrack?,
+    selectedTrack: UiTrack?,
     selectedGenre: Genre?,
     equalizerParams: EqualizerParams?,
     currentDropboxItemList: Pair<String, ImmutableList<FolderMetadata>>,
@@ -245,10 +246,10 @@ fun RowScope.TwinStartPage(
     onSelectAllArtists: (allArtists: AllArtists?) -> Unit,
     onSelectArtist: (artist: Artist?) -> Unit,
     onSelectAlbum: (album: Album?) -> Unit,
-    onSelectTrack: (track: DomainTrack?) -> Unit,
+    onSelectTrack: (track: UiTrack?) -> Unit,
     onSelectGenre: (genre: Genre?) -> Unit,
     onNewQueue: (
-        queue: List<DomainTrack>,
+        queue: List<UiTrack>,
         actionType: InsertActionType,
         classType: OrientedClassType
     ) -> Unit,
@@ -258,8 +259,8 @@ fun RowScope.TwinStartPage(
     onInvalidateDownloaded: (targetTrackIds: List<String>) -> Unit,
     onCancelInvalidateDownloaded: () -> Unit,
     onStartInvalidateDownloaded: () -> Unit,
-    onDeleteTrack: (track: DomainTrack) -> Unit,
-    onExportLyric: (domainTrack: DomainTrack) -> Unit,
+    onDeleteTrack: (track: UiTrack) -> Unit,
+    onExportLyric: (uiTrack: UiTrack) -> Unit,
     onAttachLyric: (targetTrackId: Long) -> Unit,
     onDetachLyric: (targetTrackId: Long) -> Unit,
     onStartAuthDropbox: () -> Unit,
@@ -341,7 +342,7 @@ fun RowScope.TwinStartPage(
                 onSearchItemClicked = { item ->
                     when (item.type) {
                         SearchItem.SearchItemType.TRACK -> {
-                            onSelectTrack(item.data as DomainTrack)
+                            onSelectTrack(item.data as UiTrack)
                         }
 
                         SearchItem.SearchItemType.ALBUM -> {
@@ -362,7 +363,7 @@ fun RowScope.TwinStartPage(
                 onSearchItemLongClicked = { item ->
                     when (item.type) {
                         SearchItem.SearchItemType.TRACK -> {
-                            onSelectTrack(item.data as DomainTrack)
+                            onSelectTrack(item.data as UiTrack)
                         }
 
                         SearchItem.SearchItemType.ALBUM -> {
@@ -422,9 +423,10 @@ fun RowScope.TwinStartPage(
     }
 }
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun RowScope.TwinEndPage(
-    queue: ImmutableList<DomainTrack>,
+    queue: ImmutableList<UiTrack>,
     currentIndex: Int,
     currentPlaybackPosition: Long,
     currentBufferedPosition: Long,
@@ -445,12 +447,12 @@ fun RowScope.TwinEndPage(
     resetShuffleQueue: () -> Unit,
     moveToCurrentIndex: () -> Unit,
     clearQueue: () -> Unit,
-    onSelectTrack: (track: DomainTrack) -> Unit,
+    onSelectTrack: (track: UiTrack) -> Unit,
     onToggleShowLyrics: () -> Unit,
     forceScrollToCurrent: Long,
     onQueueMove: (from: Int, to: Int) -> Unit,
-    onChangeRequestedTrackInQueue: (track: DomainTrack) -> Unit,
-    onRemoveTrackFromQueue: (track: DomainTrack) -> Unit,
+    onChangeRequestedTrackInQueue: (track: UiTrack) -> Unit,
+    onRemoveTrackFromQueue: (track: UiTrack) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     var isPortrait by remember { mutableStateOf(true) }
@@ -491,7 +493,6 @@ fun RowScope.TwinEndPage(
                 clearQueue = clearQueue,
                 onSelectTrack = onSelectTrack,
                 onToggleShowLyrics = onToggleShowLyrics,
-                forceScrollToCurrent = forceScrollToCurrent,
                 onQueueMove = onQueueMove,
                 onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
                 onRemoveTrackFromQueue = onRemoveTrackFromQueue,
