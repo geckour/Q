@@ -99,4 +99,7 @@ interface ArtistDao {
             upsert(db, it.artist, it.track.duration)
         }
     }
+
+    @Query("select id from artist")
+    suspend fun getAllIds(): List<Long>
 }

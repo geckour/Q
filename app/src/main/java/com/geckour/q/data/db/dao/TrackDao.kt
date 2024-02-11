@@ -12,6 +12,7 @@ import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.Track
 import kotlinx.coroutines.flow.Flow
+import kotlin.random.Random
 
 @Dao
 interface TrackDao {
@@ -128,7 +129,10 @@ interface TrackDao {
 
     @Transaction
     @Query("select dropboxPath from track where albumId in (select id from album where artistId = :artistId) and ignored != :ignore")
-    suspend fun getAllDropboxPathsByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<String>
+    suspend fun getAllDropboxPathsByArtist(
+        artistId: Long,
+        ignore: Bool = Bool.UNDEFINED
+    ): List<String>
 
     @Transaction
     @Query("select * from track inner join album on track.albumId = album.id where album.artistId = :artistId and (track.isFavorite or album.isFavorite) and track.ignored != :ignore")
@@ -183,6 +187,21 @@ interface TrackDao {
                     )
             }
         }
+    }
+
+    @Transaction
+    suspend fun getByRandom(
+        db: DB,
+        random: Random = Random(System.currentTimeMillis())
+    ): JoinedTrack? {
+        val artistId = db.artistDao().getAllIds().let {
+            if (it.isEmpty()) return null
+            else it[random.nextInt(it.size)]
+        }
+        val albumId = db.albumDao().getAllByArtistId(artistId)
+            .let { it[random.nextInt(it.size)].album.id }
+        return db.trackDao().getAllByAlbum(albumId)
+            .let { it[random.nextInt(it.size)] }
     }
 
     @Transaction

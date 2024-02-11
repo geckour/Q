@@ -6,7 +6,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,18 +14,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.Text
-import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -38,12 +38,16 @@ import kotlin.random.Random
 
 @Composable
 fun Qzi(onClick: (item: JoinedTrack) -> Unit) {
+    val context = LocalContext.current
     val calendar = Calendar.getInstance(TimeZone.getDefault())
-    val random = Random(calendar.get(Calendar.YEAR) * 1000L + calendar.get(Calendar.DAY_OF_YEAR))
-    val db = DB.getInstance(LocalContext.current)
-    val tracks by db.trackDao().getAllAsFlow().collectAsState(initial = emptyList())
-    val trackCount by db.trackDao().countAsFlow().collectAsState(initial = 0)
-    val track = if (trackCount > 0) tracks.getOrNull(random.nextInt(trackCount)) else null
+    var track by remember { mutableStateOf<JoinedTrack?>(null) }
+
+    LaunchedEffect(Unit) {
+        val db = DB.getInstance(context)
+        val random =
+            Random(calendar.get(Calendar.YEAR) * 1000L + calendar.get(Calendar.DAY_OF_YEAR))
+        track = db.trackDao().getByRandom(db, random)
+    }
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -59,13 +63,12 @@ fun Qzi(onClick: (item: JoinedTrack) -> Unit) {
                 color = QTheme.colors.colorTextPrimary
             )
             Spacer(modifier = Modifier.height(16.dp))
-            val contentModifier = remember { Modifier.padding(horizontal = 20.dp) }
             Column(
-                modifier = (if (track != null) contentModifier.clickable(
-                    onClick = { onClick(track) },
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = rememberRipple(bounded = false)
-                ) else contentModifier)
+                modifier = Modifier
+                    .padding(horizontal = 20.dp)
+                    .clickable(enabled = track != null) {
+                        track?.let(onClick)
+                    }
             ) {
                 val rotation = remember { Animatable(360f) }
                 LaunchedEffect(track) {
@@ -102,4 +105,10 @@ fun Qzi(onClick: (item: JoinedTrack) -> Unit) {
             }
         }
     }
+}
+
+@Preview
+@Composable
+fun QziPreview() {
+    Qzi(onClick = {})
 }
