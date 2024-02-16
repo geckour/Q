@@ -1,5 +1,6 @@
 package com.geckour.q.data.db.model
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -9,5 +10,6 @@ data class AudioDeviceEqualizerInfo(
     val routeId: String,
     val deviceAddress: String?,
     val deviceId: Int,
+    @ColumnInfo(defaultValue = "") val deviceName: String,
     val defaultEqualizerPresetId: Long?,
 )

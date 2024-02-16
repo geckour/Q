@@ -753,7 +753,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
             setActiveQAudioDeviceInfo(activeQAudioDeviceInfo)
             activeQAudioDeviceInfo?.let { info ->
                 db.audioDeviceEqualizerInfoDao()
-                    .get(info.routeId, info.audioDeviceId, info.address)
+                    .get(info.routeId, info.audioDeviceId, info.address, info.audioDeviceName)
                     ?.defaultEqualizerPresetId
                     ?.let { setSelectedEqualizerPresetId(it) }
             }

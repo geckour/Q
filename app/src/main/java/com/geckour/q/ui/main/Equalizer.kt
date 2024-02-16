@@ -24,17 +24,17 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.material.Button
-import androidx.compose.material.Divider
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.Switch
-import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -99,9 +99,10 @@ fun Equalizer(routeInfo: QAudioDeviceInfo?) {
         .collectAsState(initial = null)
     val audioDeviceEqualizerInfo by db.audioDeviceEqualizerInfoDao()
         .getAsFlow(
-            routeId = routeInfo?.routeId ?: "",
+            routeId = routeInfo?.routeId.orEmpty(),
             deviceId = routeInfo?.audioDeviceId ?: -1,
-            deviceAddress = routeInfo?.address
+            deviceAddress = routeInfo?.address,
+            deviceName = routeInfo?.audioDeviceName.orEmpty()
         ).collectAsState(initial = null)
     val presetsLazyListState = rememberLazyListState()
     val centerVisiblePresetIndex by remember {
@@ -258,6 +259,7 @@ fun TopController(
                                 routeId = routeInfo.routeId,
                                 deviceAddress = routeInfo.address,
                                 deviceId = routeInfo.audioDeviceId,
+                                deviceName = routeInfo.audioDeviceName,
                                 defaultEqualizerPresetId = selectedPreset.key.id
                             )
                         )
@@ -328,7 +330,7 @@ fun ColumnScope.EqualizerSubstance(
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     repeat(5) {
-                        Divider(color = QTheme.colors.colorPrimary)
+                        HorizontalDivider(color = QTheme.colors.colorPrimary)
                     }
                 }
                 if (selectedPresetLevelRatios?.isNotEmpty() == true) {
@@ -625,7 +627,7 @@ fun EqualizerPresetNameTextField(
                 decorationBox = {
                     Column {
                         it()
-                        Divider(
+                        HorizontalDivider(
                             color = QTheme.colors.colorPrimary,
                             modifier = Modifier.padding(top = 2.dp)
                         )

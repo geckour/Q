@@ -11,18 +11,20 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface AudioDeviceEqualizerInfoDao {
 
-    @Query("select * from audioDeviceEqualizerInfo where routeId = :routeId and ((:deviceAddress is not null and deviceAddress = :deviceAddress) or deviceId = :deviceId) order by id desc")
+    @Query("select * from audioDeviceEqualizerInfo where routeId = :routeId and ((:deviceAddress is not null and deviceAddress = :deviceAddress) or deviceId = :deviceId or deviceName = :deviceName) order by id desc")
     fun getAsFlow(
         routeId: String,
         deviceId: Int,
-        deviceAddress: String?
+        deviceAddress: String?,
+        deviceName: String
     ): Flow<AudioDeviceEqualizerInfo>
 
-    @Query("select * from audioDeviceEqualizerInfo where routeId = :routeId and ((:deviceAddress is not null and deviceAddress = :deviceAddress) or deviceId = :deviceId) order by id desc")
+    @Query("select * from audioDeviceEqualizerInfo where routeId = :routeId and ((:deviceAddress is not null and deviceAddress = :deviceAddress) or deviceId = :deviceId or deviceName = :deviceName) order by id desc")
     suspend fun get(
         routeId: String,
         deviceId: Int,
-        deviceAddress: String?
+        deviceAddress: String?,
+        deviceName: String
     ): AudioDeviceEqualizerInfo?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -33,7 +35,8 @@ interface AudioDeviceEqualizerInfoDao {
         val existing = get(
             audioDeviceEqualizerInfo.routeId,
             audioDeviceEqualizerInfo.deviceId,
-            audioDeviceEqualizerInfo.deviceAddress
+            audioDeviceEqualizerInfo.deviceAddress,
+            audioDeviceEqualizerInfo.deviceName
         )
 
         upsert(
