@@ -199,9 +199,15 @@ interface TrackDao {
             else it[random.nextInt(it.size)]
         }
         val albumId = db.albumDao().getAllByArtistId(artistId)
-            .let { it[random.nextInt(it.size)].album.id }
+            .let {
+                if (it.isEmpty()) return getByRandom(db, random)
+                else it[random.nextInt(it.size)].album.id
+            }
         return db.trackDao().getAllByAlbum(albumId)
-            .let { it[random.nextInt(it.size)] }
+            .let {
+                if (it.isEmpty()) return getByRandom(db, random)
+                else it[random.nextInt(it.size)]
+            }
     }
 
     @Transaction
