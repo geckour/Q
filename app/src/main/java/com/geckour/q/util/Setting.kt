@@ -27,7 +27,7 @@ private val equalizerParamsKey = stringPreferencesKey("key_equalizer_params")
 private val selectedEqualizerPresetIdKey = longPreferencesKey("key_selected_equalizer_preset_id")
 private val selectedQAudioDeviceInfoKey = stringPreferencesKey("key_selected_q_audio_device_info")
 
-fun Context.getIsNightMode(): Flow<Boolean> = dataStore.data.map {
+fun Context.getIsInNightMode(): Flow<Boolean> = dataStore.data.map {
     it[isNightModeKey] ?: false
 }
 

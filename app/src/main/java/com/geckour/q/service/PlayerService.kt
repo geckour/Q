@@ -2,7 +2,6 @@ package com.geckour.q.service
 
 import android.app.PendingIntent
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.media.AudioDeviceInfo
@@ -130,11 +129,10 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         const val ACTION_COMMAND_FAST_FORWARD = "action_command_fast_forward"
         const val ACTION_COMMAND_REWIND = "action_command_rewind"
         const val ACTION_COMMAND_STOP_FAST_SEEK = "action_command_stop_fast_seek"
+
         private const val ACTION_COMMAND_TOGGLE_FAVORITE = "action_command_toggle_favorite"
 
         const val PREF_KEY_PLAYER_STATE = "pref_key_player_state"
-
-        fun createIntent(context: Context): Intent = Intent(context, PlayerService::class.java)
     }
 
     private val dispatcher = ServiceLifecycleDispatcher(this)
@@ -591,6 +589,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         }
         mediaSession = MediaSession.Builder(this, forwardingPlayer)
             .setCallback(mediaSessionCallback)
+            .setId(PlayerService::class.java.name)
             .setSessionActivity(
                 PendingIntent.getActivity(
                     this@PlayerService,
@@ -644,9 +643,8 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
-        if ((player.isPlaying.not()) ||
-            player.mediaItemCount == 0
-        ) {
+        Timber.d("qgeck onTaskRemoved called")
+        if (player.playWhenReady.not()) {
             purge()
             stopSelf()
         }
@@ -686,7 +684,6 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
             player.currentPosition,
             player.repeatMode
         )
-        Timber.d("qgeck storing state: $state")
         sharedPreferences.edit(commit = true) {
             putString(PREF_KEY_PLAYER_STATE, Json.encodeToString(state))
         }
@@ -880,12 +877,6 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         removeQueue(position)
     }
 
-    suspend fun removeQueue(track: UiTrack) {
-        val position = player.currentSourcePaths
-            .indexOfFirst { it.toUiTrack(db)?.id == track.id }
-        removeQueue(position)
-    }
-
     private fun shuffle(actionType: ShuffleActionType? = null) {
         lifecycleScope.launch {
             val currentQueue = player.currentSourcePaths
@@ -992,6 +983,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
             lifecycleScope.launch {
                 val index = currentIndex
                 val position = player.currentPosition
+                val playWhenReady = player.playWhenReady
                 val dropboxClient = obtainDbxClient(this@PlayerService)
                     .firstOrNull()
                     ?: return@launch
@@ -1002,7 +994,9 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                         ?: return@let
 
                     player.replaceMediaItem(index, new)
+                    if (player.playbackState == Player.STATE_IDLE) player.prepare()
                     player.seekTo(position)
+                    if (playWhenReady) resume()
                 }
             }
         } else {

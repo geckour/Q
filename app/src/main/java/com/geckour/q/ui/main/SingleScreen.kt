@@ -7,13 +7,14 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.BottomSheetScaffold
-import androidx.compose.material.BottomSheetValue
-import androidx.compose.material.DrawerValue
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.ModalDrawer
-import androidx.compose.material.rememberBottomSheetScaffoldState
-import androidx.compose.material.rememberDrawerState
+import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalDrawerSheet
+import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -30,24 +31,23 @@ import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.AllArtists
-import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SearchItem
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.launch
-import timber.log.Timber
 import kotlin.math.abs
 import kotlin.math.sin
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SingleScreen(
     navController: NavHostController,
@@ -148,19 +148,20 @@ fun SingleScreen(
         }
     }
 
-    ModalDrawer(
+    ModalNavigationDrawer(
         drawerState = drawerState,
-        drawerElevation = 8.dp,
         drawerContent = {
-            Drawer(
-                drawerState = drawerState,
-                navController = navController,
-                selectedNav = selectedNav,
-                equalizerParams = equalizerParams,
-                onSelectNav = onSelectNav,
-                onShowDropboxDialog = onShowDropboxDialog,
-                onRetrieveMedia = onRetrieveMedia
-            )
+            ModalDrawerSheet {
+                Drawer(
+                    drawerState = drawerState,
+                    navController = navController,
+                    selectedNav = selectedNav,
+                    equalizerParams = equalizerParams,
+                    onSelectNav = onSelectNav,
+                    onShowDropboxDialog = onShowDropboxDialog,
+                    onRetrieveMedia = onRetrieveMedia
+                )
+            }
         }
     ) {
         BottomSheetScaffold(
@@ -181,28 +182,15 @@ fun SingleScreen(
                     onSelectTrack = onSelectTrack,
                 )
             },
-            backgroundColor = QTheme.colors.colorBackground,
-            sheetBackgroundColor = QTheme.colors.colorBackgroundBottomSheet,
+            containerColor = QTheme.colors.colorBackground,
+            sheetContainerColor = QTheme.colors.colorBackgroundBottomSheet,
             sheetPeekHeight = (144 + abs(sin(bottomSheetHeightAngle.value)) * 20).dp,
             sheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
-            sheetElevation = 8.dp,
+            sheetDragHandle = null,
+            sheetShadowElevation = 8.dp,
             sheetContent = {
-                LaunchedEffect(scaffoldState.bottomSheetState.progress) {
-                    if (scaffoldState.bottomSheetState.progress != 1f) {
-                        Timber.d("qgeck offset: ${scaffoldState.bottomSheetState.requireOffset()}")
-                    }
-                }
                 PlayerSheet(
-                    sheetProgress = if (scaffoldState.bottomSheetState.progress == 1f) {
-                        if (scaffoldState.bottomSheetState.targetValue == BottomSheetValue.Collapsed) 0f
-                        else 1f
-                    } else {
-                        if (scaffoldState.bottomSheetState.currentValue == BottomSheetValue.Collapsed) {
-                            scaffoldState.bottomSheetState.progress
-                        } else {
-                            1f - scaffoldState.bottomSheetState.progress
-                        }
-                    },
+                    sheetProgress = 0f,
                     libraryHeight = libraryHeight,
                     bottomSheetValue = scaffoldState.bottomSheetState.currentValue,
                     queue = queue,
@@ -214,6 +202,7 @@ fun SingleScreen(
                     isLoading = isLoading,
                     routeInfo = routeInfo,
                     showLyric = showLyric,
+                    forceScrollToCurrent = forceScrollToCurrent,
                     onTogglePlayPause = onTogglePlayPause,
                     onPrev = onPrev,
                     onNext = onNext,
@@ -251,8 +240,8 @@ fun SingleScreen(
                     isSearchActive = isSearchActive,
                     isFavoriteOnly = isFavoriteOnly,
                     routeInfo = routeInfo,
-                    onBackHandle = if (scaffoldState.bottomSheetState.currentValue == BottomSheetValue.Expanded) {
-                        { coroutineScope.launch { scaffoldState.bottomSheetState.collapse() } }
+                    onBackHandle = if (scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) {
+                        { coroutineScope.launch { scaffoldState.bottomSheetState.hide() } }
                     } else null,
                     onCancelProgress = onCancelProgress,
                     onSelectNav = onSelectNav,

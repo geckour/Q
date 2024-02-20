@@ -65,6 +65,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -289,6 +290,7 @@ fun TopController(
             fontSize = 16.sp,
             color = QTheme.colors.colorTextPrimary
         )
+        Spacer(modifier = Modifier.width(8.dp))
         Switch(
             checked = equalizerEnabled,
             onCheckedChange = { coroutineScope.launch { context.setEqualizerEnabled(it) } }
@@ -518,7 +520,10 @@ private fun ColumnScope.BottomController(
             },
             modifier = Modifier.size(24.dp)
         ) {
-            Icon(imageVector = Icons.Default.Add, contentDescription = "Add to presets")
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = "Add to presets"
+            )
         }
     }
 }
@@ -673,4 +678,16 @@ fun EqualizerPresetNameTextField(
             )
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun TopControllerPreview() {
+    TopController(
+        db = DB.getInstance(LocalContext.current),
+        equalizerEnabled = true,
+        routeInfo = null,
+        audioDeviceEqualizerInfo = null,
+        selectedPreset = null
+    )
 }

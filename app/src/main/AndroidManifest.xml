@@ -98,7 +98,17 @@
             </intent-filter>
         </service>
 
-        <service android:name=".service.InstantPlayerService" />
+        <service
+            android:name=".service.InstantPlayerService"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback">
+            <intent-filter>
+                <action android:name="android.intent.action.MEDIA_BUTTON" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="androidx.media3.session.MediaSessionService" />
+            </intent-filter>
+        </service>
 
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"

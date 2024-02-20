@@ -1,14 +1,13 @@
 package com.geckour.q.ui.compose
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material.Colors
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import com.google.android.material.color.MaterialColors
 
 private val lightColorPalette = QColors(
     colorPrimary = ColorPrimary,
@@ -65,20 +64,36 @@ data class QColors(
     val isLight: Boolean,
 ) {
 
-    val asMaterialColors = Colors(
+    val asMaterialColorScheme = ColorScheme(
         primary = colorPrimary,
-        primaryVariant = colorPrimaryDark,
-        secondary = colorPrimary,
-        secondaryVariant = colorPrimaryDark,
-        background = colorBackground,
-        surface = colorBackground,
-        error = colorAccent,
         onPrimary = colorTextPrimary,
+        primaryContainer = colorPrimaryDark,
+        onPrimaryContainer = colorTextPrimary,
+        inversePrimary = colorPrimaryDark,
+        secondary = colorPrimary,
         onSecondary = colorTextPrimary,
+        secondaryContainer = colorPrimaryDark,
+        onSecondaryContainer = colorTextPrimary,
+        tertiary = colorPrimary,
+        onTertiary = colorTextPrimary,
+        tertiaryContainer = colorPrimaryDark,
+        onTertiaryContainer = colorTextPrimary,
+        background = colorBackground,
         onBackground = colorTextPrimary,
+        surface = colorBackground,
         onSurface = colorTextPrimary,
+        surfaceVariant = colorBackground,
+        onSurfaceVariant = colorTextPrimary,
+        surfaceTint = colorBackground,
+        inverseSurface = colorTextPrimary,
+        inverseOnSurface = colorBackground,
+        error = colorAccent,
         onError = colorTextPrimary,
-        isLight = isLight
+        errorContainer = colorBackground,
+        onErrorContainer = colorAccent,
+        outline = colorTextSecondary,
+        outlineVariant = colorWeekAccent,
+        scrim = colorCoverInactive,
     )
 }
 
@@ -103,7 +118,10 @@ val LocalQColors = staticCompositionLocalOf {
 }
 
 @Composable
-fun QTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+fun QTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
     val qColors = if (darkTheme) {
         darkColorPalette
     } else {
@@ -112,8 +130,8 @@ fun QTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -
 
     CompositionLocalProvider(LocalQColors provides qColors) {
         MaterialTheme(
-            content = content,
-            colors = qColors.asMaterialColors
+            colorScheme = qColors.asMaterialColorScheme,
+            content = content
         )
     }
 }

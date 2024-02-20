@@ -1,51 +1,41 @@
 package com.geckour.q.service
 
-import android.app.Service
-import android.bluetooth.BluetoothHeadset
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.media.AudioFocusRequest
 import android.media.AudioManager
-import android.net.Uri
-import android.os.Binder
 import android.os.Build
-import android.os.IBinder
+import android.os.Bundle
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.util.EventLogger
-import com.geckour.q.domain.model.PlaybackButton
+import androidx.media3.session.DefaultMediaNotificationProvider
+import androidx.media3.session.MediaSession
+import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import com.geckour.q.R
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import timber.log.Timber
-import java.io.File
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-class InstantPlayerService : Service() {
-
-    inner class PlayerBinder : Binder() {
-        val service: InstantPlayerService get() = this@InstantPlayerService
-    }
+class InstantPlayerService : MediaSessionService() {
 
     companion object {
-        fun createIntent(context: Context): Intent =
-            Intent(context, InstantPlayerService::class.java)
 
-        private const val SOURCE_ACTION_WIRED_STATE = Intent.ACTION_HEADSET_PLUG
-        private const val SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE =
-            BluetoothHeadset.ACTION_CONNECTION_STATE_CHANGED
+        const val ACTION_COMMAND_FAST_FORWARD = "action_command_fast_forward"
+        const val ACTION_COMMAND_REWIND = "action_command_rewind"
+        const val ACTION_COMMAND_STOP_FAST_SEEK = "action_command_stop_fast_seek"
     }
-
-    private val binder = PlayerBinder()
 
     private val eventListener = object : Player.Listener {
 
@@ -53,112 +43,137 @@ class InstantPlayerService : Service() {
             super.onPlaybackStateChanged(playbackState)
 
             if (playbackState == Player.STATE_ENDED) stop()
-
-            isPlayingListener?.invoke(player.playWhenReady && playbackState == Player.STATE_READY)
-        }
-
-        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
-            super.onPlayWhenReadyChanged(playWhenReady, reason)
-
-            isPlayingListener?.invoke(playWhenReady && player.playbackState == Player.STATE_READY)
         }
     }
 
-    private val player: ExoPlayer by lazy {
+    private val mediaSessionCallback = object : MediaSession.Callback {
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ): MediaSession.ConnectionResult =
+            MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                .setAvailableSessionCommands(
+                    MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                        .add(SessionCommand(ACTION_COMMAND_FAST_FORWARD, Bundle.EMPTY))
+                        .add(SessionCommand(ACTION_COMMAND_REWIND, Bundle.EMPTY))
+                        .add(SessionCommand(ACTION_COMMAND_STOP_FAST_SEEK, Bundle.EMPTY))
+                        .build()
+                )
+                .build()
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle
+        ): ListenableFuture<SessionResult> {
+            if (customCommand.commandCode == SessionCommand.COMMAND_CODE_CUSTOM) {
+                return when (customCommand.customAction) {
+                    ACTION_COMMAND_FAST_FORWARD -> {
+                        fastForward()
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    ACTION_COMMAND_REWIND -> {
+                        rewind()
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    ACTION_COMMAND_STOP_FAST_SEEK -> {
+                        stopFastSeek()
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    else -> super.onCustomCommand(session, controller, customCommand, args)
+                }
+            }
+            return super.onCustomCommand(session, controller, customCommand, args)
+        }
+    }
+
+    private lateinit var player: ExoPlayer
+    private lateinit var forwardingPlayer: Player
+
+    private lateinit var mediaSession: MediaSession
+
+    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var seekJob: Job = Job()
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession =
+        mediaSession
+
+    override fun onCreate() {
+        super.onCreate()
+
         val trackSelector = DefaultTrackSelector(this)
         val renderersFactory = DefaultRenderersFactory(this)
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
-        ExoPlayer.Builder(this, renderersFactory)
+        player = ExoPlayer.Builder(this, renderersFactory)
             .setTrackSelector(trackSelector)
+            .setHandleAudioBecomingNoisy(true)
             .build()
             .apply {
                 addListener(eventListener)
                 addAnalyticsListener(EventLogger())
             }
-    }
+        forwardingPlayer = object : ForwardingPlayer(player) {
 
-    private val headsetStateReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context, intent: Intent) {
-            when (intent.action) {
-                SOURCE_ACTION_WIRED_STATE -> {
-                    val state = intent.getIntExtra("state", 1)
-                    if (state <= 0) onUnplugged()
-                }
+            override fun addMediaItem(mediaItem: MediaItem) {
+                player.clearMediaItems()
+                super.addMediaItem(mediaItem)
+            }
 
-                SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE -> {
-                    when (intent.getIntExtra(BluetoothHeadset.EXTRA_STATE, -1)) {
-                        BluetoothHeadset.STATE_CONNECTED -> Unit
-                        BluetoothHeadset.STATE_DISCONNECTED -> onUnplugged()
-                    }
-                }
+            override fun play() {
+                togglePlayPause()
+            }
+
+            override fun pause() {
+                togglePlayPause()
+            }
+
+            override fun stop() {
+                purge()
+                stopSelf()
+            }
+
+            override fun seekToNext() {
+                seekToTail()
+            }
+
+            override fun seekToPrevious() {
+                seekToHead()
             }
         }
+
+        mediaSession = MediaSession.Builder(this, forwardingPlayer)
+            .setId(InstantPlayerService::class.java.name)
+            .setCallback(mediaSessionCallback)
+            .build()
+
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider.Builder(this)
+                .build()
+                .apply { setSmallIcon(R.drawable.ic_notification_player) }
+        )
     }
-    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var seekJob: Job = Job()
-    private var progressJob: Job = Job()
 
-    internal var isPlayingListener: ((Boolean) -> Unit)? = null
-    internal var progressListener: ((Pair<Long, Long>) -> Unit)? = null
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        purge()
+        stopSelf()
 
-    override fun onBind(intent: Intent?): IBinder = binder
-
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        return START_STICKY_COMPATIBILITY
-    }
-
-    override fun onCreate() {
-        super.onCreate()
-
-        registerReceiver(headsetStateReceiver, IntentFilter().apply {
-            addAction(SOURCE_ACTION_WIRED_STATE)
-            addAction(SOURCE_ACTION_BLUETOOTH_CONNECTION_STATE)
-        })
-
-        progressJob = coroutineScope.launch {
-            while (true) {
-                withContext(Dispatchers.Main) {
-                    progressListener?.invoke(
-                        if (player.contentDuration > 0) {
-                            player.currentPosition to player.contentDuration
-                        } else 0L to 0L
-                    )
-                }
-                delay(100)
-            }
-        }
+        super.onTaskRemoved(rootIntent)
     }
 
     override fun onDestroy() {
-        progressJob.cancel()
-        stop()
-        player.stop()
-        player.clearMediaItems()
-        unregisterReceiver(headsetStateReceiver)
-        player.release()
+        purge()
 
         super.onDestroy()
     }
 
-    fun submit(path: String) {
-        Timber.d("qgeck path: $path")
+    private fun purge() {
+        stop()
+        player.stop()
         player.clearMediaItems()
-        player.addMediaItem(
-            MediaItem.fromUri(Uri.fromFile(File(path)))
-        )
-        player.prepare()
-    }
-
-    fun onPlaybackButtonCommitted(playbackButton: PlaybackButton) {
-        when (playbackButton) {
-            PlaybackButton.PLAY -> togglePlayPause()
-            PlaybackButton.PAUSE -> togglePlayPause()
-            PlaybackButton.NEXT -> seekToTail()
-            PlaybackButton.PREV -> seekToHead()
-            PlaybackButton.FF -> fastForward()
-            PlaybackButton.REWIND -> rewind()
-            PlaybackButton.UNDEFINED -> stopFastSeek()
-        }
+        player.release()
     }
 
     private fun play() {
@@ -250,16 +265,7 @@ class InstantPlayerService : Service() {
         seek(player.contentDuration)
     }
 
-    fun seek(ratio: Float) {
-        if (ratio !in 0f..1f) return
-        seek((player.contentDuration * ratio).toLong())
-    }
-
     private fun seek(playbackPosition: Long) {
         player.seekTo(playbackPosition)
-    }
-
-    private fun onUnplugged() {
-        pause()
     }
 }

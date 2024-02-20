@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Surface
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,7 +45,7 @@ fun DoubleTrackSlider(
     thickness: Dp = 4.dp,
     thumbRadius: Dp = 6.dp,
     thumbElevation: Dp = 1.dp,
-    primaryTrackColor: Color = MaterialTheme.colors.primary,
+    primaryTrackColor: Color = MaterialTheme.colorScheme.primary,
     secondaryTrackColor: Color = primaryTrackColor.copy(alpha = 0.48f),
     baseTrackColor: Color = primaryTrackColor.copy(alpha = 0.24f),
     thumbColor: Color = primaryTrackColor,
@@ -137,7 +137,7 @@ fun DoubleTrackSlider(
             modifier = Modifier.offset(x = (trackWidth - thickness) * innerProgressFraction),
             shape = CircleShape,
             color = thumbColor,
-            elevation = thumbElevation
+            shadowElevation = thumbElevation
         ) {
             Box(modifier = Modifier.size(thumbRadius * 2))
         }

@@ -2,26 +2,26 @@ package com.geckour.q.ui.main
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material.BottomSheetValue
-import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
-import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.QAudioDeviceInfo
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.util.ShuffleActionType
 import kotlinx.collections.immutable.ImmutableList
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerSheet(
     isPortrait: Boolean = true,
     sheetProgress: Float = 1f,
     libraryHeight: Int? = null,
-    bottomSheetValue: BottomSheetValue? = null,
+    bottomSheetValue: SheetValue? = null,
     queue: ImmutableList<UiTrack>,
     currentIndex: Int,
     currentPlaybackPosition: Long,
@@ -31,6 +31,7 @@ fun PlayerSheet(
     isLoading: Pair<Boolean, (() -> Unit)?>,
     routeInfo: QAudioDeviceInfo?,
     showLyric: Boolean,
+    forceScrollToCurrent: Long,
     onTogglePlayPause: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
@@ -96,6 +97,7 @@ fun PlayerSheet(
             showLyric = showLyric,
             onTrackSelected = onSelectTrack,
             currentPlaybackPosition = currentPlaybackPosition,
+            forceScrollToCurrent = forceScrollToCurrent,
             onQueueMove = onQueueMove,
             onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
             onRemoveTrackFromQueue = onRemoveTrackFromQueue,

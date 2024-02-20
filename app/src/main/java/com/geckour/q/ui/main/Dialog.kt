@@ -15,10 +15,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.Card
-import androidx.compose.material.Switch
-import androidx.compose.material.Text
-import androidx.compose.material.TextButton
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -42,8 +43,8 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.AllArtists
-import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.Genre
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -74,7 +75,10 @@ fun TrackOptionDialog(
     onDeleteTrack: (track: UiTrack) -> Unit
 ) {
     Dialog(onDismissRequest = { onSelectTrack(null) }) {
-        Card(backgroundColor = QTheme.colors.colorBackground) {
+        Card(
+            colors = CardDefaults.cardColors()
+                .copy(containerColor = QTheme.colors.colorBackground)
+        ) {
             Column {
                 DialogListItem(
                     onClick = {
@@ -216,7 +220,10 @@ fun AlbumOptionDialog(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     Dialog(onDismissRequest = { onSelectAlbum(null) }) {
-        Card(backgroundColor = QTheme.colors.colorBackground) {
+        Card(
+            colors = CardDefaults.cardColors()
+                .copy(containerColor = QTheme.colors.colorBackground)
+        ) {
             Column {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -423,7 +430,10 @@ fun ArtistOptionDialog(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     Dialog(onDismissRequest = { onSelectArtist(null) }) {
-        Card(backgroundColor = QTheme.colors.colorBackground) {
+        Card(
+            colors = CardDefaults.cardColors()
+                .copy(containerColor = QTheme.colors.colorBackground)
+        ) {
             Column {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -714,7 +724,10 @@ fun AllArtistOptionDialog(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     Dialog(onDismissRequest = { onSelected(null) }) {
-        Card(backgroundColor = QTheme.colors.colorBackground) {
+        Card(
+            colors = CardDefaults.cardColors()
+                .copy(containerColor = QTheme.colors.colorBackground)
+        ) {
             Column {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -985,7 +998,10 @@ fun GenreOptionDialog(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     Dialog(onDismissRequest = { onSelectGenre(null) }) {
-        Card(backgroundColor = QTheme.colors.colorBackground) {
+        Card(
+            colors = CardDefaults.cardColors()
+                .copy(containerColor = QTheme.colors.colorBackground)
+        ) {
             Column {
                 DialogListItem(
                     onClick = {
@@ -1169,7 +1185,8 @@ fun DropboxDialog(
             Dialog(onDismissRequest = hideDropboxDialog) {
                 var needDownloaded by remember { mutableStateOf(false) }
                 Card(
-                    backgroundColor = QTheme.colors.colorBackground,
+                    colors = CardDefaults.cardColors()
+                        .copy(containerColor = QTheme.colors.colorBackground),
                     modifier = Modifier.heightIn(max = 800.dp)
                 ) {
                     Column(
@@ -1315,7 +1332,10 @@ fun DropboxDialog(
     } else {
         val coroutineScope = rememberCoroutineScope()
         Dialog(onDismissRequest = hideDropboxDialog) {
-            Card(backgroundColor = QTheme.colors.colorBackground) {
+            Card(
+                colors = CardDefaults.cardColors()
+                    .copy(containerColor = QTheme.colors.colorBackground)
+            ) {
                 Column(
                     modifier = Modifier.padding(
                         horizontal = 12.dp,
@@ -1375,7 +1395,10 @@ fun ShuffleResetOptionDialog(
     onResetShuffle: () -> Unit
 ) {
     Dialog(onDismissRequest = hideResetShuffleDialog) {
-        Card(backgroundColor = QTheme.colors.colorBackground) {
+        Card(
+            colors = CardDefaults.cardColors()
+                .copy(containerColor = QTheme.colors.colorBackground)
+        ) {
             Column {
                 DialogListItem(
                     onClick = {
@@ -1421,7 +1444,10 @@ fun ShuffleResetOptionDialog(
 @Composable
 fun ConfirmDownloadDialog(onCancelDownload: () -> Unit, onStartDownloader: () -> Unit) {
     Dialog(onDismissRequest = onCancelDownload) {
-        Card(backgroundColor = QTheme.colors.colorBackground) {
+        Card(
+            colors = CardDefaults.cardColors()
+                .copy(containerColor = QTheme.colors.colorBackground)
+        ) {
             Column(
                 modifier = Modifier.padding(
                     horizontal = 12.dp,
@@ -1471,7 +1497,10 @@ fun ConfirmInvalidateDownloadedDialog(
     onStartInvalidateDownloaded: () -> Unit
 ) {
     Dialog(onDismissRequest = onCancelInvalidateDownloaded) {
-        Card(backgroundColor = QTheme.colors.colorBackground) {
+        Card(
+            colors = CardDefaults.cardColors()
+                .copy(containerColor = QTheme.colors.colorBackground)
+        ) {
             Column(
                 modifier = Modifier.padding(
                     horizontal = 12.dp,

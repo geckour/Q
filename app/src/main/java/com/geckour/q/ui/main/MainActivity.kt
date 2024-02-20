@@ -21,11 +21,10 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
@@ -75,7 +74,7 @@ import com.geckour.q.util.getActiveQAudioDeviceInfo
 import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getExtension
 import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
-import com.geckour.q.util.getIsNightMode
+import com.geckour.q.util.getIsInNightMode
 import com.geckour.q.util.getNumberWithUnitPrefix
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.isFavoriteToggled
@@ -291,7 +290,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val coroutineScope = rememberCoroutineScope()
             val context = LocalContext.current
-            val isNightMode by context.getIsNightMode()
+            val isInNightMode by context.getIsInNightMode()
                 .collectAsState(initial = isSystemInDarkTheme())
             val isLoading by viewModel.loading.collectAsState()
             val navController = rememberNavController()
@@ -390,17 +389,17 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            LaunchedEffect(isNightMode) {
+            LaunchedEffect(isInNightMode) {
                 enableEdgeToEdge(
                     statusBarStyle = SystemBarStyle.auto(
                         lightScrim = ColorPrimaryDark.value.toInt(),
                         darkScrim = ColorPrimaryDarkInverse.value.toInt(),
-                        detectDarkMode = { isNightMode }
+                        detectDarkMode = { isInNightMode }
                     ),
                     navigationBarStyle = SystemBarStyle.auto(
                         lightScrim = ColorBackground.value.toInt(),
                         darkScrim = ColorBackgroundInverse.value.toInt(),
-                        detectDarkMode = { isNightMode }
+                        detectDarkMode = { isInNightMode }
                     )
                 )
             }
@@ -480,10 +479,9 @@ class MainActivity : ComponentActivity() {
                 onAuthDropboxCompleted = { showDropboxDialog = true }
             }
 
-            QTheme(darkTheme = isNightMode) {
-                Box(
+            QTheme(darkTheme = isInNightMode) {
+                Surface(
                     modifier = Modifier
-                        .background(color = QTheme.colors.colorBackground)
                         .fillMaxSize()
                         .safeDrawingPadding()
                 ) {
@@ -523,7 +521,7 @@ class MainActivity : ComponentActivity() {
                                 onTapBar = { scrollToTop = System.currentTimeMillis() },
                                 onToggleTheme = {
                                     coroutineScope.launch {
-                                        context.setIsNightMode(isNightMode.not())
+                                        context.setIsNightMode(isInNightMode.not())
                                     }
                                 },
                                 onChangeTopBarTitle = { topBarTitle = it },
@@ -669,7 +667,7 @@ class MainActivity : ComponentActivity() {
                                 onTapBar = { scrollToTop = System.currentTimeMillis() },
                                 onToggleTheme = {
                                     coroutineScope.launch {
-                                        context.setIsNightMode(isNightMode.not())
+                                        context.setIsNightMode(isInNightMode.not())
                                     }
                                 },
                                 onChangeTopBarTitle = { topBarTitle = it },

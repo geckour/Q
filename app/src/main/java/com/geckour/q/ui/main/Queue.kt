@@ -23,18 +23,18 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.material.BottomSheetValue
-import androidx.compose.material.Button
-import androidx.compose.material.Divider
-import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.Surface
-import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -62,8 +62,8 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
-import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.moved
@@ -78,13 +78,14 @@ import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
 
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ColumnScope.Queue(
     uiTracks: ImmutableList<UiTrack>,
-    bottomSheetValue: BottomSheetValue?,
+    bottomSheetValue: SheetValue?,
     showLyric: Boolean,
     currentPlaybackPosition: Long,
+    forceScrollToCurrent: Long,
     onQueueMove: (from: Int, to: Int) -> Unit,
     onTrackSelected: (track: UiTrack) -> Unit,
     onChangeRequestedTrackInQueue: (uiTrack: UiTrack) -> Unit,
@@ -111,7 +112,11 @@ fun ColumnScope.Queue(
         items = uiTracks
     }
     LaunchedEffect(bottomSheetValue) {
-        if (bottomSheetValue == BottomSheetValue.Expanded)
+        if (bottomSheetValue == SheetValue.Expanded)
+            reorderableState.listState.animateScrollToItem(uiTracks.indexOfFirst { it.nowPlaying }
+                .coerceAtLeast(0))
+    }
+    LaunchedEffect(forceScrollToCurrent) {
         reorderableState.listState.animateScrollToItem(uiTracks.indexOfFirst { it.nowPlaying }
             .coerceAtLeast(0))
     }
@@ -272,7 +277,6 @@ fun ColumnScope.Queue(
     }
 }
 
-@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun QueueItem(
     modifier: Modifier = Modifier,
@@ -287,7 +291,7 @@ fun QueueItem(
     val elevation by animateDpAsState(targetValue = if (isDragging) 16.dp else 0.dp, label = "")
 
     Surface(
-        elevation = elevation,
+        shadowElevation = elevation,
         color = if (uiTrack.nowPlaying) QTheme.colors.colorWeekAccent else QTheme.colors.colorBackgroundBottomSheet,
         onClick = { onChangeRequestedTrackInQueue(uiTrack) },
         modifier = modifier
@@ -435,7 +439,7 @@ fun NewLyricLineInputBox(onSubmit: (newLine: String) -> Unit) {
                     Box(modifier = Modifier.padding(vertical = 4.dp)) {
                         innerTextField()
                     }
-                    Divider(color = QTheme.colors.colorTextSecondary)
+                    HorizontalDivider(color = QTheme.colors.colorTextSecondary)
                 }
             }
         )
@@ -502,7 +506,7 @@ fun EditableLrcItem(
                     Box(modifier = Modifier.padding(vertical = 4.dp)) {
                         innerTextField()
                     }
-                    Divider(color = QTheme.colors.colorTextSecondary)
+                    HorizontalDivider(color = QTheme.colors.colorTextSecondary)
                 }
             }
         )

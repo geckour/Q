@@ -3,17 +3,19 @@ package com.geckour.q.ui.main
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.material.DrawerState
-import androidx.compose.material.DrawerValue
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.Text
-import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material3.DrawerState
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
@@ -24,11 +26,12 @@ import com.geckour.q.R
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.AllArtists
-import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.compose.QTheme
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun QTopBar(
     title: String,
@@ -99,15 +102,19 @@ fun QTopBar(
                                 is AllArtists -> {
                                     onSelectAllArtists(AllArtists)
                                 }
+
                                 is Artist -> {
                                     onSelectArtist(appBarOptionMediaItem)
                                 }
+
                                 is Album -> {
                                     onSelectAlbum(appBarOptionMediaItem)
                                 }
+
                                 is UiTrack -> {
                                     onSelectTrack(appBarOptionMediaItem)
                                 }
+
                                 else -> Unit
                             }
                         }
@@ -119,8 +126,12 @@ fun QTopBar(
                     }
                 }
             },
-            backgroundColor = QTheme.colors.colorPrimary,
-            contentColor = QTheme.colors.colorTextPrimary
+            colors = TopAppBarDefaults.topAppBarColors().copy(
+                containerColor = QTheme.colors.colorPrimary,
+                navigationIconContentColor = QTheme.colors.colorTextPrimary,
+                titleContentColor = QTheme.colors.colorTextPrimary,
+                actionIconContentColor = QTheme.colors.colorTextPrimary
+            ),
         )
     }
 }
