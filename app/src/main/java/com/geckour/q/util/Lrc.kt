@@ -35,5 +35,5 @@ fun File.parseLrc(): List<LyricLine> =
         .sortedBy { it.timing }
 
 fun Lyric.toLrcString(): String = lines.joinToString("\n") {
-    "[${it.timing.getTimeString()}.${it.timing % 1000 / 10}]${it.sentence}"
+    "[%s.%02d]%s".format(it.timing.getTimeString(), it.timing % 1000 / 10, it.sentence)
 }
