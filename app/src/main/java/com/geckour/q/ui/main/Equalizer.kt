@@ -291,7 +291,7 @@ fun TopController(
             color = QTheme.colors.colorTextPrimary
         )
         Spacer(modifier = Modifier.width(8.dp))
-        Switch(
+        QSwitch(
             checked = equalizerEnabled,
             onCheckedChange = { coroutineScope.launch { context.setEqualizerEnabled(it) } }
         )

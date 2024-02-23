@@ -127,7 +127,7 @@ fun Albums(
                     fontSize = 12.sp
                 )
                 Spacer(modifier = Modifier.width(4.dp))
-                Switch(
+                QSwitch(
                     checked = isFavoriteOnly.value,
                     onCheckedChange = { isFavoriteOnly.value = isFavoriteOnly.value.not() }
                 )

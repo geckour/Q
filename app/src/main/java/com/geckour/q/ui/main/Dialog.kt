@@ -234,7 +234,7 @@ fun AlbumOptionDialog(
                         text = stringResource(id = R.string.dialog_switch_desc_filter_only_favorite)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Switch(
+                    QSwitch(
                         checked = isFavoriteOnly.value,
                         onCheckedChange = { isFavoriteOnly.value = isFavoriteOnly.value.not() }
                     )
@@ -444,7 +444,7 @@ fun ArtistOptionDialog(
                         text = stringResource(id = R.string.dialog_switch_desc_filter_only_favorite)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Switch(
+                    QSwitch(
                         checked = isFavoriteOnly.value,
                         onCheckedChange = { isFavoriteOnly.value = isFavoriteOnly.value.not() }
                     )
@@ -738,7 +738,7 @@ fun AllArtistOptionDialog(
                         text = stringResource(id = R.string.dialog_switch_desc_filter_only_favorite)
                     )
                     Spacer(modifier = Modifier.width(4.dp))
-                    Switch(
+                    QSwitch(
                         checked = isFavoriteOnly.value,
                         onCheckedChange = { isFavoriteOnly.value = isFavoriteOnly.value.not() }
                     )
@@ -1218,7 +1218,7 @@ fun DropboxDialog(
                                 fontSize = 18.sp,
                                 color = QTheme.colors.colorTextPrimary,
                             )
-                            Switch(
+                            QSwitch(
                                 checked = needDownloaded,
                                 onCheckedChange = {
                                     needDownloaded =
