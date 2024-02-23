@@ -234,11 +234,19 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         }
 
         override fun onPlayerError(error: PlaybackException) {
-            super.onPlayerError(error)
-
             Timber.e(error)
             FirebaseCrashlytics.getInstance().recordException(error)
-            verifyByCauseIfNeeded(error)
+            val position = player.currentPosition
+            val playWhenReady = player.playWhenReady
+            val isVerified = verifyByCauseIfNeeded(error)
+
+            super.onPlayerError(error)
+
+            if (isVerified) {
+                if (player.playbackState == Player.STATE_IDLE) player.prepare()
+                player.seekTo(position)
+                if (playWhenReady) resume()
+            }
         }
 
         override fun onAudioSessionIdChanged(audioSessionId: Int) {
@@ -969,7 +977,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
             }
     }
 
-    private fun verifyByCauseIfNeeded(throwable: Throwable) {
+    private fun verifyByCauseIfNeeded(throwable: Throwable): Boolean {
         val isTarget =
             throwable.getCausesRecursively().any {
                 it is HttpDataSource.InvalidResponseCodeException ||
@@ -982,8 +990,6 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         if (isTarget) {
             lifecycleScope.launch {
                 val index = currentIndex
-                val position = player.currentPosition
-                val playWhenReady = player.playWhenReady
                 val dropboxClient = obtainDbxClient(this@PlayerService)
                     .firstOrNull()
                     ?: return@launch
@@ -994,15 +1000,14 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                         ?: return@let
 
                     player.replaceMediaItem(index, new)
-                    if (player.playbackState == Player.STATE_IDLE) player.prepare()
-                    player.seekTo(position)
-                    if (playWhenReady) resume()
                 }
             }
         } else {
             pause()
             removeQueue(currentIndex)
         }
+
+        return isTarget
     }
 
     private fun Throwable.getCausesRecursively(initial: List<Throwable> = emptyList()): List<Throwable> {
