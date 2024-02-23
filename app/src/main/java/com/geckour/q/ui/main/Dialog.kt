@@ -130,7 +130,7 @@ fun TrackOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        navController.navigate("albums?artistId=${uiTrack.artist.id}")
+                        navController.navigate("albums?artistId=${uiTrack.albumArtist?.id ?: uiTrack.artist.id}")
                         onSelectTrack(null)
                     }
                 ) {
