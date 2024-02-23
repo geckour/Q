@@ -61,9 +61,9 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.size.Size
 import com.geckour.q.R
-import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.QAudioDeviceInfo
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.DoubleTrackSlider
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.ShuffleActionType
@@ -347,27 +347,27 @@ fun Controller(
                             .padding(8.dp)
                             .size(24.dp)
                     )
-                    IconButton(
-                        onClick = {
-                            onTogglePlayPause()
-                            resetPlaybackButton()
-                        },
+                    Icon(
+                        painter = painterResource(
+                            id = if (playbackInfo.first && playbackInfo.second == Player.STATE_READY) R.drawable.ic_pause else R.drawable.ic_play
+                        ),
+                        contentDescription = null,
+                        tint = QTheme.colors.colorButtonNormal,
                         modifier = Modifier
+                            .clickable(
+                                indication = rememberRipple(bounded = false),
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) {
+                                onTogglePlayPause()
+                                resetPlaybackButton()
+                            }
                             .padding(8.dp)
                             .size(24.dp)
                             .graphicsLayer {
                                 rotationZ =
                                     if (playbackInfo.second == Player.STATE_BUFFERING) degree else 0f
                             }
-                    ) {
-                        Icon(
-                            painter = painterResource(
-                                id = if (playbackInfo.first && playbackInfo.second == Player.STATE_READY) R.drawable.ic_pause else R.drawable.ic_play
-                            ),
-                            contentDescription = null,
-                            tint = QTheme.colors.colorButtonNormal
-                        )
-                    }
+                    )
                     Icon(
                         painter = painterResource(id = R.drawable.ic_forward),
                         contentDescription = null,
@@ -500,30 +500,32 @@ fun Controller(
                     color = QTheme.colors.colorTextPrimary
                 )
             }
-            IconButton(
-                onClick = onToggleShowLyrics,
+            Icon(
+                imageVector = Icons.Default.Lyrics,
+                contentDescription = null,
+                tint = if (showLyric) QTheme.colors.colorButtonNormal else QTheme.colors.colorInactive,
                 modifier = Modifier
+                    .clickable(
+                        indication = rememberRipple(bounded = false),
+                        interactionSource = remember { MutableInteractionSource() },
+                        onClick = onToggleShowLyrics
+                    )
                     .padding(8.dp)
                     .size(20.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Lyrics,
-                    contentDescription = null,
-                    tint = if (showLyric) QTheme.colors.colorButtonNormal else QTheme.colors.colorInactive
-                )
-            }
-            IconButton(
-                onClick = clearQueue,
+            )
+            Icon(
+                painter = painterResource(id = R.drawable.ic_remove),
+                contentDescription = null,
+                tint = QTheme.colors.colorButtonNormal,
                 modifier = Modifier
+                    .clickable(
+                        indication = rememberRipple(bounded = false),
+                        interactionSource = remember { MutableInteractionSource() },
+                        onClick = clearQueue
+                    )
                     .padding(8.dp)
                     .size(20.dp)
-            ) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_remove),
-                    contentDescription = null,
-                    tint = QTheme.colors.colorButtonNormal
-                )
-            }
+            )
             Spacer(modifier = Modifier.width(8.dp))
         }
     }

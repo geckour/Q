@@ -3,6 +3,7 @@ package com.geckour.q.ui.main
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -27,6 +28,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -340,30 +342,30 @@ fun QueueItem(
                             lineHeight = 18.nonUpScaleSp
                         )
                     }
-                    IconButton(
-                        onClick = { onToggleFavorite(uiTrack) },
+                    Icon(
+                        imageVector = if (uiTrack.isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = null,
+                        tint = QTheme.colors.colorTextPrimary,
                         modifier = Modifier
+                            .clickable(
+                                indication = rememberRipple(bounded = false),
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) { onToggleFavorite(uiTrack) }
                             .padding(8.dp)
                             .size(20.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (uiTrack.isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
-                            contentDescription = null,
-                            tint = QTheme.colors.colorTextPrimary
-                        )
-                    }
-                    IconButton(
-                        onClick = { onRemoveTrackFromQueue(uiTrack) },
+                    )
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_remove),
+                        contentDescription = null,
+                        tint = QTheme.colors.colorButtonNormal,
                         modifier = Modifier
+                            .clickable(
+                                indication = rememberRipple(bounded = false),
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) { onRemoveTrackFromQueue(uiTrack) }
                             .padding(8.dp)
                             .size(20.dp)
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_remove),
-                            contentDescription = null,
-                            tint = QTheme.colors.colorButtonNormal
-                        )
-                    }
+                    )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
                 Row(
