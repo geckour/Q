@@ -190,7 +190,7 @@ fun SingleScreen(
             sheetShadowElevation = 8.dp,
             sheetContent = {
                 PlayerSheet(
-                    sheetProgress = 0f,
+                    animateController = true,
                     libraryHeight = libraryHeight,
                     bottomSheetValue = scaffoldState.bottomSheetState.currentValue,
                     queue = queue,

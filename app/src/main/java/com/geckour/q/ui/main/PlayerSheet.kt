@@ -5,7 +5,15 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
@@ -19,7 +27,7 @@ import kotlinx.collections.immutable.ImmutableList
 @Composable
 fun PlayerSheet(
     isPortrait: Boolean = true,
-    sheetProgress: Float = 1f,
+    animateController: Boolean = false,
     libraryHeight: Int? = null,
     bottomSheetValue: SheetValue? = null,
     queue: ImmutableList<UiTrack>,
@@ -51,12 +59,26 @@ fun PlayerSheet(
     onRemoveTrackFromQueue: (track: UiTrack) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
+    val density = LocalDensity.current
+    var sheetSize by remember { mutableIntStateOf(0) }
+    var sheetBounds by remember { mutableFloatStateOf(0f) }
+    val sheetProgress by remember {
+        derivedStateOf {
+            if (animateController)
+                (sheetBounds - with(density) { 144.dp.toPx() }).coerceAtLeast(0f) /
+                        (sheetSize - with(density) { 144.dp.toPx() })
+            else 1f
+        }
+    }
     Column(
-        modifier = if (libraryHeight == null) Modifier else {
+        modifier = (if (libraryHeight == null) Modifier else {
             Modifier.heightIn(
                 max = (with(LocalDensity.current) { libraryHeight.toDp() } + 144.dp - 36.dp)
                     .coerceAtLeast(288.dp)
             )
+        }).onGloballyPositioned {
+            sheetSize = it.size.height
+            sheetBounds = it.boundsInWindow().height
         }
     ) {
         Controller(

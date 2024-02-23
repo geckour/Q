@@ -58,12 +58,12 @@ import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.domain.model.AllArtists
-import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.LayoutType
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.PlaybackButton
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.compose.ColorBackground
 import com.geckour.q.ui.compose.ColorBackgroundInverse
 import com.geckour.q.ui.compose.ColorPrimaryDark
@@ -240,15 +240,16 @@ class MainActivity : ComponentActivity() {
             .windowLayoutInfo(this)
             .flowWithLifecycle(this.lifecycle)
             .map {
-                val (windowHeight, windowWidth) = if (Build.VERSION.SDK_INT < 30) {
-                    val metrics = DisplayMetrics().apply {
-                        windowManager.defaultDisplay.getMetrics(this)
+                val (windowHeight, windowWidth) =
+                    if (Build.VERSION.SDK_INT < 30) {
+                        val metrics = DisplayMetrics().apply {
+                            windowManager.defaultDisplay.getMetrics(this)
+                        }
+                        metrics.heightPixels.toFloat() to metrics.widthPixels.toFloat()
+                    } else {
+                        val bounds = windowManager.currentWindowMetrics.bounds
+                        bounds.height().toFloat() to bounds.width().toFloat()
                     }
-                    metrics.heightPixels.toFloat() to metrics.widthPixels.toFloat()
-                } else {
-                    val bounds = windowManager.currentWindowMetrics.bounds
-                    bounds.height().toFloat() to bounds.width().toFloat()
-                }
                 val isSquareIshScreen = (windowHeight / windowWidth) in 0.75..1.33
                 val isHorizontal =
                     resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -626,7 +627,9 @@ class MainActivity : ComponentActivity() {
                                 hideResetShuffleDialog = { showResetShuffleDialog = false },
                                 onStartBilling = { viewModel.startBilling(this@MainActivity) },
                                 onCancelProgress = onCancelProgress,
-                                onSetOptionMediaItem = { mediaItem -> appBarOptionMediaItem = mediaItem },
+                                onSetOptionMediaItem = { mediaItem ->
+                                    appBarOptionMediaItem = mediaItem
+                                },
                                 onToggleFavorite = onToggleFavorite,
                             )
                         }
