@@ -130,6 +130,7 @@ fun TwinScreen(
 ) {
     Row {
         TwinStartPage(
+            modifier = Modifier.weight(1f),
             navController = navController,
             topBarTitle = topBarTitle,
             appBarOptionMediaItem = appBarOptionMediaItem,
@@ -186,6 +187,7 @@ fun TwinScreen(
             onToggleFavorite = onToggleFavorite,
         )
         TwinEndPage(
+            modifier = Modifier.weight(1f),
             queue = queue,
             currentIndex = currentIndex,
             currentPlaybackPosition = currentPlaybackPosition,
@@ -220,6 +222,7 @@ fun TwinScreen(
 
 @Composable
 fun RowScope.TwinStartPage(
+    modifier: Modifier = Modifier,
     navController: NavHostController,
     topBarTitle: String,
     appBarOptionMediaItem: MediaItem?,
@@ -281,6 +284,7 @@ fun RowScope.TwinStartPage(
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     ModalNavigationDrawer(
+        modifier = modifier,
         drawerContent = {
             ModalDrawerSheet {
                 Drawer(
@@ -433,6 +437,7 @@ fun RowScope.TwinStartPage(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RowScope.TwinEndPage(
+    modifier: Modifier = Modifier,
     queue: ImmutableList<UiTrack>,
     currentIndex: Int,
     currentPlaybackPosition: Long,
@@ -464,7 +469,7 @@ fun RowScope.TwinEndPage(
 ) {
     var isPortrait by remember { mutableStateOf(true) }
     Box(
-        modifier = Modifier
+        modifier = modifier
             .background(color = QTheme.colors.colorBackground)
             .weight(1f)
             .fillMaxSize()
