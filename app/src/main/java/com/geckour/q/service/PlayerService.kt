@@ -888,7 +888,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
     private fun shuffle(actionType: ShuffleActionType? = null) {
         lifecycleScope.launch {
             val currentQueue = player.currentSourcePaths
-            if (player.mediaItemCount > 0 && player.mediaItemCount == currentQueue.size) {
+            if (player.mediaItemCount > 0) {
                 val shuffled = when (actionType) {
                     null,
                     ShuffleActionType.SHUFFLE_SIMPLE -> {
@@ -941,14 +941,15 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                 it == player.currentSourcePaths.getOrNull(currentIndex)
             }.coerceAtLeast(0)
             submitQueue(
-                QueueInfo(
+                queueInfo = QueueInfo(
                     QueueMetadata(
                         InsertActionType.OVERRIDE,
                         OrientedClassType.TRACK
                     ),
                     db.trackDao().getAllBySourcePaths(newSourcePaths.removedAt(targetIndex))
                 ),
-                currentIndex
+                positionToKeep = currentIndex,
+                needSorted = false
             )
             moveQueuePosition(currentIndex, targetIndex)
         }
