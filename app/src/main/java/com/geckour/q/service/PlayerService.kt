@@ -587,7 +587,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                     val trackDao = db.trackDao()
                     val fullMediaItems = mediaItems.mapNotNull {
                         trackDao.getBySourcePath(it.mediaId)
-                            ?.getMediaItem(this@PlayerService)
+                            ?.getMediaItem()
                     }
                     player.addMediaItems(index, fullMediaItems)
 
@@ -996,7 +996,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                 player.currentSourcePaths.getOrNull(currentIndex)?.let { sourcePath ->
                     val track = db.trackDao().getBySourcePath(sourcePath) ?: return@let
                     val new = track.verifiedWithDropbox(this@PlayerService, dropboxClient, true)
-                        ?.getMediaItem(this@PlayerService)
+                        ?.getMediaItem()
                         ?: return@let
 
                     player.replaceMediaItem(index, new)

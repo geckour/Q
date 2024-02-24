@@ -193,7 +193,7 @@ suspend fun String.getMediaItem(context: Context): MediaItem =
     DB.getInstance(context)
         .trackDao()
         .getBySourcePath(this)
-        ?.getMediaItem(context)
+        ?.getMediaItem()
         ?: this.getMediaItem()
 
 private fun String.getMediaItem(): MediaItem = MediaItem.Builder()
@@ -201,11 +201,11 @@ private fun String.getMediaItem(): MediaItem = MediaItem.Builder()
     .setUri(Uri.parse(this))
     .build()
 
-fun JoinedTrack.getMediaItem(context: Context): MediaItem =
+fun JoinedTrack.getMediaItem(): MediaItem =
     MediaItem.Builder()
         .setMediaId(track.sourcePath)
         .setUri(Uri.parse(track.sourcePath))
-        .setMediaMetadata(getMediaMetadata(context))
+        .setMediaMetadata(getMediaMetadata())
         .build()
 
 fun List<JoinedTrack>.orderModified(
@@ -246,7 +246,7 @@ fun List<JoinedTrack>.orderModified(
         }
 }
 
-fun JoinedTrack.getMediaMetadata(context: Context): MediaMetadata {
+fun JoinedTrack.getMediaMetadata(): MediaMetadata {
     val (year, month, day) = dates
 
     return MediaMetadata.Builder()
@@ -261,11 +261,8 @@ fun JoinedTrack.getMediaMetadata(context: Context): MediaMetadata {
         .setReleaseYear(year)
         .setReleaseMonth(month)
         .setReleaseDay(day)
+        .setArtworkUri((track.artworkUriString ?: album.artworkUriString)?.let { Uri.parse(it) })
         .apply {
-            val artworkUriString =
-                (track.artworkUriString ?: album.artworkUriString)
-                    .getTempArtworkUriString(context)
-            setArtworkUri(artworkUriString?.let { Uri.parse(it) })
             track.trackNum?.let { setTrackNumber(it) }
             track.trackTotal?.let { setTotalTrackCount(it) }
             track.discNum?.let { setDiscNumber(it) }
@@ -281,22 +278,6 @@ fun String.parseDateLong(): Long? = catchAsNull {
 } ?: catchAsNull {
     SimpleDateFormat("yyyy", Locale.JAPAN).parse(this)?.time
 }
-
-fun String?.getTempArtworkUriString(context: Context): String? =
-    this?.let { uriString ->
-        val ext = MimeTypeMap.getFileExtensionFromUrl(uriString)
-        val dirName = "images"
-        val fileName = "temp_artwork.$ext"
-        val dir = File(context.cacheDir, dirName)
-        val file = File(dir, fileName)
-
-        if (file.exists()) file.delete()
-        if (dir.exists().not()) dir.mkdirs()
-
-        File(uriString).copyTo(file, overwrite = true)
-        return FileProvider.getUriForFile(context, BuildConfig.FILES_AUTHORITY, file)
-            .toString()
-    }
 
 fun Long.getTimeString(): String {
     val hour = this / 3600000
