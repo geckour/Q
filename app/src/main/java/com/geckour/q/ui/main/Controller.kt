@@ -56,6 +56,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.times
 import androidx.media3.common.Player
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -183,31 +184,35 @@ fun Controller(
                 )
             }
             Box(modifier = Modifier.align(Alignment.TopEnd)) {
+                val infiniteTransition = rememberInfiniteTransition(label = "")
+                val degree by infiniteTransition.animateFloat(
+                    initialValue = 0f,
+                    targetValue = 360f,
+                    animationSpec = infiniteRepeatable(
+                        animation = tween(
+                            1000,
+                            easing = LinearEasing
+                        )
+                    ),
+                    label = ""
+                )
+                val queueStateIndicatorAlpha by animateFloatAsState(
+                    targetValue = if (isLoading) 1f else 0f,
+                    animationSpec = tween(200),
+                    label = ""
+                )
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .offset(
-                            y = with(LocalDensity.current) { textAreaHeight.toDp() } / 2 - 20.dp + 4.dp
+                            x = (-48).dp + sheetProgress * (-40).dp,
+                            y = with(LocalDensity.current) {
+                                (1 - sheetProgress) * (textAreaHeight.toDp() / 2 - 20.dp + 4.dp) +
+                                        sheetProgress * (126.dp - 40.dp)
+                            }
                         )
                 ) {
-                    val infiniteTransition = rememberInfiniteTransition(label = "")
-                    val degree by infiniteTransition.animateFloat(
-                        initialValue = 0f,
-                        targetValue = 360f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(
-                                1000,
-                                easing = LinearEasing
-                            )
-                        ),
-                        label = ""
-                    )
-                    val queueStateIndicatorAlpha by animateFloatAsState(
-                        targetValue = if (isLoading) 1f else 0f,
-                        animationSpec = tween(200),
-                        label = ""
-                    )
                     val dropboxIndicatorAlpha by animateFloatAsState(
                         targetValue = if (currentTrack?.dropboxPath != null) 1f else 0f,
                         animationSpec = tween(200),
@@ -249,31 +254,43 @@ fun Controller(
                                 .alpha(dropboxIndicatorAlpha)
                         )
                     }
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_empty),
-                        contentDescription = null,
-                        tint = QTheme.colors.colorTextPrimary,
-                        modifier = Modifier
-                            .clickable(
-                                onClick = cancelLoad,
-                                interactionSource = remember { MutableInteractionSource() },
-                                indication = rememberRipple(bounded = false)
-                            )
-                            .padding(8.dp)
-                            .size(24.dp)
-                            .alpha(queueStateIndicatorAlpha)
-                            .graphicsLayer {
-                                rotationZ = degree
-                            }
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
                 }
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_empty),
+                    contentDescription = null,
+                    tint = QTheme.colors.colorTextPrimary,
+                    modifier = Modifier
+                        .clickable(
+                            onClick = cancelLoad,
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = rememberRipple(bounded = false)
+                        )
+                        .padding(8.dp)
+                        .padding(end = 8.dp)
+                        .size(24.dp)
+                        .align(Alignment.TopEnd)
+                        .offset(
+                            y = with(LocalDensity.current) {
+                                textAreaHeight.toDp() / 2 - 20.dp + 4.dp
+                            }
+                        )
+                        .alpha(queueStateIndicatorAlpha)
+                        .graphicsLayer {
+                            rotationZ = degree
+                        }
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .offset(y = with(LocalDensity.current) { textAreaHeight.toDp() })
+                        .offset(
+                            y = with(LocalDensity.current) {
+                                (1 - sheetProgress) * textAreaHeight.toDp() +
+                                        sheetProgress * (126.dp - 40.dp)
+                            }
+                        )
                 ) {
                     Icon(
                         painter = painterResource(
