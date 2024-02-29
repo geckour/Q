@@ -81,32 +81,34 @@ internal suspend fun File.storeMediaInfo(
 
     val title = tag.getAll(FieldKey.TITLE).lastOrNull { it.isNotBlank() }
         ?: this@storeMediaInfo.name
-    val titleSort = (tag.getAll(FieldKey.TITLE_SORT).lastOrNull { it.isNotBlank() } ?: title)
+    val titleSort = tag.getAll(FieldKey.TITLE_SORT).lastOrNull { it.isNotBlank() }
         ?.hiraganized
-        ?: this@storeMediaInfo.name
+        ?: title
 
     val albumTitle = tag.getAll(FieldKey.ALBUM).lastOrNull { it.isNotBlank() }
-    val cachedAlbum = albumTitle?.let { db.albumDao().findAllByTitle(it).firstOrNull() }
+    val existingAlbum = albumTitle?.let { db.albumDao().findAllByTitle(it).firstOrNull() }
     val albumTitleSort =
-        (tag.getAll(FieldKey.ALBUM_SORT).lastOrNull { it.isNotBlank() } ?: albumTitle)
+        tag.getAll(FieldKey.ALBUM_SORT).lastOrNull { it.isNotBlank() }
             ?.hiraganized
-            ?: cachedAlbum?.album?.titleSort
+            ?: existingAlbum?.album?.titleSort
+            ?: albumTitle
 
     val artistTitle = tag.getAll(FieldKey.ARTIST).firstOrNull { it.isNotBlank() }
-    val cachedArtist = artistTitle?.let { db.artistDao().getAllByTitle(it).firstOrNull() }
+    val existingArtist = artistTitle?.let { db.artistDao().getAllByTitle(it).firstOrNull() }
     val artistTitleSort =
-        (tag.getAll(FieldKey.ARTIST_SORT).firstOrNull { it.isNotBlank() } ?: artistTitle)
+        tag.getAll(FieldKey.ARTIST_SORT).firstOrNull { it.isNotBlank() }
             ?.hiraganized
-            ?: cachedArtist?.titleSort
+            ?: existingArtist?.titleSort
+            ?: artistTitle
 
     val albumArtistTitle = tag.getAll(FieldKey.ALBUM_ARTIST).firstOrNull { it.isNotBlank() }
-    val cachedAlbumArtist =
+    val existingAlbumArtist =
         albumArtistTitle?.let { db.artistDao().getAllByTitle(it).firstOrNull() }
     val albumArtistTitleSort =
-        (tag.getAll(FieldKey.ALBUM_ARTIST_SORT).firstOrNull { it.isNotBlank() }
-            ?: albumArtistTitle)
+        tag.getAll(FieldKey.ALBUM_ARTIST_SORT).firstOrNull { it.isNotBlank() }
             ?.hiraganized
-            ?: cachedAlbumArtist?.titleSort
+            ?: existingAlbumArtist?.titleSort
+            ?: albumArtistTitle
 
     val trackNum = catchAsNull {
         tag.getFirst(FieldKey.TRACK).let { if (it.isNullOrBlank()) null else it }?.toInt()
@@ -129,7 +131,7 @@ internal suspend fun File.storeMediaInfo(
             ?.hiraganized
 
     val artworkUriString = tag.artworkList.lastOrNull()?.binaryData?.storeArtwork(context)
-        ?: cachedAlbum?.album?.artworkUriString
+        ?: existingAlbum?.album?.artworkUriString
 
     val artist = Artist(
         id = 0,
@@ -137,7 +139,7 @@ internal suspend fun File.storeMediaInfo(
         titleSort = artistTitleSort ?: UNKNOWN,
         playbackCount = 0,
         totalDuration = 0,
-        artworkUriString = artworkUriString ?: cachedArtist?.artworkUriString
+        artworkUriString = artworkUriString ?: existingArtist?.artworkUriString
     )
     val artistId = db.artistDao().upsert(db, artist, duration)
     val albumArtistId =
@@ -148,7 +150,7 @@ internal suspend fun File.storeMediaInfo(
                 titleSort = albumArtistTitleSort,
                 playbackCount = 0,
                 totalDuration = 0,
-                artworkUriString = artworkUriString ?: cachedAlbumArtist?.artworkUriString
+                artworkUriString = artworkUriString ?: existingAlbumArtist?.artworkUriString
             )
             db.artistDao().upsert(db, albumArtist, duration)
         } else null
