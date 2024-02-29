@@ -75,7 +75,7 @@ import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getExtension
 import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.getIsInNightMode
-import com.geckour.q.util.getNumberWithUnitPrefix
+import com.geckour.q.util.getReadableStringWithUnit
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.isFavoriteToggled
 import com.geckour.q.util.parseLrc
@@ -85,18 +85,18 @@ import com.geckour.q.worker.DROPBOX_DOWNLOAD_WORKER_NAME
 import com.geckour.q.worker.DropboxDownloadWorker
 import com.geckour.q.worker.DropboxMediaRetrieveWorker
 import com.geckour.q.worker.KEY_PROGRESS_FINISHED
-import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_DENOMINATOR
-import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_NUMERATOR
+import com.geckour.q.worker.KEY_PROGRESS_PROCESSED_FILES_SIZE
+import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_FRACTION
 import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_PATH
-import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_TOTAL_FILES
-import com.geckour.q.worker.KEY_PROGRESS_REMAINING
-import com.geckour.q.worker.KEY_PROGRESS_REMAINING_FILES_SIZE
+import com.geckour.q.worker.KEY_PROGRESS_REMAINING_DURATION
+import com.geckour.q.worker.KEY_PROGRESS_REMAINING_FILES
 import com.geckour.q.worker.KEY_PROGRESS_TITLE
 import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
@@ -315,6 +315,7 @@ class MainActivity : ComponentActivity() {
             val workInfoList by viewModel.workInfoListFlow
                 .collectAsState(initial = emptyList())
             var progressMessage by remember { mutableStateOf<String?>(null) }
+            var progressFraction by remember { mutableStateOf<Float?>(null) }
             var finishedWorkIdSet by remember { mutableStateOf(emptySet<UUID>()) }
             val hasAlreadyShownDropboxSyncAlert by context.getHasAlreadyShownDropboxSyncAlert()
                 .collectAsState(initial = false)
@@ -409,69 +410,92 @@ class MainActivity : ComponentActivity() {
                 workInfoList.map { it.progress },
                 workInfoList.map { it.state }
             ) {
-                if (workInfoList.none { it.state == WorkInfo.State.RUNNING }) {
-                    viewModel.forceLoad.value = Unit
-                    progressMessage =
-                        if (workInfoList.any {
-                                it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED
-                            }) {
-                            getString(R.string.starting)
-                        } else null
-                    return@LaunchedEffect
-                }
-
-                workInfoList.forEach { workInfo ->
-                    workInfo.progress.also { progress ->
-                        progress.getInt(KEY_PROGRESS_PROGRESS_NUMERATOR, -1).let { numerator ->
-                            if (numerator < 0) return@let
-
-                            val title = progress.getString(KEY_PROGRESS_TITLE)
-                                ?: getString(R.string.progress_title_retrieve_media)
-
-                            val denominator = progress.getInt(KEY_PROGRESS_PROGRESS_DENOMINATOR, -1)
-                            val totalFilesCount =
-                                progress.getInt(KEY_PROGRESS_PROGRESS_TOTAL_FILES, -1)
-                            val path = progress.getString(KEY_PROGRESS_PROGRESS_PATH).orEmpty()
-                            val remaining = progress.getLong(KEY_PROGRESS_REMAINING, -1)
-                            val remainingFilesSize =
-                                progress.getLong(KEY_PROGRESS_REMAINING_FILES_SIZE, -1)
-
-                            val progressText =
-                                if (denominator < 0 || totalFilesCount < 0) ""
-                                else getString(
-                                    R.string.progress_sync,
-                                    numerator,
-                                    denominator,
-                                    totalFilesCount
-                                )
-                            val remainingText =
-                                if (remainingFilesSize < 0) ""
-                                else getString(
-                                    R.string.remaining,
-                                    if (remaining < 0) "" else remaining.getTimeString(),
-                                    remainingFilesSize.getNumberWithUnitPrefix { value, prefix ->
-                                        "$value $prefix"
-                                    }
-                                )
-
-                            if (progressText.isNotEmpty() || remainingText.isNotEmpty() || path.isNotEmpty()) {
-                                progressMessage =
-                                    "$title\n$progressText\n$remainingText\n$path"
-                                onCancelProgress = {
-                                    val workManager = WorkManager.getInstance(context)
-                                    workInfo.tags.forEach {
-                                        workManager.cancelAllWorkByTag(it)
-                                    }
+                launch(Dispatchers.IO) {
+                    if (workInfoList.none { it.state == WorkInfo.State.RUNNING }) {
+                        workInfoList.firstOrNull {
+                            it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED
+                        }?.let {
+                            progressMessage = getString(R.string.starting)
+                            onCancelProgress = {
+                                val workManager = WorkManager.getInstance(context)
+                                it.tags.forEach {
+                                    workManager.cancelAllWorkByTag(it)
                                 }
                             }
+                        } ?: run {
+                            progressMessage = null
+                            progressFraction = null
+                            onCancelProgress = null
                         }
+                        return@launch
                     }
-                    if (finishedWorkIdSet.contains(workInfo.id).not()
-                        && workInfo.outputData.getBoolean(KEY_PROGRESS_FINISHED, false)
-                    ) {
-                        finishedWorkIdSet += workInfo.id
-                        viewModel.forceLoad.value = Unit
-                        progressMessage = null
+
+                    workInfoList.forEach { workInfo ->
+                        workInfo.progress.also { progress ->
+                            val fraction = progress.getFloat(KEY_PROGRESS_PROGRESS_FRACTION, -1f)
+                            if (fraction < 0) return@forEach
+
+                            val title = progress.getString(KEY_PROGRESS_TITLE).orEmpty()
+
+                            val path = progress.getString(KEY_PROGRESS_PROGRESS_PATH).orEmpty()
+                            val remainingFilesCount = progress.getInt(
+                                KEY_PROGRESS_REMAINING_FILES,
+                                -1
+                            )
+                            val processedFilesSize = progress.getLong(
+                                KEY_PROGRESS_PROCESSED_FILES_SIZE,
+                                0
+                            )
+                            val remainingText =
+                                if (remainingFilesCount < 0) ""
+                                else getString(
+                                    R.string.remaining,
+                                    remainingFilesCount,
+                                    "${processedFilesSize.toFloat().getReadableStringWithUnit()}B"
+                                )
+                            val remainingDuration = progress.getLong(
+                                KEY_PROGRESS_REMAINING_DURATION,
+                                -1
+                            )
+                            val remainingDurationText =
+                                if (remainingDuration < 0) ""
+                                else getString(
+                                    R.string.remaining_duration,
+                                    remainingDuration.getTimeString(),
+                                )
+
+                            listOf(
+                                title,
+                                remainingText,
+                                remainingDurationText,
+                                path
+                            )
+                                .filter { it.isNotEmpty() }
+                                .joinToString("\n")
+                                .let { message ->
+                                    if (message.isEmpty()) return@let
+
+                                    progressMessage = message
+                                    progressFraction = fraction
+                                    onCancelProgress = {
+                                        val workManager = WorkManager.getInstance(context)
+                                        workInfo.tags.forEach {
+                                            workManager.cancelAllWorkByTag(it)
+                                        }
+                                    }
+                                }
+                        }
+                        if (finishedWorkIdSet.contains(workInfo.id).not()
+                            && (workInfo.outputData.getBoolean(KEY_PROGRESS_FINISHED, false) ||
+                                    workInfo.state in listOf(
+                                WorkInfo.State.SUCCEEDED,
+                                WorkInfo.State.CANCELLED,
+                                WorkInfo.State.FAILED
+                            ))
+                        ) {
+                            finishedWorkIdSet += workInfo.id
+                            progressMessage = null
+                        }
                     }
                 }
             }
@@ -513,6 +537,7 @@ class MainActivity : ComponentActivity() {
                                 downloadTargets = downloadTargets,
                                 invalidateDownloadedTargets = invalidateDownloadedTargets,
                                 snackBarMessage = progressMessage ?: snackBarMessage,
+                                snackBarProgress = progressFraction,
                                 forceScrollToCurrent = forceScrollToCurrent,
                                 showDropboxDialog = showDropboxDialog,
                                 showResetShuffleDialog = showResetShuffleDialog,
@@ -661,6 +686,7 @@ class MainActivity : ComponentActivity() {
                                 isSearchActive = isSearchActive,
                                 isFavoriteOnly = isFavoriteOnly,
                                 snackBarMessage = progressMessage ?: snackBarMessage,
+                                snackBarProgress = progressFraction,
                                 forceScrollToCurrent = forceScrollToCurrent,
                                 showDropboxDialog = showDropboxDialog,
                                 showResetShuffleDialog = showResetShuffleDialog,

@@ -21,8 +21,8 @@
     <string name="notification_channel_sleep_timer">おやすみタイマー</string>
     <string name="notification_channel_description_sleep_timer">おやすみタイマーの通知</string>
     <string name="notification_title_retriever">メディアを探索中</string>
-    <string name="notification_text_retriever">%1$d / %2$d | ライブラリを同期しています…</string>
-    <string name="notification_text_retriever_with_path">%1$d / %2$d | ライブラリを同期しています…%3$s</string>
+    <string name="notification_text_retriever">残り %d ファイル\nライブラリを同期しています…</string>
+    <string name="notification_text_retriever_with_path">残り %1$d ファイル (%2$s 処理済み)\nあと %3$s\nライブラリを同期しています…\n%4$s</string>
     <string name="notification_title_media_add">メディアを追加中</string>
     <string name="notification_text_media_add">%s を追加しています…</string>
     <string name="notification_title_sleep_timer">おやすみタイマー</string>
@@ -36,7 +36,8 @@
     <string name="progress_title_retrieve_media">@string/syncing</string>
     <string name="progress_title_download_dropbox">ダウンロード中…</string>
     <string name="loading">アイテムを読み込み中…</string>
-    <string name="remaining">残り: %s (%sB)</string>
+    <string name="remaining">残り: %1$d (%2$s 処理済み)</string>
+    <string name="remaining_duration">あと %s</string>
     <string name="button_apply">適用</string>
     <string name="button_cancel">キャンセル</string>
     <string name="message_export_lyric_success">歌詞の書き出しに成功しました</string>

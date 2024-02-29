@@ -5,7 +5,6 @@ import android.content.Context
 import android.net.Uri
 import android.os.Bundle
 import androidx.concurrent.futures.await
-import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
@@ -15,12 +14,10 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.service.InstantPlayerService
-import com.geckour.q.util.saveTempAudioFile
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import timber.log.Timber
 
 class InstantPlayerViewModel : ViewModel() {
 

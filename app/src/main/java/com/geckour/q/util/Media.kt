@@ -6,8 +6,6 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.icu.util.Calendar
 import android.net.Uri
-import android.webkit.MimeTypeMap
-import androidx.core.content.FileProvider
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toFile
 import androidx.media3.common.MediaItem
@@ -16,8 +14,8 @@ import androidx.media3.exoplayer.ExoPlayer
 import coil.Coil
 import coil.request.ImageRequest
 import coil.size.Scale
+import com.dropbox.core.util.IOUtil.ProgressListener
 import com.dropbox.core.v2.DbxClientV2
-import com.geckour.q.BuildConfig
 import com.geckour.q.data.db.BoolConverter
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
@@ -28,16 +26,16 @@ import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.DialogEditMetadataBinding
 import com.geckour.q.domain.model.UiTrack
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
-import org.apache.commons.io.FileUtils
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import org.jaudiotagger.tag.images.ArtworkFactory
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStream
-import java.net.URLConnection
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -288,7 +286,10 @@ fun Long.getTimeString(): String {
     )
 }
 
-fun DbxClientV2.saveTempAudioFile(context: Context, pathLower: String): File {
+fun DbxClientV2.saveTempAudioFile(
+    context: Context,
+    pathLower: String
+): Flow<Pair<File, Long?>> {
     val dirName = "audio"
     val fileName = "temp_audio.${pathLower.getExtension()}"
     val dir = File(context.cacheDir, dirName)
@@ -297,12 +298,23 @@ fun DbxClientV2.saveTempAudioFile(context: Context, pathLower: String): File {
     if (file.exists()) file.delete()
     if (dir.exists().not()) dir.mkdir()
 
-    FileOutputStream(file).use { files().download(pathLower).download(it) }
-
-    return file
+    return callbackFlow {
+        val callback = ProgressListener { processed ->
+            trySend(file to processed)
+        }
+        FileOutputStream(file).use {
+            files().download(pathLower).download(it, callback)
+        }
+        trySend(file to null)
+        channel.close()
+    }.flowOn(Dispatchers.IO)
 }
 
-fun DbxClientV2.saveAudioFile(context: Context, id: String, pathLower: String): File {
+fun DbxClientV2.saveAudioFile(
+    context: Context,
+    id: String,
+    pathLower: String
+): Flow<Pair<File, Long?>> {
     val dirName = "audio"
     val dir = File(context.cacheDir, dirName)
     val file = File(dir, "$id.${pathLower.getExtension()}")
@@ -310,27 +322,16 @@ fun DbxClientV2.saveAudioFile(context: Context, id: String, pathLower: String): 
     if (file.exists()) file.delete()
     if (dir.exists().not()) dir.mkdir()
 
-    FileOutputStream(file).use { files().download(pathLower).download(it) }
-
-    return file
-}
-
-fun InputStream.saveTempAudioFile(context: Context): File {
-    val ext = URLConnection.guessContentTypeFromStream(this)
-        ?.replace(Regex(".+/(.+)"), ".$1")
-        ?: ""
-
-    val dirName = "audio"
-    val fileName = "temp_audio$ext"
-    val dir = File(context.cacheDir, dirName)
-    val file = File(dir, fileName)
-
-    if (file.exists()) file.delete()
-    if (dir.exists().not()) dir.mkdir()
-
-    FileUtils.copyToFile(this, file)
-
-    return file
+    return callbackFlow {
+        val callback = ProgressListener { processed ->
+            trySend(file to processed)
+        }
+        FileOutputStream(file).use {
+            files().download(pathLower).download(it, callback)
+        }
+        trySend(file to null)
+        channel.close()
+    }.flowOn(Dispatchers.IO)
 }
 
 suspend fun DialogEditMetadataBinding.updateFileMetadata(

@@ -5,7 +5,11 @@ import com.google.firebase.crashlytics.FirebaseCrashlytics
 import timber.log.Timber
 import kotlin.math.abs
 
-fun Float.getReadableStringWithUnit(digitToKeep: Int = 3): String {
+fun Float.getReadableStringWithUnit(digitToKeep: Int = 2): String {
+    if (this == 0f) {
+        return "0"
+    }
+
     val sign = if (this < 0) -1 else 1
     var absReturnValue = abs(this)
     var count = 0

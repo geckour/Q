@@ -10,6 +10,7 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.webkit.MimeTypeMap
+import androidx.core.app.NotificationCompat
 import androidx.work.CoroutineWorker
 import androidx.work.Data
 import androidx.work.ForegroundInfo
@@ -27,14 +28,19 @@ import com.geckour.q.util.DROPBOX_EXPIRES_IN
 import com.geckour.q.util.QNotificationChannel
 import com.geckour.q.util.getExtension
 import com.geckour.q.util.getNotificationBuilder
+import com.geckour.q.util.getReadableStringWithUnit
+import com.geckour.q.util.getTimeString
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.saveAudioFile
 import com.geckour.q.util.saveTempAudioFile
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 import timber.log.Timber
+import java.io.File
 
 class DropboxMediaRetrieveWorker(
     context: Context,
@@ -49,15 +55,23 @@ class DropboxMediaRetrieveWorker(
     }
 
     private val db = DB.getInstance(context)
-    private var processedFilesCount = 0
+    private var processedFilesSize = 0L
     private val files = mutableListOf<FileMetadata>()
-    private var totalFilesCount = 0
-    private var totalFilesSize = 0L
+    private val remainingFilesCount: Int
+        get() {
+            return files.size -
+                    (files.indices
+                        .firstOrNull {
+                            processedFilesSize < files.take(it + 1).sumOf { it.size }
+                        }
+                        ?: 0)
+        }
+    private val progressFraction get() = processedFilesSize.toFloat() / files.sumOf { it.size }
+    private val remainingDuration get() = ((files.sumOf { it.size } - processedFilesSize) / speeds.average()).toLong()
     private var currentPath: String? = null
-    private val currentProcessingSpeeds = mutableListOf<ProcessingSpeed>()
     private val notificationBitmap = Bitmap.createBitmap(1000, 1000, Bitmap.Config.ARGB_8888)
     private var seed: Long = -1
-    private var startTime: Long = 0
+    private var speeds = listOf<Float>()
 
     override suspend fun doWork(): Result {
         if (Build.VERSION.SDK_INT >= 33
@@ -86,14 +100,12 @@ class DropboxMediaRetrieveWorker(
             setProgress(
                 createProgressData(
                     title = applicationContext.getString(R.string.progress_title_retrieve_media),
-                    numerator = 0
+                    progressFraction = 0f
                 )
             )
 
             files.clear()
             retrieveAudioFilePaths(rootPath, dbxClient, needDownloaded)
-            totalFilesSize = files.sumOf { it.size }
-            startTime = System.currentTimeMillis()
             files.forEach {
                 if (isStopped) {
                     return Result.success(
@@ -101,7 +113,7 @@ class DropboxMediaRetrieveWorker(
                     )
                 }
 
-                it.storeMediaInfo(dbxClient, startTime, needDownloaded)
+                it.storeMediaInfo(dbxClient, needDownloaded)
             }
 
             Timber.d("qgeck track in db count: ${runBlocking { db.trackDao().count() }}")
@@ -113,11 +125,28 @@ class DropboxMediaRetrieveWorker(
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo =
-        ForegroundInfo(
-            NOTIFICATION_ID_RETRIEVE,
-            getNotification(currentPath, processedFilesCount, files.size, seed, notificationBitmap),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-        )
+        if (Build.VERSION.SDK_INT < 29) {
+            ForegroundInfo(
+                NOTIFICATION_ID_RETRIEVE,
+                getNotification(
+                    currentPath,
+                    progressFraction,
+                    seed,
+                    notificationBitmap
+                )
+            )
+        } else {
+            ForegroundInfo(
+                NOTIFICATION_ID_RETRIEVE,
+                getNotification(
+                    currentPath,
+                    progressFraction,
+                    seed,
+                    notificationBitmap
+                ),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        }
 
     private suspend fun retrieveAudioFilePaths(
         root: String,
@@ -140,29 +169,25 @@ class DropboxMediaRetrieveWorker(
                     }
 
                     is FileMetadata -> {
-                        totalFilesCount++
                         if (needDownloaded || (db.trackDao()
                                 .getByDropboxPath(metadata.pathLower)?.track?.lastModified
                                 ?: 0) < metadata.serverModified.time
                         ) {
-                            totalFilesSize += metadata.size
+                            files.add(metadata)
                             setProgress(
                                 createProgressData(
                                     title = applicationContext.getString(R.string.progress_title_retrieve_media),
-                                    numerator = processedFilesCount,
-                                    denominator = files.size,
-                                    totalFiles = totalFilesCount,
-                                    remainingFileSize = totalFilesSize
+                                    progressFraction = progressFraction,
+                                    remainingFiles = remainingFilesCount,
+                                    processedFileSize = processedFilesSize
                                 )
                             )
-                            files.add(metadata)
+                            setForeground(getForegroundInfo())
                         }
                     }
 
                     else -> Unit
                 }
-            }.apply {
-                setForeground(getForegroundInfo())
             }
         } catch (e: RateLimitException) {
             delay(e.backoffMillis)
@@ -180,14 +205,26 @@ class DropboxMediaRetrieveWorker(
 
     private fun getNotification(
         path: String?,
-        progressNumerator: Int,
-        progressDenominator: Int,
+        progressFraction: Float,
         seed: Long,
         bitmap: Bitmap
-    ): Notification =
-        applicationContext.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER)
+    ): Notification {
+        val text = path?.let {
+            applicationContext.getString(
+                R.string.notification_text_retriever_with_path,
+                remainingFilesCount,
+                "${processedFilesSize.toFloat().getReadableStringWithUnit()}B",
+                remainingDuration.getTimeString(),
+                it
+            )
+        } ?: applicationContext.getString(
+            R.string.notification_text_retriever,
+            remainingFilesCount
+        )
+        return applicationContext.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setSmallIcon(R.drawable.ic_notification_sync)
-            .setLargeIcon(bitmap.drawProgressIcon(progressNumerator, progressDenominator, seed))
+            .setLargeIcon(bitmap.drawProgressIcon(progressFraction, seed))
             .setOngoing(true)
             .setShowWhen(false)
             .setContentIntent(
@@ -199,74 +236,24 @@ class DropboxMediaRetrieveWorker(
                 )
             )
             .setContentTitle(applicationContext.getString(R.string.notification_title_retriever))
-            .setContentText(
-                path?.let {
-                    applicationContext.getString(
-                        R.string.notification_text_retriever_with_path,
-                        progressNumerator,
-                        progressDenominator,
-                        it
-                    )
-                } ?: applicationContext.getString(
-                    R.string.notification_text_retriever,
-                    progressNumerator,
-                    progressDenominator
-                )
-            )
+            .setContentText(text)
             .build()
+    }
 
     private suspend fun FileMetadata.storeMediaInfo(
         client: DbxClientV2,
-        startTime: Long,
-        needDownloaded: Boolean
+        needDownloaded: Boolean,
     ) {
         if (name.isAudioFilePath) {
-            processedFilesCount++
-            if (currentProcessingSpeeds.isEmpty()) {
-                currentProcessingSpeeds.add(
-                    ProcessingSpeed(
-                        timing = System.currentTimeMillis(),
-                        speed = -1.0
-                    )
-                )
-            }
             setForeground(getForegroundInfo())
             currentPath = this.pathDisplay
 
             runCatching {
                 storeMediaInfo(client, this@storeMediaInfo, needDownloaded)
-                currentProcessingSpeeds.lastOrNull()?.let {
-                    if (currentProcessingSpeeds.size > 6) {
-                        currentProcessingSpeeds.drop(1)
-                    }
-                    currentProcessingSpeeds.add(
-                        ProcessingSpeed.calcProcessingSpeed(
-                            prev = it,
-                            size = this@storeMediaInfo.size
-                        )
-                    )
-                }
-
-                val remainingFileSize = files
-                    .takeLast(files.size - processedFilesCount)
-                    .sumOf { it.size }
-                val targetProcessingSpeeds = currentProcessingSpeeds.filter { it.speed > 0 }
-                val averageSpeed = targetProcessingSpeeds.sumOf { it.speed } / targetProcessingSpeeds.size
-                setProgress(
-                    createProgressData(
-                        title = applicationContext.getString(R.string.progress_title_retrieve_media),
-                        numerator = processedFilesCount,
-                        denominator = files.size,
-                        totalFiles = totalFilesCount,
-                        path = pathDisplay,
-                        remaining = (remainingFileSize / averageSpeed).toLong(),
-                        remainingFileSize = remainingFileSize
-                    )
-                )
             }.onFailure { t ->
                 if (t is RateLimitException) {
                     Thread.sleep(t.backoffMillis)
-                    this.storeMediaInfo(client, startTime, needDownloaded)
+                    this.storeMediaInfo(client, needDownloaded)
                 } else {
                     Timber.e(t)
                     return
@@ -275,46 +262,65 @@ class DropboxMediaRetrieveWorker(
         }
     }
 
+    private suspend fun updateProgress() {
+        setProgress(
+            createProgressData(
+                title = applicationContext.getString(R.string.progress_title_retrieve_media),
+                progressFraction = progressFraction,
+                remainingFiles = remainingFilesCount,
+                processedFileSize = processedFilesSize,
+                remainingDuration = remainingDuration,
+                path = currentPath,
+            )
+        )
+        setForeground(getForegroundInfo())
+    }
+
     private suspend fun storeMediaInfo(
         client: DbxClientV2,
         dropboxMetadata: FileMetadata,
         needDownloaded: Boolean
-    ): Long {
+    ) {
         val url = client.files().getTemporaryLink(dropboxMetadata.pathLower).link
         val currentTime = System.currentTimeMillis()
 
-        return client.let {
-            val file = if (needDownloaded) it.saveAudioFile(
-                applicationContext,
-                dropboxMetadata.id,
-                dropboxMetadata.pathLower
-            ) else it.saveTempAudioFile(applicationContext, dropboxMetadata.pathLower)
-            file.storeMediaInfo(
-                applicationContext,
-                if (needDownloaded) Uri.fromFile(file).toString() else url,
-                db.trackDao().getByDropboxPath(dropboxMetadata.pathLower)?.track?.id,
-                null,
-                dropboxMetadata.pathLower,
-                currentTime + DROPBOX_EXPIRES_IN,
-                dropboxMetadata.serverModified.time
-            )
-        }
-    }
-
-    private data class ProcessingSpeed(
-        val timing: Long,
-        val speed: Double
-    ) {
-
-        companion object {
-
-            fun calcProcessingSpeed(prev: ProcessingSpeed, size: Long): ProcessingSpeed {
-                val now = System.currentTimeMillis()
-                return ProcessingSpeed(
-                    timing = now,
-                    speed = size.toDouble() / (now - prev.timing)
-                )
+        val processedFilesSizeSnapshot = processedFilesSize
+        var lastProgressSampledTime = currentTime
+        val fileAndProgressFlow = if (needDownloaded) client.saveAudioFile(
+            applicationContext,
+            dropboxMetadata.id,
+            dropboxMetadata.pathLower
+        ) else client.saveTempAudioFile(
+            applicationContext, dropboxMetadata.pathLower
+        )
+        var target: File? = null
+        fileAndProgressFlow
+            .onCompletion {
+                target?.let {
+                    it.storeMediaInfo(
+                        applicationContext,
+                        if (needDownloaded) Uri.fromFile(it).toString() else url,
+                        db.trackDao().getByDropboxPath(dropboxMetadata.pathLower)?.track?.id,
+                        null,
+                        dropboxMetadata.pathLower,
+                        currentTime + DROPBOX_EXPIRES_IN,
+                        dropboxMetadata.serverModified.time
+                    )
+                }
+                processedFilesSize = processedFilesSizeSnapshot + dropboxMetadata.size
+                updateProgress()
             }
-        }
+            .collectLatest { (file, processed) ->
+                if (processed == null) {
+                    return@collectLatest
+                }
+                target = file
+                val now = System.currentTimeMillis()
+                processedFilesSize = processedFilesSizeSnapshot + processed
+                speeds =
+                    (speeds + (processed.toFloat() / (now - lastProgressSampledTime))).take(10)
+                lastProgressSampledTime = now
+                updateProgress()
+            }
     }
 }

@@ -92,8 +92,6 @@ class MainViewModel(private val app: App) : ViewModel() {
     private var notifyPlaybackPositionJob: Job = Job()
     private var notifyBufferedPositionJob: Job = Job()
 
-    internal val forceLoad = MutableLiveData<Unit>()
-
     private val dropboxItemListChannel =
         Channel<Pair<String, ImmutableList<FolderMetadata>>>(capacity = Channel.CONFLATED)
     internal val dropboxItemList = dropboxItemListChannel.receiveAsFlow()

@@ -23,13 +23,19 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.util.QNotificationChannel
 import com.geckour.q.util.getNotificationBuilder
+import com.geckour.q.util.getReadableStringWithUnit
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.saveAudioFile
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.onCompletion
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 import timber.log.Timber
+import java.io.File
 
 
 internal const val DROPBOX_DOWNLOAD_WORKER_NAME = "DropboxDownloadWorker"
@@ -47,9 +53,14 @@ class DropboxDownloadWorker(
     }
 
     private var targetPaths = emptyList<String>()
+    private var files = emptyList<FileMetadata>()
     private var seed = 0L
-    private var processedFilesCount = 0
     private var currentPath: String? = null
+    private var remainingFilesCount = 0
+    private var processedFilesSize = 0L
+    private var speeds = listOf<Float>()
+    private val remainingDuration get() = ((files.sumOf { it.size } - processedFilesSize) / speeds.average()).toLong()
+    private val progressFraction get() = processedFilesSize.toFloat() / files.sumOf { it.size }
     private val notificationBitmap = Bitmap.createBitmap(1000, 1000, Bitmap.Config.ARGB_8888)
 
     override suspend fun doWork(): Result {
@@ -78,11 +89,12 @@ class DropboxDownloadWorker(
             setProgress(
                 createProgressData(
                     title = applicationContext.getString(R.string.progress_title_download_dropbox),
-                    numerator = 0
+                    progressFraction = 0f
                 )
             )
 
             targetPaths = requireNotNull(inputData.getStringArray(KEY_TARGET_PATHS)).toList()
+            Timber.d("qgeck target paths: $targetPaths")
 
             download(db, targetPaths, startTime, dbxClient)
 
@@ -95,17 +107,18 @@ class DropboxDownloadWorker(
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo =
-        ForegroundInfo(
-            NOTIFICATION_ID_RETRIEVE,
-            getNotification(
-                currentPath,
-                processedFilesCount,
-                targetPaths.size,
-                seed,
-                notificationBitmap
-            ),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-        )
+        if (Build.VERSION.SDK_INT < 29) {
+            ForegroundInfo(
+                NOTIFICATION_ID_RETRIEVE,
+                getNotification(notificationBitmap)
+            )
+        } else {
+            ForegroundInfo(
+                NOTIFICATION_ID_RETRIEVE,
+                getNotification(notificationBitmap),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        }
 
     private suspend fun download(
         db: DB,
@@ -115,37 +128,41 @@ class DropboxDownloadWorker(
     ) {
         if (isStopped) return
         try {
-            val files = targetPaths.mapNotNull { targetPath ->
+            files = targetPaths.mapNotNull { targetPath ->
                 client.files().getMetadata(targetPath) as? FileMetadata
             }
-            files.forEachIndexed { index, fileMetadata ->
-                setProgress(
-                    createProgressData(
-                        title = applicationContext.getString(R.string.progress_title_download_dropbox),
-                        numerator = index + 1,
-                        denominator = targetPaths.size,
-                        totalFiles = targetPaths.size,
-                        path = fileMetadata.pathDisplay,
-                        remaining = if (index < 1) -1
-                        else run {
-                            val elapsedTime = System.currentTimeMillis() - startTime
-                            val processedSize = files.take(index).sumOf { it.size }
-                            val remainingSize = files.sumOf { it.size } - processedSize
-                            (remainingSize * elapsedTime.toDouble() / processedSize).toLong()
-                        },
-                        remainingFileSize = files.takeLast(files.size - index)
-                            .sumOf { it.size }
-                    )
-                )
-                val savedFile = client.saveAudioFile(
+            files.forEach { fileMetadata ->
+                currentPath = fileMetadata.pathDisplay
+                setForeground(getForegroundInfo())
+                val processedFilesSizeSnapshot = processedFilesSize
+                var lastProgressSampledTime = System.currentTimeMillis()
+                var target: File? = null
+                client.saveAudioFile(
                     applicationContext,
                     fileMetadata.id,
                     fileMetadata.pathLower
-                )
-                db.trackDao().getByDropboxPath(fileMetadata.pathLower)?.let {
-                    db.trackDao().insert(
-                        it.track.copy(sourcePath = Uri.fromFile(savedFile).toString())
-                    )
+                ).onCompletion {
+                    processedFilesSize = processedFilesSizeSnapshot + fileMetadata.size
+                    updateProgress()
+                    target?.let { file ->
+                        db.trackDao().getByDropboxPath(fileMetadata.pathLower)?.let {
+                            db.trackDao().insert(
+                                it.track.copy(sourcePath = Uri.fromFile(file).toString())
+                            )
+                        }
+                    }
+                }.collectLatest { (file, processed) ->
+                    Timber.d("qgeck file path: ${file.path}, processed: $processed")
+                    if (processed == null) {
+                        return@collectLatest
+                    }
+                    target = file
+                    val now = System.currentTimeMillis()
+                    processedFilesSize = processedFilesSizeSnapshot + processed
+                    speeds =
+                        (speeds + (processed.toFloat() / (now - lastProgressSampledTime))).take(10)
+                    lastProgressSampledTime = now
+                    updateProgress()
                 }
             }
         } catch (e: RateLimitException) {
@@ -158,15 +175,11 @@ class DropboxDownloadWorker(
     }
 
     private fun getNotification(
-        path: String?,
-        progressNumerator: Int,
-        progressDenominator: Int,
-        seed: Long,
         bitmap: Bitmap
     ): Notification =
         applicationContext.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER)
             .setSmallIcon(R.drawable.ic_notification_sync)
-            .setLargeIcon(bitmap.drawProgressIcon(progressNumerator, progressDenominator, seed))
+            .setLargeIcon(bitmap.drawProgressIcon(progressFraction, seed))
             .setOngoing(true)
             .setShowWhen(false)
             .setContentIntent(
@@ -179,18 +192,33 @@ class DropboxDownloadWorker(
             )
             .setContentTitle(applicationContext.getString(R.string.notification_title_retriever))
             .setContentText(
-                path?.let {
+                currentPath?.let {
                     applicationContext.getString(
                         R.string.notification_text_retriever_with_path,
-                        progressNumerator,
-                        progressDenominator,
+                        remainingFilesCount,
+                        "${processedFilesSize.toFloat().getReadableStringWithUnit()}B",
+                        "-",
                         it
                     )
                 } ?: applicationContext.getString(
                     R.string.notification_text_retriever,
-                    progressNumerator,
-                    progressDenominator
+                    remainingFilesCount
                 )
             )
             .build()
+
+    private suspend fun updateProgress(
+    ) {
+        setProgress(
+            createProgressData(
+                title = applicationContext.getString(R.string.progress_title_download_dropbox),
+                progressFraction = progressFraction,
+                remainingFiles = remainingFilesCount,
+                processedFileSize = processedFilesSize,
+                remainingDuration = remainingDuration,
+                path = currentPath
+            )
+        )
+        setForeground(getForegroundInfo())
+    }
 }

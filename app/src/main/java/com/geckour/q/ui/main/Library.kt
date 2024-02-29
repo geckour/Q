@@ -39,6 +39,7 @@ fun Library(
     navController: NavHostController,
     scrollToTop: Long,
     snackBarMessage: String?,
+    snackBarProgress: Float?,
     isSearchActive: MutableState<Boolean>,
     isFavoriteOnly: MutableState<Boolean>,
     routeInfo: QAudioDeviceInfo?,
@@ -281,6 +282,7 @@ fun Library(
         }
         QSnackBar(
             message = snackBarMessage,
+            progress = snackBarProgress,
             onCancelProgress = onCancelProgress
         )
     }

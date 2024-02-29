@@ -32,31 +32,28 @@ internal const val NOTIFICATION_ID_RETRIEVE = 300
 internal const val MEDIA_RETRIEVE_WORKER_NAME = "MediaRetrieveWorker"
 
 internal const val KEY_PROGRESS_TITLE = "key_progress_title"
-internal const val KEY_PROGRESS_PROGRESS_NUMERATOR = "key_progress_progress_numerator"
-internal const val KEY_PROGRESS_PROGRESS_DENOMINATOR = "key_progress_progress_denominator"
-internal const val KEY_PROGRESS_PROGRESS_TOTAL_FILES = "key_progress_progress_total_files"
+internal const val KEY_PROGRESS_PROGRESS_FRACTION = "key_progress_progress_fraction"
+internal const val KEY_PROGRESS_REMAINING_FILES = "key_progress_remaining_files"
+internal const val KEY_PROGRESS_PROCESSED_FILES_SIZE = "key_progress_processed_files_size"
+internal const val KEY_PROGRESS_REMAINING_DURATION = "key_progress_processed_remaining_duration"
 internal const val KEY_PROGRESS_PROGRESS_PATH = "key_progress_progress_path"
-internal const val KEY_PROGRESS_REMAINING = "key_progress_remaining"
-internal const val KEY_PROGRESS_REMAINING_FILES_SIZE = "key_progress_remaining_files_size"
 internal const val KEY_PROGRESS_FINISHED = "key_progress_finished"
 
 internal fun createProgressData(
     title: String,
-    numerator: Int,
-    denominator: Int = -1,
-    totalFiles: Int = -1,
+    progressFraction: Float = -1f,
+    remainingFiles: Int = -1,
+    processedFileSize: Long = 0,
+    remainingDuration: Long = -1,
     path: String? = null,
-    remaining: Long = -1,
-    remainingFileSize: Long = -1,
 ): Data =
     Data.Builder()
         .putString(KEY_PROGRESS_TITLE, title)
-        .putInt(KEY_PROGRESS_PROGRESS_NUMERATOR, numerator)
-        .putInt(KEY_PROGRESS_PROGRESS_DENOMINATOR, denominator)
-        .putInt(KEY_PROGRESS_PROGRESS_TOTAL_FILES, totalFiles)
+        .putFloat(KEY_PROGRESS_PROGRESS_FRACTION, progressFraction)
+        .putInt(KEY_PROGRESS_REMAINING_FILES, remainingFiles)
+        .putLong(KEY_PROGRESS_PROCESSED_FILES_SIZE, processedFileSize)
+        .putLong(KEY_PROGRESS_REMAINING_DURATION, remainingDuration)
         .putString(KEY_PROGRESS_PROGRESS_PATH, path)
-        .putLong(KEY_PROGRESS_REMAINING, remaining)
-        .putLong(KEY_PROGRESS_REMAINING_FILES_SIZE, remainingFileSize)
         .build()
 
 internal suspend fun File.storeMediaInfo(
@@ -199,13 +196,11 @@ internal suspend fun File.storeMediaInfo(
 }
 
 internal fun Bitmap.drawProgressIcon(
-    progressNumerator: Int,
-    progressDenominator: Int,
+    progressFraction: Float,
     seed: Long
 ): Bitmap {
     val maxTileNumber = 24
-    val progressRatio = progressNumerator.toFloat() / progressDenominator
-    val tileNumber = (maxTileNumber * progressRatio).toInt()
+    val tileNumber = (maxTileNumber * progressFraction).toInt()
     val canvas = Canvas(this)
     val paint = Paint().apply {
         isAntiAlias = true
@@ -228,7 +223,7 @@ internal fun Bitmap.drawProgressIcon(
             close()
         }
         val alphaC =
-            if (it == tileNumber) maxTileNumber * progressRatio % 1f
+            if (it == tileNumber) maxTileNumber * progressFraction % 1f
             else 1f
         paint.color = Color.argb(
             (150 * alphaC).toInt(),

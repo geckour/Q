@@ -44,9 +44,9 @@ class LocalMediaRetrieveWorker(
         private const val ORDER = "${MediaStore.Audio.Media.TITLE} ASC"
     }
 
+    private var totalFilesCount = -1
     private var currentTrackPath: String? = null
-    private var currentProgressNumerator = 0
-    private var currentProgressDenominator = -1
+    private var currentIndex = 0
     private val notificationBitmap = Bitmap.createBitmap(1000, 1000, Bitmap.Config.ARGB_8888)
     private var seed: Long = -1
 
@@ -57,7 +57,9 @@ class LocalMediaRetrieveWorker(
             try {
                 setForeground(getForegroundInfo())
             } catch (t: Throwable) {
-                return Result.failure(Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build())
+                return Result.failure(
+                    Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build()
+                )
             }
 
             seed = System.currentTimeMillis()
@@ -87,8 +89,8 @@ class LocalMediaRetrieveWorker(
                             )
                         }
 
-                        currentProgressNumerator = cursor.position + 1
-                        currentProgressDenominator = cursor.count
+                        currentIndex = cursor.position + 1
+                        totalFilesCount = cursor.count
                         val trackPath = cursor.getString(
                             cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
                         )
@@ -98,8 +100,7 @@ class LocalMediaRetrieveWorker(
                         setProgress(
                             createProgressData(
                                 title = applicationContext.getString(R.string.progress_title_retrieve_media),
-                                numerator = currentProgressNumerator,
-                                denominator = currentProgressDenominator,
+                                progressFraction = currentIndex.toFloat() / totalFilesCount,
                                 path = trackPath
                             )
                         )
@@ -112,7 +113,7 @@ class LocalMediaRetrieveWorker(
                     }
 
                     if (onlyAdded.not()) {
-                        val diff = db.trackDao().getAllLocalMediaIds().apply { Timber.d("qgeck local media ids: $this") } - newTrackMediaIds.toSet().apply { Timber.d("qgeck new media ids: $this") }
+                        val diff = db.trackDao().getAllLocalMediaIds() - newTrackMediaIds.toSet()
                         db.deleteTracks(diff)
                     }
                 }
@@ -127,22 +128,29 @@ class LocalMediaRetrieveWorker(
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo =
-        ForegroundInfo(
-            NOTIFICATION_ID_RETRIEVE,
-            getNotification(
-                currentTrackPath,
-                currentProgressNumerator,
-                currentProgressDenominator,
-                seed,
-                notificationBitmap
-            ),
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-        )
+        if (Build.VERSION.SDK_INT < 29) {
+            ForegroundInfo(
+                NOTIFICATION_ID_RETRIEVE,
+                getNotification(
+                    currentTrackPath,
+                    seed,
+                    notificationBitmap
+                )
+            )
+        } else {
+            ForegroundInfo(
+                NOTIFICATION_ID_RETRIEVE,
+                getNotification(
+                    currentTrackPath,
+                    seed,
+                    notificationBitmap
+                ),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+            )
+        }
 
     private fun getNotification(
         trackPath: String?,
-        progressNumerator: Int,
-        progressDenominator: Int,
         seed: Long,
         bitmap: Bitmap
     ): Notification =
@@ -160,20 +168,24 @@ class LocalMediaRetrieveWorker(
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
                 )
             )
-            .setLargeIcon(bitmap.drawProgressIcon(progressNumerator, progressDenominator, seed))
+            .setLargeIcon(
+                bitmap.drawProgressIcon(
+                    currentIndex.toFloat() / totalFilesCount,
+                    seed
+                )
+            )
             .setContentTitle(applicationContext.getString(R.string.notification_title_retriever))
             .setContentText(
                 trackPath?.let {
                     applicationContext.getString(
                         R.string.notification_text_retriever_with_path,
-                        progressNumerator,
-                        progressDenominator,
+                        totalFilesCount - currentIndex,
+                        currentIndex.toString(),
                         it
                     )
                 } ?: applicationContext.getString(
                     R.string.notification_text_retriever,
-                    progressNumerator,
-                    progressDenominator
+                    totalFilesCount
                 )
             )
             .build()
