@@ -47,7 +47,6 @@ import com.geckour.q.data.db.model.EqualizerPreset
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.QAudioDeviceInfo
-import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -104,6 +103,8 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         const val ACTION_COMMAND_REMOVE_QUEUE = "action_command_remove_queue"
         const val ACTION_EXTRA_REMOVE_QUEUE_TARGET_SOURCE_PATH =
             "action_extra_remove_queue_target_source_path"
+        const val ACTION_EXTRA_REMOVE_QUEUE_TARGET_INDEX =
+            "action_extra_remove_queue_target_index"
 
         const val ACTION_COMMAND_CLEAR_QUEUE = "action_command_clear_queue"
         const val ACTION_EXTRA_CLEAR_QUEUE_NEED_TO_KEEP_CURRENT =
@@ -333,18 +334,26 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                     }
 
                     ACTION_COMMAND_REMOVE_QUEUE -> {
+                        val targetIndex = args.getInt(ACTION_EXTRA_REMOVE_QUEUE_TARGET_INDEX, -1)
+                        if (targetIndex > -1) {
+                            removeQueue(targetIndex)
+                            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                        }
+
                         val targetSourcePath = args.getString(
                             ACTION_EXTRA_REMOVE_QUEUE_TARGET_SOURCE_PATH
+                        ) ?: return Futures.immediateFuture(
+                            SessionResult(SessionResult.RESULT_ERROR_INVALID_STATE)
                         )
-                            ?: return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_INVALID_STATE))
 
-                        removeQueue(targetSourcePath)
+                        removeQueue(targetSourcePath, force = true)
                         Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                     }
 
                     ACTION_COMMAND_CLEAR_QUEUE -> {
                         val needToKeepCurrent = args.getBoolean(
-                            ACTION_EXTRA_CLEAR_QUEUE_NEED_TO_KEEP_CURRENT, true
+                            ACTION_EXTRA_CLEAR_QUEUE_NEED_TO_KEEP_CURRENT,
+                            true
                         )
 
                         clear(needToKeepCurrent)
@@ -870,19 +879,24 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         player.moveMediaItem(from, to)
     }
 
-    private fun removeQueue(position: Int) {
-        if (position !in 0 until player.mediaItemCount ||
-            player.playWhenReady
-            && (player.playbackState == Player.STATE_READY || player.playbackState == Player.STATE_BUFFERING)
-            && position == currentIndex
-        ) return
-
-        player.removeMediaItem(position)
+    private fun removeQueue(position: Int, force: Boolean = false) {
+        if (position in 0 until player.mediaItemCount &&
+            (force ||
+                    player.playWhenReady.not() ||
+                    player.playbackState != Player.STATE_READY ||
+                    player.playbackState != Player.STATE_BUFFERING ||
+                    position != currentIndex)
+        ) {
+            player.removeMediaItem(position)
+        }
     }
 
-    fun removeQueue(sourcePath: String) {
+    private fun removeQueue(sourcePath: String, force: Boolean = false) {
         val position = player.currentSourcePaths.indexOfFirst { it == sourcePath }
-        removeQueue(position)
+        if (position < 0) return
+
+        removeQueue(position, force)
+        removeQueue(sourcePath, force)
     }
 
     private fun shuffle(actionType: ShuffleActionType? = null) {

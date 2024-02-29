@@ -55,8 +55,8 @@ fun PlayerSheet(
     onSelectTrack: (track: UiTrack) -> Unit,
     onToggleShowLyrics: () -> Unit,
     onQueueMove: (from: Int, to: Int) -> Unit,
-    onChangeRequestedTrackInQueue: (track: UiTrack) -> Unit,
-    onRemoveTrackFromQueue: (track: UiTrack) -> Unit,
+    onChangeIndexRequested: (index: Int) -> Unit,
+    onRemoveTrackFromQueue: (index: Int) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     val density = LocalDensity.current
@@ -121,7 +121,7 @@ fun PlayerSheet(
             currentPlaybackPosition = currentPlaybackPosition,
             forceScrollToCurrent = forceScrollToCurrent,
             onQueueMove = onQueueMove,
-            onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
+            onChangeIndexRequested = onChangeIndexRequested,
             onRemoveTrackFromQueue = onRemoveTrackFromQueue,
             onToggleFavorite = onToggleFavorite,
         )

@@ -109,8 +109,8 @@ fun SingleScreen(
         classType: OrientedClassType
     ) -> Unit,
     onQueueMove: (from: Int, to: Int) -> Unit,
-    onChangeRequestedTrackInQueue: (target: UiTrack) -> Unit,
-    onRemoveTrackFromQueue: (target: UiTrack) -> Unit,
+    onChangeIndexRequested: (index: Int) -> Unit,
+    onRemoveTrackFromQueue: (index: Int) -> Unit,
     onShowDropboxDialog: () -> Unit,
     onRetrieveMedia: (onlyAdded: Boolean) -> Unit,
     onDownload: (targets: List<String>) -> Unit,
@@ -218,7 +218,7 @@ fun SingleScreen(
                     onSelectTrack = onSelectTrack,
                     onToggleShowLyrics = onToggleShowLyrics,
                     onQueueMove = onQueueMove,
-                    onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
+                    onChangeIndexRequested = onChangeIndexRequested,
                     onRemoveTrackFromQueue = onRemoveTrackFromQueue,
                     onToggleFavorite = onToggleFavorite,
                 )

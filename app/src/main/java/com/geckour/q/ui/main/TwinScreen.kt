@@ -104,8 +104,8 @@ fun TwinScreen(
         classType: OrientedClassType
     ) -> Unit,
     onQueueMove: (from: Int, to: Int) -> Unit,
-    onChangeRequestedTrackInQueue: (target: UiTrack) -> Unit,
-    onRemoveTrackFromQueue: (target: UiTrack) -> Unit,
+    onChangeIndexRequested: (index: Int) -> Unit,
+    onRemoveTrackFromQueue: (index: Int) -> Unit,
     onShowDropboxDialog: () -> Unit,
     onRetrieveMedia: (onlyAdded: Boolean) -> Unit,
     onDownload: (targets: List<String>) -> Unit,
@@ -213,7 +213,7 @@ fun TwinScreen(
             onSelectTrack = onSelectTrack,
             onToggleShowLyrics = onToggleShowLyrics,
             onQueueMove = onQueueMove,
-            onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
+            onChangeIndexRequested = onChangeIndexRequested,
             onRemoveTrackFromQueue = onRemoveTrackFromQueue,
             onToggleFavorite = onToggleFavorite,
         )
@@ -463,8 +463,8 @@ fun RowScope.TwinEndPage(
     onToggleShowLyrics: () -> Unit,
     forceScrollToCurrent: Long,
     onQueueMove: (from: Int, to: Int) -> Unit,
-    onChangeRequestedTrackInQueue: (track: UiTrack) -> Unit,
-    onRemoveTrackFromQueue: (track: UiTrack) -> Unit,
+    onChangeIndexRequested: (index: Int) -> Unit,
+    onRemoveTrackFromQueue: (index: Int) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     var isPortrait by remember { mutableStateOf(true) }
@@ -508,7 +508,7 @@ fun RowScope.TwinEndPage(
                 onSelectTrack = onSelectTrack,
                 onToggleShowLyrics = onToggleShowLyrics,
                 onQueueMove = onQueueMove,
-                onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
+                onChangeIndexRequested = onChangeIndexRequested,
                 onRemoveTrackFromQueue = onRemoveTrackFromQueue,
                 onToggleFavorite = onToggleFavorite,
             )

@@ -90,8 +90,8 @@ fun ColumnScope.Queue(
     forceScrollToCurrent: Long,
     onQueueMove: (from: Int, to: Int) -> Unit,
     onTrackSelected: (track: UiTrack) -> Unit,
-    onChangeRequestedTrackInQueue: (uiTrack: UiTrack) -> Unit,
-    onRemoveTrackFromQueue: (uiTrack: UiTrack) -> Unit,
+    onChangeIndexRequested: (index: Int) -> Unit,
+    onRemoveTrackFromQueue: (index: Int) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     val context = LocalContext.current
@@ -269,7 +269,7 @@ fun ColumnScope.Queue(
                         index = index,
                         isDragging = isDragging,
                         onTrackSelected = onTrackSelected,
-                        onChangeRequestedTrackInQueue = onChangeRequestedTrackInQueue,
+                        onChangeIndexRequested = onChangeIndexRequested,
                         onRemoveTrackFromQueue = onRemoveTrackFromQueue,
                         onToggleFavorite = onToggleFavorite,
                     )
@@ -286,8 +286,8 @@ fun QueueItem(
     index: Int,
     isDragging: Boolean,
     onTrackSelected: (track: UiTrack) -> Unit,
-    onChangeRequestedTrackInQueue: (uiTrack: UiTrack) -> Unit,
-    onRemoveTrackFromQueue: (uiTrack: UiTrack) -> Unit,
+    onChangeIndexRequested: (index: Int) -> Unit,
+    onRemoveTrackFromQueue: (index: Int) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     val elevation by animateDpAsState(targetValue = if (isDragging) 16.dp else 0.dp, label = "")
@@ -295,7 +295,7 @@ fun QueueItem(
     Surface(
         shadowElevation = elevation,
         color = if (uiTrack.nowPlaying) QTheme.colors.colorWeekAccent else QTheme.colors.colorBackgroundBottomSheet,
-        onClick = { onChangeRequestedTrackInQueue(uiTrack) },
+        onClick = { onChangeIndexRequested(index) },
         modifier = modifier
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -362,7 +362,7 @@ fun QueueItem(
                             .clickable(
                                 indication = rememberRipple(bounded = false),
                                 interactionSource = remember { MutableInteractionSource() }
-                            ) { onRemoveTrackFromQueue(uiTrack) }
+                            ) { onRemoveTrackFromQueue(index) }
                             .padding(8.dp)
                             .size(20.dp)
                     )

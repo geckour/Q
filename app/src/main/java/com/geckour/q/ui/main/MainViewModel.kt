@@ -263,8 +263,20 @@ class MainViewModel(private val app: App) : ViewModel() {
         )
     }
 
-    internal fun onRemoveTrackFromQueue(uiTrack: UiTrack) {
-        onRemoveTrackFromQueue(uiTrack.sourcePath)
+    internal fun onRemoveTrackFromQueue(index: Int) {
+        val mediaController = this.mediaController ?: return
+
+        viewModelScope.launch {
+            mediaController.sendCustomCommand(
+                SessionCommand(
+                    PlayerService.ACTION_COMMAND_REMOVE_QUEUE,
+                    Bundle.EMPTY
+                ),
+                bundleOf(
+                    PlayerService.ACTION_EXTRA_REMOVE_QUEUE_TARGET_INDEX to index,
+                )
+            )
+        }
     }
 
     private fun onRemoveTrackFromQueue(sourcePath: String) {
@@ -362,8 +374,7 @@ class MainViewModel(private val app: App) : ViewModel() {
         notifyPlaybackPositionJob.cancel()
         notifyPlaybackPositionJob = viewModelScope.launch {
             while (this.isActive) {
-                currentPlaybackPositionFlow.value =
-                    mediaController.currentPosition
+                currentPlaybackPositionFlow.value = mediaController.currentPosition
                 delay(100)
             }
         }
@@ -386,7 +397,7 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal fun deleteTrack(uiTrack: UiTrack) {
         viewModelScope.launch {
             purgeDownloaded(listOf(uiTrack.sourcePath)).join()
-            onRemoveTrackFromQueue(uiTrack)
+            onRemoveTrackFromQueue(uiTrack.sourcePath)
 
             db.trackDao().deleteIncludingRootIfEmpty(db, uiTrack.id)
         }
@@ -412,8 +423,7 @@ class MainViewModel(private val app: App) : ViewModel() {
         }
     }
 
-    internal fun onChangeRequestedTrackInQueue(uiTrack: UiTrack) {
-        val index = currentSourcePathsFlow.value.indexOf(uiTrack.sourcePath)
+    internal fun onChangeIndexRequested(index: Int) {
         mediaController?.sendCustomCommand(
             SessionCommand(
                 PlayerService.ACTION_COMMAND_RESET_QUEUE_INDEX,
