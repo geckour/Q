@@ -4,7 +4,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -26,11 +25,12 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -132,116 +132,113 @@ fun ColumnScope.Queue(
         LaunchedEffect(currentIndex, lyricListHeight) {
             if (isInEditMode.not() && currentIndex > -1) {
                 listState.animateScrollToItem(
-                    currentIndex + 1,
+                    currentIndex,
                     -lyricListHeight / 2 + with(density) { 22.dp.roundToPx() }
                 )
             }
         }
-        LazyColumn(
-            state = listState,
+        Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
                 .onSizeChanged { lyricListHeight = it.height }
         ) {
-            item {
-                Row(
-                    modifier = Modifier
-                        .padding(horizontal = 24.dp)
-                        .fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    Button(onClick = { isInEditMode = isInEditMode.not() }) {
-                        Text(
-                            text = if (isInEditMode) "完了" else "編集",
-                            color = QTheme.colors.colorTextPrimary
-                        )
-                    }
-                }
-            }
-            if (isInEditMode) {
-                item {
-                    NewLyricLineInputBox(
-                        onSubmit = { newSentence ->
-                            coroutineScope.launch {
-                                (lyric ?: uiTracks.firstOrNull { it.nowPlaying }
-                                    ?.id
-                                    ?.let {
-                                        val newLyric =
-                                            Lyric(id = 0, trackId = it, lines = emptyList())
-                                        val id = db.lyricDao().upsertLyric(newLyric)
-                                        newLyric.copy(id = id)
-                                    })?.let {
-                                    db.lyricDao().upsertLyric(
-                                        it.copy(
-                                            lines = lyricLinesForShowing.map { it.lyricLine } +
-                                                    LyricLine(
-                                                        currentPlaybackPosition,
-                                                        newSentence
-                                                    )
+            Icon(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .clickable(
+                        indication = rememberRipple(bounded = false),
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) { isInEditMode = isInEditMode.not() }
+                    .padding(8.dp),
+                imageVector = if (isInEditMode) Icons.Default.Save else Icons.Default.Edit,
+                contentDescription = if (isInEditMode) "Save" else "Edit"
+            )
+            LazyColumn(state = listState) {
+                if (isInEditMode) {
+                    item {
+                        NewLyricLineInputBox(
+                            onSubmit = { newSentence ->
+                                coroutineScope.launch {
+                                    (lyric ?: uiTracks.firstOrNull { it.nowPlaying }
+                                        ?.id
+                                        ?.let {
+                                            val newLyric =
+                                                Lyric(id = 0, trackId = it, lines = emptyList())
+                                            val id = db.lyricDao().upsertLyric(newLyric)
+                                            newLyric.copy(id = id)
+                                        })?.let {
+                                        db.lyricDao().upsertLyric(
+                                            it.copy(
+                                                lines = lyricLinesForShowing.map { it.lyricLine } +
+                                                        LyricLine(
+                                                            currentPlaybackPosition,
+                                                            newSentence
+                                                        )
+                                            )
                                         )
-                                    )
+                                    }
                                 }
                             }
-                        }
-                    )
-                }
-            } else if (lyric?.lines.isNullOrEmpty()) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 24.dp, vertical = 40.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "歌詞が設定されていないか読み込めませんでした",
-                            fontSize = 20.sp,
-                            color = QTheme.colors.colorTextPrimary
                         )
                     }
+                } else if (lyric?.lines.isNullOrEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 40.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "歌詞が設定されていないか読み込めませんでした",
+                                fontSize = 20.sp,
+                                color = QTheme.colors.colorTextPrimary
+                            )
+                        }
+                    }
                 }
-            }
-            items(lyricLinesForShowing) { indexedLyricLine ->
-                if (isInEditMode) EditableLrcItem(
-                    line = indexedLyricLine,
-                    currentPlaybackPosition = currentPlaybackPosition,
-                    onUpdateLine = { index, newLine ->
-                        lyric?.let {
-                            coroutineScope.launch {
-                                db.lyricDao()
-                                    .upsertLyric(
-                                        it.copy(
-                                            lines = lyricLinesForShowing.toMutableList()
-                                                .apply {
-                                                    set(
-                                                        index,
-                                                        IndexedLyricLine(index, newLine)
-                                                    )
-                                                }
-                                                .map { it.lyricLine }
+                items(lyricLinesForShowing) { indexedLyricLine ->
+                    if (isInEditMode) EditableLrcItem(
+                        line = indexedLyricLine,
+                        currentPlaybackPosition = currentPlaybackPosition,
+                        onUpdateLine = { index, newLine ->
+                            lyric?.let {
+                                coroutineScope.launch {
+                                    db.lyricDao()
+                                        .upsertLyric(
+                                            it.copy(
+                                                lines = lyricLinesForShowing.toMutableList()
+                                                    .apply {
+                                                        set(
+                                                            index,
+                                                            IndexedLyricLine(index, newLine)
+                                                        )
+                                                    }
+                                                    .map { it.lyricLine }
+                                            )
                                         )
-                                    )
+                                }
                             }
-                        }
-                    },
-                    onDeleteLine = { index ->
-                        lyric?.let {
-                            coroutineScope.launch {
-                                db.lyricDao()
-                                    .upsertLyric(
-                                        it.copy(
-                                            lines = lyricLinesForShowing.removedAt(index)
-                                                .map { it.lyricLine }
+                        },
+                        onDeleteLine = { index ->
+                            lyric?.let {
+                                coroutineScope.launch {
+                                    db.lyricDao()
+                                        .upsertLyric(
+                                            it.copy(
+                                                lines = lyricLinesForShowing.removedAt(index)
+                                                    .map { it.lyricLine }
+                                            )
                                         )
-                                    )
+                                }
                             }
-                        }
-                    })
-                else LrcItem(
-                    lyric = indexedLyricLine.lyricLine.sentence,
-                    indexedLyricLine.index == currentIndex
-                )
+                        })
+                    else LrcItem(
+                        lyric = indexedLyricLine.lyricLine.sentence,
+                        indexedLyricLine.index == currentIndex
+                    )
+                }
             }
         }
     } else {
