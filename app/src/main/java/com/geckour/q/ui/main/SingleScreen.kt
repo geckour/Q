@@ -149,6 +149,12 @@ fun SingleScreen(
         }
     }
 
+    LaunchedEffect(currentIndex) {
+        if (scaffoldState.bottomSheetState.currentValue == SheetValue.Hidden) {
+            moveToCurrentIndex()
+        }
+    }
+
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
@@ -193,7 +199,6 @@ fun SingleScreen(
                 PlayerSheet(
                     animateController = true,
                     libraryHeight = libraryHeight,
-                    bottomSheetValue = scaffoldState.bottomSheetState.currentValue,
                     queue = queue,
                     currentIndex = currentIndex,
                     currentPlaybackPosition = currentPlaybackPosition,

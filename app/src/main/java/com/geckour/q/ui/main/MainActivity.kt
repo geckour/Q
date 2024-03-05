@@ -120,6 +120,7 @@ class MainActivity : ComponentActivity() {
     private val viewModel by viewModel<MainViewModel>()
     private var onAuthDropboxCompleted: (() -> Unit)? = null
     private var onCancelProgress: (() -> Unit)? = null
+    private var onScrollToCurrent: (() -> Unit)? = null
 
     private var onLrcFileLoaded: ((lyricLines: List<LyricLine>) -> Unit)? = null
     private var lrcString: String? = null
@@ -502,6 +503,7 @@ class MainActivity : ComponentActivity() {
 
             SideEffect {
                 onAuthDropboxCompleted = { showDropboxDialog = true }
+                onScrollToCurrent = { forceScrollToCurrent = System.currentTimeMillis() }
             }
 
             QTheme(darkTheme = isInNightMode) {
@@ -863,6 +865,8 @@ class MainActivity : ComponentActivity() {
         }
 
         viewModel.requestBillingInfoUpdate()
+
+        onScrollToCurrent?.invoke()
     }
 
     override fun onStop() {

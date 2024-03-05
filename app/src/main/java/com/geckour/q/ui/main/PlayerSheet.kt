@@ -23,13 +23,11 @@ import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.util.ShuffleActionType
 import kotlinx.collections.immutable.ImmutableList
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PlayerSheet(
     isPortrait: Boolean = true,
     animateController: Boolean = false,
     libraryHeight: Int? = null,
-    bottomSheetValue: SheetValue? = null,
     queue: ImmutableList<UiTrack>,
     currentIndex: Int,
     currentPlaybackPosition: Long,
@@ -115,7 +113,6 @@ fun PlayerSheet(
         )
         Queue(
             uiTracks = queue,
-            bottomSheetValue = bottomSheetValue,
             showLyric = showLyric,
             onTrackSelected = onSelectTrack,
             currentPlaybackPosition = currentPlaybackPosition,

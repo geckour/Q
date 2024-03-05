@@ -34,7 +34,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -80,11 +79,9 @@ import org.burnoutcrew.reorderable.rememberReorderableLazyListState
 import org.burnoutcrew.reorderable.reorderable
 
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ColumnScope.Queue(
     uiTracks: ImmutableList<UiTrack>,
-    bottomSheetValue: SheetValue?,
     showLyric: Boolean,
     currentPlaybackPosition: Long,
     forceScrollToCurrent: Long,
@@ -113,14 +110,11 @@ fun ColumnScope.Queue(
     LaunchedEffect(uiTracks) {
         items = uiTracks
     }
-    LaunchedEffect(bottomSheetValue) {
-        if (bottomSheetValue == SheetValue.Expanded)
+    LaunchedEffect(forceScrollToCurrent) {
+        if (showLyric.not()) {
             reorderableState.listState.animateScrollToItem(uiTracks.indexOfFirst { it.nowPlaying }
                 .coerceAtLeast(0))
-    }
-    LaunchedEffect(forceScrollToCurrent) {
-        reorderableState.listState.animateScrollToItem(uiTracks.indexOfFirst { it.nowPlaying }
-            .coerceAtLeast(0))
+        }
     }
 
     if (showLyric) {
