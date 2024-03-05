@@ -149,8 +149,8 @@ fun SingleScreen(
         }
     }
 
-    LaunchedEffect(currentIndex) {
-        if (scaffoldState.bottomSheetState.currentValue == SheetValue.Hidden) {
+    LaunchedEffect(scaffoldState.bottomSheetState.currentValue) {
+        if (scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) {
             moveToCurrentIndex()
         }
     }

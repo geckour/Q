@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -72,6 +73,7 @@ import com.geckour.q.util.nonUpScaleSp
 import com.geckour.q.util.removedAt
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
@@ -94,6 +96,7 @@ fun ColumnScope.Queue(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val db = DB.getInstance(context)
+    val density = LocalDensity.current
     var items by remember { mutableStateOf(uiTracks) }
     val lyric by db.lyricDao()
         .getLyricFlowByTrackId(uiTracks.firstOrNull { it.nowPlaying }?.id ?: -1)
@@ -103,7 +106,7 @@ fun ColumnScope.Queue(
         onMove = { from, to -> items = items.moved(from.index, to.index).toImmutableList() },
         onDragEnd = { from, to -> onQueueMove(from, to) }
     )
-    var lyricListHeight by remember { mutableIntStateOf(0) }
+    var contentHeight by remember { mutableIntStateOf(0) }
 
     var isInEditMode by remember { mutableStateOf(false) }
 
@@ -112,15 +115,16 @@ fun ColumnScope.Queue(
     }
     LaunchedEffect(forceScrollToCurrent) {
         if (showLyric.not()) {
-            reorderableState.listState.animateScrollToItem(uiTracks.indexOfFirst { it.nowPlaying }
-                .coerceAtLeast(0))
+            reorderableState.listState.animateScrollToItem(
+                uiTracks.indexOfFirst { it.nowPlaying }.coerceAtLeast(0),
+                -contentHeight / 2 + with(density) { 44.dp.roundToPx() }
+            )
         }
     }
 
     if (showLyric) {
         var currentIndex by remember { mutableIntStateOf(-1) }
         val listState = rememberLazyListState()
-        val density = LocalDensity.current
 
         LaunchedEffect(currentPlaybackPosition) {
             currentIndex =
@@ -129,19 +133,19 @@ fun ColumnScope.Queue(
                     it.lyricLine.timing < currentPlaybackPosition
                 }
         }
-        LaunchedEffect(currentIndex, lyricListHeight) {
+        LaunchedEffect(currentIndex) {
             if (isInEditMode.not() && currentIndex > -1) {
                 listState.animateScrollToItem(
                     currentIndex,
-                    -lyricListHeight / 2 + with(density) { 22.dp.roundToPx() }
+                    -contentHeight / 2 + with(density) { 22.dp.roundToPx() }
                 )
             }
         }
         Box(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxHeight()
-                .onSizeChanged { lyricListHeight = it.height }
+                .fillMaxSize()
+                .onSizeChanged { contentHeight = it.height }
         ) {
             Icon(
                 modifier = Modifier
@@ -249,6 +253,7 @@ fun ColumnScope.Queue(
                 .detectReorderAfterLongPress(reorderableState)
                 .weight(1f)
                 .fillMaxHeight()
+                .onSizeChanged { contentHeight = it.height }
         ) {
             itemsIndexed(items, { _, item -> item.key }) { index, domainTrack ->
                 ReorderableItem(
