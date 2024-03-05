@@ -23,7 +23,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,6 +30,7 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -56,6 +56,7 @@ import com.geckour.q.util.getTimeString
 import com.geckour.q.util.isDownloaded
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -71,11 +72,15 @@ fun Albums(
     onSelectAlbum: (item: JoinedAlbum) -> Unit,
     onDownload: (dropboxPaths: List<String>) -> Unit,
     onInvalidateDownloaded: (albumId: Long) -> Unit,
+    resumeScrollToIndex: Int,
+    resumeScrollToOffset: Int,
     scrollToTop: Long,
+    onScrollPositionUpdated: (newIndex: Int, newOffset: Int) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onSearchItemClicked: (item: SearchItem) -> Unit,
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val db = DB.getInstance(LocalContext.current)
     val pager = remember {
         Pager(PagingConfig(pageSize = 30, enablePlaceholders = true)) {
@@ -96,6 +101,24 @@ fun Albums(
             if (artistId > 0) db.artistDao().get(artistId)?.title ?: defaultTabBarTitle
             else defaultTabBarTitle
         )
+    }
+
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress.not()) {
+            onScrollPositionUpdated(
+                listState.firstVisibleItemIndex,
+                listState.firstVisibleItemScrollOffset
+            )
+        }
+    }
+
+    LaunchedEffect(resumeScrollToIndex) {
+        coroutineScope.launch {
+            listState.scrollToItem(
+                index = resumeScrollToIndex,
+                scrollOffset = resumeScrollToOffset
+            )
+        }
     }
 
     LaunchedEffect(scrollToTop) {
@@ -135,7 +158,8 @@ fun Albums(
         }
         items(lazyPagingItems.itemCount) { index ->
             val joinedAlbum = lazyPagingItems[index] ?: return@items
-            val tracks by db.trackDao().getAllByAlbumAsFlow(joinedAlbum.album.id).collectAsState(initial = emptyList())
+            val tracks by db.trackDao().getAllByAlbumAsFlow(joinedAlbum.album.id)
+                .collectAsState(initial = emptyList())
             val containDropboxContent = tracks.any { it.dropboxPath != null }
             val downloadableDropboxPaths = tracks.mapNotNull {
                 if (it.isDownloaded) null else it.dropboxPath

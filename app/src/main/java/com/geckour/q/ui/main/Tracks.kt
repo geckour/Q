@@ -1,5 +1,6 @@
 package com.geckour.q.ui.main
 
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -27,7 +28,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -52,6 +56,7 @@ import com.geckour.q.util.isDownloaded
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 @Composable
 fun Tracks(
@@ -66,11 +71,15 @@ fun Tracks(
     onTrackSelected: (item: UiTrack) -> Unit,
     onDownload: (item: UiTrack) -> Unit,
     onInvalidateDownloaded: (item: UiTrack) -> Unit,
+    resumeScrollToIndex: Int,
+    resumeScrollToOffset: Int,
     scrollToTop: Long,
+    onScrollPositionUpdated: (newIndex: Int, newOffset: Int) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onSearchItemClicked: (item: SearchItem) -> Unit,
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val db = DB.getInstance(LocalContext.current)
     val pager = remember {
         Pager(PagingConfig(pageSize = 20, enablePlaceholders = true)) {
@@ -97,6 +106,24 @@ fun Tracks(
                 else -> defaultTabBarTitle
             }
         )
+    }
+
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress.not()) {
+            onScrollPositionUpdated(
+                listState.firstVisibleItemIndex,
+                listState.firstVisibleItemScrollOffset
+            )
+        }
+    }
+
+    LaunchedEffect(resumeScrollToIndex) {
+        coroutineScope.launch {
+            listState.scrollToItem(
+                index = resumeScrollToIndex,
+                scrollOffset = resumeScrollToOffset
+            )
+        }
     }
 
     LaunchedEffect(scrollToTop) {

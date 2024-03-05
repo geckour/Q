@@ -6,9 +6,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -23,15 +26,16 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.AllArtists
-import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SearchItem
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -64,6 +68,7 @@ fun Library(
     val keyboardController = LocalSoftwareKeyboardController.current
     val query = remember { mutableStateOf("") }
     val result = remember { mutableStateOf<ImmutableList<SearchItem>>(persistentListOf()) }
+    var updatedScrollPositionMap by remember { mutableStateOf(mapOf<String, Pair<Int, Int>>()) }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -85,6 +90,24 @@ fun Library(
                     onChangeTopBarTitle(topBarTitle)
                     onSetOptionMediaItem(AllArtists)
                 }
+                var resumeScrollToIndex by remember { mutableIntStateOf(0) }
+                var resumeScrollToOffset by remember { mutableIntStateOf(0) }
+                LaunchedEffect(navController.currentBackStackEntry) {
+                    val route = navController.currentBackStackEntry?.destination?.route
+                        ?: return@LaunchedEffect
+                    val (index, offset) = updatedScrollPositionMap[route]
+                        ?: return@LaunchedEffect
+                    if (route == "artists") {
+                        coroutineScope.launch {
+                            delay(200)
+                            resumeScrollToIndex = index
+                            resumeScrollToOffset = offset
+                            updatedScrollPositionMap =
+                                updatedScrollPositionMap + (route to (index to offset))
+                        }
+                    }
+                }
+
                 Artists(
                     navController = navController,
                     isSearchActive = isSearchActive,
@@ -105,7 +128,16 @@ fun Library(
                             onInvalidateDownloaded(targets)
                         }
                     },
+                    resumeScrollToIndex = resumeScrollToIndex,
+                    resumeScrollToOffset = resumeScrollToOffset,
                     scrollToTop = scrollToTop,
+                    onScrollPositionUpdated = { index, offset ->
+                        val route = navController.currentBackStackEntry?.destination?.route
+                        if (route != null) {
+                            updatedScrollPositionMap =
+                                updatedScrollPositionMap + (route to (index to offset))
+                        }
+                    },
                     onToggleFavorite = onToggleFavorite,
                     onSearchItemClicked = onSearchItemClicked,
                     onSearchItemLongClicked = onSearchItemLongClicked,
@@ -133,6 +165,24 @@ fun Library(
                         )
                     }
                 }
+                var resumeScrollToIndex by remember { mutableIntStateOf(0) }
+                var resumeScrollToOffset by remember { mutableIntStateOf(0) }
+                LaunchedEffect(navController.currentBackStackEntry) {
+                    val route = navController.currentBackStackEntry?.destination?.route
+                        ?: return@LaunchedEffect
+                    val (index, offset) = updatedScrollPositionMap["$route-$artistId"]
+                        ?: return@LaunchedEffect
+                    if (route.startsWith("albums")) {
+                        coroutineScope.launch {
+                            delay(200)
+                            resumeScrollToIndex = index
+                            resumeScrollToOffset = offset
+                            updatedScrollPositionMap =
+                                updatedScrollPositionMap + ("$route-$artistId" to (index to offset))
+                        }
+                    }
+                }
+
                 Albums(
                     navController = navController,
                     artistId = backStackEntry.arguments?.getLong("artistId")
@@ -160,7 +210,16 @@ fun Library(
                             onInvalidateDownloaded(targets)
                         }
                     },
+                    resumeScrollToIndex = resumeScrollToIndex,
+                    resumeScrollToOffset = resumeScrollToOffset,
                     scrollToTop = scrollToTop,
+                    onScrollPositionUpdated = { index, offset ->
+                        val route = navController.currentBackStackEntry?.destination?.route
+                        if (route != null) {
+                            updatedScrollPositionMap =
+                                updatedScrollPositionMap + ("$route-$artistId" to (index to offset))
+                        }
+                    },
                     onToggleFavorite = onToggleFavorite,
                     onSearchItemClicked = onSearchItemClicked,
                     onSearchItemLongClicked = onSearchItemLongClicked,
@@ -193,6 +252,23 @@ fun Library(
                         )
                     }
                 }
+                var resumeScrollToIndex by remember { mutableIntStateOf(0) }
+                var resumeScrollToOffset by remember { mutableIntStateOf(0) }
+                LaunchedEffect(navController.currentBackStackEntry) {
+                    val route = navController.currentBackStackEntry?.destination?.route
+                        ?: return@LaunchedEffect
+                    val (index, offset) = updatedScrollPositionMap["$route-$albumId-$genreName"]
+                        ?: return@LaunchedEffect
+                    if (route.startsWith("tracks")) {
+                        coroutineScope.launch {
+                            delay(200)
+                            resumeScrollToIndex = index
+                            resumeScrollToOffset = offset
+                            updatedScrollPositionMap =
+                                updatedScrollPositionMap + ("$route-$albumId-$genreName" to (index to offset))
+                        }
+                    }
+                }
                 Tracks(
                     albumId = albumId,
                     genreName = genreName,
@@ -213,7 +289,16 @@ fun Library(
                     onInvalidateDownloaded = {
                         onInvalidateDownloaded(listOf(it.sourcePath))
                     },
+                    resumeScrollToIndex = resumeScrollToIndex,
+                    resumeScrollToOffset = resumeScrollToOffset,
                     scrollToTop = scrollToTop,
+                    onScrollPositionUpdated = { index, offset ->
+                        val route = navController.currentBackStackEntry?.destination?.route
+                        if (route != null) {
+                            updatedScrollPositionMap =
+                                updatedScrollPositionMap + ("$route-$albumId-$genreName" to (index to offset))
+                        }
+                    },
                     onToggleFavorite = onToggleFavorite,
                     onSearchItemClicked = onSearchItemClicked,
                     onSearchItemLongClicked = onSearchItemLongClicked,
@@ -229,6 +314,23 @@ fun Library(
                     onChangeTopBarTitle(topBarTitle)
                     onSetOptionMediaItem(null)
                 }
+                var resumeScrollToIndex by remember { mutableIntStateOf(0) }
+                var resumeScrollToOffset by remember { mutableIntStateOf(0) }
+                LaunchedEffect(navController.currentBackStackEntry) {
+                    val route = navController.currentBackStackEntry?.destination?.route
+                        ?: return@LaunchedEffect
+                    val (index, offset) = updatedScrollPositionMap[route]
+                        ?: return@LaunchedEffect
+                    if (route == "genres") {
+                        coroutineScope.launch {
+                            delay(200)
+                            resumeScrollToIndex = index
+                            resumeScrollToOffset = offset
+                            updatedScrollPositionMap =
+                                updatedScrollPositionMap + (route to (index to offset))
+                        }
+                    }
+                }
                 Genres(
                     navController = navController,
                     isSearchActive = isSearchActive,
@@ -236,7 +338,16 @@ fun Library(
                     result = result,
                     keyboardController = keyboardController,
                     onSelectGenre = { onSelectGenre(it) },
+                    resumeScrollToIndex = resumeScrollToIndex,
+                    resumeScrollToOffset = resumeScrollToOffset,
                     scrollToTop = scrollToTop,
+                    onScrollPositionUpdated = { index, offset ->
+                        val route = navController.currentBackStackEntry?.destination?.route
+                        if (route != null) {
+                            updatedScrollPositionMap =
+                                updatedScrollPositionMap + (route to (index to offset))
+                        }
+                    },
                     onSearchItemClicked = onSearchItemClicked,
                     onSearchItemLongClicked = onSearchItemLongClicked,
                 )

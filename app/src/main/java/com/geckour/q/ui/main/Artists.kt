@@ -22,7 +22,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -69,7 +68,10 @@ fun Artists(
     onSelectArtist: (item: Artist) -> Unit,
     onDownload: (dropboxPaths: List<String>) -> Unit,
     onInvalidateDownloaded: (artistId: Long) -> Unit,
+    resumeScrollToIndex: Int,
+    resumeScrollToOffset: Int,
     scrollToTop: Long,
+    onScrollPositionUpdated: (newIndex: Int, newOffset: Int) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onSearchItemClicked: (item: SearchItem) -> Unit,
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
@@ -87,6 +89,24 @@ fun Artists(
         } else pager.flow)
             .collectAsLazyPagingItems()
     val listState = rememberLazyListState()
+
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress.not()) {
+            onScrollPositionUpdated(
+                listState.firstVisibleItemIndex,
+                listState.firstVisibleItemScrollOffset
+            )
+        }
+    }
+
+    LaunchedEffect(resumeScrollToIndex) {
+        coroutineScope.launch {
+            listState.scrollToItem(
+                index = resumeScrollToIndex,
+                scrollOffset = resumeScrollToOffset
+            )
+        }
+    }
 
     LaunchedEffect(scrollToTop) {
         listState.animateScrollToItem(0)

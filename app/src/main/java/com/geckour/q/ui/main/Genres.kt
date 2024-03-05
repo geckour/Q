@@ -26,6 +26,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,7 +49,6 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
-import timber.log.Timber
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -59,10 +59,14 @@ fun Genres(
     result: MutableState<ImmutableList<SearchItem>>,
     keyboardController: SoftwareKeyboardController?,
     onSelectGenre: (item: Genre) -> Unit,
+    resumeScrollToIndex: Int,
+    resumeScrollToOffset: Int,
     scrollToTop: Long,
+    onScrollPositionUpdated: (newIndex: Int, newOffset: Int) -> Unit,
     onSearchItemClicked: (item: SearchItem) -> Unit,
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
 ) {
+    val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val db = DB.getInstance(context)
     val genreNames by db.trackDao()
@@ -81,6 +85,24 @@ fun Genres(
                     tracks.sumOf { it.track.duration }
                 )
             }.toImmutableList()
+        }
+    }
+
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress.not()) {
+            onScrollPositionUpdated(
+                listState.firstVisibleItemIndex,
+                listState.firstVisibleItemScrollOffset
+            )
+        }
+    }
+
+    LaunchedEffect(resumeScrollToIndex) {
+        coroutineScope.launch {
+            listState.scrollToItem(
+                index = resumeScrollToIndex,
+                scrollOffset = resumeScrollToOffset
+            )
         }
     }
 
@@ -106,7 +128,6 @@ fun Genres(
             genres,
             key = { it.name }
         ) { genre ->
-            Timber.d("qgeck genre: $genre")
             Column(
                 modifier = Modifier
                     .combinedClickable(
