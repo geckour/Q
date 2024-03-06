@@ -22,16 +22,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Button
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -73,7 +75,6 @@ import com.geckour.q.util.nonUpScaleSp
 import com.geckour.q.util.removedAt
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.burnoutcrew.reorderable.ReorderableItem
 import org.burnoutcrew.reorderable.detectReorderAfterLongPress
@@ -147,17 +148,6 @@ fun ColumnScope.Queue(
                 .fillMaxSize()
                 .onSizeChanged { contentHeight = it.height }
         ) {
-            Icon(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .clickable(
-                        indication = rememberRipple(bounded = false),
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) { isInEditMode = isInEditMode.not() }
-                    .padding(8.dp),
-                imageVector = if (isInEditMode) Icons.Default.Save else Icons.Default.Edit,
-                contentDescription = if (isInEditMode) "Save" else "Edit"
-            )
             LazyColumn(state = listState) {
                 if (isInEditMode) {
                     item {
@@ -243,6 +233,23 @@ fun ColumnScope.Queue(
                         indexedLyricLine.index == currentIndex
                     )
                 }
+                item {
+                    Spacer(modifier = Modifier.height(36.dp))
+                }
+            }
+            FloatingActionButton(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(8.dp)
+                    .size(32.dp),
+                shape = CircleShape,
+                onClick = { isInEditMode = isInEditMode.not() }
+            ) {
+                Icon(
+                    imageVector = if (isInEditMode) Icons.Default.Done else Icons.Default.Edit,
+                    contentDescription = if (isInEditMode) "Done" else "Edit",
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
     } else {
