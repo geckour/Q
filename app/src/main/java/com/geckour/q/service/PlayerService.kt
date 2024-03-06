@@ -427,9 +427,10 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                             lifecycleScope.launch {
                                 val trackDao = DB.getInstance(this@PlayerService).trackDao()
                                 val track = trackDao.getBySourcePath(it)?.track ?: return@launch
-                                trackDao.insert(track.copy(isFavorite = track.isFavorite.not()))
+                                val isFavorite = track.isFavorite.not()
+                                trackDao.insert(track.copy(isFavorite = isFavorite))
+                                onStateChanged(isFavorite = isFavorite)
                             }
-                            onStateChanged()
                             Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                         }
                             ?: Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_INVALID_STATE))
@@ -690,7 +691,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         mediaRouter.removeCallback(mediaRouterCallback)
     }
 
-    private fun onStateChanged() {
+    private fun onStateChanged(isFavorite: Boolean? = null) {
         if (inPurge) return
 
         val state = PlayerState(
@@ -711,7 +712,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                 mediaSession.setCustomLayout(emptyList())
                 return@launch
             }
-            val isFavorite = db.trackDao().getBySourcePath(sourcePath)?.track?.isFavorite ?: run {
+            val f = isFavorite ?: db.trackDao().getBySourcePath(sourcePath)?.track?.isFavorite ?: run {
                 mediaSession.setCustomLayout(emptyList())
                 return@launch
             }
@@ -719,7 +720,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
             mediaSession.setCustomLayout(
                 listOf(
                     CommandButton.Builder()
-                        .setIconResId(if (isFavorite) R.drawable.star_filled else R.drawable.star)
+                        .setIconResId(if (f) R.drawable.star_filled else R.drawable.star)
                         .setDisplayName(getString(R.string.notification_action_toggle_favorite))
                         .setSessionCommand(
                             SessionCommand(ACTION_COMMAND_TOGGLE_FAVORITE, Bundle.EMPTY)
