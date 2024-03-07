@@ -16,11 +16,11 @@ import coil.request.ImageRequest
 import coil.size.Scale
 import com.dropbox.core.util.IOUtil.ProgressListener
 import com.dropbox.core.v2.DbxClientV2
+import com.geckour.q.R
 import com.geckour.q.data.db.BoolConverter
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
-import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.databinding.DialogEditMetadataBinding
@@ -149,34 +149,38 @@ val Track.isDownloaded
 suspend fun DB.searchTrackByFuzzyTitle(title: String): List<JoinedTrack> =
     this@searchTrackByFuzzyTitle.trackDao().getAllByTitle("%${title.escapeSql}%")
 
-suspend fun List<String>.getThumb(context: Context): Bitmap? {
+suspend fun List<String?>.getThumb(context: Context): Bitmap? {
     if (this.isEmpty()) return null
     val unit = 100
     val width = ((this.size * 0.9 - 0.1) * unit).toInt()
     val bitmap = Bitmap.createBitmap(width, unit, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
     withContext(Dispatchers.IO) {
-        this@getThumb.reversed().forEachIndexed { i, uriString ->
-            val b = catchAsNull {
-                Coil.imageLoader(context)
-                    .execute(
-                        ImageRequest.Builder(context)
-                            .data(uriString)
-                            .size(unit)
-                            .scale(Scale.FIT)
-                            .allowHardware(false)
-                            .build()
-                    )
-                    .drawable
-                    ?.toBitmap()
-            } ?: return@forEachIndexed
-            canvas.drawBitmap(
-                b,
-                bitmap.width - (i + 1) * unit * 0.9f,
-                (unit - b.height) / 2f,
-                Paint()
-            )
-        }
+        this@getThumb.reversed()
+            .fold(emptyList<String?>()) { acc, uriString ->
+                if (acc.isNotEmpty() && acc.last() == uriString) acc else acc + uriString
+            }
+            .forEachIndexed { i, uriString ->
+                val b = catchAsNull {
+                    Coil.imageLoader(context)
+                        .execute(
+                            ImageRequest.Builder(context)
+                                .data(uriString ?: R.drawable.ic_empty)
+                                .size(unit)
+                                .scale(Scale.FIT)
+                                .allowHardware(false)
+                                .build()
+                        )
+                        .drawable
+                        ?.toBitmap()
+                } ?: return@forEachIndexed
+                canvas.drawBitmap(
+                    b,
+                    bitmap.width - (i + 1) * unit * 0.9f,
+                    (unit - b.height) / 2f,
+                    Paint()
+                )
+            }
     }
     return bitmap
 }

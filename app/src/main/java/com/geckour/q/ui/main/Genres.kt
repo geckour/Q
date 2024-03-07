@@ -190,5 +190,5 @@ fun Genres(
 private suspend fun List<JoinedTrack>.getGenreThumb(context: Context): Bitmap? =
     this.distinctBy { it.album.id }
         .take(5)
-        .mapNotNull { it.album.artworkUriString }
+        .map { it.album.artworkUriString }
         .getThumb(context)
