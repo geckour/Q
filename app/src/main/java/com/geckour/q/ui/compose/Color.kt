@@ -31,6 +31,8 @@ val ColorCoverInactiveInverse = Color(0xa0202020)
 
 val ColorBackground = Color(0xffffffff)
 val ColorBackgroundInverse = Color(0xff202020)
+val ColorBackgroundSelected = Color(0x80fbc02d)
+val ColorBackgroundSelectedInverse = Color(0x802f4149)
 val ColorBackgroundBottomSheet = Color(0xffffffff)
 val ColorBackgroundBottomSheetInverse = Color(0xff303030)
 val ColorBackgroundInactive = Color(0xe8ffffff)
@@ -45,11 +47,4 @@ val ColorEqualizerScale = Color(0x20160900)
 val ColorEqualizerScaleInverse = Color(0x20E3E3E3)
 
 val ColorDivider = Color(0x80f095ad)
-val ColorDividerInverse = Color(0x80a6bbbe)
-
-val ColorShadowBottomSheetStart = Color(0x30000000)
-val ColorShadowBottomSheetCenter = Color(0x10000000)
-val ColorShadowBottomSheetStartInverse = Color(0x20ffffff)
-val ColorShadowBottomSheetCenterInverse = Color(0x08ffffff)
-
-val ColorCoin = Color(0xffd5cfc1)
+val ColorDividerInverse = Color(0x802f4149)

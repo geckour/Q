@@ -18,26 +18,34 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.DrawerState
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.googlefonts.Font
 import androidx.compose.ui.text.googlefonts.GoogleFont
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import com.geckour.q.R
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.Nav
+import com.geckour.q.ui.compose.ColorShadowTextDrawerHeader
 import com.geckour.q.ui.compose.ColorStrong
 import com.geckour.q.ui.compose.QTheme
 import kotlinx.coroutines.launch
@@ -73,8 +81,11 @@ fun DrawerHeader(openQzi: () -> Unit) {
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = stringResource(id = R.string.nav_header_desc),
-            fontFamily = FontFamily(Font(googleFont = fontName, fontProvider = fontProvider)),
-            color = Color.White
+            style = TextStyle(
+                color = Color.White,
+                fontFamily = FontFamily(Font(googleFont = fontName, fontProvider = fontProvider)),
+                shadow = Shadow(color = ColorShadowTextDrawerHeader, Offset(2f, 2f), 8f)
+            )
         )
     }
 }
@@ -89,7 +100,7 @@ fun DrawerItem(
     Row(
         modifier = Modifier
             .clickable(onClick = onClick)
-            .background(color = if (isSelected) QTheme.colors.colorPrimaryDark else QTheme.colors.colorBackground)
+            .background(color = if (isSelected) QTheme.colors.colorBackgroundSelected else QTheme.colors.colorBackground)
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
@@ -200,7 +211,7 @@ fun Drawer(
             )
         }
         item {
-            HorizontalDivider(color = QTheme.colors.colorPrimaryDark)
+            HorizontalDivider(color = QTheme.colors.colorDivider)
         }
         item {
             DrawerSectionHeader(title = stringResource(id = R.string.nav_category_others))
@@ -254,4 +265,18 @@ fun Drawer(
             }
         }
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun DrawerPreview() {
+    Drawer(
+        drawerState = rememberDrawerState(initialValue = DrawerValue.Open),
+        navController = rememberNavController(),
+        selectedNav = Nav.TRACK,
+        equalizerParams = null,
+        onSelectNav = {},
+        onShowDropboxDialog = {},
+        onRetrieveMedia = {},
+    )
 }

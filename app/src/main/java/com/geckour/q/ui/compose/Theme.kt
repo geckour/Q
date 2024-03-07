@@ -20,10 +20,12 @@ private val lightColorPalette = QColors(
     colorInactive = ColorInactive,
     colorCoverInactive = ColorCoverInactive,
     colorButtonNormal = ColorPrimary,
-    colorTextSettingNormal = ColorPrimary,
+    colorTextSettingNormal = ColorTextStrong,
+    colorBackgroundSelected = ColorBackgroundSelected,
     colorBackgroundBottomSheet = ColorBackgroundBottomSheet,
     colorBackgroundProgress = ColorBackgroundProgress,
     colorBackgroundSearch = ColorBackgroundSearch,
+    colorDivider = ColorDivider,
     isLight = true
 )
 
@@ -38,10 +40,12 @@ private val darkColorPalette = QColors(
     colorInactive = ColorInactiveInverse,
     colorCoverInactive = ColorCoverInactiveInverse,
     colorButtonNormal = ColorStrong,
-    colorTextSettingNormal = ColorTextStrong,
+    colorTextSettingNormal = ColorTextStrongInverse,
+    colorBackgroundSelected = ColorBackgroundSelectedInverse,
     colorBackgroundBottomSheet = ColorBackgroundBottomSheetInverse,
     colorBackgroundProgress = ColorBackgroundProgressInverse,
     colorBackgroundSearch = ColorBackgroundSearchInverse,
+    colorDivider = ColorDividerInverse,
     isLight = false
 )
 
@@ -58,9 +62,11 @@ data class QColors(
     val colorCoverInactive: Color,
     val colorButtonNormal: Color,
     val colorTextSettingNormal: Color,
+    val colorBackgroundSelected: Color,
     val colorBackgroundBottomSheet: Color,
     val colorBackgroundProgress: Color,
     val colorBackgroundSearch: Color,
+    val colorDivider: Color,
     val isLight: Boolean,
 ) {
 
@@ -110,9 +116,11 @@ val LocalQColors = staticCompositionLocalOf {
         colorCoverInactive = Color.Unspecified,
         colorButtonNormal = Color.Unspecified,
         colorTextSettingNormal = Color.Unspecified,
+        colorBackgroundSelected = Color.Unspecified,
         colorBackgroundBottomSheet = Color.Unspecified,
         colorBackgroundProgress = Color.Unspecified,
         colorBackgroundSearch = Color.Unspecified,
+        colorDivider = Color.Unspecified,
         isLight = true
     )
 }
