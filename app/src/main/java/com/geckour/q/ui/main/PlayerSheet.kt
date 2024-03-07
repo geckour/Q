@@ -113,6 +113,7 @@ fun PlayerSheet(
         )
         Queue(
             uiTracks = queue,
+            isPlaying = currentPlaybackInfo.first,
             showLyric = showLyric,
             onTrackSelected = onSelectTrack,
             currentPlaybackPosition = currentPlaybackPosition,
