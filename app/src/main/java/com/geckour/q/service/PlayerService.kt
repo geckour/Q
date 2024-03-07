@@ -727,6 +727,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                         ).build()
                 )
             )
+            verifyTrack(currentIndex + 1)
         }
     }
 
@@ -1005,18 +1006,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
 
         if (isTarget) {
             lifecycleScope.launch {
-                val index = currentIndex
-                val dropboxClient = obtainDbxClient(this@PlayerService)
-                    .firstOrNull()
-                    ?: return@launch
-                player.currentSourcePaths.getOrNull(currentIndex)?.let { sourcePath ->
-                    val track = db.trackDao().getBySourcePath(sourcePath) ?: return@let
-                    val new = track.verifiedWithDropbox(this@PlayerService, dropboxClient, true)
-                        ?.getMediaItem()
-                        ?: return@let
-
-                    player.replaceMediaItem(index, new)
-                }
+                verifyTrack(currentIndex, force = true)
             }
         } else {
             pause()
@@ -1024,6 +1014,20 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         }
 
         return isTarget
+    }
+
+    private suspend fun verifyTrack(index: Int, force: Boolean = false){
+        val dropboxClient = obtainDbxClient(this@PlayerService)
+            .firstOrNull()
+            ?: return
+        player.currentSourcePaths.getOrNull(index)?.let { sourcePath ->
+            val track = db.trackDao().getBySourcePath(sourcePath) ?: return@let
+            val new = track.verifiedWithDropbox(this@PlayerService, dropboxClient, force)
+                ?.getMediaItem()
+                ?: return@let
+
+            player.replaceMediaItem(index, new)
+        }
     }
 
     private fun Throwable.getCausesRecursively(initial: List<Throwable> = emptyList()): List<Throwable> {
