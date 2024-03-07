@@ -27,7 +27,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -44,8 +43,6 @@ import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.SearchCategory
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
-import com.geckour.q.util.searchAlbumByFuzzyTitle
-import com.geckour.q.util.searchArtistByFuzzyTitle
 import com.geckour.q.util.searchTrackByFuzzyTitle
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
@@ -197,7 +194,7 @@ private suspend fun search(context: Context, query: String): ImmutableList<Searc
         items.addAll(tracks)
     }
 
-    val albums = db.searchAlbumByFuzzyTitle(query)
+    val albums = db.albumDao().findAllByTitle(query)
         .take(10)
         .map { SearchItem(it.album.title, it.album, SearchItem.SearchItemType.ALBUM) }
     if (albums.isNotEmpty()) {
@@ -211,7 +208,7 @@ private suspend fun search(context: Context, query: String): ImmutableList<Searc
         items.addAll(albums)
     }
 
-    val artists = db.searchArtistByFuzzyTitle(query)
+    val artists = db.artistDao().findAllByTitle(query)
         .take(10)
         .map { SearchItem(it.title, it, SearchItem.SearchItemType.ARTIST) }
     if (artists.isNotEmpty()) {
@@ -225,7 +222,7 @@ private suspend fun search(context: Context, query: String): ImmutableList<Searc
         items.addAll(artists)
     }
 
-    val genres = db.trackDao().getAllGenreByName(query)
+    val genres = db.trackDao().findAllByName(query)
         .take(10)
         .map { genreName ->
             val totalDuration =

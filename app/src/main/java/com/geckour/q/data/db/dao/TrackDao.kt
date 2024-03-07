@@ -90,7 +90,7 @@ interface TrackDao {
     fun getAllAsPagingSource(ignore: Bool = Bool.UNDEFINED): PagingSource<Int, JoinedTrack>
 
     @Transaction
-    @Query("select * from track where title like :title")
+    @Query("select * from track where title like ('%'||:title||'%')")
     suspend fun getAllByTitle(title: String): List<JoinedTrack>
 
     @Transaction
@@ -146,8 +146,8 @@ interface TrackDao {
     fun getAllGenreAsFlow(): Flow<List<String>>
 
     @Transaction
-    @Query("select distinct genre from track where genre is not null and genre like :name")
-    suspend fun getAllGenreByName(name: String): List<String>
+    @Query("select distinct genre from track where genre is not null and genre like ('%'||:name||'%')")
+    suspend fun findAllByName(name: String): List<String>
 
     @Query("update track set playbackCount = (select playbackCount from track where id = :trackId) + 1 where id = :trackId")
     suspend fun increasePlaybackCount(trackId: Long)

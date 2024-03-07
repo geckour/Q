@@ -32,6 +32,7 @@ import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.util.decodeUrlSafe
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -242,7 +243,7 @@ fun Library(
                     onBackHandle?.invoke()
                 }
                 val albumId = backStackEntry.arguments?.getLong("albumId") ?: -1
-                val genreName = backStackEntry.arguments?.getString("genreName")
+                val genreName = backStackEntry.arguments?.getString("genreName")?.decodeUrlSafe()
                 LaunchedEffect(albumId) {
                     onSelectNav(Nav.TRACK)
                     launch {

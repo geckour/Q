@@ -146,12 +146,6 @@ val Track.isDownloaded
     get() = dropboxPath != null && sourcePath.isNotBlank() && sourcePath.matches(dropboxUrlPattern)
         .not()
 
-suspend fun DB.searchArtistByFuzzyTitle(title: String): List<Artist> =
-    this@searchArtistByFuzzyTitle.artistDao().findAllByTitle("%${title.escapeSql}%")
-
-suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<JoinedAlbum> =
-    this@searchAlbumByFuzzyTitle.albumDao().findAllByTitle("%${title.escapeSql}%")
-
 suspend fun DB.searchTrackByFuzzyTitle(title: String): List<JoinedTrack> =
     this@searchTrackByFuzzyTitle.trackDao().getAllByTitle("%${title.escapeSql}%")
 

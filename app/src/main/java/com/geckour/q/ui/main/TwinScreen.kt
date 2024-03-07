@@ -41,6 +41,7 @@ import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType
+import com.geckour.q.util.encodeUrlSafe
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.launch
 
@@ -368,7 +369,7 @@ fun RowScope.TwinStartPage(
                             }
 
                             SearchItem.SearchItemType.GENRE -> {
-                                navController.navigate("tracks?genreName=${(item.data as Genre).name}")
+                                navController.navigate("tracks?genreName=${(item.data as Genre).name.encodeUrlSafe()}")
                             }
 
                             else -> Unit

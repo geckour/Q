@@ -38,7 +38,7 @@ interface ArtistDao {
     @Query("select * from artist where title = :title")
     suspend fun getAllByTitle(title: String): List<Artist>
 
-    @Query("select * from artist where title like :title")
+    @Query("select * from artist where title like ('%'||:title||'%')")
     suspend fun findAllByTitle(title: String): List<Artist>
 
     @Query("select * from artist where artist.id in (select artistId from album group by album.id) order by artist.titleSort collate nocase")

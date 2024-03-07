@@ -45,6 +45,7 @@ import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getThumb
 import com.geckour.q.util.getTimeString
+import com.geckour.q.util.encodeUrlSafe
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -131,7 +132,11 @@ fun Genres(
             Column(
                 modifier = Modifier
                     .combinedClickable(
-                        onClick = { navController.navigate(route = "tracks?genreName=${genre.name}") },
+                        onClick = {
+                            navController.navigate(
+                                route = "tracks?genreName=${genre.name.encodeUrlSafe()}"
+                            )
+                        },
                         onLongClick = { onSelectGenre(genre) }
                     )
                     .background(color = QTheme.colors.colorBackground)
