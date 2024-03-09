@@ -142,7 +142,9 @@ fun SingleScreen(
     var libraryHeight by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(sourcePaths) {
-        if (sourcePaths.isNotEmpty()) {
+        if (scaffoldState.bottomSheetState.currentValue == SheetValue.Hidden &&
+            sourcePaths.isNotEmpty()
+        ) {
             bottomSheetHeightAngle.animateTo(
                 bottomSheetHeightAngle.value + Math.PI.toFloat(),
                 animationSpec = tween(400),
