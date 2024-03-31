@@ -712,10 +712,11 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                 mediaSession.setCustomLayout(emptyList())
                 return@launch
             }
-            val f = isFavorite ?: db.trackDao().getBySourcePath(sourcePath)?.track?.isFavorite ?: run {
-                mediaSession.setCustomLayout(emptyList())
-                return@launch
-            }
+            val f =
+                isFavorite ?: db.trackDao().getBySourcePath(sourcePath)?.track?.isFavorite ?: run {
+                    mediaSession.setCustomLayout(emptyList())
+                    return@launch
+                }
 
             mediaSession.setCustomLayout(
                 listOf(
@@ -821,10 +822,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                 if (aliveSubmitQueueTask.not()) {
                     return
                 }
-                (obtainDbxClient(this).take(1).lastOrNull()?.let {
-                    track.verifiedWithDropbox(this, it)
-                } ?: track)
-                    .track
+                track.track
                     .sourcePath
                     .getMediaItem(this)
             }
@@ -1016,7 +1014,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         return isTarget
     }
 
-    private suspend fun verifyTrack(index: Int, force: Boolean = false){
+    private suspend fun verifyTrack(index: Int, force: Boolean = false) {
         val dropboxClient = obtainDbxClient(this@PlayerService)
             .firstOrNull()
             ?: return
