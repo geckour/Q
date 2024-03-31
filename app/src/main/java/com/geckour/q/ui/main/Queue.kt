@@ -322,13 +322,13 @@ fun QueueItem(
                         iterations = LottieConstants.IterateForever,
                         modifier = Modifier
                             .size(16.dp)
-                            .padding(2.dp)
+                            .padding(4.dp)
                     )
                 } else {
                     AsyncImage(
                         modifier = Modifier
                             .size(16.dp)
-                            .padding(2.dp),
+                            .padding(4.dp),
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(R.raw.emoji_u1f425)
                             .decoderFactory(SvgDecoder.Factory())
