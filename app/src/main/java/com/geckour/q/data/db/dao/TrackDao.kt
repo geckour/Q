@@ -234,33 +234,32 @@ interface TrackDao {
         db.artistDao().insertAll(hiraganized.map { it.artist })
     }
 
-    fun JoinedTrack.hiraganizeRecursively(): JoinedTrack =
-        when {
-            track.titleSort.containsKatakana -> {
-                copy(track = track.copy(titleSort = track.titleSort.hiraganized))
-                    .hiraganizeRecursively()
-            }
-
-            track.composerSort?.containsKatakana == true -> {
-                copy(track = track.copy(composerSort = track.composerSort.hiraganized))
-                    .hiraganizeRecursively()
-            }
-
-            album.titleSort.containsKatakana -> {
-                copy(album = album.copy(titleSort = album.titleSort.hiraganized))
-                    .hiraganizeRecursively()
-            }
-
-            track.titleSort.containsKatakana -> {
-                copy(track = track.copy(titleSort = track.titleSort.hiraganized))
-                    .hiraganizeRecursively()
-            }
-
-            track.titleSort.containsKatakana -> {
-                copy(track = track.copy(titleSort = track.titleSort.hiraganized))
-                    .hiraganizeRecursively()
-            }
-
-            else -> this
+    fun JoinedTrack.hiraganizeRecursively(): JoinedTrack = when {
+        track.titleSort.containsKatakana -> {
+            copy(track = track.copy(titleSort = track.titleSort.hiraganized))
+                .hiraganizeRecursively()
         }
+
+        track.composerSort?.containsKatakana == true -> {
+            copy(track = track.copy(composerSort = track.composerSort.hiraganized))
+                .hiraganizeRecursively()
+        }
+
+        album.titleSort.containsKatakana -> {
+            copy(album = album.copy(titleSort = album.titleSort.hiraganized))
+                .hiraganizeRecursively()
+        }
+
+        artist.titleSort.containsKatakana -> {
+            copy(artist = artist.copy(titleSort = artist.titleSort.hiraganized))
+                .hiraganizeRecursively()
+        }
+
+        albumArtist?.titleSort?.containsKatakana == true -> {
+            copy(albumArtist = albumArtist.copy(titleSort = albumArtist.titleSort.hiraganized))
+                .hiraganizeRecursively()
+        }
+
+        else -> this
+    }
 }

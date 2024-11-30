@@ -50,7 +50,7 @@ val String.hiraganized: String
 
 val String.containsKatakana: Boolean
     get() = this.codePoints().toList()
-        .any { it in 'ぁ'.code..'ゖ'.code }
+        .any { it in 'ァ'.code..'ヶ'.code }
 
 inline fun <reified T> catchAsNull(
     onError: (Throwable) -> Unit = {},
