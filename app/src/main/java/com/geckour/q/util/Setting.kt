@@ -11,7 +11,9 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.take
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -26,6 +28,7 @@ private val equalizerEnabledKey = booleanPreferencesKey("key_equalizer_enabled")
 private val equalizerParamsKey = stringPreferencesKey("key_equalizer_params")
 private val selectedEqualizerPresetIdKey = longPreferencesKey("key_selected_equalizer_preset_id")
 private val selectedQAudioDeviceInfoKey = stringPreferencesKey("key_selected_q_audio_device_info")
+private val alreadyRunHiraganizedKey = booleanPreferencesKey("key_already_run_hiraganized")
 
 fun Context.getIsInNightMode(): Flow<Boolean> = dataStore.data.map {
     it[isNightModeKey] ?: false
@@ -95,4 +98,13 @@ suspend fun Context.setActiveQAudioDeviceInfo(qAudioDeviceInfo: QAudioDeviceInfo
         preferences[selectedQAudioDeviceInfoKey] =
             qAudioDeviceInfo?.let { Json.encodeToString(it) }.orEmpty()
     }
+}
+
+suspend fun Context.getAlreadyRunHiraganized(): Boolean = dataStore.data
+    .map { it[alreadyRunHiraganizedKey] ?: false }
+    .take(1)
+    .last()
+
+suspend fun Context.setAlreadyRunHiraganized(alreadyRunHiraganized: Boolean) {
+    dataStore.edit { it[alreadyRunHiraganizedKey] = alreadyRunHiraganized }
 }

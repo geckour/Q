@@ -9,6 +9,10 @@ import com.geckour.q.data.dataModule
 import com.geckour.q.data.db.DB
 import com.geckour.q.ui.di.viewModelModule
 import com.geckour.q.util.QNotificationChannel
+import com.geckour.q.util.getAlreadyRunHiraganized
+import com.geckour.q.util.setAlreadyRunHiraganized
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
@@ -29,6 +33,14 @@ class App : Application() {
         }
 
         if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) createNotificationChannel()
+
+        MainScope().launch {
+            if (getAlreadyRunHiraganized().not()) {
+                val db = DB.getInstance(this@App)
+                db.trackDao().hiraganizeSortAll(db)
+                setAlreadyRunHiraganized(true)
+            }
+        }
 
         startKoin {
             androidLogger()

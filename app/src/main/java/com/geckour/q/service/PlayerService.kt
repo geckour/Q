@@ -240,6 +240,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
             val position = player.currentPosition
             val playWhenReady = player.playWhenReady
             val isVerified = verifyByCauseIfNeeded(error)
+            Timber.d("qgeck onPlayerError position: $position, isVerified: $isVerified")
 
             super.onPlayerError(error)
 

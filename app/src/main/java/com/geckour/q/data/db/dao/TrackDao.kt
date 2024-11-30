@@ -11,6 +11,8 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.Track
+import com.geckour.q.util.containsKatakana
+import com.geckour.q.util.hiraganized
 import kotlinx.coroutines.flow.Flow
 import kotlin.random.Random
 
@@ -19,6 +21,9 @@ interface TrackDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(track: Track): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(tracks: List<Track>)
 
     @Update
     suspend fun update(track: Track): Int
@@ -220,4 +225,42 @@ interface TrackDao {
             .firstOrNull { it.album.title == albumTitle && it.artist.title == artistTitle }
             ?.track
             ?.duration
+
+    suspend fun hiraganizeSortAll(db: DB) {
+        val hiraganized = db.trackDao().getAll().map { it.hiraganizeRecursively() }
+
+        db.trackDao().insertAll(hiraganized.map { it.track })
+        db.albumDao().insertAll(hiraganized.map { it.album })
+        db.artistDao().insertAll(hiraganized.map { it.artist })
+    }
+
+    fun JoinedTrack.hiraganizeRecursively(): JoinedTrack =
+        when {
+            track.titleSort.containsKatakana -> {
+                copy(track = track.copy(titleSort = track.titleSort.hiraganized))
+                    .hiraganizeRecursively()
+            }
+
+            track.composerSort?.containsKatakana == true -> {
+                copy(track = track.copy(composerSort = track.composerSort.hiraganized))
+                    .hiraganizeRecursively()
+            }
+
+            album.titleSort.containsKatakana -> {
+                copy(album = album.copy(titleSort = album.titleSort.hiraganized))
+                    .hiraganizeRecursively()
+            }
+
+            track.titleSort.containsKatakana -> {
+                copy(track = track.copy(titleSort = track.titleSort.hiraganized))
+                    .hiraganizeRecursively()
+            }
+
+            track.titleSort.containsKatakana -> {
+                copy(track = track.copy(titleSort = track.titleSort.hiraganized))
+                    .hiraganizeRecursively()
+            }
+
+            else -> this
+        }
 }

@@ -17,6 +17,9 @@ interface ArtistDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(artist: Artist): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(artists: List<Artist>)
+
     @Update
     suspend fun update(artist: Artist): Int
 

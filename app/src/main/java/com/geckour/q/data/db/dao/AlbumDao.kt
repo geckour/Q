@@ -19,6 +19,9 @@ interface AlbumDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(album: Album): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(albums: List<Album>)
+
     @Update
     suspend fun update(album: Album): Int
 

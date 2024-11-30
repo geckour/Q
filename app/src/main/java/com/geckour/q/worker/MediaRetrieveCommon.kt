@@ -78,34 +78,30 @@ internal suspend fun File.storeMediaInfo(
 
     val title = tag.getAll(FieldKey.TITLE).lastOrNull { it.isNotBlank() }
         ?: this@storeMediaInfo.name
-    val titleSort = tag.getAll(FieldKey.TITLE_SORT).lastOrNull { it.isNotBlank() }
-        ?.hiraganized
-        ?: title
+    val titleSort = (tag.getAll(FieldKey.TITLE_SORT).lastOrNull { it.isNotBlank() }
+        ?: title)?.hiraganized
 
     val albumTitle = tag.getAll(FieldKey.ALBUM).lastOrNull { it.isNotBlank() }
     val existingAlbum = albumTitle?.let { db.albumDao().findAllByTitle(it).firstOrNull() }
     val albumTitleSort =
-        tag.getAll(FieldKey.ALBUM_SORT).lastOrNull { it.isNotBlank() }
-            ?.hiraganized
+        (tag.getAll(FieldKey.ALBUM_SORT).lastOrNull { it.isNotBlank() }
             ?: existingAlbum?.album?.titleSort
-            ?: albumTitle
+            ?: albumTitle)?.hiraganized
 
     val artistTitle = tag.getAll(FieldKey.ARTIST).firstOrNull { it.isNotBlank() }
     val existingArtist = artistTitle?.let { db.artistDao().getAllByTitle(it).firstOrNull() }
     val artistTitleSort =
-        tag.getAll(FieldKey.ARTIST_SORT).firstOrNull { it.isNotBlank() }
-            ?.hiraganized
+        (tag.getAll(FieldKey.ARTIST_SORT).firstOrNull { it.isNotBlank() }
             ?: existingArtist?.titleSort
-            ?: artistTitle
+            ?: artistTitle)?.hiraganized
 
     val albumArtistTitle = tag.getAll(FieldKey.ALBUM_ARTIST).firstOrNull { it.isNotBlank() }
     val existingAlbumArtist =
         albumArtistTitle?.let { db.artistDao().getAllByTitle(it).firstOrNull() }
     val albumArtistTitleSort =
-        tag.getAll(FieldKey.ALBUM_ARTIST_SORT).firstOrNull { it.isNotBlank() }
-            ?.hiraganized
+        (tag.getAll(FieldKey.ALBUM_ARTIST_SORT).firstOrNull { it.isNotBlank() }
             ?: existingAlbumArtist?.titleSort
-            ?: albumArtistTitle
+            ?: albumArtistTitle)?.hiraganized
 
     val trackNum = catchAsNull {
         tag.getFirst(FieldKey.TRACK).let { if (it.isNullOrBlank()) null else it }?.toInt()
