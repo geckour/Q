@@ -314,7 +314,7 @@ fun DbxClientV2.saveAudioFile(
     pathLower: String
 ): Flow<Pair<File, Long?>> {
     val dirName = "audio"
-    val dir = File(context.cacheDir, dirName)
+    val dir = File(context.dataDir, dirName)
     val file = File(dir, "$id.${pathLower.getExtension()}")
 
     if (file.exists()) file.delete()
