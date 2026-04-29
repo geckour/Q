@@ -23,6 +23,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -73,7 +74,7 @@ fun DrawerHeader(openQzi: () -> Unit) {
                     onClick = {},
                     onLongClick = openQzi,
                     interactionSource = remember { MutableInteractionSource() },
-                    indication = rememberRipple(bounded = false)
+                    indication = ripple(bounded = false)
                 )
                 .weight(1f)
                 .fillMaxWidth()

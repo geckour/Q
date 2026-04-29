@@ -34,6 +34,7 @@ import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -158,7 +159,7 @@ fun Controller(
                             spacing = MarqueeSpacing(24.dp),
                             iterations = Int.MAX_VALUE,
                             velocity = 45.dp,
-                            delayMillis = 600
+                            repeatDelayMillis = 600
                         )
                     )
                     Spacer(modifier = Modifier.height(2.dp))
@@ -227,7 +228,7 @@ fun Controller(
                                 .clickable(
                                     onClick = { onToggleFavorite(currentTrack) },
                                     interactionSource = remember { MutableInteractionSource() },
-                                    indication = rememberRipple(bounded = false)
+                                    indication = ripple(bounded = false)
                                 )
                                 .padding(8.dp)
                                 .size(24.dp)
@@ -263,7 +264,7 @@ fun Controller(
                         .clickable(
                             onClick = cancelLoad,
                             interactionSource = remember { MutableInteractionSource() },
-                            indication = rememberRipple(bounded = false)
+                            indication = ripple(bounded = false)
                         )
                         .padding(8.dp)
                         .padding(end = 8.dp)
@@ -307,7 +308,7 @@ fun Controller(
                             .clickable(
                                 onClick = rotateRepeatMode,
                                 interactionSource = remember { MutableInteractionSource() },
-                                indication = rememberRipple(bounded = false)
+                                indication = ripple(bounded = false)
                             )
                             .padding(8.dp)
                             .size(24.dp)
@@ -321,7 +322,7 @@ fun Controller(
                                 onClick = { shuffleQueue(null) },
                                 onLongClick = resetShuffleQueue,
                                 interactionSource = remember { MutableInteractionSource() },
-                                indication = rememberRipple(bounded = false)
+                                indication = ripple(bounded = false)
                             )
                             .padding(8.dp)
                             .size(24.dp)
@@ -372,7 +373,7 @@ fun Controller(
                         tint = QTheme.colors.colorButtonNormal,
                         modifier = Modifier
                             .clickable(
-                                indication = rememberRipple(bounded = false),
+                                indication = ripple(bounded = false),
                                 interactionSource = remember { MutableInteractionSource() }
                             ) {
                                 onTogglePlayPause()
@@ -523,7 +524,7 @@ fun Controller(
                 tint = if (showLyric) QTheme.colors.colorButtonNormal else QTheme.colors.colorInactive,
                 modifier = Modifier
                     .clickable(
-                        indication = rememberRipple(bounded = false),
+                        indication = ripple(bounded = false),
                         interactionSource = remember { MutableInteractionSource() },
                         onClick = onToggleShowLyrics
                     )
@@ -536,7 +537,7 @@ fun Controller(
                 tint = QTheme.colors.colorButtonNormal,
                 modifier = Modifier
                     .clickable(
-                        indication = rememberRipple(bounded = false),
+                        indication = ripple(bounded = false),
                         interactionSource = remember { MutableInteractionSource() },
                         onClick = clearQueue
                     )

@@ -165,12 +165,18 @@ class DropboxMediaRetrieveWorker(
             fileAndFolders.entries.forEach { metadata ->
                 when (metadata) {
                     is FolderMetadata -> {
-                        retrieveAudioFilePaths(metadata.pathLower, client, needDownloaded)
+                        retrieveAudioFilePaths(
+                            metadata.pathLower ?: return@forEach,
+                            client,
+                            needDownloaded
+                        )
                     }
 
                     is FileMetadata -> {
                         if (needDownloaded || (db.trackDao()
-                                .getByDropboxPath(metadata.pathLower)?.track?.lastModified
+                                .getByDropboxPath(
+                                    metadata.pathLower ?: return@forEach
+                                )?.track?.lastModified
                                 ?: 0) < metadata.serverModified.time
                         ) {
                             files.add(metadata)
@@ -281,7 +287,8 @@ class DropboxMediaRetrieveWorker(
         dropboxMetadata: FileMetadata,
         needDownloaded: Boolean
     ) {
-        val url = client.files().getTemporaryLink(dropboxMetadata.pathLower).link
+        val path = dropboxMetadata.pathLower ?: return
+        val url = client.files().getTemporaryLink(path).link
         val currentTime = System.currentTimeMillis()
 
         val processedFilesSizeSnapshot = processedFilesSize
@@ -289,10 +296,8 @@ class DropboxMediaRetrieveWorker(
         val fileAndProgressFlow = if (needDownloaded) client.saveAudioFile(
             applicationContext,
             dropboxMetadata.id,
-            dropboxMetadata.pathLower
-        ) else client.saveTempAudioFile(
-            applicationContext, dropboxMetadata.pathLower
-        )
+            path
+        ) else client.saveTempAudioFile(applicationContext, path)
         var target: File? = null
         fileAndProgressFlow
             .onCompletion {
@@ -300,7 +305,7 @@ class DropboxMediaRetrieveWorker(
                     it.storeMediaInfo(
                         applicationContext,
                         if (needDownloaded) Uri.fromFile(it).toString() else url,
-                        db.trackDao().getByDropboxPath(dropboxMetadata.pathLower)?.track?.id,
+                        db.trackDao().getByDropboxPath(path)?.track?.id,
                         null,
                         dropboxMetadata.pathLower,
                         currentTime + DROPBOX_EXPIRES_IN,

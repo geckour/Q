@@ -1,8 +1,8 @@
 FFMPEG_PATH="/Users/geckour/develop/git/ffmpeg"
 FFMPEG_MODULE_PATH="/Users/geckour/develop/android/git/media/libraries/decoder_ffmpeg/src/main"
-NDK_PATH="/Users/geckour/develop/android/sdk/ndk/26.1.10909125"
+NDK_PATH="/Users/geckour/develop/android/sdk/ndk/29.0.14206865"
 HOST_PLATFORM="darwin-x86_64"
-ANDROID_ABI=21
+ANDROID_ABI=24
 
 ENABLED_DECODERS=(vorbis opus flac alac pcm_mulaw pcm_alaw mp3 amrnb amrwb aac ac3 eac3 dca mlp truehd)
 

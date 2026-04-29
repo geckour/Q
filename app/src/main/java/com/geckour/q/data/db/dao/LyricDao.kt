@@ -17,7 +17,7 @@ interface LyricDao {
     suspend fun deleteLyricByTrackId(trackId: Long)
 
     @Query("select * from lyric where trackId = :trackId")
-    fun getLyricFlowByTrackId(trackId: Long): Flow<Lyric>
+    fun getLyricFlowByTrackId(trackId: Long): Flow<Lyric?>
 
     @Query("select * from lyric where trackId = :trackId")
     suspend fun getLyricByTrackId(trackId: Long): Lyric?

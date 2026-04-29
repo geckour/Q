@@ -23,7 +23,6 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.Track
-import com.geckour.q.databinding.DialogEditMetadataBinding
 import com.geckour.q.domain.model.UiTrack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -330,27 +329,6 @@ fun DbxClientV2.saveAudioFile(
         trySend(file to null)
         channel.close()
     }.flowOn(Dispatchers.IO)
-}
-
-suspend fun DialogEditMetadataBinding.updateFileMetadata(
-    context: Context,
-    db: DB,
-    targets: List<JoinedTrack>
-) {
-    targets.asSequence().forEach {
-        it.updateFileMetadata(
-            context,
-            db,
-            inputTrackName.text?.toString(),
-            inputTrackNameKana.text?.toString(),
-            inputAlbumName.text?.toString(),
-            inputAlbumNameKana.text?.toString(),
-            inputArtistName.text?.toString(),
-            inputArtistNameKana.text?.toString(),
-            inputComposerName.text?.toString(),
-            inputComposerNameKana.text?.toString(),
-        )
-    }
 }
 
 /**

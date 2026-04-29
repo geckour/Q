@@ -30,7 +30,6 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Button
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
@@ -38,6 +37,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -81,10 +81,8 @@ import com.geckour.q.util.removedAt
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
-import org.burnoutcrew.reorderable.ReorderableItem
-import org.burnoutcrew.reorderable.detectReorderAfterLongPress
-import org.burnoutcrew.reorderable.rememberReorderableLazyListState
-import org.burnoutcrew.reorderable.reorderable
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 
 @Composable
@@ -109,12 +107,15 @@ fun ColumnScope.Queue(
         .getLyricFlowByTrackId(uiTracks.firstOrNull { it.nowPlaying }?.id ?: -1)
         .collectAsState(initial = null)
     val lyricLinesForShowing = lyric.lyricLinesForShowing
-    val reorderableState = rememberReorderableLazyListState(
-        onMove = { from, to -> items = items.moved(from.index, to.index).toImmutableList() },
-        onDragEnd = { from, to -> onQueueMove(from, to) }
-    )
+    val lazyListState = rememberLazyListState()
+    var from by remember { mutableIntStateOf(-1) }
+    var to by remember { mutableIntStateOf(-1) }
+    val reorderableState = rememberReorderableLazyListState(lazyListState) { f, t ->
+        items = items.moved(f.index, t.index).toImmutableList()
+        from = f.index
+        to = t.index
+    }
     var contentHeight by remember { mutableIntStateOf(0) }
-
     var isInEditMode by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiTracks) {
@@ -122,7 +123,7 @@ fun ColumnScope.Queue(
     }
     LaunchedEffect(forceScrollToCurrent) {
         if (showLyric.not()) {
-            reorderableState.listState.animateScrollToItem(
+            lazyListState.animateScrollToItem(
                 uiTracks.indexOfFirst { it.nowPlaying }.coerceAtLeast(0),
                 -contentHeight / 2 + with(density) { 44.dp.roundToPx() }
             )
@@ -263,20 +264,23 @@ fun ColumnScope.Queue(
             spec = LottieCompositionSpec.RawRes(resId = R.raw.emoji_u1f425_anim)
         )
         LazyColumn(
-            state = reorderableState.listState,
+            state = lazyListState,
             modifier = Modifier
-                .reorderable(reorderableState)
-                .detectReorderAfterLongPress(reorderableState)
                 .weight(1f)
                 .fillMaxHeight()
                 .onSizeChanged { contentHeight = it.height }
         ) {
             itemsIndexed(items, { _, item -> item.key }) { index, domainTrack ->
                 ReorderableItem(
-                    reorderableState = reorderableState,
-                    key = domainTrack.key
+                    state = reorderableState,
+                    key = domainTrack.key,
                 ) { isDragging ->
                     QueueItem(
+                        modifier = Modifier.longPressDraggableHandle(
+                            onDragStopped = {
+                                onQueueMove(from, to)
+                            }
+                        ),
                         isPlaying = isPlaying,
                         uiTrack = domainTrack,
                         index = index,
@@ -376,7 +380,7 @@ fun QueueItem(
                         tint = QTheme.colors.colorTextPrimary,
                         modifier = Modifier
                             .clickable(
-                                indication = rememberRipple(bounded = false),
+                                indication = ripple(bounded = false),
                                 interactionSource = remember { MutableInteractionSource() }
                             ) { onToggleFavorite(uiTrack) }
                             .padding(8.dp)
@@ -388,7 +392,7 @@ fun QueueItem(
                         tint = QTheme.colors.colorButtonNormal,
                         modifier = Modifier
                             .clickable(
-                                indication = rememberRipple(bounded = false),
+                                indication = ripple(bounded = false),
                                 interactionSource = remember { MutableInteractionSource() }
                             ) { onRemoveTrackFromQueue(index) }
                             .padding(8.dp)

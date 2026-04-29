@@ -132,6 +132,7 @@ class DropboxDownloadWorker(
                 client.files().getMetadata(targetPath) as? FileMetadata
             }
             files.forEach { fileMetadata ->
+                val path = fileMetadata.pathLower ?: return@forEach
                 currentPath = fileMetadata.pathDisplay
                 setForeground(getForegroundInfo())
                 val processedFilesSizeSnapshot = processedFilesSize
@@ -140,12 +141,12 @@ class DropboxDownloadWorker(
                 client.saveAudioFile(
                     applicationContext,
                     fileMetadata.id,
-                    fileMetadata.pathLower
+                    path
                 ).onCompletion {
                     processedFilesSize = processedFilesSizeSnapshot + fileMetadata.size
                     updateProgress()
                     target?.let { file ->
-                        db.trackDao().getByDropboxPath(fileMetadata.pathLower)?.let {
+                        db.trackDao().getByDropboxPath(path)?.let {
                             db.trackDao().insert(
                                 it.track.copy(sourcePath = Uri.fromFile(file).toString())
                             )
