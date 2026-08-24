@@ -49,7 +49,6 @@ class App : Application() {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannel() {
         val channelRetriever =
             NotificationChannel(

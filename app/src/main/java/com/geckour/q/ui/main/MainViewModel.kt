@@ -49,6 +49,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 class MainViewModel(private val app: App) : ViewModel() {
 
@@ -373,14 +374,14 @@ class MainViewModel(private val app: App) : ViewModel() {
         notifyPlaybackPositionJob = viewModelScope.launch {
             while (this.isActive) {
                 currentPlaybackPositionFlow.value = mediaController.currentPosition
-                delay(100)
+                delay(100.milliseconds)
             }
         }
         notifyBufferedPositionJob.cancel()
         notifyBufferedPositionJob = viewModelScope.launch {
             while (this.isActive) {
                 currentBufferedPositionFlow.value = mediaController.bufferedPosition
-                delay(100)
+                delay(100.milliseconds)
             }
         }
     }

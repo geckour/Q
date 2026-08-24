@@ -11,6 +11,4 @@ enum class QNotificationChannel {
 }
 
 fun Context.getNotificationBuilder(channel: QNotificationChannel) =
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
-        NotificationCompat.Builder(this, channel.name)
-    else NotificationCompat.Builder(this)
+    NotificationCompat.Builder(this, channel.name)

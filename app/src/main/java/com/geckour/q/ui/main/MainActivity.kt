@@ -836,15 +836,13 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
 
-        if (Build.VERSION.SDK_INT > 25) {
-            if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
-                contentResolver.refresh(
-                    if (Build.VERSION.SDK_INT < 29) MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-                    else MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL),
-                    null,
-                    null
-                )
-            }
+        if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+            contentResolver.refresh(
+                if (Build.VERSION.SDK_INT < 29) MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+                else MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL),
+                null,
+                null
+            )
         }
 
         if (viewModel.isDropboxAuthOngoing) {

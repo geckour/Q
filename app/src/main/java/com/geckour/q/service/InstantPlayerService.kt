@@ -3,7 +3,6 @@ package com.geckour.q.service
 import android.content.Intent
 import android.media.AudioFocusRequest
 import android.media.AudioManager
-import android.os.Build
 import android.os.Bundle
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
@@ -178,18 +177,10 @@ class InstantPlayerService : MediaSessionService() {
 
     private fun play() {
         getSystemService(AudioManager::class.java)?.apply {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val audioFocusRequest =
-                    AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
-                        .build()
-                requestAudioFocus(audioFocusRequest)
-            } else {
-                requestAudioFocus(
-                    {},
-                    AudioManager.STREAM_MUSIC,
-                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
-                )
-            }
+            val audioFocusRequest =
+                AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                    .build()
+            requestAudioFocus(audioFocusRequest)
         }
 
         resume()
@@ -204,14 +195,10 @@ class InstantPlayerService : MediaSessionService() {
     private fun pause() {
         player.playWhenReady = false
         getSystemService(AudioManager::class.java)?.apply {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                val audioFocusRequest = AudioFocusRequest.Builder(
-                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
-                ).build()
-                abandonAudioFocusRequest(audioFocusRequest)
-            } else {
-                abandonAudioFocus {}
-            }
+            val audioFocusRequest = AudioFocusRequest.Builder(
+                AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK
+            ).build()
+            abandonAudioFocusRequest(audioFocusRequest)
         }
     }
 
