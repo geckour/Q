@@ -32,9 +32,9 @@ import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
+import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ConnectionResult
-import androidx.media3.session.MediaSessionService
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionResult
 import androidx.mediarouter.media.MediaRouteSelector
@@ -71,6 +71,7 @@ import com.geckour.q.util.toUiTrack
 import com.geckour.q.util.verifiedWithDropbox
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.SettableFuture
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -86,9 +87,10 @@ import kotlinx.serialization.json.Json
 import org.koin.android.ext.android.inject
 import timber.log.Timber
 import java.io.FileNotFoundException
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(UnstableApi::class)
-class PlayerService : MediaSessionService(), LifecycleOwner {
+class PlayerService : MediaLibraryService(), LifecycleOwner {
 
     companion object {
         const val ACTION_COMMAND_SUBMIT_QUEUE = "action_command_submit_queue"
@@ -270,12 +272,12 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         }
     }
 
-    private val mediaSessionCallback = object : MediaSession.Callback {
+    private val mediaSessionCallback = object : MediaLibrarySession.Callback {
         override fun onConnect(
             session: MediaSession,
             controller: MediaSession.ControllerInfo
         ): ConnectionResult =
-            ConnectionResult.AcceptedResultBuilder(session)
+            ConnectionResult.AcceptedResultBuilder(session, controller)
                 .setAvailableSessionCommands(
                     ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
                         .add(SessionCommand(ACTION_COMMAND_SUBMIT_QUEUE, Bundle.EMPTY))
@@ -440,6 +442,28 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
             }
             return super.onCustomCommand(session, controller, customCommand, args)
         }
+
+        @OptIn(UnstableApi::class)
+        override fun onPlaybackResumption(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            isForPlayback: Boolean
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            val playerState = getState()
+            val settableFuture = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
+            lifecycleScope.launch {
+                settableFuture.set(
+                    MediaSession.MediaItemsWithStartPosition(
+                        playerState?.sourcePaths?.map { it.getMediaItem(this@PlayerService) }
+                            ?: emptyList(),
+                        playerState?.currentIndex ?: 0,
+                        playerState?.progress ?: 0L,
+                    )
+                )
+            }
+
+            return settableFuture
+        }
     }
 
     private val mediaRouterCallback = object : MediaRouter.Callback() {
@@ -504,7 +528,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
     private lateinit var player: ExoPlayer
     private lateinit var forwardingPlayer: Player
 
-    private lateinit var mediaSession: MediaSession
+    private lateinit var mediaSession: MediaLibrarySession
     private var equalizer: Equalizer? = null
     private val currentIndex
         get() =
@@ -523,7 +547,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
     private var inPurge = false
     private var aliveSubmitQueueTask = false
 
-    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaSession =
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession =
         mediaSession
 
     override fun onCreate() {
@@ -532,6 +556,8 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         super.onCreate()
 
         Timber.d("qgeck create PlayerService")
+
+        setShowNotificationForIdlePlayer(SHOW_NOTIFICATION_FOR_IDLE_PLAYER_ALWAYS)
 
         db = DB.getInstance(this@PlayerService)
         val trackSelector = DefaultTrackSelector(this)
@@ -604,8 +630,11 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                 }
             }
         }
-        mediaSession = MediaSession.Builder(this, forwardingPlayer)
-            .setCallback(mediaSessionCallback)
+        mediaSession = MediaLibrarySession.Builder(
+            this,
+            forwardingPlayer,
+            mediaSessionCallback,
+        )
             .setId(PlayerService::class.java.name)
             .setSessionActivity(
                 PendingIntent.getActivity(
@@ -719,8 +748,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
 
             mediaSession.setCustomLayout(
                 listOf(
-                    CommandButton.Builder()
-                        .setIconResId(if (f) R.drawable.star_filled else R.drawable.star)
+                    CommandButton.Builder(if (f) CommandButton.ICON_STAR_FILLED else CommandButton.ICON_STAR_UNFILLED)
                         .setDisplayName(getString(R.string.notification_action_toggle_favorite))
                         .setSessionCommand(
                             SessionCommand(ACTION_COMMAND_TOGGLE_FAVORITE, Bundle.EMPTY)
@@ -731,12 +759,14 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
         }
     }
 
+    private fun getState(): PlayerState? = sharedPreferences
+        .getString(PREF_KEY_PLAYER_STATE, null)
+        ?.let { catchAsNull { Json.decodeFromString<PlayerState>(it) } }
+
     private fun restoreState() {
         if (player.playWhenReady) player.playWhenReady = false
 
-        val playerState = sharedPreferences.getString(PREF_KEY_PLAYER_STATE, null)
-            ?.let { catchAsNull { Json.decodeFromString<PlayerState>(it) } }
-            ?: return
+        val playerState = getState() ?: return
 
         Timber.d("qgeck set state: $playerState")
         lifecycleScope.launch {
@@ -1145,7 +1175,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                             }
                             player.seekTo(seekTo)
                         }
-                        delay(100)
+                        delay(100.milliseconds)
                     }
                 }
             }
@@ -1161,7 +1191,7 @@ class PlayerService : MediaSessionService(), LifecycleOwner {
                         if (it < 0) 0 else it
                     }
                     player.seekTo(seekTo)
-                    delay(100)
+                    delay(100.milliseconds)
                 }
             }
         }
