@@ -208,8 +208,7 @@ class DropboxDownloadWorker(
             )
             .build()
 
-    private suspend fun updateProgress(
-    ) {
+    private suspend fun updateProgress() {
         setProgress(
             createProgressData(
                 title = applicationContext.getString(R.string.progress_title_download_dropbox),

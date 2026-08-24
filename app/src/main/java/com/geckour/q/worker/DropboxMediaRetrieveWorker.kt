@@ -30,6 +30,7 @@ import com.geckour.q.util.getExtension
 import com.geckour.q.util.getNotificationBuilder
 import com.geckour.q.util.getReadableStringWithUnit
 import com.geckour.q.util.getTimeString
+import com.geckour.q.util.isDownloaded
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.saveAudioFile
 import com.geckour.q.util.saveTempAudioFile
@@ -37,10 +38,10 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.onCompletion
-import kotlinx.coroutines.runBlocking
 import org.koin.core.component.KoinComponent
 import timber.log.Timber
 import java.io.File
+import kotlin.time.Duration.Companion.milliseconds
 
 class DropboxMediaRetrieveWorker(
     context: Context,
@@ -116,8 +117,8 @@ class DropboxMediaRetrieveWorker(
                 it.storeMediaInfo(dbxClient, needDownloaded)
             }
 
-            Timber.d("qgeck track in db count: ${runBlocking { db.trackDao().count() }}")
-            delay(200)
+            Timber.d("qgeck track in db count: ${db.trackDao().count()}")
+            delay(200.milliseconds)
             return Result.success(Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build())
         }
 
@@ -173,11 +174,14 @@ class DropboxMediaRetrieveWorker(
                     }
 
                     is FileMetadata -> {
-                        if (needDownloaded || (db.trackDao()
-                                .getByDropboxPath(
-                                    metadata.pathLower ?: return@forEach
-                                )?.track?.lastModified
-                                ?: 0) < metadata.serverModified.time
+                        val existingTrack = db.trackDao()
+                            .getByDropboxPath(
+                                metadata.pathLower ?: return@forEach
+                            )?.track
+                        val existingTrackLastModified = existingTrack?.lastModified
+                        if (existingTrackLastModified == null ||
+                            existingTrackLastModified < metadata.serverModified.time ||
+                            needDownloaded && !existingTrack.isDownloaded
                         ) {
                             files.add(metadata)
                             setProgress(
