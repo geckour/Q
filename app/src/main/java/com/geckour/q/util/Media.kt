@@ -39,6 +39,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.random.Random
+import androidx.core.graphics.createBitmap
+import androidx.core.net.toUri
 
 
 const val UNKNOWN: String = "UNKNOWN"
@@ -152,7 +154,7 @@ suspend fun List<String?>.getThumb(context: Context): Bitmap? {
     if (this.isEmpty()) return null
     val unit = 100
     val width = ((this.size * 0.9 - 0.1) * unit).toInt()
-    val bitmap = Bitmap.createBitmap(width, unit, Bitmap.Config.ARGB_8888)
+    val bitmap = createBitmap(width, unit)
     val canvas = Canvas(bitmap)
     withContext(Dispatchers.IO) {
         this@getThumb.reversed()
@@ -193,13 +195,13 @@ suspend fun String.getMediaItem(context: Context): MediaItem =
 
 private fun String.getMediaItem(): MediaItem = MediaItem.Builder()
     .setMediaId(this)
-    .setUri(Uri.parse(this))
+    .setUri(this.toUri())
     .build()
 
 fun JoinedTrack.getMediaItem(): MediaItem =
     MediaItem.Builder()
         .setMediaId(track.sourcePath)
-        .setUri(Uri.parse(track.sourcePath))
+        .setUri(track.sourcePath.toUri())
         .setMediaMetadata(getMediaMetadata())
         .build()
 
@@ -256,7 +258,7 @@ fun JoinedTrack.getMediaMetadata(): MediaMetadata {
         .setReleaseYear(year)
         .setReleaseMonth(month)
         .setReleaseDay(day)
-        .setArtworkUri((track.artworkUriString ?: album.artworkUriString)?.let { Uri.parse(it) })
+        .setArtworkUri((track.artworkUriString ?: album.artworkUriString)?.toUri())
         .apply {
             track.trackNum?.let { setTrackNumber(it) }
             track.trackTotal?.let { setTotalTrackCount(it) }
@@ -527,7 +529,7 @@ suspend fun JoinedTrack.verifiedWithDropbox(
             || (track.sourcePath.matches(dropboxUrlPattern)
                     && (track.dropboxExpiredAt ?: 0) <= System.currentTimeMillis())
             || (track.sourcePath.matches(dropboxUrlPattern).not()
-                    && Uri.parse(track.sourcePath).toFile().exists().not())
+                    && track.sourcePath.toUri().toFile().exists().not())
         ) {
             val url = client.files().getTemporaryLink(track.dropboxPath).link
             val expiredAt = System.currentTimeMillis() + DROPBOX_EXPIRES_IN

@@ -128,6 +128,7 @@ fun QTopBar(
             },
             colors = TopAppBarDefaults.topAppBarColors().copy(
                 containerColor = QTheme.colors.colorPrimary,
+                scrolledContainerColor = QTheme.colors.colorPrimary,
                 navigationIconContentColor = QTheme.colors.colorTextPrimary,
                 titleContentColor = QTheme.colors.colorTextPrimary,
                 actionIconContentColor = QTheme.colors.colorTextPrimary

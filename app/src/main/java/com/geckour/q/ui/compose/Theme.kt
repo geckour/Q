@@ -100,30 +100,29 @@ data class QColors(
         outline = colorTextSecondary,
         outlineVariant = colorWeekAccent,
         scrim = colorCoverInactive,
+        surfaceBright = colorBackground,
+        surfaceDim = colorBackground,
+        surfaceContainer = colorBackground,
+        surfaceContainerHigh = colorBackgroundBottomSheet,
+        surfaceContainerHighest = colorBackgroundBottomSheet,
+        surfaceContainerLow = colorBackground,
+        surfaceContainerLowest = colorBackground,
+        primaryFixed = colorPrimary,
+        primaryFixedDim = colorPrimaryDark,
+        onPrimaryFixed = colorTextPrimary,
+        onPrimaryFixedVariant = colorTextSecondary,
+        secondaryFixed = colorPrimary,
+        secondaryFixedDim = colorPrimaryDark,
+        onSecondaryFixed = colorTextPrimary,
+        onSecondaryFixedVariant = colorTextSecondary,
+        tertiaryFixed = colorPrimary,
+        tertiaryFixedDim = colorPrimaryDark,
+        onTertiaryFixed = colorTextPrimary,
+        onTertiaryFixedVariant = colorTextSecondary,
     )
 }
 
-val LocalQColors = staticCompositionLocalOf {
-    QColors(
-        colorPrimary = Color.Unspecified,
-        colorPrimaryDark = Color.Unspecified,
-        colorAccent = Color.Unspecified,
-        colorWeekAccent = Color.Unspecified,
-        colorBackground = Color.Unspecified,
-        colorTextPrimary = Color.Unspecified,
-        colorTextSecondary = Color.Unspecified,
-        colorInactive = Color.Unspecified,
-        colorCoverInactive = Color.Unspecified,
-        colorButtonNormal = Color.Unspecified,
-        colorTextSettingNormal = Color.Unspecified,
-        colorBackgroundSelected = Color.Unspecified,
-        colorBackgroundBottomSheet = Color.Unspecified,
-        colorBackgroundProgress = Color.Unspecified,
-        colorBackgroundSearch = Color.Unspecified,
-        colorDivider = Color.Unspecified,
-        isLight = true
-    )
-}
+val LocalQColors = staticCompositionLocalOf { lightColorPalette }
 
 @Composable
 fun QTheme(

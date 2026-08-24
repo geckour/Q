@@ -1,11 +1,38 @@
 pluginManagement {
+    includeBuild("/Users/geckour/develop/android/git/media/build-logic-settings")
     repositories {
         google()
         mavenCentral()
     }
 }
 
-include ':app'
+plugins {
+    id("gradlebuild.media3-settings-logic")
+}
 
-gradle.ext.androidxMediaModulePrefix = 'media-'
-apply from: file("/Users/geckour/develop/android/git/media/core_settings.gradle")
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url "https://jitpack.io" }
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/geckour/NowPlayingSubjectBuilder")
+
+            credentials {
+                username = getKey('gpr.usr', settingsDir)
+                password = getKey('gpr.key', settingsDir)
+            }
+        }
+    }
+}
+
+static def getKey(keyName, File settingsDir) {
+    Properties props = new Properties()
+    props.load(new FileInputStream(new File(settingsDir, "secret.properties")))
+    return props[keyName]
+}
+
+include ':app'
+includeMedia3.execute(file('/Users/geckour/develop/android/git/media'))

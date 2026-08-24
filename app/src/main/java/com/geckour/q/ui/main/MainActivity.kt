@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -395,13 +396,13 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(isInNightMode) {
                 enableEdgeToEdge(
                     statusBarStyle = SystemBarStyle.auto(
-                        lightScrim = ColorPrimaryDark.value.toInt(),
-                        darkScrim = ColorPrimaryDarkInverse.value.toInt(),
+                        lightScrim = ColorPrimaryDark.toArgb(),
+                        darkScrim = ColorPrimaryDarkInverse.toArgb(),
                         detectDarkMode = { isInNightMode }
                     ),
                     navigationBarStyle = SystemBarStyle.auto(
-                        lightScrim = ColorBackground.value.toInt(),
-                        darkScrim = ColorBackgroundInverse.value.toInt(),
+                        lightScrim = ColorBackground.toArgb(),
+                        darkScrim = ColorBackgroundInverse.toArgb(),
                         detectDarkMode = { isInNightMode }
                     )
                 )
