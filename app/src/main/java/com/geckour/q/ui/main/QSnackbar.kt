@@ -23,7 +23,7 @@ import com.geckour.q.R
 import com.geckour.q.ui.compose.QTheme
 
 @Composable
-fun QSnackBar(message: String?, progress: Float?, onCancelProgress: (() -> Unit)?) {
+fun QSnackbar(message: String?, progress: Float?, onCancelProgress: (() -> Unit)?) {
     AnimatedVisibility(
         visible = message != null
     ) {

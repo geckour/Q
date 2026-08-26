@@ -157,6 +157,9 @@
 
     <string name="dialog_switch_desc_filter_only_favorite">Only favorites</string>
 
+    <!-- Snackbar -->
+    <string name="snackbar_message_dropbox_sync_failure">Failed to sync with Dropbox: %s</string>
+
     <!-- Track -->
     <string name="track_item_artist_and_album" translatable="false">%1$s - %2$s</string>
     <string name="track_file_info" translatable="false">%1$s・%2$dkbps・%3$.1fkHz</string>

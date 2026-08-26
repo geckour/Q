@@ -43,8 +43,8 @@ import kotlinx.coroutines.launch
 fun Library(
     navController: NavHostController,
     scrollToTop: Long,
-    snackBarMessage: String?,
-    snackBarProgress: Float?,
+    snackbarMessage: String?,
+    snackbarProgress: Float?,
     isSearchActive: MutableState<Boolean>,
     isFavoriteOnly: MutableState<Boolean>,
     routeInfo: QAudioDeviceInfo?,
@@ -392,9 +392,9 @@ fun Library(
                 Equalizer(routeInfo = routeInfo)
             }
         }
-        QSnackBar(
-            message = snackBarMessage,
-            progress = snackBarProgress,
+        QSnackbar(
+            message = snackbarMessage,
+            progress = snackbarProgress,
             onCancelProgress = onCancelProgress
         )
     }

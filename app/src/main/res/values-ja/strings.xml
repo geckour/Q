@@ -152,6 +152,9 @@
 
     <string name="dialog_switch_desc_filter_only_favorite">お気に入りのみ</string>
 
+    <!-- Snackbar -->
+    <string name="snackbar_message_dropbox_sync_failure">Dropbox との同期に失敗しました: %s</string>
+
     <!-- Payment -->
     <string name="payment_desc">投げ銭を受け付けています</string>
     <string name="payment_action_pay">投げる</string>

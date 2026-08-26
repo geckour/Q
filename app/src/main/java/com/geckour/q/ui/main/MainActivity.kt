@@ -109,6 +109,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.nio.charset.Charset
 import java.util.UUID
+import kotlin.time.Duration.Companion.milliseconds
 
 @UnstableApi
 class MainActivity : ComponentActivity() {
@@ -177,11 +178,11 @@ class MainActivity : ComponentActivity() {
             } catch (t: Throwable) {
                 Timber.e(t)
                 lifecycleScope.launch {
-                    viewModel.emitSnackBarMessage(
+                    viewModel.emitSnackbarMessage(
                         getString(R.string.message_attach_lyric_failure)
                     )
-                    delay(2000)
-                    viewModel.emitSnackBarMessage(null)
+                    delay(2000.milliseconds)
+                    viewModel.emitSnackbarMessage(null)
                 }
             }
         }
@@ -199,20 +200,20 @@ class MainActivity : ComponentActivity() {
                 }
                 this.lrcString = null
                 lifecycleScope.launch {
-                    viewModel.emitSnackBarMessage(
+                    viewModel.emitSnackbarMessage(
                         getString(R.string.message_export_lyric_success)
                     )
-                    delay(2000)
-                    viewModel.emitSnackBarMessage(null)
+                    delay(2000.milliseconds)
+                    viewModel.emitSnackbarMessage(null)
                 }
             } catch (t: Throwable) {
                 Timber.e(t)
                 lifecycleScope.launch {
-                    viewModel.emitSnackBarMessage(
+                    viewModel.emitSnackbarMessage(
                         getString(R.string.message_export_lyric_failure)
                     )
-                    delay(2000)
-                    viewModel.emitSnackBarMessage(null)
+                    delay(2000.milliseconds)
+                    viewModel.emitSnackbarMessage(null)
                 }
             }
         }
@@ -328,7 +329,7 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf<ImmutableList<String>>(persistentListOf())
             }
             var attachLyricTargetTrackId by remember { mutableLongStateOf(-1) }
-            val snackBarMessage by viewModel.snackBarMessageFlow.collectAsState()
+            val snackbarMessage by viewModel.snackbarMessageFlow.collectAsState()
             val equalizerParams by context.getEqualizerParams().collectAsState(initial = null)
             var scrollToTop by remember { mutableLongStateOf(0L) }
             var showLyric by remember { mutableStateOf(false) }
@@ -375,20 +376,20 @@ class MainActivity : ComponentActivity() {
                             .upsertLyric(
                                 Lyric(id = id, trackId = attachLyricTargetTrackId, lines = it)
                             )
-                        viewModel.emitSnackBarMessage(
+                        viewModel.emitSnackbarMessage(
                             getString(R.string.message_attach_lyric_success)
                         )
-                        delay(2000)
-                        viewModel.emitSnackBarMessage(null)
+                        delay(2000.milliseconds)
+                        viewModel.emitSnackbarMessage(null)
                         attachLyricTargetTrackId = -1
                     }
                 } else {
                     coroutineScope.launch {
-                        viewModel.emitSnackBarMessage(
+                        viewModel.emitSnackbarMessage(
                             getString(R.string.message_attach_lyric_failure)
                         )
-                        delay(2000)
-                        viewModel.emitSnackBarMessage(null)
+                        delay(2000.milliseconds)
+                        viewModel.emitSnackbarMessage(null)
                     }
                 }
             }
@@ -539,8 +540,8 @@ class MainActivity : ComponentActivity() {
                                 currentDropboxItemList = currentDropboxItemList,
                                 downloadTargets = downloadTargets,
                                 invalidateDownloadedTargets = invalidateDownloadedTargets,
-                                snackBarMessage = progressMessage ?: snackBarMessage,
-                                snackBarProgress = progressFraction,
+                                snackbarMessage = progressMessage ?: snackbarMessage,
+                                snackbarProgress = progressFraction,
                                 forceScrollToCurrent = forceScrollToCurrent,
                                 showDropboxDialog = showDropboxDialog,
                                 showResetShuffleDialog = showResetShuffleDialog,
@@ -624,11 +625,11 @@ class MainActivity : ComponentActivity() {
                                         DB.getInstance(context)
                                             .lyricDao()
                                             .deleteLyricByTrackId(it)
-                                        viewModel.emitSnackBarMessage(
+                                        viewModel.emitSnackbarMessage(
                                             getString(R.string.message_delete_lyric_complete)
                                         )
-                                        delay(2000)
-                                        viewModel.emitSnackBarMessage(null)
+                                        delay(2000.milliseconds)
+                                        viewModel.emitSnackbarMessage(null)
                                     }
                                 },
                                 onStartAuthDropbox = {
@@ -641,7 +642,13 @@ class MainActivity : ComponentActivity() {
                                     )
                                     showDropboxDialog = false
                                 },
-                                onShowDropboxFolderChooser = viewModel::showDropboxFolderChooser,
+                                onShowDropboxFolderChooser = {
+                                    viewModel.showDropboxFolderChooser {
+                                        lifecycleScope.launch {
+                                            onDropboxSyncFailure(it)
+                                        }
+                                    }
+                                },
                                 hideDropboxDialog = {
                                     viewModel.clearDropboxItemList()
                                     showDropboxDialog = false
@@ -688,8 +695,8 @@ class MainActivity : ComponentActivity() {
                                 invalidateDownloadedTargets = invalidateDownloadedTargets,
                                 isSearchActive = isSearchActive,
                                 isFavoriteOnly = isFavoriteOnly,
-                                snackBarMessage = progressMessage ?: snackBarMessage,
-                                snackBarProgress = progressFraction,
+                                snackbarMessage = progressMessage ?: snackbarMessage,
+                                snackbarProgress = progressFraction,
                                 forceScrollToCurrent = forceScrollToCurrent,
                                 showDropboxDialog = showDropboxDialog,
                                 showResetShuffleDialog = showResetShuffleDialog,
@@ -771,11 +778,11 @@ class MainActivity : ComponentActivity() {
                                         DB.getInstance(context)
                                             .lyricDao()
                                             .deleteLyricByTrackId(it)
-                                        viewModel.emitSnackBarMessage(
+                                        viewModel.emitSnackbarMessage(
                                             getString(R.string.message_delete_lyric_complete)
                                         )
-                                        delay(2000)
-                                        viewModel.emitSnackBarMessage(null)
+                                        delay(2000.milliseconds)
+                                        viewModel.emitSnackbarMessage(null)
                                     }
                                 },
                                 onStartAuthDropbox = {
@@ -788,7 +795,13 @@ class MainActivity : ComponentActivity() {
                                     )
                                     showDropboxDialog = false
                                 },
-                                onShowDropboxFolderChooser = viewModel::showDropboxFolderChooser,
+                                onShowDropboxFolderChooser = {
+                                    viewModel.showDropboxFolderChooser {
+                                        lifecycleScope.launch {
+                                            onDropboxSyncFailure(it)
+                                        }
+                                    }
+                                },
                                 hideDropboxDialog = {
                                     viewModel.clearDropboxItemList()
                                     showDropboxDialog = false
@@ -848,7 +861,11 @@ class MainActivity : ComponentActivity() {
         if (viewModel.isDropboxAuthOngoing) {
             viewModel.isDropboxAuthOngoing = false
             lifecycleScope.launch {
-                viewModel.storeDropboxApiToken()
+                viewModel.storeDropboxApiToken {
+                    lifecycleScope.launch {
+                        onDropboxSyncFailure(it)
+                    }
+                }
                 onAuthDropboxCompleted?.invoke()
             }
         }
@@ -1003,6 +1020,17 @@ class MainActivity : ComponentActivity() {
     private fun File.getDirSize(initialSize: Long = 0): Long =
         if (isFile) initialSize + length()
         else listFiles()?.sumOf { it.getDirSize(initialSize) } ?: initialSize
+
+    private suspend fun onDropboxSyncFailure(throwable: Throwable) {
+        viewModel.emitSnackbarMessage(
+            getString(
+                R.string.snackbar_message_dropbox_sync_failure,
+                throwable.message,
+            )
+        )
+        delay(2000.milliseconds)
+        viewModel.emitSnackbarMessage(null)
+    }
 }
 
 private val Resources.isNightMode

@@ -8,7 +8,6 @@ import android.os.Bundle
 import androidx.concurrent.futures.await
 import androidx.core.net.toFile
 import androidx.core.os.bundleOf
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Player
@@ -25,8 +24,8 @@ import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.BillingApiClient
 import com.geckour.q.data.db.DB
-import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.PlaybackButton
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.service.PlayerService
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -73,12 +72,10 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal val currentSourcePathsFlow =
         MutableStateFlow<ImmutableList<String>>(persistentListOf())
     internal val currentIndexFlow = MutableStateFlow(0)
-    internal val currentQueueFlow = DB.getInstance(app).trackDao()
-        .getAllAsFlow()
+    internal val currentQueueFlow = DB.getInstance(app).trackDao().getAllAsFlow()
         .combine(currentSourcePathsFlow) { allTracks, currentSourcePaths ->
             allTracks to currentSourcePaths
-        }
-        .combine(currentIndexFlow) { (allTracks, currentSourcePaths), currentIndex ->
+        }.combine(currentIndexFlow) { (allTracks, currentSourcePaths), currentIndex ->
             currentSourcePaths.mapIndexedNotNull { index, sourcePath ->
                 allTracks.firstOrNull { it.track.sourcePath == sourcePath }
                     ?.toUiTrack(nowPlaying = currentIndex == index)
@@ -88,7 +85,7 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal val currentBufferedPositionFlow = MutableStateFlow(0L)
     internal val currentPlaybackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
     internal val currentRepeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
-    internal val snackBarMessageFlow = MutableStateFlow<String?>(null)
+    internal val snackbarMessageFlow = MutableStateFlow<String?>(null)
 
     private var notifyPlaybackPositionJob: Job = Job()
     private var notifyBufferedPositionJob: Job = Job()
@@ -122,8 +119,7 @@ class MainViewModel(private val app: App) : ViewModel() {
         }
 
         override fun onPlayWhenReadyChanged(
-            playWhenReady: Boolean,
-            reason: Int
+            playWhenReady: Boolean, reason: Int
         ) {
             super.onPlayWhenReadyChanged(playWhenReady, reason)
 
@@ -137,9 +133,7 @@ class MainViewModel(private val app: App) : ViewModel() {
         }
 
         override fun onPositionDiscontinuity(
-            oldPosition: Player.PositionInfo,
-            newPosition: Player.PositionInfo,
-            reason: Int
+            oldPosition: Player.PositionInfo, newPosition: Player.PositionInfo, reason: Int
         ) {
             super.onPositionDiscontinuity(oldPosition, newPosition, reason)
 
@@ -147,70 +141,62 @@ class MainViewModel(private val app: App) : ViewModel() {
         }
     }
 
-    private val billingApiClient = BillingApiClient(
-        app,
-        onError = {
-            viewModelScope.launch {
-                snackBarMessageFlow.value =
-                    app.getString(R.string.payment_message_error_failed_to_start)
-                delay(2000)
-                snackBarMessageFlow.value = null
+    private val billingApiClient = BillingApiClient(app, onError = {
+        viewModelScope.launch {
+            snackbarMessageFlow.value =
+                app.getString(R.string.payment_message_error_failed_to_start)
+            delay(2000.milliseconds)
+            snackbarMessageFlow.value = null
+        }
+    }, onDonateCompleted = { result, client ->
+        when (result) {
+            BillingApiClient.BillingApiResult.SUCCESS -> {
+                client.requestUpdate()
+                viewModelScope.launch {
+                    snackbarMessageFlow.value = app.getString(R.string.payment_message_success)
+                    delay(2000.milliseconds)
+                    snackbarMessageFlow.value = null
+                }
             }
-        },
-        onDonateCompleted = { result, client ->
-            when (result) {
-                BillingApiClient.BillingApiResult.SUCCESS -> {
-                    client.requestUpdate()
-                    viewModelScope.launch {
-                        snackBarMessageFlow.value = app.getString(R.string.payment_message_success)
-                        delay(2000)
-                        snackBarMessageFlow.value = null
-                    }
-                }
 
-                BillingApiClient.BillingApiResult.DUPLICATED -> {
-                    client.requestUpdate()
-                    viewModelScope.launch {
-                        snackBarMessageFlow.value =
-                            app.getString(R.string.payment_message_error_duplicated)
-                        delay(2000)
-                        snackBarMessageFlow.value = null
-                    }
+            BillingApiClient.BillingApiResult.DUPLICATED -> {
+                client.requestUpdate()
+                viewModelScope.launch {
+                    snackbarMessageFlow.value =
+                        app.getString(R.string.payment_message_error_duplicated)
+                    delay(2000.milliseconds)
+                    snackbarMessageFlow.value = null
                 }
+            }
 
-                BillingApiClient.BillingApiResult.CANCELLED -> {
-                    val paymentMessageErrorCanceled =
-                        app.getString(R.string.payment_message_error_canceled)
-                    viewModelScope.launch {
-                        snackBarMessageFlow.value = paymentMessageErrorCanceled
-                        delay(2000)
-                        snackBarMessageFlow.value = null
-                    }
+            BillingApiClient.BillingApiResult.CANCELLED -> {
+                val paymentMessageErrorCanceled =
+                    app.getString(R.string.payment_message_error_canceled)
+                viewModelScope.launch {
+                    snackbarMessageFlow.value = paymentMessageErrorCanceled
+                    delay(2000.milliseconds)
+                    snackbarMessageFlow.value = null
                 }
+            }
 
-                BillingApiClient.BillingApiResult.FAILURE -> {
-                    viewModelScope.launch {
-                        snackBarMessageFlow.value =
-                            app.getString(R.string.payment_message_error_failed)
-                        delay(2000)
-                        snackBarMessageFlow.value = null
-                    }
+            BillingApiClient.BillingApiResult.FAILURE -> {
+                viewModelScope.launch {
+                    snackbarMessageFlow.value = app.getString(R.string.payment_message_error_failed)
+                    delay(2000.milliseconds)
+                    snackbarMessageFlow.value = null
                 }
             }
         }
-    )
+    })
 
     internal fun initializeMediaController(context: Context) {
         viewModelScope.launch {
             mediaController = MediaController.Builder(
-                context,
-                SessionToken(context, ComponentName(context, PlayerService::class.java))
-            ).buildAsync()
-                .await()
-                .apply {
-                    addListener(playerListener)
-                    onSourceChanged()
-                }
+                context, SessionToken(context, ComponentName(context, PlayerService::class.java))
+            ).buildAsync().await().apply {
+                addListener(playerListener)
+                onSourceChanged()
+            }
         }
     }
 
@@ -220,42 +206,33 @@ class MainViewModel(private val app: App) : ViewModel() {
     }
 
     internal fun onNewQueue(
-        uiTracks: List<UiTrack>,
-        actionType: InsertActionType,
-        classType: OrientedClassType
+        uiTracks: List<UiTrack>, actionType: InsertActionType, classType: OrientedClassType
     ) {
         val mediaController = this.mediaController ?: return
 
         loading.value = true to {
             mediaController.sendCustomCommand(
                 SessionCommand(
-                    PlayerService.ACTION_COMMAND_CANCEL_SUBMIT,
-                    Bundle.EMPTY
-                ),
-                Bundle.EMPTY
+                    PlayerService.ACTION_COMMAND_CANCEL_SUBMIT, Bundle.EMPTY
+                ), Bundle.EMPTY
             )
             loading.value = false to null
         }
         mediaController.sendCustomCommand(
             SessionCommand(
-                PlayerService.ACTION_COMMAND_SUBMIT_QUEUE,
-                Bundle.EMPTY
-            ),
-            bundleOf(
+                PlayerService.ACTION_COMMAND_SUBMIT_QUEUE, Bundle.EMPTY
+            ), bundleOf(
                 PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_ACTION_TYPE to actionType,
                 PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_CLASS_TYPE to classType,
-                PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_QUEUE to uiTracks.map { it.sourcePath }
-            )
+                PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_QUEUE to uiTracks.map { it.sourcePath })
         )
     }
 
     internal fun onQueueMove(from: Int, to: Int) {
         mediaController?.sendCustomCommand(
             SessionCommand(
-                PlayerService.ACTION_COMMAND_MOVE_QUEUE,
-                Bundle.EMPTY
-            ),
-            bundleOf(
+                PlayerService.ACTION_COMMAND_MOVE_QUEUE, Bundle.EMPTY
+            ), bundleOf(
                 PlayerService.ACTION_EXTRA_MOVE_QUEUE_FROM to from,
                 PlayerService.ACTION_EXTRA_MOVE_QUEUE_TO to to
             )
@@ -268,10 +245,8 @@ class MainViewModel(private val app: App) : ViewModel() {
         viewModelScope.launch {
             mediaController.sendCustomCommand(
                 SessionCommand(
-                    PlayerService.ACTION_COMMAND_REMOVE_QUEUE,
-                    Bundle.EMPTY
-                ),
-                bundleOf(
+                    PlayerService.ACTION_COMMAND_REMOVE_QUEUE, Bundle.EMPTY
+                ), bundleOf(
                     PlayerService.ACTION_EXTRA_REMOVE_QUEUE_TARGET_INDEX to index,
                 )
             )
@@ -284,10 +259,8 @@ class MainViewModel(private val app: App) : ViewModel() {
         viewModelScope.launch {
             mediaController.sendCustomCommand(
                 SessionCommand(
-                    PlayerService.ACTION_COMMAND_REMOVE_QUEUE,
-                    Bundle.EMPTY
-                ),
-                bundleOf(
+                    PlayerService.ACTION_COMMAND_REMOVE_QUEUE, Bundle.EMPTY
+                ), bundleOf(
                     PlayerService.ACTION_EXTRA_REMOVE_QUEUE_TARGET_SOURCE_PATH to sourcePath,
                 )
             )
@@ -297,20 +270,16 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal fun onShuffle(actionType: ShuffleActionType? = null) {
         mediaController?.sendCustomCommand(
             SessionCommand(
-                PlayerService.ACTION_COMMAND_SHUFFLE_QUEUE,
-                Bundle.EMPTY
-            ),
-            bundleOf(PlayerService.ACTION_EXTRA_SHUFFLE_ACTION_TYPE to actionType)
+                PlayerService.ACTION_COMMAND_SHUFFLE_QUEUE, Bundle.EMPTY
+            ), bundleOf(PlayerService.ACTION_EXTRA_SHUFFLE_ACTION_TYPE to actionType)
         )
     }
 
     internal fun onResetShuffle() {
         mediaController?.sendCustomCommand(
             SessionCommand(
-                PlayerService.ACTION_COMMAND_RESET_QUEUE_ORDER,
-                Bundle.EMPTY
-            ),
-            Bundle.EMPTY
+                PlayerService.ACTION_COMMAND_RESET_QUEUE_ORDER, Bundle.EMPTY
+            ), Bundle.EMPTY
         )
     }
 
@@ -339,20 +308,16 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal fun onClickClearQueueButton() {
         mediaController?.sendCustomCommand(
             SessionCommand(
-                PlayerService.ACTION_COMMAND_CLEAR_QUEUE,
-                Bundle.EMPTY
-            ),
-            bundleOf(PlayerService.ACTION_EXTRA_CLEAR_QUEUE_NEED_TO_KEEP_CURRENT to true)
+                PlayerService.ACTION_COMMAND_CLEAR_QUEUE, Bundle.EMPTY
+            ), bundleOf(PlayerService.ACTION_EXTRA_CLEAR_QUEUE_NEED_TO_KEEP_CURRENT to true)
         )
     }
 
     internal fun onClickRepeatButton() {
         mediaController?.sendCustomCommand(
             SessionCommand(
-                PlayerService.ACTION_COMMAND_ROTATE_REPEAT_MODE,
-                Bundle.EMPTY
-            ),
-            Bundle.EMPTY
+                PlayerService.ACTION_COMMAND_ROTATE_REPEAT_MODE, Bundle.EMPTY
+            ), Bundle.EMPTY
         )
     }
 
@@ -360,10 +325,9 @@ class MainViewModel(private val app: App) : ViewModel() {
         val mediaController = this@MainViewModel.mediaController ?: return@launch
 
         loading.value = false to null
-        currentSourcePathsFlow.value =
-            List(mediaController.mediaItemCount) {
-                mediaController.getMediaItemAt(it).mediaId
-            }.filter { it.isNotBlank() }.toImmutableList()
+        currentSourcePathsFlow.value = List(mediaController.mediaItemCount) {
+            mediaController.getMediaItemAt(it).mediaId
+        }.filter { it.isNotBlank() }.toImmutableList()
         currentIndexFlow.value = mediaController.currentMediaItemIndex.coerceAtLeast(0)
         currentPlaybackPositionFlow.value = mediaController.currentPosition
         currentBufferedPositionFlow.value = mediaController.bufferedPosition
@@ -425,10 +389,8 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal fun onChangeIndexRequested(index: Int) {
         mediaController?.sendCustomCommand(
             SessionCommand(
-                PlayerService.ACTION_COMMAND_RESET_QUEUE_INDEX,
-                Bundle.EMPTY
-            ),
-            bundleOf(
+                PlayerService.ACTION_COMMAND_RESET_QUEUE_INDEX, Bundle.EMPTY
+            ), bundleOf(
                 PlayerService.ACTION_EXTRA_RESET_QUEUE_INDEX_FORCE to false,
                 PlayerService.ACTION_EXTRA_RESET_QUEUE_INDEX_INDEX to index
             )
@@ -449,51 +411,52 @@ class MainViewModel(private val app: App) : ViewModel() {
             PlaybackButton.PREV -> mediaController.seekToPrevious()
             PlaybackButton.FF -> mediaController.sendCustomCommand(
                 SessionCommand(
-                    PlayerService.ACTION_COMMAND_FAST_FORWARD,
-                    Bundle.EMPTY
-                ),
-                Bundle.EMPTY
+                    PlayerService.ACTION_COMMAND_FAST_FORWARD, Bundle.EMPTY
+                ), Bundle.EMPTY
             )
 
             PlaybackButton.REWIND -> mediaController.sendCustomCommand(
                 SessionCommand(
-                    PlayerService.ACTION_COMMAND_REWIND,
-                    Bundle.EMPTY
-                ),
-                Bundle.EMPTY
+                    PlayerService.ACTION_COMMAND_REWIND, Bundle.EMPTY
+                ), Bundle.EMPTY
             )
 
             PlaybackButton.UNDEFINED -> mediaController.sendCustomCommand(
                 SessionCommand(
-                    PlayerService.ACTION_COMMAND_STOP_FAST_SEEK,
-                    Bundle.EMPTY
-                ),
-                Bundle.EMPTY
+                    PlayerService.ACTION_COMMAND_STOP_FAST_SEEK, Bundle.EMPTY
+                ), Bundle.EMPTY
             )
         }
     }
 
-    internal suspend fun storeDropboxApiToken() {
+    internal suspend fun storeDropboxApiToken(onFailure: (Throwable) -> Unit) {
         val credential = Auth.getDbxCredential() ?: return
         app.setDropboxCredential(credential.toString())
-        showDropboxFolderChooser()
+        showDropboxFolderChooser(onFailure = onFailure)
     }
 
-    internal fun showDropboxFolderChooser(dropboxMetadata: Metadata? = null) {
+    internal fun showDropboxFolderChooser(
+        dropboxMetadata: Metadata? = null,
+        onFailure: (Throwable) -> Unit,
+    ) {
         viewModelScope.launch(Dispatchers.IO) {
             val client = obtainDbxClient(app).firstOrNull() ?: return@launch
-            var result = client.files().listFolder(dropboxMetadata?.pathLower.orEmpty())
-            while (true) {
-                if (result.hasMore.not()) break
 
-                result = client.files().listFolderContinue(result.cursor)
-            }
-            val currentDirTitle = (dropboxMetadata?.name ?: "Root")
-            dropboxItemListChannel.send(
-                currentDirTitle to result.entries.filterIsInstance<FolderMetadata>()
-                    .sortedBy { it.name.lowercase() }
-                    .toImmutableList()
-            )
+            runCatching {
+                var result = client.files().listFolder(dropboxMetadata?.pathLower.orEmpty())
+                while (true) {
+                    if (result.hasMore.not()) break
+
+                    result = client.files().listFolderContinue(result.cursor)
+                }
+                val currentDirTitle = (dropboxMetadata?.name ?: "Root")
+                dropboxItemListChannel.send(
+                    currentDirTitle to result.entries
+                        .filterIsInstance<FolderMetadata>()
+                        .sortedBy { it.name.lowercase() }
+                        .toImmutableList()
+                )
+            }.onFailure(onFailure)
         }
     }
 
@@ -513,7 +476,7 @@ class MainViewModel(private val app: App) : ViewModel() {
         billingApiClient.requestUpdate()
     }
 
-    internal suspend fun emitSnackBarMessage(message: String?) {
-        snackBarMessageFlow.emit(message)
+    internal suspend fun emitSnackbarMessage(message: String?) {
+        snackbarMessageFlow.emit(message)
     }
 }
