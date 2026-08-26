@@ -5,9 +5,10 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.icu.util.Calendar
-import android.net.Uri
+import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toFile
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.exoplayer.ExoPlayer
@@ -39,8 +40,6 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.random.Random
-import androidx.core.graphics.createBitmap
-import androidx.core.net.toUri
 
 
 const val UNKNOWN: String = "UNKNOWN"
@@ -280,14 +279,13 @@ fun Long.getTimeString(): String {
     val hour = this / 3600000
     val minute = (this % 3600000) / 60000
     val second = (this % 60000) / 1000
-    return (if (hour > 0) String.format("%d:", hour) else "") + String.format(
-        "%02d:%02d", minute, second
-    )
+    return (if (hour > 0) String.format("%d:", hour) else "") +
+            String.format("%02d:%02d", minute, second)
 }
 
 fun DbxClientV2.saveTempAudioFile(
     context: Context,
-    pathLower: String
+    pathLower: String,
 ): Flow<Pair<File, Long?>> {
     val dirName = "audio"
     val fileName = "temp_audio.${pathLower.getExtension()}"
@@ -297,16 +295,7 @@ fun DbxClientV2.saveTempAudioFile(
     if (file.exists()) file.delete()
     if (dir.exists().not()) dir.mkdir()
 
-    return callbackFlow {
-        val callback = ProgressListener { processed ->
-            trySend(file to processed)
-        }
-        FileOutputStream(file).use {
-            files().download(pathLower).download(it, callback)
-        }
-        trySend(file to null)
-        channel.close()
-    }.flowOn(Dispatchers.IO)
+    return saveFile(file, pathLower)
 }
 
 fun DbxClientV2.saveAudioFile(
@@ -321,6 +310,13 @@ fun DbxClientV2.saveAudioFile(
     if (file.exists()) file.delete()
     if (dir.exists().not()) dir.mkdir()
 
+    return saveFile(file, pathLower)
+}
+
+private fun DbxClientV2.saveFile(
+    file: File,
+    pathLower: String,
+): Flow<Pair<File, Long?>> {
     return callbackFlow {
         val callback = ProgressListener { processed ->
             trySend(file to processed)

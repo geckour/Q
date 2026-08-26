@@ -54,6 +54,7 @@ class DropboxMediaRetrieveWorker(
         const val TAG = "dropbox_media_retrieve_worker"
         const val KEY_ROOT_PATH = "key_root_path"
         const val KEY_NEED_DOWNLOADED = "key_need_downloaded"
+        private const val PROGRESS_UPDATE_THRESHOLD_MILLIS = 200
     }
 
     private val db = DB.getInstance(context)
@@ -298,6 +299,7 @@ class DropboxMediaRetrieveWorker(
 
         val processedFilesSizeSnapshot = processedFilesSize
         var lastProgressSampledTime = currentTime
+        var lastProcessedFileSize = processedFilesSize
         val fileAndProgressFlow = if (needDownloaded) client.saveAudioFile(
             applicationContext,
             dropboxMetadata.id,
@@ -325,11 +327,16 @@ class DropboxMediaRetrieveWorker(
                     return@collectLatest
                 }
                 target = file
-                val now = System.currentTimeMillis()
                 processedFilesSize = processedFilesSizeSnapshot + processed
+
+                val now = System.currentTimeMillis()
+                if (now - lastProgressSampledTime < PROGRESS_UPDATE_THRESHOLD_MILLIS) {
+                    return@collectLatest
+                }
                 speeds =
-                    (speeds + (processed.toFloat() / (now - lastProgressSampledTime))).take(10)
+                    (speeds + ((processedFilesSize - lastProcessedFileSize).toFloat() / (now - lastProgressSampledTime))).takeLast(10)
                 lastProgressSampledTime = now
+                lastProcessedFileSize = processedFilesSize
                 updateProgress()
             }
     }
