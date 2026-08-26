@@ -18,6 +18,7 @@ import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import androidx.work.WorkManager
 import com.dropbox.core.android.Auth
+import com.dropbox.core.v2.files.FileMetadata
 import com.dropbox.core.v2.files.FolderMetadata
 import com.dropbox.core.v2.files.Metadata
 import com.geckour.q.App
@@ -91,7 +92,7 @@ class MainViewModel(private val app: App) : ViewModel() {
     private var notifyBufferedPositionJob: Job = Job()
 
     private val dropboxItemListChannel =
-        Channel<Pair<String, ImmutableList<FolderMetadata>>>(capacity = Channel.CONFLATED)
+        Channel<Triple<String, ImmutableList<FolderMetadata>, ImmutableList<FileMetadata>>>(capacity = Channel.CONFLATED)
     internal val dropboxItemList = dropboxItemListChannel.receiveAsFlow()
 
     internal val loading = MutableStateFlow<Pair<Boolean, (() -> Unit)?>>(false to null)
@@ -451,10 +452,17 @@ class MainViewModel(private val app: App) : ViewModel() {
                 }
                 val currentDirTitle = (dropboxMetadata?.name ?: "Root")
                 dropboxItemListChannel.send(
-                    currentDirTitle to result.entries
-                        .filterIsInstance<FolderMetadata>()
-                        .sortedBy { it.name.lowercase() }
-                        .toImmutableList()
+                    Triple(
+                        currentDirTitle,
+                        result.entries
+                            .filterIsInstance<FolderMetadata>()
+                            .sortedBy { it.name.lowercase() }
+                            .toImmutableList(),
+                        result.entries
+                            .filterIsInstance<FileMetadata>()
+                            .sortedBy { it.name.lowercase() }
+                            .toImmutableList(),
+                    )
                 )
             }.onFailure(onFailure)
         }
@@ -462,7 +470,7 @@ class MainViewModel(private val app: App) : ViewModel() {
 
     internal fun clearDropboxItemList() {
         viewModelScope.launch {
-            dropboxItemListChannel.send("" to persistentListOf())
+            dropboxItemListChannel.send(Triple("", persistentListOf(), persistentListOf()))
         }
     }
 

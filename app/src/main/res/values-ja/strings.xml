@@ -137,7 +137,7 @@
 
     <string name="dialog_title_dropbox_choose_folder">フォルダを選択</string>
     <string name="dialog_desc_dropbox_choose_folder">メディアを探索するルートフォルダを選択</string>
-    <string name="dialog_action_dropbox_choose_folder">このフォルダを探索する</string>
+    <string name="dialog_desc_dropbox_empty_folder">このフォルダは空です</string>
 
     <string name="dialog_title_dropbox_sync_caution">警告</string>
     <string name="dialog_desc_dropbox_sync_caution">同期する曲を全て一時的にダウンロードし、楽曲データ取得後一時ファイルを削除します。\nそのため完了まで時間がかかり、大容量の通信が発生する可能性があります。\n実行しますか？</string>
@@ -151,6 +151,9 @@
     <string name="dialog_desc_dropbox_invalidate_downloaded">端末からダウンロードしたファイルを削除しますか？</string>
 
     <string name="dialog_switch_desc_filter_only_favorite">お気に入りのみ</string>
+
+    <string name="content_description_folder">Folder</string>
+    <string name="content_description_file">File</string>
 
     <!-- Snackbar -->
     <string name="snackbar_message_dropbox_sync_failure">Dropbox との同期に失敗しました: %s</string>

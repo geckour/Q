@@ -26,6 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.dropbox.core.v2.files.FileMetadata
 import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
@@ -66,7 +67,7 @@ fun TwinScreen(
     selectedAllArtists: AllArtists?,
     selectedGenre: Genre?,
     equalizerParams: EqualizerParams?,
-    currentDropboxItemList: Pair<String, ImmutableList<FolderMetadata>>,
+    currentDropboxItemList: Triple<String, ImmutableList<FolderMetadata>, ImmutableList<FileMetadata>>,
     downloadTargets: ImmutableList<String>,
     invalidateDownloadedTargets: ImmutableList<String>,
     snackbarMessage: String?,
@@ -237,7 +238,7 @@ fun RowScope.TwinStartPage(
     selectedTrack: UiTrack?,
     selectedGenre: Genre?,
     equalizerParams: EqualizerParams?,
-    currentDropboxItemList: Pair<String, ImmutableList<FolderMetadata>>,
+    currentDropboxItemList: Triple<String, ImmutableList<FolderMetadata>, ImmutableList<FileMetadata>>,
     downloadTargets: ImmutableList<String>,
     invalidateDownloadedTargets: ImmutableList<String>,
     snackbarMessage: String?,

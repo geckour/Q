@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.Build
 import android.webkit.MimeTypeMap
 import androidx.core.app.NotificationCompat
+import androidx.core.graphics.createBitmap
 import androidx.work.CoroutineWorker
 import androidx.work.Data
 import androidx.work.ForegroundInfo
@@ -62,15 +63,15 @@ class DropboxMediaRetrieveWorker(
         get() {
             return files.size -
                     (files.indices
-                        .firstOrNull {
-                            processedFilesSize < files.take(it + 1).sumOf { it.size }
+                        .firstOrNull { index ->
+                            processedFilesSize < files.take(index + 1).sumOf { file -> file.size }
                         }
                         ?: 0)
         }
     private val progressFraction get() = processedFilesSize.toFloat() / files.sumOf { it.size }
     private val remainingDuration get() = ((files.sumOf { it.size } - processedFilesSize) / speeds.average()).toLong()
     private var currentPath: String? = null
-    private val notificationBitmap = Bitmap.createBitmap(1000, 1000, Bitmap.Config.ARGB_8888)
+    private val notificationBitmap = createBitmap(1000, 1000)
     private var seed: Long = -1
     private var speeds = listOf<Float>()
 
@@ -85,7 +86,7 @@ class DropboxMediaRetrieveWorker(
 
             try {
                 setForeground(getForegroundInfo())
-            } catch (t: Throwable) {
+            } catch (_: Throwable) {
                 return Result.failure(
                     Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build()
                 )
@@ -200,10 +201,10 @@ class DropboxMediaRetrieveWorker(
                 }
             }
         } catch (e: RateLimitException) {
-            delay(e.backoffMillis)
+            delay(e.backoffMillis.milliseconds)
             retrieveAudioFilePaths(root, client, needDownloaded)
-        } catch (e: ServerException) {
-            delay(3000)
+        } catch (_: ServerException) {
+            delay(3000.milliseconds)
             retrieveAudioFilePaths(root, client, needDownloaded)
         }
     }

@@ -51,6 +51,8 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.dropbox.core.DbxHost
 import com.dropbox.core.android.Auth
+import com.dropbox.core.v2.files.FileMetadata
+import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.BuildConfig
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -334,7 +336,7 @@ class MainActivity : ComponentActivity() {
             var scrollToTop by remember { mutableLongStateOf(0L) }
             var showLyric by remember { mutableStateOf(false) }
             val currentDropboxItemList by viewModel.dropboxItemList.collectAsState(
-                initial = "" to persistentListOf()
+                initial = Triple("", persistentListOf(), persistentListOf())
             )
             val layoutType by layoutTypeFlow.collectAsState()
             var appBarOptionMediaItem by remember { mutableStateOf<MediaItem?>(null) }
@@ -643,7 +645,7 @@ class MainActivity : ComponentActivity() {
                                     showDropboxDialog = false
                                 },
                                 onShowDropboxFolderChooser = {
-                                    viewModel.showDropboxFolderChooser {
+                                    viewModel.showDropboxFolderChooser(it) {
                                         lifecycleScope.launch {
                                             onDropboxSyncFailure(it)
                                         }
@@ -796,7 +798,7 @@ class MainActivity : ComponentActivity() {
                                     showDropboxDialog = false
                                 },
                                 onShowDropboxFolderChooser = {
-                                    viewModel.showDropboxFolderChooser {
+                                    viewModel.showDropboxFolderChooser(it) {
                                         lifecycleScope.launch {
                                             onDropboxSyncFailure(it)
                                         }
