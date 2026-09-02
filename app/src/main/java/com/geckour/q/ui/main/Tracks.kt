@@ -31,7 +31,6 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -56,7 +55,8 @@ import com.geckour.q.util.isDownloaded
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.launch
+
+private const val HEADER_ITEM_COUNT = 2
 
 @Composable
 fun Tracks(
@@ -71,18 +71,20 @@ fun Tracks(
     onTrackSelected: (item: UiTrack) -> Unit,
     onDownload: (item: UiTrack) -> Unit,
     onInvalidateDownloaded: (item: UiTrack) -> Unit,
-    resumeScrollToIndex: Int,
-    resumeScrollToOffset: Int,
+    initialScrollPosition: Pair<Int, Int>,
     scrollToTop: Long,
     onScrollPositionUpdated: (newIndex: Int, newOffset: Int) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onSearchItemClicked: (item: SearchItem) -> Unit,
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
 ) {
-    val coroutineScope = rememberCoroutineScope()
     val db = DB.getInstance(LocalContext.current)
+    val listState = rememberLazyListState()
     val pager = remember {
-        Pager(PagingConfig(pageSize = 20, enablePlaceholders = true)) {
+        Pager(
+            config = PagingConfig(pageSize = 20, enablePlaceholders = true),
+            initialKey = (initialScrollPosition.first - HEADER_ITEM_COUNT).coerceAtLeast(0)
+        ) {
             when {
                 albumId > 0 -> db.trackDao().getAllByAlbumAsPagingSource(albumId)
                 genreName != null -> db.trackDao().getAllByGenreNameAsPagingSource(genreName)
@@ -96,7 +98,6 @@ fun Tracks(
         } else pager.flow)
             .collectAsLazyPagingItems()
     val defaultTabBarTitle = stringResource(id = R.string.nav_track)
-    val listState = rememberLazyListState()
 
     LaunchedEffect(albumId, genreName) {
         changeTopBarTitle(
@@ -108,27 +109,15 @@ fun Tracks(
         )
     }
 
-    LaunchedEffect(listState.isScrollInProgress) {
-        if (listState.isScrollInProgress.not()) {
-            onScrollPositionUpdated(
-                listState.firstVisibleItemIndex,
-                listState.firstVisibleItemScrollOffset
-            )
-        }
-    }
+    ScrollPositionEffect(
+        listState = listState,
+        initialScrollPosition = initialScrollPosition,
+        headerItemCount = HEADER_ITEM_COUNT,
+        isItemLoaded = { lazyPagingItems.itemSnapshotList.getOrNull(it) != null },
+        onScrollPositionUpdated = onScrollPositionUpdated
+    )
 
-    LaunchedEffect(resumeScrollToIndex) {
-        coroutineScope.launch {
-            listState.scrollToItem(
-                index = resumeScrollToIndex,
-                scrollOffset = resumeScrollToOffset
-            )
-        }
-    }
-
-    LaunchedEffect(scrollToTop) {
-        listState.animateScrollToItem(0)
-    }
+    ScrollToTopEffect(listState = listState, scrollToTop = scrollToTop)
 
     LazyColumn(
         state = listState,

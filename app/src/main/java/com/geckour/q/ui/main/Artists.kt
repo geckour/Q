@@ -24,7 +24,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -56,6 +55,8 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
+private const val HEADER_ITEM_COUNT = 2
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Artists(
@@ -68,8 +69,7 @@ fun Artists(
     onSelectArtist: (item: Artist) -> Unit,
     onDownload: (dropboxPaths: List<String>) -> Unit,
     onInvalidateDownloaded: (artistId: Long) -> Unit,
-    resumeScrollToIndex: Int,
-    resumeScrollToOffset: Int,
+    initialScrollPosition: Pair<Int, Int>,
     scrollToTop: Long,
     onScrollPositionUpdated: (newIndex: Int, newOffset: Int) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
@@ -78,8 +78,12 @@ fun Artists(
 ) {
     val coroutineScope = rememberCoroutineScope()
     val db = DB.getInstance(LocalContext.current)
+    val listState = rememberLazyListState()
     val pager = remember {
-        Pager(PagingConfig(pageSize = 30, enablePlaceholders = true)) {
+        Pager(
+            config = PagingConfig(pageSize = 30, enablePlaceholders = true),
+            initialKey = (initialScrollPosition.first - HEADER_ITEM_COUNT).coerceAtLeast(0)
+        ) {
             db.artistDao().getAllOrientedAlbumAsPagingSource()
         }
     }
@@ -88,29 +92,16 @@ fun Artists(
             pager.flow.map { pagingData -> pagingData.filter { it.isFavorite } }
         } else pager.flow)
             .collectAsLazyPagingItems()
-    val listState = rememberLazyListState()
 
-    LaunchedEffect(listState.isScrollInProgress) {
-        if (listState.isScrollInProgress.not()) {
-            onScrollPositionUpdated(
-                listState.firstVisibleItemIndex,
-                listState.firstVisibleItemScrollOffset
-            )
-        }
-    }
+    ScrollPositionEffect(
+        listState = listState,
+        initialScrollPosition = initialScrollPosition,
+        headerItemCount = HEADER_ITEM_COUNT,
+        isItemLoaded = { lazyPagingItems.itemSnapshotList.getOrNull(it) != null },
+        onScrollPositionUpdated = onScrollPositionUpdated
+    )
 
-    LaunchedEffect(resumeScrollToIndex) {
-        coroutineScope.launch {
-            listState.scrollToItem(
-                index = resumeScrollToIndex,
-                scrollOffset = resumeScrollToOffset
-            )
-        }
-    }
-
-    LaunchedEffect(scrollToTop) {
-        listState.animateScrollToItem(0)
-    }
+    ScrollToTopEffect(listState = listState, scrollToTop = scrollToTop)
 
     LazyColumn(
         state = listState,

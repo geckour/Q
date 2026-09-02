@@ -26,7 +26,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +50,8 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 
+private const val HEADER_ITEM_COUNT = 1
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Genres(
@@ -60,14 +61,12 @@ fun Genres(
     result: MutableState<ImmutableList<SearchItem>>,
     keyboardController: SoftwareKeyboardController?,
     onSelectGenre: (item: Genre) -> Unit,
-    resumeScrollToIndex: Int,
-    resumeScrollToOffset: Int,
+    initialScrollPosition: Pair<Int, Int>,
     scrollToTop: Long,
     onScrollPositionUpdated: (newIndex: Int, newOffset: Int) -> Unit,
     onSearchItemClicked: (item: SearchItem) -> Unit,
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
 ) {
-    val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val db = DB.getInstance(context)
     val genreNames by db.trackDao()
@@ -89,27 +88,15 @@ fun Genres(
         }
     }
 
-    LaunchedEffect(listState.isScrollInProgress) {
-        if (listState.isScrollInProgress.not()) {
-            onScrollPositionUpdated(
-                listState.firstVisibleItemIndex,
-                listState.firstVisibleItemScrollOffset
-            )
-        }
-    }
+    ScrollPositionEffect(
+        listState = listState,
+        initialScrollPosition = initialScrollPosition,
+        headerItemCount = HEADER_ITEM_COUNT,
+        isItemLoaded = { it < genres.size },
+        onScrollPositionUpdated = onScrollPositionUpdated
+    )
 
-    LaunchedEffect(resumeScrollToIndex) {
-        coroutineScope.launch {
-            listState.scrollToItem(
-                index = resumeScrollToIndex,
-                scrollOffset = resumeScrollToOffset
-            )
-        }
-    }
-
-    LaunchedEffect(scrollToTop) {
-        listState.animateScrollToItem(0)
-    }
+    ScrollToTopEffect(listState = listState, scrollToTop = scrollToTop)
 
     LazyColumn(
         state = listState,
