@@ -87,14 +87,14 @@ class LrcLibApiClient {
             "track_name" to track.track.title,
             "artist_name" to track.artist.title,
             "album_name" to track.album.title,
-            "duration" to track.durationSeconds.toInt().toString()
+            "duration" to track.durationSeconds.toInt().toString(),
         )?.let { json.decodeFromString<LrcLibLyric>(it) }
 
     private suspend fun searchLoosely(track: JoinedTrack): LrcLibLyric? =
         request(
             "search",
             "track_name" to track.track.title,
-            "artist_name" to track.artist.title
+            "artist_name" to track.artist.title,
         )?.let { json.decodeFromString<List<LrcLibLyric>>(it) }
             .orEmpty()
             .filter {
@@ -216,6 +216,6 @@ class LrcLibApiClient {
         val duration: Double? = null,
         val instrumental: Boolean = false,
         val plainLyrics: String? = null,
-        val syncedLyrics: String? = null
+        val syncedLyrics: String? = null,
     )
 }
