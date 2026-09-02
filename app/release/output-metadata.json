@@ -11,8 +11,8 @@
       "type": "SINGLE",
       "filters": [],
       "attributes": [],
-      "versionCode": 42,
-      "versionName": "2.15.0",
+      "versionCode": 45,
+      "versionName": "2.18.0",
       "outputFile": "app-release.apk"
     }
   ],
@@ -33,5 +33,5 @@
       ]
     }
   ],
-  "minSdkVersionForDexing": 26
+  "minSdkVersionForDexing": 34
 }
