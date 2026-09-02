@@ -119,6 +119,7 @@ fun PlayerSheet(
             currentPlaybackPosition = currentPlaybackPosition,
             forceScrollToCurrent = forceScrollToCurrent,
             onQueueMove = onQueueMove,
+            onNewProgress = onNewProgress,
             onChangeIndexRequested = onChangeIndexRequested,
             onRemoveTrackFromQueue = onRemoveTrackFromQueue,
             onToggleFavorite = onToggleFavorite,

@@ -94,6 +94,7 @@ fun ColumnScope.Queue(
     forceScrollToCurrent: Long,
     onQueueMove: (from: Int, to: Int) -> Unit,
     onTrackSelected: (track: UiTrack) -> Unit,
+    onNewProgress: (newProgress: Long) -> Unit,
     onChangeIndexRequested: (index: Int) -> Unit,
     onRemoveTrackFromQueue: (index: Int) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
@@ -133,12 +134,14 @@ fun ColumnScope.Queue(
     if (showLyric) {
         var currentIndex by remember { mutableIntStateOf(-1) }
         val listState = rememberLazyListState()
+        val isSyncedLyric = lyricLinesForShowing.size > 1 &&
+                lyricLinesForShowing.any { it.lyricLine.timing != 0L }
 
         LaunchedEffect(currentPlaybackPosition) {
             currentIndex =
                 if (lyricLinesForShowing.all { it.lyricLine.timing == 0L }) -1
                 else lyricLinesForShowing.indexOfLast {
-                    it.lyricLine.timing < currentPlaybackPosition
+                    it.lyricLine.timing <= currentPlaybackPosition
                 }
         }
         LaunchedEffect(currentIndex) {
@@ -237,7 +240,10 @@ fun ColumnScope.Queue(
                         })
                     else LrcItem(
                         lyric = indexedLyricLine.lyricLine.sentence,
-                        indexedLyricLine.index == currentIndex
+                        focused = indexedLyricLine.index == currentIndex,
+                        onClick = if (isSyncedLyric) {
+                            { onNewProgress(indexedLyricLine.lyricLine.timing) }
+                        } else null
                     )
                 }
                 item {
@@ -555,8 +561,16 @@ fun EditableLrcItem(
 }
 
 @Composable
-fun LrcItem(lyric: String, focused: Boolean) {
-    Row(modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp)) {
+fun LrcItem(lyric: String, focused: Boolean, onClick: (() -> Unit)? = null) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (onClick == null) Modifier
+                else Modifier.clickable { onClick() }
+            )
+            .padding(horizontal = 24.dp, vertical = 12.dp)
+    ) {
         Text(
             text = lyric,
             fontSize = 20.sp,
