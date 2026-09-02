@@ -10,6 +10,7 @@ import androidx.room.Update
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.JoinedTrack
+import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.util.containsKatakana
 import com.geckour.q.util.hiraganized
@@ -95,7 +96,7 @@ interface TrackDao {
     fun getAllAsPagingSource(ignore: Bool = Bool.UNDEFINED): PagingSource<Int, JoinedTrack>
 
     @Transaction
-    @Query("select * from track where title like ('%'||:title||'%')")
+    @Query("select * from track where title like ('%'||:title||'%') escape '\\'")
     suspend fun getAllByTitle(title: String): List<JoinedTrack>
 
     @Transaction
@@ -151,8 +152,12 @@ interface TrackDao {
     fun getAllGenreAsFlow(): Flow<List<String>>
 
     @Transaction
-    @Query("select distinct genre from track where genre is not null and genre like ('%'||:name||'%')")
+    @Query("select distinct genre from track where genre is not null and genre like ('%'||:name||'%') escape '\\'")
     suspend fun findAllByName(name: String): List<String>
+
+    @Transaction
+    @Query("select * from track where exists (select 1 from lyric where lyric.trackId = track.id and exists (select 1 from json_each(lyric.lines) where json_extract(json_each.value, '\$.sentence') like ('%'||:keyword||'%') escape '\\'))")
+    suspend fun findAllByLyricKeyword(keyword: String): List<JoinedTrack>
 
     @Query("update track set playbackCount = (select playbackCount from track where id = :trackId) + 1 where id = :trackId")
     suspend fun increasePlaybackCount(trackId: Long)
@@ -214,17 +219,6 @@ interface TrackDao {
                 else it[random.nextInt(it.size)]
             }
     }
-
-    @Transaction
-    suspend fun getDurationWithTitles(
-        title: String,
-        albumTitle: String?,
-        artistTitle: String?
-    ): Long? =
-        getAllByTitle(title)
-            .firstOrNull { it.album.title == albumTitle && it.artist.title == artistTitle }
-            ?.track
-            ?.duration
 
     suspend fun hiraganizeSortAll(db: DB) {
         val hiraganized = db.trackDao().getAll().map { it.hiraganizeRecursively() }

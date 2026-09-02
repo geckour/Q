@@ -18,7 +18,7 @@ android {
     compileSdk = 37
     defaultConfig {
         applicationId "com.geckour.q"
-        minSdk 26
+        minSdk 34
         targetSdk 37
         versionCode 44
         versionName "2.17.0"

@@ -43,7 +43,7 @@ import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.SearchCategory
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
-import com.geckour.q.util.searchTrackByFuzzyTitle
+import com.geckour.q.util.escapeSql
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -174,7 +174,7 @@ private fun SearchResultItem(
 private suspend fun search(context: Context, query: String): ImmutableList<SearchItem> {
     val items = mutableListOf<SearchItem>()
     val db = DB.getInstance(context)
-    val tracks = db.searchTrackByFuzzyTitle(query)
+    val tracks = db.trackDao().getAllByTitle(query.escapeSql)
         .take(10)
         .map {
             SearchItem(
@@ -194,7 +194,7 @@ private suspend fun search(context: Context, query: String): ImmutableList<Searc
         items.addAll(tracks)
     }
 
-    val albums = db.albumDao().findAllByTitle(query)
+    val albums = db.albumDao().findAllByTitle(query.escapeSql)
         .take(10)
         .map { SearchItem(it.album.title, it.album, SearchItem.SearchItemType.ALBUM) }
     if (albums.isNotEmpty()) {
@@ -208,7 +208,7 @@ private suspend fun search(context: Context, query: String): ImmutableList<Searc
         items.addAll(albums)
     }
 
-    val artists = db.artistDao().findAllByTitle(query)
+    val artists = db.artistDao().findAllByTitle(query.escapeSql)
         .take(10)
         .map { SearchItem(it.title, it, SearchItem.SearchItemType.ARTIST) }
     if (artists.isNotEmpty()) {
@@ -222,7 +222,7 @@ private suspend fun search(context: Context, query: String): ImmutableList<Searc
         items.addAll(artists)
     }
 
-    val genres = db.trackDao().findAllByName(query)
+    val genres = db.trackDao().findAllByName(query.escapeSql)
         .take(10)
         .map { genreName ->
             val totalDuration =
@@ -243,6 +243,21 @@ private suspend fun search(context: Context, query: String): ImmutableList<Searc
         )
         items.addAll(genres)
     }
+
+    val lyrics = db.trackDao().findAllByLyricKeyword(query.escapeSql)
+        .take(10)
+        .map { SearchItem(it.track.title, it.toUiTrack(), SearchItem.SearchItemType.LYRIC) }
+    if (lyrics.isNotEmpty()) {
+        items.add(
+            SearchItem(
+                context.getString(R.string.search_category_lyric),
+                SearchCategory(),
+                SearchItem.SearchItemType.CATEGORY
+            )
+        )
+        items.addAll(lyrics)
+    }
+
 
     return items.toImmutableList()
 }

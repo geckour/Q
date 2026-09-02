@@ -38,6 +38,7 @@ import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun Library(
@@ -100,7 +101,7 @@ fun Library(
                         ?: return@LaunchedEffect
                     if (route == "artists") {
                         coroutineScope.launch {
-                            delay(200)
+                            delay(200.milliseconds)
                             resumeScrollToIndex = index
                             resumeScrollToOffset = offset
                             updatedScrollPositionMap =
@@ -175,7 +176,7 @@ fun Library(
                         ?: return@LaunchedEffect
                     if (route.startsWith("albums")) {
                         coroutineScope.launch {
-                            delay(200)
+                            delay(200.milliseconds)
                             resumeScrollToIndex = index
                             resumeScrollToOffset = offset
                             updatedScrollPositionMap =
@@ -262,7 +263,7 @@ fun Library(
                         ?: return@LaunchedEffect
                     if (route.startsWith("tracks")) {
                         coroutineScope.launch {
-                            delay(200)
+                            delay(200.milliseconds)
                             resumeScrollToIndex = index
                             resumeScrollToOffset = offset
                             updatedScrollPositionMap =
@@ -324,7 +325,7 @@ fun Library(
                         ?: return@LaunchedEffect
                     if (route == "genres") {
                         coroutineScope.launch {
-                            delay(200)
+                            delay(200.milliseconds)
                             resumeScrollToIndex = index
                             resumeScrollToOffset = offset
                             updatedScrollPositionMap =

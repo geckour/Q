@@ -146,9 +146,6 @@ val Track.isDownloaded
     get() = dropboxPath != null && sourcePath.isNotBlank() && sourcePath.matches(dropboxUrlPattern)
         .not()
 
-suspend fun DB.searchTrackByFuzzyTitle(title: String): List<JoinedTrack> =
-    this@searchTrackByFuzzyTitle.trackDao().getAllByTitle("%${title.escapeSql}%")
-
 suspend fun List<String?>.getThumb(context: Context): Bitmap? {
     if (this.isEmpty()) return null
     val unit = 100
@@ -555,4 +552,7 @@ private fun Bitmap.toByteArray(): ByteArray =
     ByteArrayOutputStream().apply { compress(Bitmap.CompressFormat.PNG, 100, this) }
         .toByteArray()
 
-private val String.escapeSql: String get() = replace("'", "''")
+val String.escapeSql: String
+    get() = replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")

@@ -268,7 +268,7 @@ fun SingleScreen(
                     onToggleFavorite = onToggleFavorite,
                     onSearchItemClicked = { item ->
                         when (item.type) {
-                            SearchItem.SearchItemType.TRACK -> {
+                            SearchItem.SearchItemType.TRACK, SearchItem.SearchItemType.LYRIC -> {
                                 onSelectTrack(item.data as UiTrack)
                             }
 
@@ -289,7 +289,7 @@ fun SingleScreen(
                     },
                     onSearchItemLongClicked = { item ->
                         when (item.type) {
-                            SearchItem.SearchItemType.TRACK -> {
+                            SearchItem.SearchItemType.TRACK, SearchItem.SearchItemType.LYRIC -> {
                                 onSelectTrack(item.data as UiTrack)
                             }
 

@@ -357,7 +357,7 @@ fun RowScope.TwinStartPage(
                     onToggleFavorite = onToggleFavorite,
                     onSearchItemClicked = { item ->
                         when (item.type) {
-                            SearchItem.SearchItemType.TRACK -> {
+                            SearchItem.SearchItemType.TRACK, SearchItem.SearchItemType.LYRIC -> {
                                 onSelectTrack(item.data as UiTrack)
                             }
 
@@ -378,7 +378,7 @@ fun RowScope.TwinStartPage(
                     },
                     onSearchItemLongClicked = { item ->
                         when (item.type) {
-                            SearchItem.SearchItemType.TRACK -> {
+                            SearchItem.SearchItemType.TRACK, SearchItem.SearchItemType.LYRIC -> {
                                 onSelectTrack(item.data as UiTrack)
                             }
 

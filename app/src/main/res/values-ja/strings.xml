@@ -178,6 +178,7 @@
     <string name="search_category_album">アルバム</string>
     <string name="search_category_track">曲</string>
     <string name="search_category_genre">ジャンル</string>
+    <string name="search_category_lyric">歌詞</string>
 
     <!-- Settings -->
     <string name="setting_category_title_general">一般</string>

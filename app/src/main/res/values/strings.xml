@@ -188,6 +188,7 @@
     <string name="search_category_album">Album</string>
     <string name="search_category_track">Track</string>
     <string name="search_category_genre">Genre</string>
+    <string name="search_category_lyric">Lyric</string>
 
     <!-- Settings -->
     <string name="setting_switch_on" translatable="false">ON</string>
