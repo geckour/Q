@@ -17,7 +17,7 @@ interface AudioDeviceEqualizerInfoDao {
         deviceId: Int,
         deviceAddress: String?,
         deviceName: String
-    ): Flow<AudioDeviceEqualizerInfo>
+    ): Flow<AudioDeviceEqualizerInfo?>
 
     @Query("select * from audioDeviceEqualizerInfo where routeId = :routeId and ((:deviceAddress is not null and deviceAddress = :deviceAddress) or deviceId = :deviceId or deviceName = :deviceName) order by id desc")
     suspend fun get(
