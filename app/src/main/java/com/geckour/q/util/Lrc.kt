@@ -6,7 +6,10 @@ import java.io.File
 
 fun File.parseLrc(): List<LyricLine> =
     if (extension != "lrc") emptyList()
-    else readLines()
+    else readText().parseLrc()
+
+fun String.parseLrc(): List<LyricLine> =
+    lines()
         .map { line ->
             if (line.matches(Regex("^(\\[\\d+?:\\d+?(\\.\\d+?)?])+.*$"))
                     .not()

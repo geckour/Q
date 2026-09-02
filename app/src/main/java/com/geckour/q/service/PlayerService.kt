@@ -41,9 +41,12 @@ import androidx.mediarouter.media.MediaRouteSelector
 import androidx.mediarouter.media.MediaRouter
 import com.geckour.q.App
 import com.geckour.q.R
+import com.geckour.q.data.LrcLibApiClient
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.EqualizerLevelRatio
 import com.geckour.q.data.db.model.EqualizerPreset
+import com.geckour.q.data.db.model.Lyric
+import com.geckour.q.data.db.model.LyricSource
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.QAudioDeviceInfo
@@ -162,12 +165,22 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = Unit
 
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            super.onMediaItemTransition(mediaItem, reason)
+
+            Timber.d("qgeck player on media item transition: $mediaItem, $reason")
+
+            fetchLyricIfNeeded()
+        }
+
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
             super.onTimelineChanged(timeline, reason)
 
             Timber.d("qgeck player on timeline changed: $timeline, $reason")
 
             onStateChanged()
+
+            fetchLyricIfNeeded()
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -543,6 +556,10 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
     private var seekJob: Job = Job()
 
     private val sharedPreferences by inject<SharedPreferences>()
+
+    private val lrcLibApiClient by inject<LrcLibApiClient>()
+
+    private val lyricRequestedSourcePaths = mutableSetOf<String>()
 
     private var inPurge = false
     private var aliveSubmitQueueTask = false
@@ -1012,6 +1029,51 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
     private fun forceIndex(index: Int) {
         val windowIndex = player.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
         player.seekToDefaultPosition(windowIndex + index)
+    }
+
+    /**
+     * Fetches lyrics of the current track and the next one from LRCLIB
+     * unless they are already stored in the DB.
+     */
+    private fun fetchLyricIfNeeded() {
+        val nextMediaItem = player.nextMediaItemIndex
+            .takeIf { it != C.INDEX_UNSET }
+            ?.let { player.getMediaItemAt(it) }
+
+        listOfNotNull(player.currentMediaItem, nextMediaItem).forEach { mediaItem ->
+            val sourcePath = (mediaItem.localConfiguration?.uri ?: mediaItem.mediaId).toString()
+            if (lyricRequestedSourcePaths.add(sourcePath).not()) return@forEach
+
+            lifecycleScope.launch {
+                val track = db.trackDao().getBySourcePath(sourcePath)
+                if (track == null) {
+                    lyricRequestedSourcePaths.remove(sourcePath)
+                    return@launch
+                }
+
+                val trackId = track.track.id
+                if (db.lyricDao().getLyricIdByTrackId(trackId) != null) return@launch
+
+                runCatching { lrcLibApiClient.getLyricLines(track) }
+                    .onFailure {
+                        Timber.e(it)
+                        lyricRequestedSourcePaths.remove(sourcePath)
+                    }
+                    .getOrNull()
+                    ?.let { lines ->
+                        if (db.lyricDao().getLyricIdByTrackId(trackId) != null) return@let
+
+                        db.lyricDao().upsertLyric(
+                            Lyric(
+                                id = 0,
+                                trackId = trackId,
+                                lines = lines,
+                                source = LyricSource.LRCLIB
+                            )
+                        )
+                    }
+            }
+        }
     }
 
     private fun increasePlaybackCount() = lifecycleScope.launch {

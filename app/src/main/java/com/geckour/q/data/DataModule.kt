@@ -13,4 +13,8 @@ val dataModule = module {
     single {
         PreferenceManager.getDefaultSharedPreferences(androidApplication())
     }
+
+    single {
+        LrcLibApiClient()
+    }
 }
