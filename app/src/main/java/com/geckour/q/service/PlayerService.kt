@@ -759,9 +759,11 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         }
     }
 
-    private fun getState(): PlayerState? = sharedPreferences
-        .getString(PREF_KEY_PLAYER_STATE, null)
-        ?.let { catchAsNull { Json.decodeFromString<PlayerState>(it) } }
+    private fun getState(): PlayerState? = runCatching {
+        sharedPreferences
+            .getString(PREF_KEY_PLAYER_STATE, null)
+            ?.let { catchAsNull { Json.decodeFromString<PlayerState>(it) } }
+    }.getOrNull()
 
     private fun restoreState() {
         if (player.playWhenReady) player.playWhenReady = false
