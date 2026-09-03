@@ -37,6 +37,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.paging.LoadState
@@ -60,6 +61,7 @@ private const val HEADER_ITEM_COUNT = 2
 
 @Composable
 fun Tracks(
+    endItemMargin: Dp,
     albumId: Long = -1,
     genreName: String? = null,
     isSearchActive: MutableState<Boolean>,
@@ -282,6 +284,9 @@ fun Tracks(
                         .wrapContentWidth(Alignment.CenterHorizontally)
                 )
             }
+        }
+        item {
+            Spacer(modifier = Modifier.height(endItemMargin))
         }
     }
 }

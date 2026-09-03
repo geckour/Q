@@ -13,6 +13,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -41,6 +43,7 @@ fun Library(
     scrollToTop: Long,
     snackbarMessage: String?,
     snackbarProgress: Float?,
+    endItemMargin: Dp = 0.dp,
     isSearchActive: MutableState<Boolean>,
     query: MutableState<String>,
     isFavoriteOnly: MutableState<Boolean>,
@@ -92,6 +95,7 @@ fun Library(
                 val scrollPosition = rememberScrollPosition(backStackEntry)
 
                 Artists(
+                    endItemMargin = endItemMargin,
                     navController = navController,
                     isSearchActive = isSearchActive,
                     isFavoriteOnly = isFavoriteOnly,
@@ -144,6 +148,7 @@ fun Library(
                 }
 
                 Albums(
+                    endItemMargin = endItemMargin,
                     navController = navController,
                     artistId = backStackEntry.arguments?.getLong("artistId")
                         ?: -1,
@@ -207,6 +212,7 @@ fun Library(
                     }
                 }
                 Tracks(
+                    endItemMargin = endItemMargin,
                     albumId = albumId,
                     genreName = genreName,
                     isSearchActive = isSearchActive,
@@ -246,6 +252,7 @@ fun Library(
                 }
                 val scrollPosition = rememberScrollPosition(backStackEntry)
                 Genres(
+                    endItemMargin = endItemMargin,
                     navController = navController,
                     isSearchActive = isSearchActive,
                     query = query,

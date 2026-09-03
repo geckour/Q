@@ -9,13 +9,11 @@ import android.content.res.Resources
 import android.database.ContentObserver
 import android.graphics.Rect
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
 import android.provider.OpenableColumns
-import android.util.DisplayMetrics
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -52,8 +50,6 @@ import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.dropbox.core.DbxHost
 import com.dropbox.core.android.Auth
-import com.dropbox.core.v2.files.FileMetadata
-import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.BuildConfig
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
@@ -235,8 +231,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (Build.VERSION.SDK_INT > 32 &&
-            checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
+        enableEdgeToEdge()
+
+        if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
             PackageManager.PERMISSION_GRANTED
         ) {
             requestPermissionWithoutResultHandling.launch(
@@ -248,16 +245,9 @@ class MainActivity : ComponentActivity() {
             .windowLayoutInfo(this)
             .flowWithLifecycle(this.lifecycle)
             .map {
-                val (windowHeight, windowWidth) =
-                    if (Build.VERSION.SDK_INT < 30) {
-                        val metrics = DisplayMetrics().apply {
-                            windowManager.defaultDisplay.getMetrics(this)
-                        }
-                        metrics.heightPixels.toFloat() to metrics.widthPixels.toFloat()
-                    } else {
-                        val bounds = windowManager.currentWindowMetrics.bounds
-                        bounds.height().toFloat() to bounds.width().toFloat()
-                    }
+                val bounds = windowManager.currentWindowMetrics.bounds
+                val (windowHeight, windowWidth) = bounds.height().toFloat() to bounds.width()
+                    .toFloat()
                 val isSquareIshScreen = (windowHeight / windowWidth) in 0.75..1.33
                 val isHorizontal =
                     resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -515,11 +505,7 @@ class MainActivity : ComponentActivity() {
             }
 
             QTheme(darkTheme = isInNightMode) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .safeDrawingPadding()
-                ) {
+                Surface(modifier = Modifier.fillMaxSize()) {
                     when (layoutType) {
                         is LayoutType.Single -> {
                             SingleScreen(
@@ -848,8 +834,7 @@ class MainActivity : ComponentActivity() {
 
         if (checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO) == PackageManager.PERMISSION_GRANTED) {
             contentResolver.registerContentObserver(
-                if (Build.VERSION.SDK_INT < 29) MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-                else MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL),
+                MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL),
                 true,
                 generalContentObserver
             )
@@ -867,8 +852,7 @@ class MainActivity : ComponentActivity() {
 
         if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
             contentResolver.refresh(
-                if (Build.VERSION.SDK_INT < 29) MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-                else MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL),
+                MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL),
                 null,
                 null
             )
@@ -916,39 +900,20 @@ class MainActivity : ComponentActivity() {
     private fun retrieveMedia(onlyAdded: Boolean) {
         WorkManager.getInstance(this)
             .cancelAllWorkByTag(LocalMediaRetrieveWorker.TAG)
-        if (Build.VERSION.SDK_INT < 33) {
-            when (checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE)) {
-                PackageManager.PERMISSION_GRANTED -> {
-                    enqueueLocalRetrieveWorker(onlyAdded)
-                }
-
-                else -> {
-                    onStoragePermissionRequestResult = {
-                        if (it) {
-                            enqueueLocalRetrieveWorker(onlyAdded)
-                        } else {
-                            onReadExternalStorageDenied()
-                        }
-                    }
-                    requestStoragePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                }
+        when (checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO)) {
+            PackageManager.PERMISSION_GRANTED -> {
+                enqueueLocalRetrieveWorker(onlyAdded)
             }
-        } else {
-            when (checkSelfPermission(Manifest.permission.READ_MEDIA_AUDIO)) {
-                PackageManager.PERMISSION_GRANTED -> {
-                    enqueueLocalRetrieveWorker(onlyAdded)
-                }
 
-                else -> {
-                    onStoragePermissionRequestResult = {
-                        if (it) {
-                            enqueueLocalRetrieveWorker(onlyAdded)
-                        } else {
-                            onReadMediaDenied()
-                        }
+            else -> {
+                onStoragePermissionRequestResult = {
+                    if (it) {
+                        enqueueLocalRetrieveWorker(onlyAdded)
+                    } else {
+                        onReadMediaDenied()
                     }
-                    requestStoragePermission.launch(Manifest.permission.READ_MEDIA_AUDIO)
                 }
+                requestStoragePermission.launch(Manifest.permission.READ_MEDIA_AUDIO)
             }
         }
     }
@@ -956,28 +921,7 @@ class MainActivity : ComponentActivity() {
     private fun retrieveDropboxMedia(rootPath: String, needDownloaded: Boolean) {
         WorkManager.getInstance(this)
             .cancelAllWorkByTag(DropboxMediaRetrieveWorker.TAG)
-        if (Build.VERSION.SDK_INT < 33) {
-            when {
-                checkSelfPermission(
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE
-                ) == PackageManager.PERMISSION_GRANTED -> {
-                    enqueueDropboxRetrieveWorker(rootPath, needDownloaded)
-                }
-
-                else -> {
-                    onStoragePermissionRequestResult = {
-                        if (it) {
-                            enqueueDropboxRetrieveWorker(rootPath, needDownloaded)
-                        } else {
-                            onReadExternalStorageDenied()
-                        }
-                    }
-                    requestStoragePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                }
-            }
-        } else {
-            enqueueDropboxRetrieveWorker(rootPath, needDownloaded)
-        }
+        enqueueDropboxRetrieveWorker(rootPath, needDownloaded)
     }
 
     private fun enqueueLocalRetrieveWorker(onlyAdded: Boolean) {
@@ -1028,8 +972,6 @@ class MainActivity : ComponentActivity() {
                 .build()
         ).enqueue()
     }
-
-    private fun onReadExternalStorageDenied() = Unit
 
     private fun onReadMediaDenied() = Unit
 

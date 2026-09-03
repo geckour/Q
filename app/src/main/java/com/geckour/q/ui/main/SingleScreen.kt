@@ -4,7 +4,9 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BottomSheetScaffold
@@ -25,6 +27,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.dropbox.core.v2.files.FileMetadata
@@ -142,6 +145,9 @@ fun SingleScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val bottomSheetHeightAngle = remember { Animatable(0f) }
     var libraryHeight by remember { mutableIntStateOf(0) }
+    val navigationBarHeight = with(LocalDensity.current) {
+        WindowInsets.navigationBars.getBottom(this).toDp()
+    }
 
     LaunchedEffect(sourcePaths) {
         if (scaffoldState.bottomSheetState.currentValue == SheetValue.Hidden &&
@@ -196,7 +202,7 @@ fun SingleScreen(
             },
             containerColor = QTheme.colors.colorBackground,
             sheetContainerColor = QTheme.colors.colorBackgroundBottomSheet,
-            sheetPeekHeight = (144 + abs(sin(bottomSheetHeightAngle.value)) * 20).dp,
+            sheetPeekHeight = (144 + abs(sin(bottomSheetHeightAngle.value)) * 20).dp + navigationBarHeight,
             sheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
             sheetDragHandle = null,
             sheetShadowElevation = 8.dp,
@@ -204,6 +210,9 @@ fun SingleScreen(
                 PlayerSheet(
                     needToAnimateController = true,
                     libraryHeight = libraryHeight,
+                    endItemMargin = with(LocalDensity.current) {
+                        WindowInsets.navigationBars.getBottom(this).toDp()
+                    },
                     queue = queue,
                     currentIndex = currentIndex,
                     currentPlaybackPosition = currentPlaybackPosition,

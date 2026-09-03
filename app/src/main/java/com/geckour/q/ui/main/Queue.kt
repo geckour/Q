@@ -57,6 +57,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -87,6 +88,7 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
 fun ColumnScope.Queue(
+    endItemMargin: Dp = 0.dp,
     uiTracks: ImmutableList<UiTrack>,
     isPlaying: Boolean,
     showLyric: Boolean,
@@ -247,7 +249,7 @@ fun ColumnScope.Queue(
                     )
                 }
                 item {
-                    Spacer(modifier = Modifier.height(36.dp))
+                    Spacer(modifier = Modifier.height(36.dp + endItemMargin))
                 }
             }
             FloatingActionButton(
@@ -298,6 +300,9 @@ fun ColumnScope.Queue(
                         onToggleFavorite = onToggleFavorite,
                     )
                 }
+            }
+            item {
+                Spacer(modifier = Modifier.height(endItemMargin))
             }
         }
     }

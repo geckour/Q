@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import com.geckour.q.domain.model.MediaItem
@@ -25,6 +26,7 @@ fun PlayerSheet(
     isPortrait: Boolean = true,
     needToAnimateController: Boolean = false,
     libraryHeight: Int? = null,
+    endItemMargin: Dp = 0.dp,
     queue: ImmutableList<UiTrack>,
     currentIndex: Int,
     currentPlaybackPosition: Long,
@@ -108,6 +110,7 @@ fun PlayerSheet(
             onToggleFavorite = onToggleFavorite,
         )
         Queue(
+            endItemMargin = endItemMargin,
             uiTracks = queue,
             isPlaying = currentPlaybackInfo.first,
             showLyric = showLyric,

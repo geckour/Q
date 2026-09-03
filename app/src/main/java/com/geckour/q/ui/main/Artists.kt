@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,6 +36,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -60,6 +62,7 @@ private const val HEADER_ITEM_COUNT = 2
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Artists(
+    endItemMargin: Dp,
     navController: NavController,
     isSearchActive: MutableState<Boolean>,
     isFavoriteOnly: MutableState<Boolean>,
@@ -225,6 +228,9 @@ fun Artists(
                         .wrapContentWidth(Alignment.CenterHorizontally)
                 )
             }
+        }
+        item {
+            Spacer(modifier = Modifier.height(endItemMargin))
         }
     }
 }

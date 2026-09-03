@@ -4,8 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -24,6 +29,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.dropbox.core.v2.files.FileMetadata
@@ -132,9 +140,13 @@ fun TwinScreen(
     onSetOptionMediaItem: (mediaItem: MediaItem?) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
+    val endItemMargin = with(LocalDensity.current) {
+        WindowInsets.navigationBars.getBottom(this).toDp()
+    }
     Row {
         TwinStartPage(
             modifier = Modifier.weight(1f),
+            endItemMargin = endItemMargin,
             navController = navController,
             topBarTitle = topBarTitle,
             appBarOptionMediaItem = appBarOptionMediaItem,
@@ -194,6 +206,7 @@ fun TwinScreen(
         )
         TwinEndPage(
             modifier = Modifier.weight(1f),
+            endItemMargin = endItemMargin,
             queue = queue,
             currentIndex = currentIndex,
             currentPlaybackPosition = currentPlaybackPosition,
@@ -229,6 +242,7 @@ fun TwinScreen(
 @Composable
 fun RowScope.TwinStartPage(
     modifier: Modifier = Modifier,
+    endItemMargin: Dp,
     navController: NavHostController,
     topBarTitle: String,
     appBarOptionMediaItem: MediaItem?,
@@ -331,11 +345,16 @@ fun RowScope.TwinStartPage(
             val coroutineScope = rememberCoroutineScope()
             Box(
                 modifier = Modifier
-                    .padding(paddingValues)
+                    .padding(
+                        top = paddingValues.calculateTopPadding(),
+                        end = paddingValues.calculateEndPadding(layoutDirection = LocalLayoutDirection.current),
+                        start = paddingValues.calculateStartPadding(layoutDirection = LocalLayoutDirection.current),
+                    )
                     .background(color = QTheme.colors.colorBackground)
                     .fillMaxSize()
             ) {
                 Library(
+                    endItemMargin = endItemMargin,
                     navController = navController,
                     scrollToTop = scrollToTop,
                     snackbarMessage = snackbarMessage,
@@ -448,6 +467,7 @@ fun RowScope.TwinStartPage(
 @Composable
 fun RowScope.TwinEndPage(
     modifier: Modifier = Modifier,
+    endItemMargin: Dp,
     queue: ImmutableList<UiTrack>,
     currentIndex: Int,
     currentPlaybackPosition: Long,
@@ -483,7 +503,12 @@ fun RowScope.TwinEndPage(
             .background(color = QTheme.colors.colorBackground)
             .weight(1f)
             .fillMaxSize()
-            .padding(start = 8.dp)
+            .padding(
+                start = 8.dp,
+                top = with(LocalDensity.current) {
+                    (WindowInsets.statusBars.getTop(this)).toDp()
+                },
+            )
             .onSizeChanged { isPortrait = it.height > it.width }
     ) {
         Card(
@@ -493,6 +518,7 @@ fun RowScope.TwinEndPage(
         ) {
             PlayerSheet(
                 isPortrait = isPortrait,
+                endItemMargin = endItemMargin,
                 queue = queue,
                 currentIndex = currentIndex,
                 currentPlaybackPosition = currentPlaybackPosition,

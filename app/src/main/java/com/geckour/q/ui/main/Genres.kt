@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -55,6 +56,7 @@ private const val HEADER_ITEM_COUNT = 1
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Genres(
+    endItemMargin: Dp,
     navController: NavController,
     isSearchActive: MutableState<Boolean>,
     query: MutableState<String>,
@@ -170,6 +172,9 @@ fun Genres(
                 }
                 HorizontalDivider(color = QTheme.colors.colorPrimaryDark)
             }
+        }
+        item {
+            Spacer(modifier = Modifier.height(endItemMargin))
         }
     }
 }
