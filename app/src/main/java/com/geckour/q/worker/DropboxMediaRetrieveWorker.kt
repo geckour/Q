@@ -59,6 +59,7 @@ class DropboxMediaRetrieveWorker(
 
     private val db = DB.getInstance(context)
     private var processedFilesSize = 0L
+    private var lastProcessedFileSize = processedFilesSize
     private val files = mutableListOf<FileMetadata>()
     private val remainingFilesCount: Int
         get() {
@@ -299,7 +300,6 @@ class DropboxMediaRetrieveWorker(
 
         val processedFilesSizeSnapshot = processedFilesSize
         var lastProgressSampledTime = currentTime
-        var lastProcessedFileSize = processedFilesSize
         val fileAndProgressFlow = if (needDownloaded) client.saveAudioFile(
             applicationContext,
             dropboxMetadata.id,
