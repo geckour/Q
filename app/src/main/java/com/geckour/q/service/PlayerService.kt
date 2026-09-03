@@ -84,6 +84,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -137,6 +138,8 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         private const val ACTION_COMMAND_TOGGLE_FAVORITE = "action_command_toggle_favorite"
 
         const val PREF_KEY_PLAYER_STATE = "pref_key_player_state"
+
+        private val PLAYBACK_POSITION_SAVE_INTERVAL = 100.milliseconds
     }
 
     private val dispatcher = ServiceLifecycleDispatcher(this)
@@ -562,6 +565,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
     private val lyricRequestedSourcePaths = mutableSetOf<String>()
 
     private var inPurge = false
+    private var inRestore = false
     private var aliveSubmitQueueTask = false
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession =
@@ -703,6 +707,13 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         }
 
         restoreState()
+
+        lifecycleScope.launch {
+            while (isActive) {
+                delay(PLAYBACK_POSITION_SAVE_INTERVAL)
+                if (inPurge.not() && player.isPlaying) saveState(commit = false)
+            }
+        }
     }
 
     override fun onTaskRemoved(rootIntent: Intent?) {
@@ -736,8 +747,15 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         mediaRouter.removeCallback(mediaRouterCallback)
     }
 
-    private fun onStateChanged(isFavorite: Boolean? = null) {
-        if (inPurge) return
+    /**
+     * Persists the current player state.
+     *
+     * Does nothing while restoring, since the player emits events with the transient
+     * state (index 0, position 0) before [restoreState] has finished seeking, and
+     * persisting them would destroy the state that is being restored.
+     */
+    private fun saveState(commit: Boolean = true) {
+        if (inPurge || inRestore) return
 
         val state = PlayerState(
             player.playWhenReady,
@@ -747,9 +765,15 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
             player.currentPosition,
             player.repeatMode
         )
-        sharedPreferences.edit(commit = true) {
+        sharedPreferences.edit(commit = commit) {
             putString(PREF_KEY_PLAYER_STATE, Json.encodeToString(state))
         }
+    }
+
+    private fun onStateChanged(isFavorite: Boolean? = null) {
+        if (inPurge) return
+
+        saveState()
         lifecycleScope.launch {
             val sourcePath = player.currentMediaItem?.let {
                 it.localConfiguration?.uri?.toString() ?: it.mediaId
@@ -783,23 +807,29 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
     }.getOrNull()
 
     private fun restoreState() {
+        if (inRestore || player.mediaItemCount > 0) return
+
         if (player.playWhenReady) player.playWhenReady = false
 
         val playerState = getState() ?: return
+        if (playerState.sourcePaths.isEmpty()) return
 
         Timber.d("qgeck set state: $playerState")
+        inRestore = true
         lifecycleScope.launch {
-            player.setMediaItems(
-                playerState.sourcePaths
+            try {
+                val mediaItems = playerState.sourcePaths
                     .map { it.getMediaItem(this@PlayerService) }
-            )
-            player.prepare()
-            val windowIndex = player.currentTimeline
-                .getFirstWindowIndex(false)
-                .coerceAtLeast(0)
-            player.seekToDefaultPosition(windowIndex + playerState.currentIndex)
-            player.seekTo(playerState.progress)
-            player.repeatMode = playerState.repeatMode
+                player.setMediaItems(
+                    mediaItems,
+                    playerState.currentIndex.coerceIn(mediaItems.indices),
+                    playerState.progress.coerceAtLeast(0)
+                )
+                player.repeatMode = playerState.repeatMode
+                player.prepare()
+            } finally {
+                inRestore = false
+            }
         }
     }
 
