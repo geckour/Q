@@ -2,10 +2,7 @@ package com.geckour.q.ui.main
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -26,7 +23,7 @@ import kotlinx.collections.immutable.ImmutableList
 @Composable
 fun PlayerSheet(
     isPortrait: Boolean = true,
-    animateController: Boolean = false,
+    needToAnimateController: Boolean = false,
     libraryHeight: Int? = null,
     queue: ImmutableList<UiTrack>,
     currentIndex: Int,
@@ -60,14 +57,13 @@ fun PlayerSheet(
     val density = LocalDensity.current
     var sheetSize by remember { mutableIntStateOf(0) }
     var sheetBounds by remember { mutableFloatStateOf(0f) }
-    val sheetProgress by remember {
-        derivedStateOf {
-            if (animateController)
-                (sheetBounds - with(density) { 144.dp.toPx() }).coerceAtLeast(0f) /
-                        (sheetSize - with(density) { 144.dp.toPx() })
+    val sheetProgress: () -> Float =
+        {
+            if (needToAnimateController)
+                ((sheetBounds - with(density) { 144.dp.toPx() }) /
+                        (sheetSize - with(density) { 144.dp.toPx() })).coerceIn(0f, 1f)
             else 1f
         }
-    }
     Column(
         modifier = (if (libraryHeight == null) Modifier else {
             Modifier.heightIn(
@@ -80,7 +76,7 @@ fun PlayerSheet(
         }
     ) {
         Controller(
-            sheetProgress = if (isPortrait) sheetProgress else 0f,
+            sheetProgress = if (isPortrait) sheetProgress else { -> 0f },
             currentTrack = queue.getOrNull(currentIndex),
             progress = currentPlaybackPosition,
             bufferProgress = currentBufferedPosition,

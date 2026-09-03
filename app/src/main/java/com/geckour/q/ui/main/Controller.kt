@@ -1,5 +1,7 @@
 package com.geckour.q.ui.main
 
+import androidx.compose.animation.core.EaseInExpo
+import androidx.compose.animation.core.EaseInOutSine
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -30,7 +32,6 @@ import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.outlined.DownloadForOffline
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -45,9 +46,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -55,9 +58,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
+import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.unit.times
 import androidx.media3.common.Player
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
@@ -75,13 +81,12 @@ import com.geckour.q.util.isDownloaded
 import com.geckour.q.util.nonUpScaleSp
 import com.geckour.q.util.setShouldShowCurrentRemain
 import kotlinx.coroutines.launch
-import kotlin.math.PI
-import kotlin.math.sin
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun Controller(
-    sheetProgress: Float,
+    sheetProgress: () -> Float,
     currentTrack: UiTrack?,
     progress: Long,
     bufferProgress: Long,
@@ -109,10 +114,22 @@ fun Controller(
     onToggleShowLyrics: () -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
-    val yProgress = sin(sheetProgress * PI.toFloat() / 2)
     var textAreaHeight by remember { mutableIntStateOf(0) }
+    val currentDensity = LocalDensity.current
     Column {
-        Box(modifier = Modifier.height(144.dp + 142.dp * yProgress)) {
+        Box(
+            modifier = Modifier.layout { measurable, constraints ->
+                val easedProgress = EaseInOutSine.transform(sheetProgress())
+                val height = lerp(144.dp, 286.dp, easedProgress).roundToPx()
+                val placeable = measurable.measure(
+                    constraints.copy(
+                        minHeight = height,
+                        maxHeight = height,
+                    )
+                )
+                layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+            }
+        ) {
             AsyncImage(
                 model = currentTrack?.artworkUriString?.let {
                     ImageRequest.Builder(LocalContext.current).data(it).size(
@@ -122,7 +139,12 @@ fun Controller(
                 contentDescription = null,
                 contentScale = ContentScale.Inside,
                 modifier = Modifier
-                    .size(84.dp + 42.dp * sheetProgress)
+                    .layout { measurable, _ ->
+                        val easedProgress = EaseInOutSine.transform(sheetProgress())
+                        val size = lerp(84.dp, 126.dp, easedProgress).roundToPx()
+                        val placeable = measurable.measure(Constraints.fixed(size, size))
+                        layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                    }
                     .combinedClickable(
                         onClick = {},
                         onLongClick = { currentTrack?.let { onTrackSelected(it) } }
@@ -130,14 +152,27 @@ fun Controller(
             )
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(top = 126.dp * yProgress)
+                modifier = Modifier.offset {
+                    val easedProgress = EaseInOutSine.transform(sheetProgress())
+                    val topOffset = lerp(0.dp, 126.dp, easedProgress).roundToPx()
+                    IntOffset(0, topOffset)
+                }
             ) {
                 Spacer(
-                    modifier = Modifier.width(
-                        8.dp +
-                                (if (sheetProgress < 0.8f) 84.dp + 42.dp * sheetProgress
-                                else 588.dp * (1f - sheetProgress))
-                    )
+                    modifier = Modifier
+                        .layout { measurable, constraints ->
+                            val easedProgress = EaseInOutSine.transform(sheetProgress())
+                            val width = (8.dp +
+                                    (if (easedProgress < 0.8f) 84.dp + 42.dp * easedProgress
+                                    else 588.dp * (1f - easedProgress))).roundToPx()
+                            val placeable = measurable.measure(
+                                constraints.copy(
+                                    minWidth = width,
+                                    maxWidth = width,
+                                )
+                            )
+                            layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                        }
                 )
                 Column(
                     modifier = Modifier
@@ -147,41 +182,103 @@ fun Controller(
                             textAreaHeight = it.height
                         }
                 ) {
+                    val collapsedSp = 14.nonUpScaleSp
+                    val expandedSp = 16.8f.nonUpScaleSp
+
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = currentTrack?.title.orEmpty(),
-                        fontSize = (16 * (1 + 0.2f * sheetProgress)).nonUpScaleSp,
-                        lineHeight = (24 * (1 + 0.2f * sheetProgress)).nonUpScaleSp,
+                        fontSize = expandedSp,
+                        lineHeight = 1.5.em,
                         color = QTheme.colors.colorTextPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.basicMarquee(
-                            spacing = MarqueeSpacing(24.dp),
-                            iterations = Int.MAX_VALUE,
-                            velocity = 45.dp,
-                            repeatDelayMillis = 600
-                        )
+                        modifier = Modifier
+                            .basicMarquee(
+                                spacing = MarqueeSpacing(24.dp),
+                                iterations = Int.MAX_VALUE,
+                                velocity = 45.dp,
+                                repeatDelayMillis = 600
+                            )
+                            .layout { measurable, constraints ->
+                                val easedProgress = EaseInOutSine.transform(sheetProgress())
+                                val placeable = measurable.measure(constraints)
+                                val scale = androidx.compose.ui.util.lerp(
+                                    1f,
+                                    collapsedSp.value / expandedSp.value,
+                                    easedProgress,
+                                )
+                                layout(
+                                    (placeable.width * scale).roundToInt(),
+                                    (placeable.height * scale).roundToInt(),
+                                ) { placeable.place(0, 0) }
+                            }
+                            .graphicsLayer {
+                                val easedProgress = EaseInOutSine.transform(sheetProgress())
+                                val scale = androidx.compose.ui.util.lerp(
+                                    1f,
+                                    collapsedSp.value / expandedSp.value,
+                                    easedProgress,
+                                )
+                                scaleX = scale
+                                scaleY = scale
+                                transformOrigin = TransformOrigin(0f, 0f)
+                            }
                     )
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = currentTrack?.let { "${it.artist.title} - ${it.album.title}" }
                             .orEmpty(),
-                        fontSize = (14 * (1 + 0.2f * sheetProgress)).nonUpScaleSp,
-                        lineHeight = (21 * (1 + 0.2f * sheetProgress)).nonUpScaleSp,
+                        fontSize = expandedSp,
+                        lineHeight = 1.5.em,
                         color = QTheme.colors.colorTextPrimary,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.basicMarquee(
-                            spacing = MarqueeSpacing(24.dp),
-                            iterations = Int.MAX_VALUE,
-                            velocity = 45.dp
-                        )
+                        modifier = Modifier
+                            .basicMarquee(
+                                spacing = MarqueeSpacing(24.dp),
+                                iterations = Int.MAX_VALUE,
+                                velocity = 45.dp
+                            )
+                            .layout { measurable, constraints ->
+                                val easedProgress = EaseInOutSine.transform(sheetProgress())
+                                val placeable = measurable.measure(constraints)
+                                val scale = androidx.compose.ui.util.lerp(
+                                    1f,
+                                    collapsedSp.value / expandedSp.value,
+                                    easedProgress,
+                                )
+                                layout(
+                                    (placeable.width * scale).roundToInt(),
+                                    (placeable.height * scale).roundToInt(),
+                                ) { placeable.place(0, 0) }
+                            }
+                            .graphicsLayer {
+                                val easedProgress = EaseInOutSine.transform(sheetProgress())
+                                val scale = androidx.compose.ui.util.lerp(
+                                    1f,
+                                    collapsedSp.value / expandedSp.value,
+                                    easedProgress,
+                                )
+                                scaleX = scale
+                                scaleY = scale
+                                transformOrigin = TransformOrigin(0f, 0f)
+                            }
                     )
                 }
                 Spacer(
-                    modifier = Modifier.width(
-                        8.dp + 120.dp * (1 - sheetProgress)
-                    )
+                    modifier = Modifier
+                        .layout { measurable, constraints ->
+                            val easedProgress = EaseInExpo.transform(sheetProgress())
+                            val width = lerp(128.dp, 8.dp, easedProgress).roundToPx()
+                            val placeable = measurable.measure(
+                                constraints.copy(
+                                    minWidth = width,
+                                    maxWidth = width,
+                                )
+                            )
+                            layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                        }
                 )
             }
             Box(modifier = Modifier.align(Alignment.TopEnd)) {
@@ -206,13 +303,14 @@ fun Controller(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .offset(
-                            x = (-48).dp + sheetProgress * (-40).dp,
-                            y = with(LocalDensity.current) {
-                                (1 - sheetProgress) * (textAreaHeight.toDp() / 2 - 20.dp + 4.dp) +
-                                        sheetProgress * (126.dp - 40.dp)
-                            }
-                        )
+                        .offset {
+                            val easedProgress = EaseInOutSine.transform(sheetProgress())
+                            val height = with(currentDensity) { textAreaHeight.toDp() }
+                            val topOffset =
+                                lerp(height / 2 - 16.dp, 94.dp, easedProgress).roundToPx()
+                            val leftOffset = lerp(-(48.dp), -(88.dp), easedProgress).roundToPx()
+                            IntOffset(leftOffset, topOffset)
+                        }
                 ) {
                     val dropboxIndicatorAlpha by animateFloatAsState(
                         targetValue = if (currentTrack?.dropboxPath != null) 1f else 0f,
@@ -272,7 +370,7 @@ fun Controller(
                         .align(Alignment.TopEnd)
                         .offset(
                             y = with(LocalDensity.current) {
-                                textAreaHeight.toDp() / 2 - 20.dp + 4.dp
+                                textAreaHeight.toDp() / 2 - 16.dp
                             }
                         )
                         .alpha(queueStateIndicatorAlpha)
@@ -285,13 +383,12 @@ fun Controller(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.End,
                     modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(
-                            y = with(LocalDensity.current) {
-                                (1 - sheetProgress) * textAreaHeight.toDp() +
-                                        sheetProgress * (126.dp - 40.dp)
-                            }
-                        )
+                        .align(Alignment.BottomEnd)
+                        .offset {
+                            val easedProgress = EaseInOutSine.transform(sheetProgress())
+                            val topOffset = lerp(52.dp, 94.dp, easedProgress).roundToPx()
+                            IntOffset(0, topOffset)
+                        }
                 ) {
                     Icon(
                         painter = painterResource(
@@ -500,6 +597,20 @@ fun Controller(
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.Default.Lyrics,
+                    contentDescription = null,
+                    tint = if (showLyric) QTheme.colors.colorButtonNormal else QTheme.colors.colorInactive,
+                    modifier = Modifier
+                        .clickable(
+                            indication = ripple(bounded = false),
+                            interactionSource = remember { MutableInteractionSource() },
+                            onClick = onToggleShowLyrics
+                        )
+                        .padding(8.dp)
+                        .size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = stringResource(
                         id = R.string.bottom_sheet_time_total,
@@ -518,19 +629,6 @@ fun Controller(
                     color = QTheme.colors.colorTextPrimary
                 )
             }
-            Icon(
-                imageVector = Icons.Default.Lyrics,
-                contentDescription = null,
-                tint = if (showLyric) QTheme.colors.colorButtonNormal else QTheme.colors.colorInactive,
-                modifier = Modifier
-                    .clickable(
-                        indication = ripple(bounded = false),
-                        interactionSource = remember { MutableInteractionSource() },
-                        onClick = onToggleShowLyrics
-                    )
-                    .padding(8.dp)
-                    .size(20.dp)
-            )
             Icon(
                 painter = painterResource(id = R.drawable.ic_remove),
                 contentDescription = null,

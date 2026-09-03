@@ -202,7 +202,7 @@ fun SingleScreen(
             sheetShadowElevation = 8.dp,
             sheetContent = {
                 PlayerSheet(
-                    animateController = true,
+                    needToAnimateController = true,
                     libraryHeight = libraryHeight,
                     queue = queue,
                     currentIndex = currentIndex,
