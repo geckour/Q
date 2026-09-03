@@ -2,6 +2,7 @@ package com.geckour.q.ui.main
 
 import androidx.compose.animation.core.EaseInExpo
 import androidx.compose.animation.core.EaseInOutSine
+import androidx.compose.animation.core.EaseOutExpo
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
@@ -21,8 +22,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -115,6 +118,9 @@ fun Controller(
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     var textAreaHeight by remember { mutableIntStateOf(0) }
+    val navigationBarHeight = with(LocalDensity.current) {
+        WindowInsets.navigationBars.getBottom(this).toDp()
+    }
     val currentDensity = LocalDensity.current
     Column {
         Box(
@@ -268,14 +274,11 @@ fun Controller(
                 }
                 Spacer(
                     modifier = Modifier
-                        .layout { measurable, constraints ->
+                        .layout { measurable, _ ->
                             val easedProgress = EaseInExpo.transform(sheetProgress())
                             val width = lerp(128.dp, 8.dp, easedProgress).roundToPx()
                             val placeable = measurable.measure(
-                                constraints.copy(
-                                    minWidth = width,
-                                    maxWidth = width,
-                                )
+                                Constraints.fixed(width, 0)
                             )
                             layout(placeable.width, placeable.height) { placeable.place(0, 0) }
                         }
@@ -368,11 +371,14 @@ fun Controller(
                         .padding(end = 8.dp)
                         .size(24.dp)
                         .align(Alignment.TopEnd)
-                        .offset(
-                            y = with(LocalDensity.current) {
-                                textAreaHeight.toDp() / 2 - 16.dp
-                            }
-                        )
+                        .offset {
+                            IntOffset(
+                                0,
+                                with(currentDensity) {
+                                    textAreaHeight.toDp() / 2 - 16.dp
+                                }.roundToPx(),
+                            )
+                        }
                         .alpha(queueStateIndicatorAlpha)
                         .graphicsLayer {
                             rotationZ = degree
@@ -577,6 +583,17 @@ fun Controller(
                 }
             }
         }
+        Spacer(
+            modifier = Modifier
+                .layout { measurable, _ ->
+                    val easedProgress = EaseOutExpo.transform(sheetProgress())
+                    val height = lerp(navigationBarHeight, 0.dp, easedProgress).roundToPx()
+                    val placeable = measurable.measure(
+                        Constraints.fixed(0, height)
+                    )
+                    layout(placeable.width, placeable.height) { placeable.place(0, 0) }
+                }
+        )
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
