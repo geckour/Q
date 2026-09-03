@@ -29,6 +29,7 @@ private val equalizerParamsKey = stringPreferencesKey("key_equalizer_params")
 private val selectedEqualizerPresetIdKey = longPreferencesKey("key_selected_equalizer_preset_id")
 private val selectedQAudioDeviceInfoKey = stringPreferencesKey("key_selected_q_audio_device_info")
 private val alreadyRunHiraganizedKey = booleanPreferencesKey("key_already_run_hiraganized")
+private val showLyricKey = booleanPreferencesKey("key_show_lyric")
 
 fun Context.getIsInNightMode(): Flow<Boolean> = dataStore.data.map {
     it[isNightModeKey] ?: false
@@ -107,4 +108,12 @@ suspend fun Context.getAlreadyRunHiraganized(): Boolean = dataStore.data
 
 suspend fun Context.setAlreadyRunHiraganized(alreadyRunHiraganized: Boolean) {
     dataStore.edit { it[alreadyRunHiraganizedKey] = alreadyRunHiraganized }
+}
+
+fun Context.getShowLyric(): Flow<Boolean> = dataStore.data.map {
+    it[showLyricKey] ?: false
+}
+
+suspend fun Context.setShowLyric(showLyric: Boolean) {
+    dataStore.edit { it[showLyricKey] = showLyric }
 }

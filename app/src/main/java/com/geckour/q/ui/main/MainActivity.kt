@@ -80,10 +80,12 @@ import com.geckour.q.util.getExtension
 import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.getIsInNightMode
 import com.geckour.q.util.getReadableStringWithUnit
+import com.geckour.q.util.getShowLyric
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.isFavoriteToggled
 import com.geckour.q.util.parseLrc
 import com.geckour.q.util.setIsNightMode
+import com.geckour.q.util.setShowLyric
 import com.geckour.q.util.toLrcString
 import com.geckour.q.worker.DROPBOX_DOWNLOAD_WORKER_NAME
 import com.geckour.q.worker.DropboxDownloadWorker
@@ -335,7 +337,7 @@ class MainActivity : ComponentActivity() {
             val snackbarMessage by viewModel.snackbarMessageFlow.collectAsState()
             val equalizerParams by context.getEqualizerParams().collectAsState(initial = null)
             var scrollToTop by remember { mutableLongStateOf(0L) }
-            var showLyric by remember { mutableStateOf(false) }
+            val showLyric by context.getShowLyric().collectAsState(initial = false)
             val currentDropboxItemList by viewModel.dropboxItemList.collectAsState(
                 initial = Triple("", persistentListOf(), persistentListOf())
             )
@@ -586,7 +588,11 @@ class MainActivity : ComponentActivity() {
                                     forceScrollToCurrent = System.currentTimeMillis()
                                 },
                                 clearQueue = viewModel::onClickClearQueueButton,
-                                onToggleShowLyrics = { showLyric = showLyric.not() },
+                                onToggleShowLyrics = {
+                                    coroutineScope.launch {
+                                        context.setShowLyric(showLyric.not())
+                                    }
+                                },
                                 onNewQueue = viewModel::onNewQueue,
                                 onQueueMove = viewModel::onQueueMove,
                                 onChangeIndexRequested = viewModel::onChangeIndexRequested,
@@ -740,7 +746,11 @@ class MainActivity : ComponentActivity() {
                                     forceScrollToCurrent = System.currentTimeMillis()
                                 },
                                 clearQueue = viewModel::onClickClearQueueButton,
-                                onToggleShowLyrics = { showLyric = showLyric.not() },
+                                onToggleShowLyrics = {
+                                    coroutineScope.launch {
+                                        context.setShowLyric(showLyric.not())
+                                    }
+                                },
                                 onNewQueue = viewModel::onNewQueue,
                                 onQueueMove = viewModel::onQueueMove,
                                 onChangeIndexRequested = viewModel::onChangeIndexRequested,
