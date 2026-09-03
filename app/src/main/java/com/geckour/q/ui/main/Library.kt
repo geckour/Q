@@ -42,6 +42,7 @@ fun Library(
     snackbarMessage: String?,
     snackbarProgress: Float?,
     isSearchActive: MutableState<Boolean>,
+    query: MutableState<String>,
     isFavoriteOnly: MutableState<Boolean>,
     routeInfo: QAudioDeviceInfo?,
     onBackHandle: (() -> Unit)?,
@@ -63,12 +64,10 @@ fun Library(
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
-    val query = remember { mutableStateOf("") }
+    // Derived from [query]: QSearchBar re-runs the search whenever the query changes, so it is
+    // repopulated on its own once the restored query is applied. Keeping it out of the saved
+    // instance state also avoids serializing every MediaItem of a result set into a Bundle.
     val result = remember { mutableStateOf<ImmutableList<SearchItem>>(persistentListOf()) }
-    // Holds the latest scroll position of each list, keyed by its destination, so that it can be
-    // restored when the destination is entered again. It is intentionally not a state: it is read
-    // only on entering a destination, and writing it must not cause a recomposition.
-    val scrollPositionMap = remember { mutableMapOf<String, Pair<Int, Int>>() }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -80,7 +79,7 @@ fun Library(
                 .weight(1f)
                 .fillMaxSize()
         ) {
-            composable("artists") {
+            composable("artists") { backStackEntry ->
                 BackHandler(enabled = onBackHandle != null) {
                     onBackHandle?.invoke()
                 }
@@ -90,10 +89,7 @@ fun Library(
                     onChangeTopBarTitle(topBarTitle)
                     onSetOptionMediaItem(AllArtists)
                 }
-                val scrollPositionKey = "artists"
-                val initialScrollPosition = remember(scrollPositionKey) {
-                    scrollPositionMap[scrollPositionKey] ?: (0 to 0)
-                }
+                val scrollPosition = rememberScrollPosition(backStackEntry)
 
                 Artists(
                     navController = navController,
@@ -115,11 +111,9 @@ fun Library(
                             onInvalidateDownloaded(targets)
                         }
                     },
-                    initialScrollPosition = initialScrollPosition,
+                    initialScrollPosition = scrollPosition.initialPosition,
                     scrollToTop = scrollToTop,
-                    onScrollPositionUpdated = { index, offset ->
-                        scrollPositionMap[scrollPositionKey] = index to offset
-                    },
+                    onScrollPositionUpdated = scrollPosition::update,
                     onToggleFavorite = onToggleFavorite,
                     onSearchItemClicked = onSearchItemClicked,
                     onSearchItemLongClicked = onSearchItemLongClicked,
@@ -139,10 +133,7 @@ fun Library(
                 }
                 val artistId = backStackEntry.arguments?.getLong("artistId")
                     ?: -1
-                val scrollPositionKey = "albums-$artistId"
-                val initialScrollPosition = remember(scrollPositionKey) {
-                    scrollPositionMap[scrollPositionKey] ?: (0 to 0)
-                }
+                val scrollPosition = rememberScrollPosition(backStackEntry)
                 LaunchedEffect(artistId) {
                     onSelectNav(Nav.ALBUM)
                     launch {
@@ -179,11 +170,9 @@ fun Library(
                             onInvalidateDownloaded(targets)
                         }
                     },
-                    initialScrollPosition = initialScrollPosition,
+                    initialScrollPosition = scrollPosition.initialPosition,
                     scrollToTop = scrollToTop,
-                    onScrollPositionUpdated = { index, offset ->
-                        scrollPositionMap[scrollPositionKey] = index to offset
-                    },
+                    onScrollPositionUpdated = scrollPosition::update,
                     onToggleFavorite = onToggleFavorite,
                     onSearchItemClicked = onSearchItemClicked,
                     onSearchItemLongClicked = onSearchItemLongClicked,
@@ -207,10 +196,7 @@ fun Library(
                 }
                 val albumId = backStackEntry.arguments?.getLong("albumId") ?: -1
                 val genreName = backStackEntry.arguments?.getString("genreName")?.decodeUrlSafe()
-                val scrollPositionKey = "tracks-$albumId-$genreName"
-                val initialScrollPosition = remember(scrollPositionKey) {
-                    scrollPositionMap[scrollPositionKey] ?: (0 to 0)
-                }
+                val scrollPosition = rememberScrollPosition(backStackEntry)
                 LaunchedEffect(albumId) {
                     onSelectNav(Nav.TRACK)
                     launch {
@@ -240,17 +226,15 @@ fun Library(
                     onInvalidateDownloaded = {
                         onInvalidateDownloaded(listOf(it.sourcePath))
                     },
-                    initialScrollPosition = initialScrollPosition,
+                    initialScrollPosition = scrollPosition.initialPosition,
                     scrollToTop = scrollToTop,
-                    onScrollPositionUpdated = { index, offset ->
-                        scrollPositionMap[scrollPositionKey] = index to offset
-                    },
+                    onScrollPositionUpdated = scrollPosition::update,
                     onToggleFavorite = onToggleFavorite,
                     onSearchItemClicked = onSearchItemClicked,
                     onSearchItemLongClicked = onSearchItemLongClicked,
                 )
             }
-            composable("genres") {
+            composable("genres") { backStackEntry ->
                 BackHandler(enabled = onBackHandle != null) {
                     onBackHandle?.invoke()
                 }
@@ -260,10 +244,7 @@ fun Library(
                     onChangeTopBarTitle(topBarTitle)
                     onSetOptionMediaItem(null)
                 }
-                val scrollPositionKey = "genres"
-                val initialScrollPosition = remember(scrollPositionKey) {
-                    scrollPositionMap[scrollPositionKey] ?: (0 to 0)
-                }
+                val scrollPosition = rememberScrollPosition(backStackEntry)
                 Genres(
                     navController = navController,
                     isSearchActive = isSearchActive,
@@ -271,11 +252,9 @@ fun Library(
                     result = result,
                     keyboardController = keyboardController,
                     onSelectGenre = { onSelectGenre(it) },
-                    initialScrollPosition = initialScrollPosition,
+                    initialScrollPosition = scrollPosition.initialPosition,
                     scrollToTop = scrollToTop,
-                    onScrollPositionUpdated = { index, offset ->
-                        scrollPositionMap[scrollPositionKey] = index to offset
-                    },
+                    onScrollPositionUpdated = scrollPosition::update,
                     onSearchItemClicked = onSearchItemClicked,
                     onSearchItemLongClicked = onSearchItemLongClicked,
                 )

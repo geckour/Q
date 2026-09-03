@@ -33,6 +33,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
@@ -365,8 +366,9 @@ class MainActivity : ComponentActivity() {
 
                 newMediaItem
             }
-            val isSearchActive = remember { mutableStateOf(false) }
-            val isFavoriteOnly = remember { mutableStateOf(false) }
+            val isSearchActive = rememberSaveable { mutableStateOf(false) }
+            val searchQuery = rememberSaveable { mutableStateOf("") }
+            val isFavoriteOnly = rememberSaveable { mutableStateOf(false) }
             val activeQAudioDeviceInfo by getActiveQAudioDeviceInfo().collectAsState(initial = null)
 
             onLrcFileLoaded = {
@@ -578,6 +580,7 @@ class MainActivity : ComponentActivity() {
                                 shuffleQueue = viewModel::onShuffle,
                                 resetShuffleQueue = viewModel::onResetShuffle,
                                 isSearchActive = isSearchActive,
+                                searchQuery = searchQuery,
                                 isFavoriteOnly = isFavoriteOnly,
                                 moveToCurrentIndex = {
                                     forceScrollToCurrent = System.currentTimeMillis()
@@ -696,6 +699,7 @@ class MainActivity : ComponentActivity() {
                                 downloadTargets = downloadTargets,
                                 invalidateDownloadedTargets = invalidateDownloadedTargets,
                                 isSearchActive = isSearchActive,
+                                searchQuery = searchQuery,
                                 isFavoriteOnly = isFavoriteOnly,
                                 snackbarMessage = progressMessage ?: snackbarMessage,
                                 snackbarProgress = progressFraction,

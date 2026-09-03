@@ -82,6 +82,7 @@ fun SingleScreen(
     showResetShuffleDialog: Boolean,
     hasAlreadyShownDropboxSyncAlert: Boolean,
     isSearchActive: MutableState<Boolean>,
+    searchQuery: MutableState<String>,
     isFavoriteOnly: MutableState<Boolean>,
     scrollToTop: Long,
     onSelectNav: (nav: Nav?) -> Unit,
@@ -249,6 +250,7 @@ fun SingleScreen(
                     snackbarMessage = snackbarMessage,
                     snackbarProgress = snackbarProgress,
                     isSearchActive = isSearchActive,
+                    query = searchQuery,
                     isFavoriteOnly = isFavoriteOnly,
                     routeInfo = routeInfo,
                     onBackHandle = if (scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) {
