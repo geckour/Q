@@ -272,12 +272,14 @@ fun String.parseDateLong(): Long? = catchAsNull {
     SimpleDateFormat("yyyy", Locale.JAPAN).parse(this)?.time
 }
 
-fun Long.getTimeString(): String {
+fun Long.getTimeString(withMillis: Boolean = false): String {
     val hour = this / 3600000
     val minute = (this % 3600000) / 60000
     val second = (this % 60000) / 1000
+    val secondWithMillis = (this % 60000) / 1000.0
     return (if (hour > 0) String.format("%d:", hour) else "") +
-            String.format("%02d:%02d", minute, second)
+            if (withMillis) String.format("%02d:%05.2f", minute, secondWithMillis)
+            else String.format("%02d:%02d", minute, second)
 }
 
 fun DbxClientV2.saveTempAudioFile(
