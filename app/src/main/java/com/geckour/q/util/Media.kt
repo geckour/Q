@@ -272,6 +272,9 @@ fun String.parseDateLong(): Long? = catchAsNull {
     SimpleDateFormat("yyyy", Locale.JAPAN).parse(this)?.time
 }
 
+fun Long.getDateTimeString(): String =
+    SimpleDateFormat("yyyy-MM-dd hh:mm:ss", Locale.JAPAN).format(Date(this))
+
 fun Long.getTimeString(withMillis: Boolean = false): String {
     val hour = this / 3600000
     val minute = (this % 3600000) / 60000

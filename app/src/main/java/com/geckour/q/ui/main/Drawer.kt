@@ -219,6 +219,18 @@ fun Drawer(
         }
         item {
             DrawerItem(
+                iconResId = R.drawable.ic_history,
+                title = stringResource(id = R.string.nav_history),
+                isSelected = selectedNav == Nav.HISTORY,
+                onClick = {
+                    navController.navigate("history")
+                    onSelectNav(Nav.HISTORY)
+                    coroutineScope.launch { drawerState.close() }
+                }
+            )
+        }
+        item {
+            DrawerItem(
                 iconResId = R.drawable.ic_dropbox,
                 title = stringResource(id = R.string.nav_dropbox_sync),
                 isSelected = selectedNav == Nav.DROPBOX_SYNC,

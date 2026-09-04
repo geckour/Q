@@ -58,11 +58,12 @@
     <string name="nav_album">アルバム</string>
     <string name="nav_track">曲</string>
     <string name="nav_genre">ジャンル</string>
+    <string name="nav_history">履歴</string>
     <string name="nav_dropbox">Dropbox</string>
     <string name="nav_setting">設定</string>
     <string name="nav_equalizer">イコライザ</string>
-    <string name="nav_sync">ライブラリを同期</string>
     <string name="nav_dropbox_sync">Dropboxと同期</string>
+    <string name="nav_sync">ライブラリを同期</string>
     <string name="nav_pay">投げ銭</string>
     <string name="nav_fortune">おみQじ</string>
 

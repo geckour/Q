@@ -266,6 +266,27 @@ fun Library(
                     onSearchItemLongClicked = onSearchItemLongClicked,
                 )
             }
+            composable("history") { backStackEntry ->
+                BackHandler(enabled = onBackHandle != null) {
+                    onBackHandle?.invoke()
+                }
+                val topBarTitle = stringResource(id = R.string.nav_history)
+                LaunchedEffect(navController.currentDestination) {
+                    onSelectNav(Nav.HISTORY)
+                    onChangeTopBarTitle(topBarTitle)
+                    onSetOptionMediaItem(null)
+                }
+                val scrollPosition = rememberScrollPosition(backStackEntry)
+                TrackHistories(
+                    endItemMargin = endItemMargin,
+                    onSelectHistory = { uiTrackHistory ->
+                        onSelectTrack(uiTrackHistory.uiTrack)
+                    },
+                    initialScrollPosition = scrollPosition.initialPosition,
+                    scrollToTop = scrollToTop,
+                    onScrollPositionUpdated = scrollPosition::update,
+                )
+            }
             composable("qzi") {
                 BackHandler(enabled = onBackHandle != null) {
                     onBackHandle?.invoke()

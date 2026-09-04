@@ -13,6 +13,7 @@ import com.geckour.q.data.db.dao.AudioDeviceEqualizerInfoDao
 import com.geckour.q.data.db.dao.EqualizerPresetDao
 import com.geckour.q.data.db.dao.LyricDao
 import com.geckour.q.data.db.dao.TrackDao
+import com.geckour.q.data.db.dao.TrackHistoryDao
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.AudioDeviceEqualizerInfo
@@ -22,6 +23,7 @@ import com.geckour.q.data.db.model.EqualizerPreset
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.data.db.model.Track
+import com.geckour.q.data.db.model.TrackHistory
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -32,11 +34,12 @@ import kotlinx.serialization.json.Json
         Album::class,
         Artist::class,
         Lyric::class,
+        TrackHistory::class,
         EqualizerPreset::class,
         EqualizerLevelRatio::class,
         AudioDeviceEqualizerInfo::class,
     ],
-    version = 7,
+    version = 9,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -44,6 +47,8 @@ import kotlinx.serialization.json.Json
         AutoMigration(from = 4, to = 5),
         AutoMigration(from = 5, to = 6),
         AutoMigration(from = 6, to = 7),
+        AutoMigration(from = 7, to = 8),
+        AutoMigration(from = 8, to = 9),
     ]
 )
 @TypeConverters(BoolConverter::class, LyricLineConverter::class)
@@ -67,6 +72,7 @@ abstract class DB : RoomDatabase() {
     abstract fun albumDao(): AlbumDao
     abstract fun artistDao(): ArtistDao
     abstract fun lyricDao(): LyricDao
+    abstract fun trackHistoryDao(): TrackHistoryDao
     abstract fun equalizerPresetDao(): EqualizerPresetDao
     abstract fun audioDeviceEqualizerInfoDao(): AudioDeviceEqualizerInfoDao
 }

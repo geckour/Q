@@ -10,7 +10,6 @@ import androidx.room.Update
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.JoinedTrack
-import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.util.containsKatakana
 import com.geckour.q.util.hiraganized

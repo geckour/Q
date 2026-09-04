@@ -143,6 +143,7 @@ fun Artists(
                 .collectAsState(initial = false)
             val allDownloaded by db.artistDao().isAllIncludingTracksDownloadedAsFlow(artist.id)
                 .collectAsState(initial = false)
+
             Surface(
                 color = QTheme.colors.colorBackground,
                 shadowElevation = 0.dp,

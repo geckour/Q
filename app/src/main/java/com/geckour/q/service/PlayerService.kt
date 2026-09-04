@@ -47,6 +47,7 @@ import com.geckour.q.data.db.model.EqualizerLevelRatio
 import com.geckour.q.data.db.model.EqualizerPreset
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricSource
+import com.geckour.q.data.db.model.TrackHistory
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.QAudioDeviceInfo
@@ -564,6 +565,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
     private val lyricRequestedSourcePaths = mutableSetOf<String>()
 
+    private var lastHistorizedMediaItem: MediaItem? = null
     private var inPurge = false
     private var inRestore = false
     private var aliveSubmitQueueTask = false
@@ -774,6 +776,13 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         if (inPurge) return
 
         saveState()
+
+        val currentMediaItem = player.currentMediaItem
+        val shouldStoreTrackHistory = player.playWhenReady &&
+                currentMediaItem != null &&
+                currentMediaItem != lastHistorizedMediaItem
+        if (shouldStoreTrackHistory) lastHistorizedMediaItem = currentMediaItem
+
         lifecycleScope.launch {
             val sourcePath = player.currentMediaItem?.let {
                 it.localConfiguration?.uri?.toString() ?: it.mediaId
@@ -781,12 +790,26 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
                 mediaSession.setCustomLayout(emptyList())
                 return@launch
             }
+            val track = db.trackDao().getBySourcePath(sourcePath)?.track
+
+            if (shouldStoreTrackHistory &&
+                track != null &&
+                db.trackHistoryDao().getLatest()?.trackId != track.id
+            ) {
+                db.trackHistoryDao().upsert(
+                    TrackHistory(
+                        id = 0,
+                        trackId = track.id,
+                        createdAt = System.currentTimeMillis(),
+                    )
+                )
+            }
+
             val f =
-                isFavorite ?: db.trackDao().getBySourcePath(sourcePath)?.track?.isFavorite ?: run {
+                isFavorite ?: track?.isFavorite ?: run {
                     mediaSession.setCustomLayout(emptyList())
                     return@launch
                 }
-
             mediaSession.setCustomLayout(
                 listOf(
                     CommandButton.Builder(if (f) CommandButton.ICON_STAR_FILLED else CommandButton.ICON_STAR_UNFILLED)

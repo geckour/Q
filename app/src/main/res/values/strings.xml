@@ -63,11 +63,12 @@
     <string name="nav_album">Albums</string>
     <string name="nav_track">Tracks</string>
     <string name="nav_genre">Genres</string>
+    <string name="nav_history">History</string>
     <string name="nav_dropbox">Dropbox</string>
     <string name="nav_setting">Settings</string>
     <string name="nav_equalizer">Equalizer</string>
-    <string name="nav_sync">Sync library</string>
     <string name="nav_dropbox_sync">Sync with Dropbox</string>
+    <string name="nav_sync">Sync library</string>
     <string name="nav_pay">Donate</string>
     <string name="nav_fortune">Fortune</string>
 

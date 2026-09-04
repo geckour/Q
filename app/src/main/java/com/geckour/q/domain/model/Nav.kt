@@ -5,6 +5,7 @@ enum class Nav {
     ALBUM,
     TRACK,
     GENRE,
+    HISTORY,
     DROPBOX_SYNC,
     SYNC,
     PAY,
