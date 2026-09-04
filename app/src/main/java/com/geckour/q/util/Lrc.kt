@@ -32,7 +32,9 @@ fun String.parseLrc(): List<LyricLine> =
                 }
                 ?.toList()
                 .orEmpty()
-            val sentence = line.replace(Regex("^(\\[\\d+?:\\d+?(\\.\\d+?)?])+(.*)$"), "$3")
+            val sentence = line
+                .replace(Regex("^(\\[\\d+?:\\d+?(\\.\\d+?)?])+(.*)$"), "$3")
+                .trim()
             timings.map { LyricLine(it, sentence) }
         }.flatten()
         .sortedBy { it.timing }
