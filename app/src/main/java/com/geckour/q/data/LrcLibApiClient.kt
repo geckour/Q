@@ -127,25 +127,28 @@ class LrcLibApiClient {
 
             Timber.d("qgeck request lyric to LRCLIB: $url")
 
-            val retryAfterMillis = client.newCall(
-                Request.Builder()
-                    .url(url)
-                    .header("User-Agent", USER_AGENT)
-                    .build()
-            ).execute().use { response ->
-                when {
-                    response.isSuccessful -> return response.body.string()
+            val retryAfterMillis = client
+                .newCall(
+                    Request.Builder()
+                        .url(url)
+                        .header("User-Agent", USER_AGENT)
+                        .build()
+                )
+                .execute()
+                .use { response ->
+                    when {
+                        response.isSuccessful -> return response.body.string()
 
-                    response.code == 404 -> return null
+                        response.code == 404 -> return null
 
-                    response.code == 429 ->
-                        response.header("Retry-After").toRetryAfterMillis()
+                        response.code == 429 ->
+                            response.header("Retry-After").toRetryAfterMillis()
 
-                    else -> throw IllegalStateException(
-                        "Failed to request lyric to LRCLIB: ${response.code}"
-                    )
+                        else -> throw IllegalStateException(
+                            "Failed to request lyric to LRCLIB: ${response.code}"
+                        )
+                    }
                 }
-            }
 
             requestAllowedAtElapsedMillis = SystemClock.elapsedRealtime() + retryAfterMillis
 
@@ -198,8 +201,6 @@ class LrcLibApiClient {
     private val JoinedTrack.durationSeconds: Double get() = track.duration / 1000.0
 
     private fun LrcLibLyric.toLyricLines(): List<LyricLine>? {
-        if (instrumental) return null
-
         syncedLyrics?.parseLrc()?.let { if (it.isNotEmpty()) return it }
 
         return plainLyrics?.takeIf { it.isNotBlank() }
@@ -209,12 +210,7 @@ class LrcLibApiClient {
 
     @Serializable
     private data class LrcLibLyric(
-        val id: Long? = null,
-        val trackName: String? = null,
-        val artistName: String? = null,
-        val albumName: String? = null,
         val duration: Double? = null,
-        val instrumental: Boolean = false,
         val plainLyrics: String? = null,
         val syncedLyrics: String? = null,
     )
