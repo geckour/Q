@@ -106,9 +106,10 @@ fun ColumnScope.Queue(
     val db = DB.getInstance(context)
     val density = LocalDensity.current
     var items by remember { mutableStateOf(uiTracks) }
-    val lyric by db.lyricDao()
-        .getLyricFlowByTrackId(uiTracks.firstOrNull { it.nowPlaying }?.id ?: -1)
-        .collectAsState(initial = null)
+    val nowPlayingTrackId = uiTracks.firstOrNull { it.nowPlaying }?.id ?: -1
+    val lyric by remember(nowPlayingTrackId) {
+        db.lyricDao().getLyricFlowByTrackId(nowPlayingTrackId)
+    }.collectAsState(initial = null)
     val lyricLinesForShowing = lyric.lyricLinesForShowing
     val lazyListState = rememberLazyListState()
     var from by remember { mutableIntStateOf(-1) }
@@ -152,6 +153,11 @@ fun ColumnScope.Queue(
                     currentIndex,
                     -contentHeight / 2 + with(density) { 22.dp.roundToPx() }
                 )
+            }
+        }
+        LaunchedEffect(lyric?.id) {
+            if (isInEditMode.not() && currentIndex < 0) {
+                listState.scrollToItem(0)
             }
         }
         Box(
