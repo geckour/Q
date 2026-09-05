@@ -127,15 +127,40 @@ fun JoinedTrack.toUiTrack(
 
 val JoinedTrack.dates: Triple<Int?, Int?, Int?>
     get() {
-        val calendar = track.releaseDate?.parseDateLong()?.let {
-            Calendar.getInstance().apply { time = Date(it) }
+        val releaseDateString = track.releaseDate ?: return Triple(null, null, null)
+
+        runCatching {
+            val calendar = Calendar.getInstance().apply {
+                time = SimpleDateFormat("yyyy-MM-dd", Locale.JAPAN).parse(releaseDateString)
+            }
+            return Triple(
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+            )
+        }
+        runCatching {
+            val calendar = Calendar.getInstance().apply {
+                time = SimpleDateFormat("yyyy-MM", Locale.JAPAN).parse(releaseDateString)
+            }
+            return Triple(
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                null
+            )
+        }
+        runCatching {
+            val calendar = Calendar.getInstance().apply {
+                time = SimpleDateFormat("yyyy", Locale.JAPAN).parse(releaseDateString)
+            }
+            return Triple(
+                calendar.get(Calendar.YEAR),
+                null,
+                null
+            )
         }
 
-        return Triple(
-            calendar?.get(Calendar.YEAR),
-            calendar?.get(Calendar.MONTH),
-            calendar?.get(Calendar.DAY_OF_MONTH)
-        )
+        return Triple(null, null, null)
     }
 
 val UiTrack.isDownloaded
@@ -262,14 +287,6 @@ fun JoinedTrack.getMediaMetadata(): MediaMetadata {
             track.discTotal?.let { setTotalDiscCount(it) }
         }
         .build()
-}
-
-fun String.parseDateLong(): Long? = catchAsNull {
-    SimpleDateFormat("yyyy-MM-dd", Locale.JAPAN).parse(this)?.time
-} ?: catchAsNull {
-    SimpleDateFormat("yyyy-MM", Locale.JAPAN).parse(this)?.time
-} ?: catchAsNull {
-    SimpleDateFormat("yyyy", Locale.JAPAN).parse(this)?.time
 }
 
 fun Long.getDateTimeString(): String =
