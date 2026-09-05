@@ -317,8 +317,10 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal fun onClickRepeatButton() {
         mediaController?.sendCustomCommand(
             SessionCommand(
-                PlayerService.ACTION_COMMAND_ROTATE_REPEAT_MODE, Bundle.EMPTY
-            ), Bundle.EMPTY
+                PlayerService.ACTION_COMMAND_ROTATE_REPEAT_MODE,
+                Bundle.EMPTY,
+            ),
+            Bundle.EMPTY,
         )
     }
 
@@ -412,22 +414,38 @@ class MainViewModel(private val app: App) : ViewModel() {
             PlaybackButton.PREV -> mediaController.seekToPrevious()
             PlaybackButton.FF -> mediaController.sendCustomCommand(
                 SessionCommand(
-                    PlayerService.ACTION_COMMAND_FAST_FORWARD, Bundle.EMPTY
-                ), Bundle.EMPTY
+                    PlayerService.ACTION_COMMAND_FAST_FORWARD,
+                    Bundle.EMPTY,
+                ),
+                Bundle.EMPTY,
             )
 
             PlaybackButton.REWIND -> mediaController.sendCustomCommand(
                 SessionCommand(
-                    PlayerService.ACTION_COMMAND_REWIND, Bundle.EMPTY
-                ), Bundle.EMPTY
+                    PlayerService.ACTION_COMMAND_REWIND,
+                    Bundle.EMPTY,
+                ),
+                Bundle.EMPTY,
             )
 
             PlaybackButton.UNDEFINED -> mediaController.sendCustomCommand(
                 SessionCommand(
-                    PlayerService.ACTION_COMMAND_STOP_FAST_SEEK, Bundle.EMPTY
-                ), Bundle.EMPTY
+                    PlayerService.ACTION_COMMAND_STOP_FAST_SEEK,
+                    Bundle.EMPTY,
+                ),
+                Bundle.EMPTY,
             )
         }
+    }
+
+    internal fun enablePauseOnCurrentTrackEnd() {
+        mediaController?.sendCustomCommand(
+            SessionCommand(
+                PlayerService.ACTION_COMMAND_SHOULD_PAUSE_ON_END_CURRENT,
+                Bundle.EMPTY,
+            ),
+            Bundle.EMPTY,
+        )
     }
 
     internal suspend fun storeDropboxApiToken(onFailure: (Throwable) -> Unit) {

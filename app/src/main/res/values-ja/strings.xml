@@ -153,6 +153,8 @@
 
     <string name="dialog_switch_desc_filter_only_favorite">お気に入りのみ</string>
 
+    <string name="dialog_message_enable_pause_on_current_track_end">現在再生中の曲の終わりでの自動一時停止を有効にしますか？</string>
+
     <string name="content_description_folder">Folder</string>
     <string name="content_description_file">File</string>
 

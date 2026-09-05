@@ -158,6 +158,8 @@
 
     <string name="dialog_switch_desc_filter_only_favorite">Only favorites</string>
 
+    <string name="dialog_message_enable_pause_on_current_track_end">Enable auto pause on end of current track playback?</string>
+
     <string name="content_description_folder">Folder</string>
     <string name="content_description_file">File</string>
 

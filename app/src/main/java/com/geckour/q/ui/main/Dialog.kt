@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -1601,6 +1600,53 @@ fun ConfirmInvalidateDownloadedDialog(
 }
 
 @Composable
+fun EnablePauseOnCurrentTrackEndDialog(
+    onCancel: () -> Unit,
+    onPositive: () -> Unit,
+) {
+    Dialog(onDismissRequest = onCancel) {
+        Card(
+            colors = CardDefaults.cardColors()
+                .copy(containerColor = QTheme.colors.colorBackground)
+        ) {
+            Column(
+                modifier = Modifier.padding(
+                    horizontal = 24.dp,
+                    vertical = 16.dp
+                )
+            ) {
+                Text(
+                    text = stringResource(id = R.string.dialog_message_enable_pause_on_current_track_end),
+                    fontSize = 18.sp,
+                    color = QTheme.colors.colorTextPrimary
+                )
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(top = 8.dp)
+                ) {
+                    TextButton(onClick = onCancel) {
+                        Text(
+                            text = stringResource(R.string.dialog_ng),
+                            fontSize = 16.sp,
+                            color = QTheme.colors.colorTextPrimary
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(onClick = onPositive) {
+                        Text(
+                            text = stringResource(R.string.dialog_ok),
+                            fontSize = 16.sp,
+                            color = QTheme.colors.colorAccent
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun BoxScope.Dialogs(
     selectedTrack: UiTrack?,
     selectedAlbum: Album?,
@@ -1641,6 +1687,9 @@ fun BoxScope.Dialogs(
     onStartDownloader: () -> Unit,
     onCancelInvalidateDownloaded: () -> Unit,
     onStartInvalidateDownloaded: () -> Unit,
+    onCancelEnablePauseOnCurrentTrackEnd: () -> Unit,
+    onPositiveEnablePauseOnCurrentTrackEnd: () -> Unit,
+    showEnablePauseOnCurrentTrackEndDialog: Boolean,
 ) {
     val innerIsFavoriteOnly = remember { mutableStateOf(isFavoriteOnly.value) }
     LaunchedEffect(isFavoriteOnly.value) {
@@ -1723,6 +1772,12 @@ fun BoxScope.Dialogs(
         ConfirmInvalidateDownloadedDialog(
             onCancelInvalidateDownloaded = onCancelInvalidateDownloaded,
             onStartInvalidateDownloaded = onStartInvalidateDownloaded
+        )
+    }
+    if (showEnablePauseOnCurrentTrackEndDialog) {
+        EnablePauseOnCurrentTrackEndDialog(
+            onCancel = onCancelEnablePauseOnCurrentTrackEnd,
+            onPositive = onPositiveEnablePauseOnCurrentTrackEnd,
         )
     }
 }

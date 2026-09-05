@@ -102,6 +102,7 @@ fun TwinScreen(
     onNext: () -> Unit,
     onRewind: () -> Unit,
     onFastForward: () -> Unit,
+    onEnablePauseOnCurrentTrackEnd: () -> Unit,
     resetPlaybackButton: () -> Unit,
     onNewProgress: (newProgress: Long) -> Unit,
     rotateRepeatMode: () -> Unit,
@@ -139,6 +140,9 @@ fun TwinScreen(
     onCancelProgress: (() -> Unit)?,
     onSetOptionMediaItem: (mediaItem: MediaItem?) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
+    onCancelEnablePauseOnCurrentTrackEnd: () -> Unit,
+    onPositiveEnablePauseOnCurrentTrackEnd: () -> Unit,
+    showEnablePauseOnCurrentTrackEndDialog: Boolean,
 ) {
     val endItemMargin = with(LocalDensity.current) {
         WindowInsets.navigationBars.getBottom(this).toDp()
@@ -203,6 +207,9 @@ fun TwinScreen(
             onStartBilling = onStartBilling,
             onSetOptionMediaItem = onSetOptionMediaItem,
             onToggleFavorite = onToggleFavorite,
+            onCancelEnablePauseOnCurrentTrackEnd = onCancelEnablePauseOnCurrentTrackEnd,
+            onPositiveEnablePauseOnCurrentTrackEnd = onPositiveEnablePauseOnCurrentTrackEnd,
+            showEnablePauseOnCurrentTrackEndDialog = showEnablePauseOnCurrentTrackEndDialog,
         )
         TwinEndPage(
             modifier = Modifier.weight(1f),
@@ -222,6 +229,7 @@ fun TwinScreen(
             onNext = onNext,
             onRewind = onRewind,
             onFastForward = onFastForward,
+            onEnablePauseOnCurrentTrackEnd = onEnablePauseOnCurrentTrackEnd,
             resetPlaybackButton = resetPlaybackButton,
             onNewProgress = onNewProgress,
             rotateRepeatMode = rotateRepeatMode,
@@ -303,6 +311,9 @@ fun RowScope.TwinStartPage(
     onStartBilling: () -> Unit,
     onSetOptionMediaItem: (mediaItem: MediaItem?) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
+    onCancelEnablePauseOnCurrentTrackEnd: () -> Unit,
+    onPositiveEnablePauseOnCurrentTrackEnd: () -> Unit,
+    showEnablePauseOnCurrentTrackEndDialog: Boolean,
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     ModalNavigationDrawer(
@@ -456,7 +467,10 @@ fun RowScope.TwinStartPage(
                     onCancelDownload = onCancelDownload,
                     onStartDownloader = onStartDownloader,
                     onCancelInvalidateDownloaded = onCancelInvalidateDownloaded,
-                    onStartInvalidateDownloaded = onStartInvalidateDownloaded
+                    onStartInvalidateDownloaded = onStartInvalidateDownloaded,
+                    onCancelEnablePauseOnCurrentTrackEnd = onCancelEnablePauseOnCurrentTrackEnd,
+                    onPositiveEnablePauseOnCurrentTrackEnd = onPositiveEnablePauseOnCurrentTrackEnd,
+                    showEnablePauseOnCurrentTrackEndDialog = showEnablePauseOnCurrentTrackEndDialog,
                 )
             }
         }
@@ -482,6 +496,7 @@ fun RowScope.TwinEndPage(
     onNext: () -> Unit,
     onRewind: () -> Unit,
     onFastForward: () -> Unit,
+    onEnablePauseOnCurrentTrackEnd: () -> Unit,
     resetPlaybackButton: () -> Unit,
     onNewProgress: (newProgress: Long) -> Unit,
     rotateRepeatMode: () -> Unit,
@@ -534,6 +549,7 @@ fun RowScope.TwinEndPage(
                 onNext = onNext,
                 onRewind = onRewind,
                 onFastForward = onFastForward,
+                onEnablePauseOnCurrentTrackEnd = onEnablePauseOnCurrentTrackEnd,
                 resetPlaybackButton = resetPlaybackButton,
                 onNewProgress = onNewProgress,
                 rotateRepeatMode = rotateRepeatMode,

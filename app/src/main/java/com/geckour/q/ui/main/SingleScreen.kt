@@ -102,6 +102,7 @@ fun SingleScreen(
     onNext: () -> Unit,
     onRewind: () -> Unit,
     onFastForward: () -> Unit,
+    onEnablePauseOnCurrentTrackEnd: () -> Unit,
     resetPlaybackButton: () -> Unit,
     onNewProgress: (newProgress: Long) -> Unit,
     rotateRepeatMode: () -> Unit,
@@ -139,6 +140,9 @@ fun SingleScreen(
     onCancelProgress: (() -> Unit)?,
     onSetOptionMediaItem: (mediaItem: MediaItem?) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
+    onCancelEnablePauseOnCurrentTrackEnd: () -> Unit,
+    onPositiveEnablePauseOnCurrentTrackEnd: () -> Unit,
+    showEnablePauseOnCurrentTrackEndDialog: Boolean,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scaffoldState = rememberBottomSheetScaffoldState()
@@ -228,6 +232,7 @@ fun SingleScreen(
                     onNext = onNext,
                     onRewind = onRewind,
                     onFastForward = onFastForward,
+                    onEnablePauseOnCurrentTrackEnd = onEnablePauseOnCurrentTrackEnd,
                     resetPlaybackButton = resetPlaybackButton,
                     onNewProgress = onNewProgress,
                     rotateRepeatMode = rotateRepeatMode,
@@ -355,7 +360,10 @@ fun SingleScreen(
                     onCancelDownload = onCancelDownload,
                     onStartDownloader = onStartDownloader,
                     onCancelInvalidateDownloaded = onCancelInvalidateDownloaded,
-                    onStartInvalidateDownloaded = onStartInvalidateDownloaded
+                    onStartInvalidateDownloaded = onStartInvalidateDownloaded,
+                    onCancelEnablePauseOnCurrentTrackEnd = onCancelEnablePauseOnCurrentTrackEnd,
+                    onPositiveEnablePauseOnCurrentTrackEnd = onPositiveEnablePauseOnCurrentTrackEnd,
+                    showEnablePauseOnCurrentTrackEndDialog = showEnablePauseOnCurrentTrackEndDialog,
                 )
             }
         }

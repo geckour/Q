@@ -362,6 +362,7 @@ class MainActivity : ComponentActivity() {
             val searchQuery = rememberSaveable { mutableStateOf("") }
             val isFavoriteOnly = rememberSaveable { mutableStateOf(false) }
             val activeQAudioDeviceInfo by getActiveQAudioDeviceInfo().collectAsState(initial = null)
+            var showEnablePauseOnCurrentTrackEndDialog by remember { mutableStateOf(false) }
 
             onLrcFileLoaded = {
                 if (attachLyricTargetTrackId > 0) {
@@ -562,6 +563,7 @@ class MainActivity : ComponentActivity() {
                                 onNext = viewModel::onNext,
                                 onRewind = viewModel::onRewind,
                                 onFastForward = viewModel::onFF,
+                                onEnablePauseOnCurrentTrackEnd = { showEnablePauseOnCurrentTrackEndDialog = true },
                                 resetPlaybackButton = { viewModel.onNewPlaybackButton(PlaybackButton.UNDEFINED) },
                                 onNewProgress = viewModel::onNewSeekBarProgress,
                                 rotateRepeatMode = viewModel::onClickRepeatButton,
@@ -663,6 +665,12 @@ class MainActivity : ComponentActivity() {
                                     appBarOptionMediaItem = mediaItem
                                 },
                                 onToggleFavorite = onToggleFavorite,
+                                onCancelEnablePauseOnCurrentTrackEnd = { showEnablePauseOnCurrentTrackEndDialog = false },
+                                onPositiveEnablePauseOnCurrentTrackEnd = {
+                                    viewModel.enablePauseOnCurrentTrackEnd()
+                                    showEnablePauseOnCurrentTrackEndDialog = false
+                                },
+                                showEnablePauseOnCurrentTrackEndDialog = showEnablePauseOnCurrentTrackEndDialog,
                             )
                         }
 
@@ -723,6 +731,7 @@ class MainActivity : ComponentActivity() {
                                 onNext = viewModel::onNext,
                                 onRewind = viewModel::onRewind,
                                 onFastForward = viewModel::onFF,
+                                onEnablePauseOnCurrentTrackEnd = { showEnablePauseOnCurrentTrackEndDialog = true },
                                 resetPlaybackButton = { viewModel.onNewPlaybackButton(PlaybackButton.UNDEFINED) },
                                 onNewProgress = viewModel::onNewSeekBarProgress,
                                 rotateRepeatMode = viewModel::onClickRepeatButton,
@@ -821,6 +830,12 @@ class MainActivity : ComponentActivity() {
                                     appBarOptionMediaItem = mediaItem
                                 },
                                 onToggleFavorite = onToggleFavorite,
+                                onCancelEnablePauseOnCurrentTrackEnd = { showEnablePauseOnCurrentTrackEndDialog = false },
+                                onPositiveEnablePauseOnCurrentTrackEnd = {
+                                    viewModel.enablePauseOnCurrentTrackEnd()
+                                    showEnablePauseOnCurrentTrackEndDialog = false
+                                },
+                                showEnablePauseOnCurrentTrackEndDialog = showEnablePauseOnCurrentTrackEndDialog,
                             )
                         }
                     }

@@ -105,6 +105,7 @@ fun Controller(
     onNext: () -> Unit,
     onRewind: () -> Unit,
     onFastForward: () -> Unit,
+    onEnablePauseOnCurrentTrackEnd: () -> Unit,
     resetPlaybackButton: () -> Unit,
     onNewProgress: (newProgress: Long) -> Unit,
     rotateRepeatMode: () -> Unit,
@@ -475,13 +476,17 @@ fun Controller(
                         contentDescription = null,
                         tint = QTheme.colors.colorButtonNormal,
                         modifier = Modifier
-                            .clickable(
+                            .combinedClickable(
                                 indication = ripple(bounded = false),
-                                interactionSource = remember { MutableInteractionSource() }
-                            ) {
-                                onTogglePlayPause()
-                                resetPlaybackButton()
-                            }
+                                interactionSource = remember { MutableInteractionSource() },
+                                onClick = {
+                                    onTogglePlayPause()
+                                    resetPlaybackButton()
+                                },
+                                onLongClick = {
+                                    onEnablePauseOnCurrentTrackEnd()
+                                }
+                            )
                             .padding(8.dp)
                             .size(24.dp)
                             .graphicsLayer {

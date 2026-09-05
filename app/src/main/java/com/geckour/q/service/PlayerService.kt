@@ -136,6 +136,8 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         const val ACTION_COMMAND_REWIND = "action_command_rewind"
         const val ACTION_COMMAND_STOP_FAST_SEEK = "action_command_stop_fast_seek"
 
+        const val ACTION_COMMAND_SHOULD_PAUSE_ON_END_CURRENT = "action_command_should_pause_on_end_current"
+
         private const val ACTION_COMMAND_TOGGLE_FAVORITE = "action_command_toggle_favorite"
 
         const val PREF_KEY_PLAYER_STATE = "pref_key_player_state"
@@ -311,6 +313,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
                         .add(SessionCommand(ACTION_COMMAND_REWIND, Bundle.EMPTY))
                         .add(SessionCommand(ACTION_COMMAND_STOP_FAST_SEEK, Bundle.EMPTY))
                         .add(SessionCommand(ACTION_COMMAND_TOGGLE_FAVORITE, Bundle.EMPTY))
+                        .add(SessionCommand(ACTION_COMMAND_SHOULD_PAUSE_ON_END_CURRENT, Bundle.EMPTY))
                         .build()
                 )
                 .build()
@@ -440,6 +443,11 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
                         Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                     }
 
+                    ACTION_COMMAND_SHOULD_PAUSE_ON_END_CURRENT -> {
+                        shouldPauseOnCurrentTrackEnd = true
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
                     ACTION_COMMAND_TOGGLE_FAVORITE -> {
                         player.currentSourcePaths.getOrNull(currentIndex)?.let {
                             lifecycleScope.launch {
@@ -566,6 +574,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
     private val lyricRequestedSourcePaths = mutableSetOf<String>()
 
     private var lastHistorizedMediaItem: MediaItem? = null
+    private var shouldPauseOnCurrentTrackEnd = false
     private var inPurge = false
     private var inRestore = false
     private var aliveSubmitQueueTask = false
@@ -796,6 +805,11 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
                 track != null &&
                 db.trackHistoryDao().getLatest()?.trackId != track.id
             ) {
+                if (shouldPauseOnCurrentTrackEnd) {
+                    shouldPauseOnCurrentTrackEnd = false
+                    pause()
+                }
+
                 db.trackHistoryDao().upsert(
                     TrackHistory(
                         id = 0,
