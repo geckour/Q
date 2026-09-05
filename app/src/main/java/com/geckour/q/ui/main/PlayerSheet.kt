@@ -12,14 +12,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.boundsInWindow
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
+import androidx.media3.common.Player
+import com.geckour.q.data.db.model.Album
+import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.util.ShuffleActionType
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 @Composable
 fun PlayerSheet(
@@ -126,4 +131,137 @@ fun PlayerSheet(
             onToggleFavorite = onToggleFavorite,
         )
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun PlayerSheetPreview() {
+    PlayerSheet(
+        queue = persistentListOf(
+            UiTrack(
+                key = "key1",
+                id = 0L,
+                mediaId = 0L,
+                codec = "Sample Codec",
+                bitrate = 1000L,
+                sampleRate = 10.0f,
+                album = Album(
+                    id = 0L,
+                    artistId = 0L,
+                    title = "Sample Album",
+                    titleSort = "Sample Album",
+                    artworkUriString = null,
+                    hasAlbumArtist = false,
+                    playbackCount = 0L,
+                    totalDuration = 3000L,
+                ),
+                title = "Sample Track",
+                titleSort = "Sample Track",
+                artist = Artist(
+                    id = 0L,
+                    title = "Sample Artist",
+                    titleSort = "Sample Artist",
+                    playbackCount = 0L,
+                    totalDuration = 10000L,
+                    artworkUriString = null,
+                ),
+                albumArtist = null,
+                composer = null,
+                composerSort = null,
+                thumbUriString = null,
+                duration = 1000L,
+                trackNum = 1,
+                trackTotal = 3,
+                discNum = 1,
+                discTotal = 1,
+                releaseYear = 2026,
+                releaseMonth = 9,
+                releaseDay = 6,
+                genreName = null,
+                sourcePath = "",
+                dropboxPath = null,
+                dropboxExpiredAt = null,
+                artworkUriString = null,
+                ignored = null,
+                nowPlaying = true,
+                isFavorite = false,
+            ),
+            UiTrack(
+                key = "key2",
+                id = 0L,
+                mediaId = 0L,
+                codec = "Sample Codec",
+                bitrate = 1000L,
+                sampleRate = 10.0f,
+                album = Album(
+                    id = 0L,
+                    artistId = 0L,
+                    title = "Sample Album",
+                    titleSort = "Sample Album",
+                    artworkUriString = null,
+                    hasAlbumArtist = false,
+                    playbackCount = 0L,
+                    totalDuration = 3000L,
+                ),
+                title = "Sample Track",
+                titleSort = "Sample Track",
+                artist = Artist(
+                    id = 0L,
+                    title = "Sample Artist",
+                    titleSort = "Sample Artist",
+                    playbackCount = 0L,
+                    totalDuration = 10000L,
+                    artworkUriString = null,
+                ),
+                albumArtist = null,
+                composer = null,
+                composerSort = null,
+                thumbUriString = null,
+                duration = 1000L,
+                trackNum = 1,
+                trackTotal = 3,
+                discNum = 1,
+                discTotal = 1,
+                releaseYear = 2026,
+                releaseMonth = 9,
+                releaseDay = 6,
+                genreName = null,
+                sourcePath = "",
+                dropboxPath = null,
+                dropboxExpiredAt = null,
+                artworkUriString = null,
+                ignored = null,
+                nowPlaying = false,
+                isFavorite = false,
+            ),
+        ),
+        currentIndex = 0,
+        currentPlaybackPosition = 200L,
+        currentBufferedPosition = 300L,
+        currentPlaybackInfo = true to 0,
+        currentRepeatMode = Player.REPEAT_MODE_OFF,
+        isLoading = false to {},
+        routeInfo = null,
+        showLyric = false,
+        forceScrollToCurrent = 0L,
+        onTogglePlayPause = {},
+        onPrev = {},
+        onNext = {},
+        onRewind = {},
+        onFastForward = {},
+        onEnablePauseOnCurrentTrackEnd = {},
+        resetPlaybackButton = {},
+        onNewProgress = { _ -> },
+        rotateRepeatMode = {},
+        shuffleQueue = { _ -> },
+        resetShuffleQueue = {},
+        moveToCurrentIndex = {},
+        clearQueue = {},
+        onSelectTrack = {},
+        onToggleShowLyrics = {},
+        onQueueMove = { _, _ -> },
+        onChangeIndexRequested = { _ -> },
+        onRemoveTrackFromQueue = { _ -> },
+        onToggleFavorite = { _ -> null },
+    )
 }
