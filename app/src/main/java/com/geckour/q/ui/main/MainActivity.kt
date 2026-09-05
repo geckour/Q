@@ -69,6 +69,7 @@ import com.geckour.q.ui.compose.ColorBackgroundInverse
 import com.geckour.q.ui.compose.ColorPrimaryDark
 import com.geckour.q.ui.compose.ColorPrimaryDarkInverse
 import com.geckour.q.ui.compose.QTheme
+import com.geckour.q.ui.widget.player.PlayerSheetWidgetProvider
 import com.geckour.q.util.dbxRequestConfig
 import com.geckour.q.util.getActiveQAudioDeviceInfo
 import com.geckour.q.util.getEqualizerParams
@@ -546,6 +547,7 @@ class MainActivity : ComponentActivity() {
                                     coroutineScope.launch {
                                         context.setIsNightMode(isInNightMode.not())
                                     }
+                                    PlayerSheetWidgetProvider.requestUpdate(this)
                                 },
                                 onChangeTopBarTitle = { topBarTitle = it },
                                 onSelectTrack = { selectedTrack = it },

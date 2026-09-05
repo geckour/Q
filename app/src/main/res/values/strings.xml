@@ -286,4 +286,8 @@
 
     <string name="license_name_codec" translatable="false">Apache Commons Codec</string>
     <string name="license_text_codec" translatable="false">Licensed to the Apache Software Foundation (ASF) under one or more\ncontributor license agreements.  See the NOTICE file distributed with\nthis work for additional information regarding copyright ownership.\nThe ASF licenses this file to You under the Apache License, Version 2.0\n(the "License"); you may not use this file except in compliance with\nthe License.  You may obtain a copy of the License at\n     http://www.apache.org/licenses/LICENSE-2.0\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an "AS IS" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.</string>
+
+    <!-- Widget -->
+    <string name="widget_player_sheet_label">Player</string>
+    <string name="widget_player_sheet_description">Shows the controller and the queue.</string>
 </resources>

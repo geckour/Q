@@ -73,6 +73,7 @@ import com.geckour.q.util.setSelectedEqualizerPresetId
 import com.geckour.q.util.toDomainTracks
 import com.geckour.q.util.toUiTrack
 import com.geckour.q.util.verifiedWithDropbox
+import com.geckour.q.ui.widget.player.PlayerSheetWidgetProvider
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
@@ -142,7 +143,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
         const val PREF_KEY_PLAYER_STATE = "pref_key_player_state"
 
-        private val PLAYBACK_POSITION_SAVE_INTERVAL = 100.milliseconds
+        private const val PLAYBACK_POSITION_SAVE_INTERVAL = 100
     }
 
     private val dispatcher = ServiceLifecycleDispatcher(this)
@@ -721,7 +722,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
         lifecycleScope.launch {
             while (isActive) {
-                delay(PLAYBACK_POSITION_SAVE_INTERVAL)
+                delay(PLAYBACK_POSITION_SAVE_INTERVAL.milliseconds)
                 if (inPurge.not() && player.isPlaying) saveState(commit = false)
             }
         }
@@ -758,13 +759,6 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         mediaRouter.removeCallback(mediaRouterCallback)
     }
 
-    /**
-     * Persists the current player state.
-     *
-     * Does nothing while restoring, since the player emits events with the transient
-     * state (index 0, position 0) before [restoreState] has finished seeking, and
-     * persisting them would destroy the state that is being restored.
-     */
     private fun saveState(commit: Boolean = true) {
         if (inPurge || inRestore) return
 
@@ -785,6 +779,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         if (inPurge) return
 
         saveState()
+        PlayerSheetWidgetProvider.requestUpdate(this)
 
         val currentMediaItem = player.currentMediaItem
         val shouldStoreTrackHistory = player.playWhenReady &&
@@ -1352,10 +1347,5 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         }
     }
 
-    fun <T> Bundle.getParcelableCompat(key: String, clazz: Class<T>): T? =
-        if (Build.VERSION.SDK_INT > 32) {
-            getParcelable(key, clazz)
-        } else {
-            getParcelable(key) as? T
-        }
+    fun <T> Bundle.getParcelableCompat(key: String, clazz: Class<T>): T? = getParcelable(key, clazz)
 }

@@ -231,4 +231,7 @@
     <string name="metadata_edit_artist_name_kana">アーティスト名読みがな</string>
     <string name="metadata_edit_composer_name">作曲者名</string>
     <string name="metadata_edit_composer_name_kana">作曲者名読みがな</string>
+
+    <string name="widget_player_sheet_label">プレイヤー</string>
+    <string name="widget_player_sheet_description">キューとコントローラーを表示します。</string>
 </resources>

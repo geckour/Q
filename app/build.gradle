@@ -184,6 +184,12 @@ dependencies {
     implementation "sh.calvin.reorderable:reorderable:3.1.0"
     implementation "androidx.paging:paging-compose:3.5.1"
 
+    // RemoteCompose (App Widget)
+    def remote_compose_ver = "1.0.0-alpha18"
+    implementation "androidx.compose.remote:remote-creation-compose:$remote_compose_ver"
+    implementation "androidx.compose.remote:remote-creation:$remote_compose_ver"
+    implementation "androidx.compose.remote:remote-creation-core:$remote_compose_ver"
+
     // Hash
     implementation 'commons-codec:commons-codec:1.22.1'
 
