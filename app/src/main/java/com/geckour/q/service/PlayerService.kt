@@ -188,7 +188,9 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
             onStateChanged()
 
-            if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) saveQueueHistory()
+            if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED && player.playWhenReady) {
+                saveQueueHistory()
+            }
 
             fetchLyricIfNeeded()
         }
@@ -207,6 +209,10 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
                     }
                 }"
             )
+
+            if (playbackState == Player.STATE_READY) {
+                saveQueueHistory()
+            }
 
             onStateChanged()
 
