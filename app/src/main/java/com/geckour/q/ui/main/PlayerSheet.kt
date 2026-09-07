@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -72,6 +73,8 @@ fun PlayerSheet(
                         (sheetSize - with(density) { 144.dp.toPx() })).coerceIn(0f, 1f)
             else 1f
         }
+    val isLyricScrolledByUser = remember { mutableStateOf(false) }
+
     Column(
         modifier = (if (libraryHeight == null) Modifier else {
             Modifier.heightIn(
@@ -98,6 +101,7 @@ fun PlayerSheet(
             isLoading = isLoading.first,
             routeInfo = routeInfo,
             showLyric = showLyric,
+            isLyricScrolledByUser = isLyricScrolledByUser.value,
             onTogglePlayPause = onTogglePlayPause,
             onPrev = onPrev,
             onNext = onNext,
@@ -124,6 +128,7 @@ fun PlayerSheet(
             onTrackSelected = onSelectTrack,
             currentPlaybackPosition = currentPlaybackPosition,
             forceScrollToCurrent = forceScrollToCurrent,
+            isLyricScrolledByUser = isLyricScrolledByUser,
             onQueueMove = onQueueMove,
             onNewProgress = onNewProgress,
             onChangeIndexRequested = onChangeIndexRequested,

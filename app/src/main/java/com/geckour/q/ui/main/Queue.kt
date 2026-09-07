@@ -3,18 +3,20 @@ package com.geckour.q.ui.main
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -41,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -88,13 +91,14 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 
 
 @Composable
-fun ColumnScope.Queue(
+fun Queue(
     endItemMargin: Dp = 0.dp,
     uiTracks: ImmutableList<UiTrack>,
     isPlaying: Boolean,
     showLyric: Boolean,
     currentPlaybackPosition: Long,
     forceScrollToCurrent: Long,
+    isLyricScrolledByUser: MutableState<Boolean>,
     onQueueMove: (from: Int, to: Int) -> Unit,
     onTrackSelected: (track: UiTrack) -> Unit,
     onNewProgress: (newProgress: Long) -> Unit,
@@ -102,44 +106,34 @@ fun ColumnScope.Queue(
     onRemoveTrackFromQueue: (index: Int) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
-    val context = LocalContext.current
+    val currentContext = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val db = DB.getInstance(context)
-    val density = LocalDensity.current
-    var items by remember { mutableStateOf(uiTracks) }
+    val db = DB.getInstance(currentContext)
+    val currentDensity = LocalDensity.current
     val nowPlayingTrackId = uiTracks.firstOrNull { it.nowPlaying }?.id ?: -1
     val lyric by remember(nowPlayingTrackId) {
         db.lyricDao().getLyricFlowByTrackId(nowPlayingTrackId)
     }.collectAsState(initial = null)
-    val lyricLinesForShowing = lyric.lyricLinesForShowing
-    val lazyListState = rememberLazyListState()
-    var from by remember { mutableIntStateOf(-1) }
-    var to by remember { mutableIntStateOf(-1) }
-    val reorderableState = rememberReorderableLazyListState(lazyListState) { f, t ->
-        items = items.moved(f.index, t.index).toImmutableList()
-        from = f.index
-        to = t.index
-    }
     var contentHeight by remember { mutableIntStateOf(0) }
-    var isInEditMode by remember { mutableStateOf(false) }
-
-    LaunchedEffect(uiTracks) {
-        items = uiTracks
-    }
-    LaunchedEffect(forceScrollToCurrent) {
-        if (showLyric.not()) {
-            lazyListState.animateScrollToItem(
-                uiTracks.indexOfFirst { it.nowPlaying }.coerceAtLeast(0),
-                -contentHeight / 2 + with(density) { 44.dp.roundToPx() }
-            )
-        }
-    }
 
     if (showLyric) {
+        val lazyListState = rememberLazyListState()
+        val lyricLinesForShowing = lyric.lyricLinesForShowing
         var currentIndex by remember { mutableIntStateOf(-1) }
-        val listState = rememberLazyListState()
         val isSyncedLyric = lyricLinesForShowing.size > 1 &&
                 lyricLinesForShowing.any { it.lyricLine.timing != 0L }
+        var isInEditMode by remember { mutableStateOf(false) }
+        val navigationBottomInset = WindowInsets.navigationBars.getBottom(currentDensity)
+        var currentIndexLyricHeight by remember { mutableIntStateOf(0) }
+        val scrollToCurrent: suspend () -> Unit = {
+            if (isInEditMode.not() && currentIndex > -1) {
+                lazyListState.animateScrollToItem(
+                    currentIndex,
+                    -(contentHeight - currentIndexLyricHeight - navigationBottomInset) / 2
+                )
+            }
+        }
+        val isDragged by lazyListState.interactionSource.collectIsDraggedAsState()
 
         LaunchedEffect(currentPlaybackPosition) {
             currentIndex =
@@ -149,27 +143,29 @@ fun ColumnScope.Queue(
                 }
         }
         LaunchedEffect(currentIndex) {
-            if (isInEditMode.not() && currentIndex > -1) {
-                listState.animateScrollToItem(
-                    currentIndex,
-                    -contentHeight / 2 + with(density) { 22.dp.roundToPx() }
-                )
+            if (isLyricScrolledByUser.value.not()) {
+                scrollToCurrent()
             }
+        }
+        LaunchedEffect(forceScrollToCurrent) {
+            isLyricScrolledByUser.value = false
+            scrollToCurrent()
         }
         LaunchedEffect(lyric?.id) {
             if (isInEditMode.not() && currentIndex < 0) {
-                listState.scrollToItem(0)
+                lazyListState.scrollToItem(0)
             }
         }
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxSize()
-                .onSizeChanged { contentHeight = it.height }
-        ) {
-            Column {
+        LaunchedEffect(isDragged) {
+            isLyricScrolledByUser.value = true
+        }
+        Box(modifier = Modifier.fillMaxSize()) {
+            Column(
+                modifier = Modifier
+                    .onSizeChanged { contentHeight = it.height }
+            ) {
                 LazyColumn(
-                    state = listState,
+                    state = lazyListState,
                     modifier = Modifier.weight(1f),
                 ) {
                     if (lyric?.lines.isNullOrEmpty()) {
@@ -233,7 +229,12 @@ fun ColumnScope.Queue(
                                 focused = indexedLyricLine.index == currentIndex,
                                 onClick = if (isSyncedLyric) {
                                     { onNewProgress(indexedLyricLine.lyricLine.timing) }
-                                } else null
+                                } else null,
+                                modifier = Modifier.onSizeChanged {
+                                    if (indexedLyricLine.index == currentIndex) {
+                                        currentIndexLyricHeight = it.height
+                                    }
+                                }
                             )
                         }
                     }
@@ -283,13 +284,33 @@ fun ColumnScope.Queue(
             }
         }
     } else {
+        var items by remember { mutableStateOf(uiTracks) }
+        val lazyListState = rememberLazyListState()
+        var from by remember { mutableIntStateOf(-1) }
+        var to by remember { mutableIntStateOf(-1) }
+        val reorderableState = rememberReorderableLazyListState(lazyListState) { f, t ->
+            items = items.moved(f.index, t.index).toImmutableList()
+            from = f.index
+            to = t.index
+        }
         val lottieComposition by rememberLottieComposition(
             spec = LottieCompositionSpec.RawRes(resId = R.raw.emoji_u1f425_anim)
         )
+
+        LaunchedEffect(uiTracks) {
+            items = uiTracks
+        }
+
+        LaunchedEffect(forceScrollToCurrent) {
+            lazyListState.animateScrollToItem(
+                uiTracks.indexOfFirst { it.nowPlaying }.coerceAtLeast(0),
+                -contentHeight / 2 + with(currentDensity) { 44.dp.roundToPx() }
+            )
+        }
+
         LazyColumn(
             state = lazyListState,
             modifier = Modifier
-                .weight(1f)
                 .fillMaxHeight()
                 .onSizeChanged { contentHeight = it.height }
         ) {
@@ -533,7 +554,7 @@ fun EditableLrcItem(
             }
         ) {
             Icon(
-                imageVector = if (line == null)  Icons.Default.Add else Icons.Default.Delete,
+                imageVector = if (line == null) Icons.Default.Add else Icons.Default.Delete,
                 contentDescription = "削除",
                 tint = QTheme.colors.colorButtonNormal
             )
@@ -542,13 +563,18 @@ fun EditableLrcItem(
 }
 
 @Composable
-fun LrcItem(lyric: String, focused: Boolean, onClick: (() -> Unit)? = null) {
+fun LrcItem(
+    modifier: Modifier = Modifier,
+    lyric: String,
+    focused: Boolean,
+    onClick: (() -> Unit)? = null,
+) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .then(
                 if (onClick == null) Modifier
-                else Modifier.clickable { onClick() }
+                else Modifier.clickable(onClick = onClick)
             )
             .padding(horizontal = 24.dp, vertical = 12.dp)
     ) {

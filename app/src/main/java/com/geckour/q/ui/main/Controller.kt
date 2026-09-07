@@ -100,6 +100,7 @@ fun Controller(
     isLoading: Boolean,
     routeInfo: QAudioDeviceInfo?,
     showLyric: Boolean,
+    isLyricScrolledByUser: Boolean,
     onTogglePlayPause: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
@@ -615,7 +616,9 @@ fun Controller(
                     Icon(
                         painter = painterResource(id = R.drawable.ic_current),
                         contentDescription = null,
-                        tint = QTheme.colors.colorButtonNormal
+                        tint =
+                            if (showLyric && isLyricScrolledByUser.not()) QTheme.colors.colorInactive
+                            else QTheme.colors.colorButtonNormal
                     )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
