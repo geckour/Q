@@ -24,17 +24,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -96,6 +92,7 @@ fun Queue(
     uiTracks: ImmutableList<UiTrack>,
     isPlaying: Boolean,
     showLyric: Boolean,
+    isInLyricEditMode: Boolean,
     currentPlaybackPosition: Long,
     forceScrollToCurrent: Long,
     isLyricScrolledByUser: MutableState<Boolean>,
@@ -122,11 +119,10 @@ fun Queue(
         var currentIndex by remember { mutableIntStateOf(-1) }
         val isSyncedLyric = lyricLinesForShowing.size > 1 &&
                 lyricLinesForShowing.any { it.lyricLine.timing != 0L }
-        var isInEditMode by remember { mutableStateOf(false) }
         val navigationBottomInset = WindowInsets.navigationBars.getBottom(currentDensity)
         var currentIndexLyricHeight by remember { mutableIntStateOf(0) }
         val scrollToCurrent: suspend () -> Unit = {
-            if (isInEditMode.not() && currentIndex > -1) {
+            if (isInLyricEditMode.not() && currentIndex > -1) {
                 lazyListState.animateScrollToItem(
                     currentIndex,
                     -(contentHeight - currentIndexLyricHeight - navigationBottomInset) / 2
@@ -152,16 +148,16 @@ fun Queue(
             scrollToCurrent()
         }
         LaunchedEffect(lyric?.id) {
-            if (isInEditMode.not() && currentIndex < 0) {
+            if (isInLyricEditMode.not() && currentIndex < 0) {
                 lazyListState.scrollToItem(0)
             }
         }
         LaunchedEffect(isDragged) {
             isLyricScrolledByUser.value = true
         }
-        Box(modifier = Modifier.fillMaxSize()) {
             Column(
                 modifier = Modifier
+                    .fillMaxSize()
                     .onSizeChanged { contentHeight = it.height }
             ) {
                 LazyColumn(
@@ -185,7 +181,7 @@ fun Queue(
                         }
                     }
                     items(lyricLinesForShowing) { indexedLyricLine ->
-                        if (isInEditMode) {
+                        if (isInLyricEditMode) {
                             EditableLrcItem(
                                 line = indexedLyricLine,
                                 currentPlaybackPosition = currentPlaybackPosition,
@@ -238,13 +234,13 @@ fun Queue(
                             )
                         }
                     }
-                    if (isInEditMode.not()) {
+                    if (isInLyricEditMode.not()) {
                         item {
                             Spacer(modifier = Modifier.height(36.dp + endItemMargin))
                         }
                     }
                 }
-                if (isInEditMode) {
+                if (isInLyricEditMode) {
                     EditableLrcItem(
                         line = null,
                         currentPlaybackPosition = currentPlaybackPosition,
@@ -268,21 +264,6 @@ fun Queue(
                     Spacer(modifier = Modifier.height(endItemMargin))
                 }
             }
-            FloatingActionButton(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(8.dp)
-                    .size(32.dp),
-                shape = CircleShape,
-                onClick = { isInEditMode = isInEditMode.not() }
-            ) {
-                Icon(
-                    imageVector = if (isInEditMode) Icons.Default.Done else Icons.Default.Edit,
-                    contentDescription = if (isInEditMode) "Done" else "Edit",
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
     } else {
         var items by remember { mutableStateOf(uiTracks) }
         val lazyListState = rememberLazyListState()

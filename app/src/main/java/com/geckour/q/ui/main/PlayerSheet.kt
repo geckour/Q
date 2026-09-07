@@ -63,16 +63,17 @@ fun PlayerSheet(
     onRemoveTrackFromQueue: (index: Int) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
-    val density = LocalDensity.current
+    val currentDensity = LocalDensity.current
     var sheetSize by remember { mutableIntStateOf(0) }
     var sheetBounds by remember { mutableFloatStateOf(0f) }
     val sheetProgress: () -> Float =
         {
             if (needToAnimateController)
-                ((sheetBounds - with(density) { 144.dp.toPx() }) /
-                        (sheetSize - with(density) { 144.dp.toPx() })).coerceIn(0f, 1f)
+                ((sheetBounds - with(currentDensity) { 144.dp.toPx() }) /
+                        (sheetSize - with(currentDensity) { 144.dp.toPx() })).coerceIn(0f, 1f)
             else 1f
         }
+    val isInLyricEditMode = remember { mutableStateOf(false) }
     val isLyricScrolledByUser = remember { mutableStateOf(false) }
 
     Column(
@@ -101,6 +102,7 @@ fun PlayerSheet(
             isLoading = isLoading.first,
             routeInfo = routeInfo,
             showLyric = showLyric,
+            isInLyricEditMode = isInLyricEditMode,
             isLyricScrolledByUser = isLyricScrolledByUser.value,
             onTogglePlayPause = onTogglePlayPause,
             onPrev = onPrev,
@@ -125,6 +127,7 @@ fun PlayerSheet(
             uiTracks = queue,
             isPlaying = currentPlaybackInfo.first,
             showLyric = showLyric,
+            isInLyricEditMode = isInLyricEditMode.value,
             onTrackSelected = onSelectTrack,
             currentPlaybackPosition = currentPlaybackPosition,
             forceScrollToCurrent = forceScrollToCurrent,

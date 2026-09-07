@@ -31,15 +31,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.outlined.DownloadForOffline
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -100,6 +101,7 @@ fun Controller(
     isLoading: Boolean,
     routeInfo: QAudioDeviceInfo?,
     showLyric: Boolean,
+    isInLyricEditMode: MutableState<Boolean>,
     isLyricScrolledByUser: Boolean,
     onTogglePlayPause: () -> Unit,
     onPrev: () -> Unit,
@@ -609,18 +611,21 @@ fun Controller(
                     .width(IntrinsicSize.Max)
                     .height(IntrinsicSize.Min)
             ) {
-                IconButton(
-                    onClick = moveToCurrentIndex,
-                    modifier = Modifier.size(20.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_current),
-                        contentDescription = null,
-                        tint =
-                            if (showLyric && isLyricScrolledByUser.not()) QTheme.colors.colorInactive
-                            else QTheme.colors.colorButtonNormal
-                    )
-                }
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_current),
+                    contentDescription = null,
+                    tint =
+                        if (showLyric && isLyricScrolledByUser.not()) QTheme.colors.colorInactive
+                        else QTheme.colors.colorButtonNormal,
+                    modifier = Modifier
+                        .clickable(
+                            indication = ripple(bounded = false),
+                            interactionSource = remember { MutableInteractionSource() },
+                            onClick = moveToCurrentIndex
+                        )
+                        .padding(4.dp)
+                        .size(20.dp),
+                )
                 Spacer(modifier = Modifier.width(8.dp))
                 Icon(
                     imageVector = Icons.Default.Lyrics,
@@ -632,9 +637,31 @@ fun Controller(
                             interactionSource = remember { MutableInteractionSource() },
                             onClick = onToggleShowLyrics
                         )
-                        .padding(8.dp)
-                        .size(20.dp)
+                        .padding(4.dp)
+                        .size(20.dp),
                 )
+                Spacer(modifier = Modifier.width(8.dp))
+                if (showLyric) {
+                    Icon(
+                        imageVector = Icons.Default.EditNote,
+                        contentDescription = null,
+                        tint = QTheme.colors.colorButtonNormal,
+                        modifier = Modifier
+                            .clickable(
+                                indication = ripple(bounded = false),
+                                interactionSource = remember { MutableInteractionSource() },
+                                onClick = {
+                                    isInLyricEditMode.value = isInLyricEditMode.value.not()
+                                }
+                            )
+                            .padding(4.dp)
+                            .size(20.dp),
+                    )
+                } else {
+                    // Applying both padding and size redundantly as same as Icon which will be toggled to
+                    // because the calculated size may fluctuate within 1px due to round density error
+                    Spacer(modifier = Modifier.padding(4.dp).size(20.dp))
+                }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = stringResource(
@@ -642,7 +669,7 @@ fun Controller(
                         queueTotalDuration.getTimeString()
                     ),
                     fontSize = 12.sp,
-                    color = QTheme.colors.colorTextPrimary
+                    color = QTheme.colors.colorTextPrimary,
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
@@ -651,7 +678,7 @@ fun Controller(
                         queueRemainingDuration.getTimeString()
                     ),
                     fontSize = 12.sp,
-                    color = QTheme.colors.colorTextPrimary
+                    color = QTheme.colors.colorTextPrimary,
                 )
             }
             Icon(
@@ -664,7 +691,7 @@ fun Controller(
                         interactionSource = remember { MutableInteractionSource() },
                         onClick = clearQueue
                     )
-                    .padding(8.dp)
+                    .padding(4.dp)
                     .size(20.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
