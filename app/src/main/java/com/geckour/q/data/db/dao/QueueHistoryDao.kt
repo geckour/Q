@@ -17,6 +17,12 @@ interface QueueHistoryDao {
     companion object {
 
         const val DEFAULT_KEEP_HISTORY_COUNT = 500
+
+        const val DEFAULT_PICK_DENOMINATOR = 3
+
+        const val DEFAULT_MAX_TOTAL_DURATION = 4 * 60 * 60 * 1000L
+
+        const val DEFAULT_ADJACENT_WINDOW = 30 * 60 * 1000L
     }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -58,51 +64,123 @@ interface QueueHistoryDao {
 
     @Transaction
     @Query(
-        "select track.* from queueHistoryTrack as target " +
-                "inner join queueHistoryTrack as other on other.queueHistoryId = target.queueHistoryId " +
+        "select track.* from queueHistoryTrack as origin " +
+                "inner join queueHistoryTrack as other on other.queueHistoryId = origin.queueHistoryId " +
                 "inner join track on track.id = other.trackId " +
-                "where target.trackId = :trackId and other.trackId != :trackId " +
+                "where origin.trackId = :originTrackId and other.trackId != :originTrackId " +
                 "group by other.trackId " +
-                "order by count(*) desc, max(other.queueHistoryId) desc " +
+                "order by count(*) * 1.0 / (select count(*) from queueHistoryTrack where trackId = other.trackId) desc, max(other.queueHistoryId) desc " +
                 "limit :limit"
     )
-    suspend fun getCoQueuedTracks(trackId: Long, limit: Int = -1): List<JoinedTrack>
+    suspend fun getCoQueuedTracks(originTrackId: Long, limit: Int = -1): List<JoinedTrack>
 
     @Transaction
     @Query(
-        "select track.* from queueHistoryTrack as target " +
-                "inner join queueHistoryTrack as other on other.queueHistoryId = target.queueHistoryId " +
+        "select track.* from queueHistoryTrack as origin " +
+                "inner join queueHistoryTrack as other on other.queueHistoryId = origin.queueHistoryId " +
                 "inner join track on track.id = other.trackId " +
-                "where target.trackId = :trackId and other.trackId != :trackId " +
+                "where origin.trackId = :originTrackId and other.trackId != :originTrackId " +
                 "group by other.trackId " +
-                "order by count(*) desc, max(other.queueHistoryId) desc " +
+                "order by count(*) * 1.0 / (select count(*) from queueHistoryTrack where trackId = other.trackId) desc, max(other.queueHistoryId) desc " +
                 "limit :limit"
     )
-    fun getCoQueuedTracksFlow(trackId: Long, limit: Int = -1): Flow<List<JoinedTrack>>
+    fun getCoQueuedTracksFlow(originTrackId: Long, limit: Int = -1): Flow<List<JoinedTrack>>
 
     @Transaction
     @Query(
-        "select track.*, count(*) as coQueuedCount from queueHistoryTrack as target " +
-                "inner join queueHistoryTrack as other on other.queueHistoryId = target.queueHistoryId " +
+        "select track.*, count(*) as coQueuedCount from queueHistoryTrack as origin " +
+                "inner join queueHistoryTrack as other on other.queueHistoryId = origin.queueHistoryId " +
                 "inner join track on track.id = other.trackId " +
-                "where target.trackId = :trackId and other.trackId != :trackId " +
+                "where origin.trackId = :originTrackId and other.trackId != :originTrackId " +
                 "group by other.trackId " +
-                "order by coQueuedCount desc, max(other.queueHistoryId) desc " +
+                "order by count(*) * 1.0 / (select count(*) from queueHistoryTrack where trackId = other.trackId) desc, max(other.queueHistoryId) desc " +
                 "limit :limit"
     )
-    suspend fun getCoQueuedTrackCounts(trackId: Long, limit: Int = -1): List<CoQueuedTrack>
+    suspend fun getCoQueuedTrackCounts(originTrackId: Long, limit: Int = -1): List<CoQueuedTrack>
 
     @Transaction
     @Query(
-        "select track.*, count(*) as coQueuedCount from queueHistoryTrack as target " +
-                "inner join queueHistoryTrack as other on other.queueHistoryId = target.queueHistoryId " +
+        "select track.*, count(*) as coQueuedCount from queueHistoryTrack as origin " +
+                "inner join queueHistoryTrack as other on other.queueHistoryId = origin.queueHistoryId " +
                 "inner join track on track.id = other.trackId " +
-                "where target.trackId = :trackId and other.trackId != :trackId " +
+                "where origin.trackId = :originTrackId and other.trackId != :originTrackId " +
                 "group by other.trackId " +
-                "order by coQueuedCount desc, max(other.queueHistoryId) desc " +
+                "order by count(*) * 1.0 / (select count(*) from queueHistoryTrack where trackId = other.trackId) desc, max(other.queueHistoryId) desc " +
                 "limit :limit"
     )
-    fun getCoQueuedTrackCountsFlow(trackId: Long, limit: Int = -1): Flow<List<CoQueuedTrack>>
+    fun getCoQueuedTrackCountsFlow(originTrackId: Long, limit: Int = -1): Flow<List<CoQueuedTrack>>
+
+    @Query(
+        "select track.sourcePath from track " +
+                "inner join (" +
+                "select merged.trackId as trackId, merged.tier as tier, merged.score as score, " +
+                "sum(track.duration) over (" +
+                "order by merged.tier, merged.score desc " +
+                "rows between unbounded preceding and current row" +
+                ") as cumulativeDuration " +
+                "from (" +
+                "select candidate.trackId as trackId, " +
+                "min(candidate.tier) as tier, " +
+                "max(candidate.score) as score " +
+                "from (" +
+                "select :originTrackId as trackId, 0 as tier, 0.0 as score " +
+                "union all " +
+                "select other.trackId as trackId, 1 as tier, " +
+                "count(*) * 1.0 / (select count(*) from queueHistoryTrack where trackId = other.trackId) as score " +
+                "from queueHistoryTrack as origin " +
+                "inner join queueHistoryTrack as other on other.queueHistoryId = origin.queueHistoryId " +
+                "where origin.trackId = :originTrackId and other.trackId != :originTrackId " +
+                "group by other.trackId " +
+                "union all " +
+                "select other.trackId as trackId, 2 as tier, count(*) * 1.0 as score " +
+                "from trackHistory as origin " +
+                "inner join trackHistory as other on other.trackId != origin.trackId " +
+                "and other.createdAt between origin.createdAt - :window and origin.createdAt + :window " +
+                "where origin.trackId in (" +
+                "select :originTrackId " +
+                "union " +
+                "select other2.trackId from queueHistoryTrack as origin2 " +
+                "inner join queueHistoryTrack as other2 on other2.queueHistoryId = origin2.queueHistoryId " +
+                "where origin2.trackId = :originTrackId and other2.trackId != :originTrackId " +
+                "group by other2.trackId" +
+                ") " +
+                "group by other.trackId" +
+                ") as candidate " +
+                "group by candidate.trackId" +
+                ") as merged " +
+                "inner join track on track.id = merged.trackId " +
+                "where merged.tier = 0 or random() % :pickDenominator = 0" +
+                ") as cutoff on track.id = cutoff.trackId " +
+                "where cutoff.tier = 0 or cutoff.cumulativeDuration <= :maxTotalDuration " +
+                "order by cutoff.tier, cutoff.score desc"
+    )
+    suspend fun getSourcePathsToEnqueueAtRandomWithinDuration(
+        originTrackId: Long,
+        maxTotalDuration: Long = DEFAULT_MAX_TOTAL_DURATION,
+        window: Long = DEFAULT_ADJACENT_WINDOW,
+        pickDenominator: Int = DEFAULT_PICK_DENOMINATOR,
+    ): List<String>
+
+    @Query("select sourcePath from track where id = :originTrackId")
+    suspend fun getOriginSourcePath(originTrackId: Long): String?
+
+    @Transaction
+    suspend fun generateQueue(
+        originTrackId: Long,
+        maxTotalDuration: Long = DEFAULT_MAX_TOTAL_DURATION,
+        window: Long = DEFAULT_ADJACENT_WINDOW,
+        pickDenominator: Int = DEFAULT_PICK_DENOMINATOR,
+    ): List<String> {
+        val originSourcePath = getOriginSourcePath(originTrackId)
+        val (origin, others) = getSourcePathsToEnqueueAtRandomWithinDuration(
+            originTrackId = originTrackId,
+            maxTotalDuration = maxTotalDuration,
+            window = window,
+            pickDenominator = pickDenominator,
+        ).partition { it == originSourcePath }
+
+        return origin + others.shuffled()
+    }
 
     @Query(
         "delete from queueHistoryTrack " +

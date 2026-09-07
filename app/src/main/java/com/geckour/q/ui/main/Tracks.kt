@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -52,6 +53,7 @@ import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
+import com.geckour.q.util.DownloadState
 import com.geckour.q.util.isDownloaded
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
@@ -243,9 +245,15 @@ fun Tracks(
                         }
                     }
                     if (domainTrack.dropboxPath != null) {
+                        val downloadChangedCount by DownloadState.changedCount.collectAsState()
+                        val isDownloaded = remember(
+                            domainTrack.sourcePath,
+                            downloadChangedCount
+                        ) { domainTrack.isDownloaded }
+
                         IconButton(
                             onClick = {
-                                if (domainTrack.isDownloaded) onInvalidateDownloaded(
+                                if (isDownloaded) onInvalidateDownloaded(
                                     domainTrack
                                 )
                                 else onDownload(domainTrack)
@@ -255,7 +263,7 @@ fun Tracks(
                                 .size(24.dp)
                         ) {
                             Icon(
-                                imageVector = if (domainTrack.isDownloaded) Icons.Outlined.DownloadForOffline else Icons.Outlined.Download,
+                                imageVector = if (isDownloaded) Icons.Outlined.DownloadForOffline else Icons.Outlined.Download,
                                 contentDescription = null,
                                 tint = QTheme.colors.colorTextPrimary
                             )

@@ -28,6 +28,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.service.PlayerService
+import com.geckour.q.util.DownloadState
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType
@@ -49,7 +50,9 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.time.Duration.Companion.milliseconds
+import androidx.core.net.toUri
 
 class MainViewModel(private val app: App) : ViewModel() {
 
@@ -207,7 +210,9 @@ class MainViewModel(private val app: App) : ViewModel() {
     }
 
     internal fun onNewQueue(
-        uiTracks: List<UiTrack>, actionType: InsertActionType, classType: OrientedClassType
+        uiTracks: List<UiTrack>,
+        actionType: InsertActionType,
+        classType: OrientedClassType,
     ) {
         val mediaController = this.mediaController ?: return
 
@@ -227,6 +232,37 @@ class MainViewModel(private val app: App) : ViewModel() {
                 PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_CLASS_TYPE to classType,
                 PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_QUEUE to uiTracks.map { it.sourcePath })
         )
+    }
+
+    internal fun onGenerateQueue(
+        track: UiTrack,
+        actionType: InsertActionType,
+        classType: OrientedClassType,
+    ) {
+        val mediaController = this.mediaController ?: return
+
+        loading.value = true to {
+            mediaController.sendCustomCommand(
+                SessionCommand(
+                    PlayerService.ACTION_COMMAND_CANCEL_SUBMIT, Bundle.EMPTY
+                ), Bundle.EMPTY
+            )
+            loading.value = false to null
+        }
+        viewModelScope.launch {
+            val queue = db.queueHistoryDao().generateQueue(track.id)
+
+            withContext(Dispatchers.Main) {
+                mediaController.sendCustomCommand(
+                    SessionCommand(
+                        PlayerService.ACTION_COMMAND_SUBMIT_QUEUE, Bundle.EMPTY
+                    ), bundleOf(
+                        PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_ACTION_TYPE to actionType,
+                        PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_CLASS_TYPE to classType,
+                        PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_QUEUE to queue)
+                )
+            }
+        }
     }
 
     internal fun onQueueMove(from: Int, to: Int) {
@@ -380,13 +416,14 @@ class MainViewModel(private val app: App) : ViewModel() {
         }
         runCatching {
             targetSourcePaths.forEach {
-                val file = Uri.parse(it).toFile()
+                val file = it.toUri().toFile()
                 if (file.exists()) {
                     file.delete()
                 }
             }
-            db.trackDao().clearAllSourcePaths(targetSourcePaths)
         }
+
+        DownloadState.notifyChanged()
     }
 
     internal fun onChangeIndexRequested(index: Int) {

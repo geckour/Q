@@ -52,6 +52,7 @@ import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.ui.LauncherActivity
+import com.geckour.q.ui.widget.player.PlayerSheetWidgetProvider
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.QueueInfo
@@ -59,7 +60,6 @@ import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.catchAsNull
 import com.geckour.q.util.currentSourcePaths
-import com.geckour.q.util.dropboxCachePathPattern
 import com.geckour.q.util.getEqualizerEnabled
 import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getMediaItem
@@ -73,7 +73,6 @@ import com.geckour.q.util.setSelectedEqualizerPresetId
 import com.geckour.q.util.toDomainTracks
 import com.geckour.q.util.toUiTrack
 import com.geckour.q.util.verifiedWithDropbox
-import com.geckour.q.ui.widget.player.PlayerSheetWidgetProvider
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
@@ -137,7 +136,8 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         const val ACTION_COMMAND_REWIND = "action_command_rewind"
         const val ACTION_COMMAND_STOP_FAST_SEEK = "action_command_stop_fast_seek"
 
-        const val ACTION_COMMAND_SHOULD_PAUSE_ON_END_CURRENT = "action_command_should_pause_on_end_current"
+        const val ACTION_COMMAND_SHOULD_PAUSE_ON_END_CURRENT =
+            "action_command_should_pause_on_end_current"
 
         private const val ACTION_COMMAND_TOGGLE_FAVORITE = "action_command_toggle_favorite"
 
@@ -260,18 +260,21 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         override fun onPlayerError(error: PlaybackException) {
             Timber.e(error)
             FirebaseCrashlytics.getInstance().recordException(error)
+            val index = currentIndex
             val position = player.currentPosition
             val playWhenReady = player.playWhenReady
-            val isVerified = verifyByCauseIfNeeded(error)
-            Timber.d("qgeck onPlayerError position: $position, isVerified: $isVerified")
+            lifecycleScope.launch {
+                val isVerified = verifyByCauseIfNeeded(error, index)
+                Timber.d("qgeck onPlayerError position: $position, isVerified: $isVerified")
+
+                if (isVerified) {
+                    if (player.playbackState == Player.STATE_IDLE) player.prepare()
+                    player.seekTo(position)
+                    if (playWhenReady) resume()
+                }
+            }
 
             super.onPlayerError(error)
-
-            if (isVerified) {
-                if (player.playbackState == Player.STATE_IDLE) player.prepare()
-                player.seekTo(position)
-                if (playWhenReady) resume()
-            }
         }
 
         override fun onAudioSessionIdChanged(audioSessionId: Int) {
@@ -317,7 +320,12 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
                         .add(SessionCommand(ACTION_COMMAND_REWIND, Bundle.EMPTY))
                         .add(SessionCommand(ACTION_COMMAND_STOP_FAST_SEEK, Bundle.EMPTY))
                         .add(SessionCommand(ACTION_COMMAND_TOGGLE_FAVORITE, Bundle.EMPTY))
-                        .add(SessionCommand(ACTION_COMMAND_SHOULD_PAUSE_ON_END_CURRENT, Bundle.EMPTY))
+                        .add(
+                            SessionCommand(
+                                ACTION_COMMAND_SHOULD_PAUSE_ON_END_CURRENT,
+                                Bundle.EMPTY
+                            )
+                        )
                         .build()
                 )
                 .build()
@@ -847,6 +855,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
                         ).build()
                 )
             )
+            verifyTrack(currentIndex)
             verifyTrack(currentIndex + 1)
         }
     }
@@ -1166,40 +1175,55 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
             }
     }
 
-    private fun verifyByCauseIfNeeded(throwable: Throwable): Boolean {
+    private suspend fun verifyByCauseIfNeeded(
+        throwable: Throwable,
+        index: Int,
+    ): Boolean {
         val isTarget =
-            throwable.getCausesRecursively().any {
-                it is HttpDataSource.InvalidResponseCodeException ||
-                        (it is FileNotFoundException &&
+            throwable.getCausesRecursively().any { cause ->
+                cause is HttpDataSource.InvalidResponseCodeException ||
+                        (cause is FileNotFoundException &&
                                 player.currentSourcePaths
-                                    .getOrNull(currentIndex)
-                                    ?.matches(dropboxCachePathPattern) == true)
+                                    .getOrNull(index)
+                                    ?.let {
+                                        db.trackDao()
+                                            .getBySourcePath(it)?.track?.dropboxPath != null
+                                    } == true)
             }
 
         if (isTarget) {
-            lifecycleScope.launch {
-                verifyTrack(currentIndex, force = true)
+            if (verifyTrack(index, force = true)) {
+                return true
             }
+
+            pause()
         } else {
             pause()
-            removeQueue(currentIndex)
+            removeQueue(index)
         }
 
-        return isTarget
+        return false
     }
 
-    private suspend fun verifyTrack(index: Int, force: Boolean = false) {
-        val dropboxClient = obtainDbxClient(this@PlayerService)
-            .firstOrNull()
-            ?: return
+    private suspend fun verifyTrack(index: Int, force: Boolean = false): Boolean {
+        val dropboxClient = runCatching { obtainDbxClient(this@PlayerService).firstOrNull() }
+            .onFailure { Timber.e(it) }
+            .getOrNull()
+            ?: return false
         player.currentSourcePaths.getOrNull(index)?.let { sourcePath ->
-            val track = db.trackDao().getBySourcePath(sourcePath) ?: return@let
-            val new = track.verifiedWithDropbox(this@PlayerService, dropboxClient, force)
-                ?.getMediaItem()
-                ?: return@let
+            val track = db.trackDao().getBySourcePath(sourcePath) ?: return false
+            val new = runCatching {
+                track.verifiedWithDropbox(this@PlayerService, dropboxClient, force)
+                    ?.getMediaItem()
+            }
+                .onFailure { Timber.e(it) }
+                .getOrNull()
+                ?: return false
 
             player.replaceMediaItem(index, new)
+            return true
         }
+        return false
     }
 
     private fun Throwable.getCausesRecursively(initial: List<Throwable> = emptyList()): List<Throwable> {

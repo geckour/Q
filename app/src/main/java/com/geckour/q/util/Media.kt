@@ -20,6 +20,7 @@ import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.R
 import com.geckour.q.data.db.BoolConverter
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.dao.ArtistDao
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.JoinedTrack
@@ -28,6 +29,7 @@ import com.geckour.q.domain.model.UiTrack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
@@ -49,7 +51,6 @@ const val DROPBOX_EXPIRES_IN = 14400000L
 private val random = Random(System.currentTimeMillis())
 
 val dropboxUrlPattern = Regex("^https://.+\\.dl\\.dropboxusercontent\\.com/.+$")
-val dropboxCachePathPattern = Regex("^.*/com\\.geckour\\.q.*/cache/audio/id%3A.+$")
 
 enum class InsertActionType {
     NEXT,
@@ -163,13 +164,22 @@ val JoinedTrack.dates: Triple<Int?, Int?, Int?>
         return Triple(null, null, null)
     }
 
-val UiTrack.isDownloaded
-    get() = dropboxPath != null && sourcePath.isNotBlank() && sourcePath.matches(dropboxUrlPattern)
-        .not()
+val UiTrack.isDownloaded get() = dropboxPath != null && sourcePath.existsAsFile()
 
-val Track.isDownloaded
-    get() = dropboxPath != null && sourcePath.isNotBlank() && sourcePath.matches(dropboxUrlPattern)
-        .not()
+val Track.isDownloaded get() = dropboxPath != null && sourcePath.existsAsFile()
+
+fun ArtistDao.isAllIncludingTracksDownloadedAsFlow(artistId: Long): Flow<Boolean> =
+    combine(
+        getIncludingDropboxSourcePathsAsFlow(artistId),
+        DownloadState.changedCount
+    ) { sourcePaths, _ ->
+        sourcePaths.all { it.existsAsFile() }
+    }.flowOn(Dispatchers.IO)
+
+private fun String.existsAsFile(): Boolean =
+    isNotBlank() &&
+            matches(dropboxUrlPattern).not() &&
+            runCatching { toUri().toFile().exists() }.getOrDefault(false)
 
 suspend fun List<String?>.getThumb(context: Context): Bitmap? {
     if (this.isEmpty()) return null

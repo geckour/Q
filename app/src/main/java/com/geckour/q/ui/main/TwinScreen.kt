@@ -116,6 +116,11 @@ fun TwinScreen(
         actionType: InsertActionType,
         classType: OrientedClassType
     ) -> Unit,
+    onGenerateQueue: (
+        track: UiTrack,
+        actionType: InsertActionType,
+        classType: OrientedClassType
+    ) -> Unit,
     onQueueMove: (from: Int, to: Int) -> Unit,
     onChangeIndexRequested: (index: Int) -> Unit,
     onRemoveTrackFromQueue: (index: Int) -> Unit,
@@ -185,6 +190,7 @@ fun TwinScreen(
             onSelectTrack = onSelectTrack,
             onSelectGenre = onSelectGenre,
             onNewQueue = onNewQueue,
+            onGenerateQueue = onGenerateQueue,
             onDownload = onDownload,
             onCancelDownload = onCancelDownload,
             onStartDownloader = onStartDownloader,
@@ -286,6 +292,11 @@ fun RowScope.TwinStartPage(
     onSelectGenre: (genre: Genre?) -> Unit,
     onNewQueue: (
         queue: List<UiTrack>,
+        actionType: InsertActionType,
+        classType: OrientedClassType
+    ) -> Unit,
+    onGenerateQueue: (
+        track: UiTrack,
         actionType: InsertActionType,
         classType: OrientedClassType
     ) -> Unit,
@@ -457,6 +468,7 @@ fun RowScope.TwinStartPage(
                     onAttachLyric = onAttachLyric,
                     onDetachLyric = onDetachLyric,
                     onNewQueue = onNewQueue,
+                    onGenerateQueue = onGenerateQueue,
                     onStartAuthDropbox = onStartAuthDropbox,
                     onShowDropboxFolderChooser = onShowDropboxFolderChooser,
                     hideDropboxDialog = hideDropboxDialog,

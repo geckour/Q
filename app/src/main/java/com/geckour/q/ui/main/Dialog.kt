@@ -78,6 +78,11 @@ fun TrackOptionDialog(
         actionType: InsertActionType,
         classType: OrientedClassType
     ) -> Unit,
+    onGenerateQueue: (
+        track: UiTrack,
+        actionType: InsertActionType,
+        classType: OrientedClassType
+    ) -> Unit,
     onExportLyric: (uiTrack: UiTrack) -> Unit,
     onAttachLyric: (trackId: Long) -> Unit,
     onDetachLyric: (trackId: Long) -> Unit,
@@ -133,6 +138,54 @@ fun TrackOptionDialog(
                 ) {
                     Text(
                         text = stringResource(id = R.string.menu_override),
+                        fontSize = 14.sp,
+                        color = QTheme.colors.colorTextPrimary
+                    )
+                }
+                DialogListItem(
+                    onClick = {
+                        onGenerateQueue(
+                            uiTrack,
+                            InsertActionType.NEXT,
+                            OrientedClassType.TRACK
+                        )
+                        onSelectTrack(null)
+                    }
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.menu_insert_generated_queue_next),
+                        fontSize = 14.sp,
+                        color = QTheme.colors.colorTextPrimary
+                    )
+                }
+                DialogListItem(
+                    onClick = {
+                        onGenerateQueue(
+                            uiTrack,
+                            InsertActionType.LAST,
+                            OrientedClassType.TRACK
+                        )
+                        onSelectTrack(null)
+                    }
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.menu_insert_generated_queue_last),
+                        fontSize = 14.sp,
+                        color = QTheme.colors.colorTextPrimary
+                    )
+                }
+                DialogListItem(
+                    onClick = {
+                        onGenerateQueue(
+                            uiTrack,
+                            InsertActionType.OVERRIDE,
+                            OrientedClassType.TRACK
+                        )
+                        onSelectTrack(null)
+                    }
+                ) {
+                    Text(
+                        text = stringResource(id = R.string.menu_override_generated_queue),
                         fontSize = 14.sp,
                         color = QTheme.colors.colorTextPrimary
                     )
@@ -1676,6 +1729,11 @@ fun BoxScope.Dialogs(
         actionType: InsertActionType,
         classType: OrientedClassType
     ) -> Unit,
+    onGenerateQueue: (
+        track: UiTrack,
+        actionType: InsertActionType,
+        classType: OrientedClassType
+    ) -> Unit,
     onStartAuthDropbox: () -> Unit,
     onShowDropboxFolderChooser: (selectedFolder: FolderMetadata?) -> Unit,
     hideDropboxDialog: () -> Unit,
@@ -1704,6 +1762,10 @@ fun BoxScope.Dialogs(
             onNewQueue = { queue, actionType, classType ->
                 isSearchActive.value = false
                 onNewQueue(queue, actionType, classType)
+            },
+            onGenerateQueue = { track, actionType, classType ->
+                isSearchActive.value = false
+                onGenerateQueue(track, actionType, classType)
             },
             onExportLyric = onExportLyric,
             onAttachLyric = onAttachLyric,

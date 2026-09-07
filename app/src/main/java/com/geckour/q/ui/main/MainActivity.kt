@@ -584,6 +584,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 onNewQueue = viewModel::onNewQueue,
+                                onGenerateQueue = viewModel::onGenerateQueue,
                                 onQueueMove = viewModel::onQueueMove,
                                 onChangeIndexRequested = viewModel::onChangeIndexRequested,
                                 onRemoveTrackFromQueue = viewModel::onRemoveTrackFromQueue,
@@ -749,6 +750,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 onNewQueue = viewModel::onNewQueue,
+                                onGenerateQueue = viewModel::onGenerateQueue,
                                 onQueueMove = viewModel::onQueueMove,
                                 onChangeIndexRequested = viewModel::onChangeIndexRequested,
                                 onRemoveTrackFromQueue = viewModel::onRemoveTrackFromQueue,
@@ -887,16 +889,6 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        if (cacheDir.getDirSize() == 0L) {
-            lifecycleScope.launch {
-                viewModel.purgeDownloaded(
-                    DB.getInstance(this@MainActivity)
-                        .trackDao()
-                        .getAllDownloadedSourcePaths()
-                )
-            }
-        }
-
         viewModel.requestBillingInfoUpdate()
 
         onScrollToCurrent?.invoke()
@@ -991,10 +983,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun onReadMediaDenied() = Unit
-
-    private fun File.getDirSize(initialSize: Long = 0): Long =
-        if (isFile) initialSize + length()
-        else listFiles()?.sumOf { it.getDirSize(initialSize) } ?: initialSize
 
     private suspend fun onDropboxSyncFailure(throwable: Throwable) {
         viewModel.emitSnackbarMessage(

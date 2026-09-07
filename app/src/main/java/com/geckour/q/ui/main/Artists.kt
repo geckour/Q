@@ -53,6 +53,7 @@ import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
+import com.geckour.q.util.isAllIncludingTracksDownloadedAsFlow
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch

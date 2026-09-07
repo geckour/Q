@@ -54,6 +54,7 @@ import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
+import com.geckour.q.util.DownloadState
 import com.geckour.q.util.isDownloaded
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.flow.map
@@ -153,8 +154,9 @@ fun Albums(
             val tracks by db.trackDao().getAllByAlbumAsFlow(joinedAlbum.album.id)
                 .collectAsState(initial = emptyList())
             val containDropboxContent = tracks.any { it.dropboxPath != null }
-            val downloadableDropboxPaths = tracks.mapNotNull {
-                if (it.isDownloaded) null else it.dropboxPath
+            val downloadChangedCount by DownloadState.changedCount.collectAsState()
+            val downloadableDropboxPaths = remember(tracks, downloadChangedCount) {
+                tracks.mapNotNull { if (it.isDownloaded) null else it.dropboxPath }
             }
             Surface(
                 color = QTheme.colors.colorBackground,

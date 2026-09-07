@@ -50,8 +50,8 @@ interface ArtistDao {
     @Query("select exists(select 1 from track where track.dropboxPath is not null and track.albumId in (select id from album where album.artistId = :artistId group by album.id))")
     fun containDropboxContentAsFlow(artistId: Long): Flow<Boolean>
 
-    @Query("select not exists(select 1 from track where track.dropboxPath is not null and (sourcePath is '' or sourcePath like 'https://%.dl.dropboxusercontent.com/%') and track.albumId in (select id from album where album.artistId = :artistId group by album.id))")
-    fun isAllIncludingTracksDownloadedAsFlow(artistId: Long): Flow<Boolean>
+    @Query("select sourcePath from track where track.dropboxPath is not null and track.albumId in (select id from album where album.artistId = :artistId group by album.id)")
+    fun getIncludingDropboxSourcePathsAsFlow(artistId: Long): Flow<List<String>>
 
     @Query("select artworkUriString from album where artistId = :artistId and artworkUriString is not null order by playbackCount limit 1")
     suspend fun getThumbnailUriString(artistId: Long): String

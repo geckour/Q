@@ -28,12 +28,6 @@ interface TrackDao {
     @Update
     suspend fun update(track: Track): Int
 
-    @Query("update track set sourcePath = '' where sourcePath in (:sourcePaths)")
-    suspend fun clearAllSourcePaths(sourcePaths: List<String>)
-
-    @Query("select sourcePath from track where dropboxPath is not null and sourcePath like '%/com.geckour.q%/cache/audio/id%%3A%'")
-    suspend fun getAllDownloadedSourcePaths(): List<String>
-
     @Query("delete from track where id = :id")
     suspend fun delete(id: Long): Int
 

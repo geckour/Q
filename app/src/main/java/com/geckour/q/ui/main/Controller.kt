@@ -81,6 +81,7 @@ import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.getShouldShowCurrentRemain
 import com.geckour.q.util.getTimeString
+import com.geckour.q.util.DownloadState
 import com.geckour.q.util.isDownloaded
 import com.geckour.q.util.nonUpScaleSp
 import com.geckour.q.util.setShouldShowCurrentRemain
@@ -324,6 +325,11 @@ fun Controller(
                         animationSpec = tween(200),
                         label = ""
                     )
+                    val downloadChangedCount by DownloadState.changedCount.collectAsState()
+                    val isCurrentTrackDownloaded = remember(
+                        currentTrack?.sourcePath,
+                        downloadChangedCount
+                    ) { currentTrack?.isDownloaded == true }
                     currentTrack?.isFavorite?.let {
                         Icon(
                             imageVector = if (it) Icons.Default.Star else Icons.Default.StarBorder,
@@ -339,7 +345,7 @@ fun Controller(
                                 .size(24.dp)
                         )
                     }
-                    if (currentTrack?.isDownloaded == true) {
+                    if (isCurrentTrackDownloaded) {
                         Icon(
                             imageVector = Icons.Outlined.DownloadForOffline,
                             contentDescription = null,

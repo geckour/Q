@@ -87,6 +87,10 @@
     <string name="menu_insert_last">最後へ挿入</string>
     <string name="menu_override">上書き</string>
 
+    <string name="menu_insert_generated_queue_next">この曲から生成したキューを次へ挿入</string>
+    <string name="menu_insert_generated_queue_last">この曲から生成したキューを最後へ挿入</string>
+    <string name="menu_override_generated_queue">この曲から生成したキューで上書き</string>
+
     <string name="menu_insert_all_simple_shuffle_next">単純シャッフルで次へ挿入</string>
     <string name="menu_insert_all_simple_shuffle_last">単純シャッフルで最後へ挿入</string>
     <string name="menu_override_all_simple_shuffle">単純シャッフルで上書き</string>

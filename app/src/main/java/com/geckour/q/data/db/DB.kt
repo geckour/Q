@@ -5,8 +5,10 @@ import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.geckour.q.data.db.dao.AlbumDao
 import com.geckour.q.data.db.dao.ArtistDao
 import com.geckour.q.data.db.dao.AudioDeviceEqualizerInfoDao
@@ -44,7 +46,7 @@ import kotlinx.serialization.json.Json
         QueueHistory::class,
         QueueHistoryTrack::class,
     ],
-    version = 10,
+    version = 12,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -55,6 +57,7 @@ import kotlinx.serialization.json.Json
         AutoMigration(from = 7, to = 8),
         AutoMigration(from = 8, to = 9),
         AutoMigration(from = 9, to = 10),
+        AutoMigration(from = 10, to = 11),
     ]
 )
 @TypeConverters(BoolConverter::class, LyricLineConverter::class)
@@ -66,9 +69,21 @@ abstract class DB : RoomDatabase() {
         @Volatile
         private var instance: DB? = null
 
+        private fun migrationFrom11To12(context: Context) = object : Migration(11, 12) {
+
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "update track set sourcePath = ? || replace(dropboxPath, '/', '%2F') " +
+                            "where sourcePath = '' and dropboxPath is not null",
+                    arrayOf("file://${context.dataDir.absolutePath}/audio/")
+                )
+            }
+        }
+
         fun getInstance(context: Context): DB =
             instance ?: synchronized(this) {
                 Room.databaseBuilder(context, DB::class.java, DB_NAME)
+                    .addMigrations(migrationFrom11To12(context))
                     .build()
                     .apply { instance = this }
             }

@@ -92,6 +92,10 @@
     <string name="menu_insert_last">Insert to last</string>
     <string name="menu_override">Override</string>
 
+    <string name="menu_insert_generated_queue_next">Insert generated queue by this track to next</string>
+    <string name="menu_insert_generated_queue_last">Insert generated queue by this track to last</string>
+    <string name="menu_override_generated_queue">Override by generated queue by this track</string>
+
     <string name="menu_insert_all_simple_shuffle_next">Shuffle simply to next</string>
     <string name="menu_insert_all_simple_shuffle_last">Shuffle simply to last</string>
     <string name="menu_override_all_simple_shuffle">Shuffle simply and override</string>
