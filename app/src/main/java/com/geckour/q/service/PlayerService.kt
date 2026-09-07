@@ -144,6 +144,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         const val PREF_KEY_PLAYER_STATE = "pref_key_player_state"
 
         private const val PLAYBACK_POSITION_SAVE_INTERVAL = 100
+        private const val QUEUE_HISTORY_SAVE_DEBOUNCE = 200
     }
 
     private val dispatcher = ServiceLifecycleDispatcher(this)
@@ -186,6 +187,8 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
             Timber.d("qgeck player on timeline changed: $timeline, $reason")
 
             onStateChanged()
+
+            if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) saveQueueHistory()
 
             fetchLyricIfNeeded()
         }
@@ -567,6 +570,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
     private lateinit var db: DB
 
     private var seekJob: Job = Job()
+    private var saveQueueHistoryJob: Job = Job()
 
     private val sharedPreferences by inject<SharedPreferences>()
 
@@ -772,6 +776,21 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         )
         sharedPreferences.edit(commit = commit) {
             putString(PREF_KEY_PLAYER_STATE, Json.encodeToString(state))
+        }
+    }
+
+    private fun saveQueueHistory() {
+        if (inPurge || inRestore) return
+
+        saveQueueHistoryJob.cancel()
+        saveQueueHistoryJob = lifecycleScope.launch {
+            delay(QUEUE_HISTORY_SAVE_DEBOUNCE.milliseconds)
+
+            val sourcePaths = player.currentSourcePaths
+            if (sourcePaths.isEmpty()) return@launch
+
+            db.queueHistoryDao()
+                .saveQueue(db.trackDao().getAllIdsBySourcePaths(sourcePaths))
         }
     }
 

@@ -56,6 +56,9 @@ interface TrackDao {
     @Query("select * from track where sourcePath in (:sourcePaths)")
     suspend fun getAllBySourcePaths(sourcePaths: List<String>): List<JoinedTrack>
 
+    @Query("select id from track where sourcePath in (:sourcePaths)")
+    suspend fun getAllIdsBySourcePaths(sourcePaths: List<String>): List<Long>
+
     @Transaction
     @Query("select * from track where dropboxPath = :dropboxPath")
     suspend fun getByDropboxPath(dropboxPath: String): JoinedTrack?
@@ -176,6 +179,7 @@ interface TrackDao {
     @Transaction
     suspend fun deleteIncludingRootIfEmpty(db: DB, vararg trackIds: Long) {
         val tracks = getAllByIds(trackIds.toList())
+        db.queueHistoryDao().deleteByTrackIds(trackIds.toList())
         deleteAllByIds(trackIds.toList())
 
         tracks.forEach {
