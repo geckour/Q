@@ -23,6 +23,8 @@ interface QueueHistoryDao {
         const val DEFAULT_MAX_TOTAL_DURATION = 4 * 60 * 60 * 1000L
 
         const val DEFAULT_ADJACENT_WINDOW = 30 * 60 * 1000L
+
+        const val DEFAULT_FAVORITE_SCORE_FACTOR = 1.5
     }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
@@ -113,9 +115,10 @@ interface QueueHistoryDao {
     @Query(
         "select track.sourcePath from track " +
                 "inner join (" +
-                "select merged.trackId as trackId, merged.tier as tier, merged.score as score, " +
+                "select merged.trackId as trackId, merged.tier as tier, " +
+                "merged.score * (case when track.isFavorite then :favoriteScoreFactor else 1.0 end) as score, " +
                 "sum(track.duration) over (" +
-                "order by merged.tier, merged.score desc " +
+                "order by merged.tier, merged.score * (case when track.isFavorite then :favoriteScoreFactor else 1.0 end) desc " +
                 "rows between unbounded preceding and current row" +
                 ") as cumulativeDuration " +
                 "from (" +
@@ -159,6 +162,7 @@ interface QueueHistoryDao {
         maxTotalDuration: Long = DEFAULT_MAX_TOTAL_DURATION,
         window: Long = DEFAULT_ADJACENT_WINDOW,
         pickDenominator: Int = DEFAULT_PICK_DENOMINATOR,
+        favoriteScoreFactor: Double = DEFAULT_FAVORITE_SCORE_FACTOR,
     ): List<String>
 
     @Query("select sourcePath from track where id = :originTrackId")
@@ -170,6 +174,7 @@ interface QueueHistoryDao {
         maxTotalDuration: Long = DEFAULT_MAX_TOTAL_DURATION,
         window: Long = DEFAULT_ADJACENT_WINDOW,
         pickDenominator: Int = DEFAULT_PICK_DENOMINATOR,
+        favoriteScoreFactor: Double = DEFAULT_FAVORITE_SCORE_FACTOR,
     ): List<String> {
         val originSourcePath = getOriginSourcePath(originTrackId)
         val (origin, others) = getSourcePathsToEnqueueAtRandomWithinDuration(
@@ -177,6 +182,7 @@ interface QueueHistoryDao {
             maxTotalDuration = maxTotalDuration,
             window = window,
             pickDenominator = pickDenominator,
+            favoriteScoreFactor = favoriteScoreFactor,
         ).partition { it == originSourcePath }
 
         return origin + others.shuffled()
