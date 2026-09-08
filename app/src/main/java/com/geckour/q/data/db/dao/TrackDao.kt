@@ -182,6 +182,7 @@ interface TrackDao {
     suspend fun deleteIncludingRootIfEmpty(db: DB, vararg trackIds: Long) {
         val tracks = getAllByIds(trackIds.toList())
         db.queueHistoryDao().deleteByTrackIds(trackIds.toList())
+        db.savedQueueDao().deleteByTrackIds(trackIds.toList())
         deleteAllByIds(trackIds.toList())
 
         tracks.forEach {
