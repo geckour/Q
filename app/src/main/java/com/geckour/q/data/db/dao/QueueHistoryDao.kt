@@ -126,20 +126,19 @@ interface QueueHistoryDao {
                 "min(candidate.tier) as tier, " +
                 "max(candidate.score) as score " +
                 "from (" +
-                "select :originTrackId as trackId, 0 as tier, 0.0 as score " +
-                "union all " +
-                "select other.trackId as trackId, 1 as tier, " +
+                "select other.trackId as trackId, 0 as tier, " +
                 "count(*) * 1.0 / (select count(*) from queueHistoryTrack where trackId = other.trackId) as score " +
                 "from queueHistoryTrack as origin " +
                 "inner join queueHistoryTrack as other on other.queueHistoryId = origin.queueHistoryId " +
                 "where origin.trackId = :originTrackId and other.trackId != :originTrackId " +
                 "group by other.trackId " +
                 "union all " +
-                "select other.trackId as trackId, 2 as tier, count(*) * 1.0 as score " +
+                "select other.trackId as trackId, 1 as tier, count(*) * 1.0 as score " +
                 "from trackHistory as origin " +
                 "inner join trackHistory as other on other.trackId != origin.trackId " +
                 "and other.createdAt between origin.createdAt - :window and origin.createdAt + :window " +
-                "where origin.trackId in (" +
+                "where other.trackId != :originTrackId " +
+                "and origin.trackId in (" +
                 "select :originTrackId " +
                 "union " +
                 "select other2.trackId from queueHistoryTrack as origin2 " +
@@ -152,9 +151,9 @@ interface QueueHistoryDao {
                 "group by candidate.trackId" +
                 ") as merged " +
                 "inner join track on track.id = merged.trackId " +
-                "where merged.tier = 0 or random() % :pickDenominator = 0" +
+                "where random() % :pickDenominator = 0" +
                 ") as cutoff on track.id = cutoff.trackId " +
-                "where cutoff.tier = 0 or cutoff.cumulativeDuration <= :maxTotalDuration " +
+                "where cutoff.cumulativeDuration <= :maxTotalDuration " +
                 "order by cutoff.tier, cutoff.score desc"
     )
     suspend fun getSourcePathsToEnqueueAtRandomWithinDuration(
@@ -177,15 +176,15 @@ interface QueueHistoryDao {
         favoriteScoreFactor: Double = DEFAULT_FAVORITE_SCORE_FACTOR,
     ): List<String> {
         val originSourcePath = getOriginSourcePath(originTrackId)
-        val (origin, others) = getSourcePathsToEnqueueAtRandomWithinDuration(
+        val others = getSourcePathsToEnqueueAtRandomWithinDuration(
             originTrackId = originTrackId,
             maxTotalDuration = maxTotalDuration,
             window = window,
             pickDenominator = pickDenominator,
             favoriteScoreFactor = favoriteScoreFactor,
-        ).partition { it == originSourcePath }
+        )
 
-        return origin + others.shuffled()
+        return listOfNotNull(originSourcePath) + others.shuffled()
     }
 
     @Query(

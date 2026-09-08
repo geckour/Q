@@ -196,7 +196,11 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal fun initializeMediaController(context: Context) {
         viewModelScope.launch {
             mediaController = MediaController.Builder(
-                context, SessionToken(context, ComponentName(context, PlayerService::class.java))
+                context,
+                SessionToken(
+                    context,
+                    ComponentName(context, PlayerService::class.java),
+                ),
             ).buildAsync().await().apply {
                 addListener(playerListener)
                 onSourceChanged()
@@ -219,8 +223,10 @@ class MainViewModel(private val app: App) : ViewModel() {
         loading.value = true to {
             mediaController.sendCustomCommand(
                 SessionCommand(
-                    PlayerService.ACTION_COMMAND_CANCEL_SUBMIT, Bundle.EMPTY
-                ), Bundle.EMPTY
+                    PlayerService.ACTION_COMMAND_CANCEL_SUBMIT,
+                    Bundle.EMPTY,
+                ),
+                Bundle.EMPTY,
             )
             loading.value = false to null
         }
@@ -244,8 +250,10 @@ class MainViewModel(private val app: App) : ViewModel() {
         loading.value = true to {
             mediaController.sendCustomCommand(
                 SessionCommand(
-                    PlayerService.ACTION_COMMAND_CANCEL_SUBMIT, Bundle.EMPTY
-                ), Bundle.EMPTY
+                    PlayerService.ACTION_COMMAND_CANCEL_SUBMIT,
+                    Bundle.EMPTY,
+                ),
+                Bundle.EMPTY,
             )
             loading.value = false to null
         }
@@ -255,11 +263,14 @@ class MainViewModel(private val app: App) : ViewModel() {
             withContext(Dispatchers.Main) {
                 mediaController.sendCustomCommand(
                     SessionCommand(
-                        PlayerService.ACTION_COMMAND_SUBMIT_QUEUE, Bundle.EMPTY
-                    ), bundleOf(
+                        PlayerService.ACTION_COMMAND_SUBMIT_QUEUE, Bundle.EMPTY,
+                    ),
+                    bundleOf(
                         PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_ACTION_TYPE to actionType,
                         PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_CLASS_TYPE to classType,
-                        PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_QUEUE to queue)
+                        PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_QUEUE to queue,
+                        PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_NEED_SORTED to false,
+                    ),
                 )
             }
         }

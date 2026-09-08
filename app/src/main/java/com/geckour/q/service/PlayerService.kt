@@ -102,6 +102,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         const val ACTION_EXTRA_SUBMIT_QUEUE_ACTION_TYPE = "action_extra_submit_queue_action_type"
         const val ACTION_EXTRA_SUBMIT_QUEUE_CLASS_TYPE = "action_extra_submit_queue_class_type"
         const val ACTION_EXTRA_SUBMIT_QUEUE_QUEUE = "action_extra_submit_queue_queue"
+        const val ACTION_EXTRA_SUBMIT_QUEUE_NEED_SORTED = "action_extra_submit_queue_need_sorted"
 
         const val ACTION_COMMAND_CANCEL_SUBMIT = "action_command_cancel_submit"
 
@@ -357,12 +358,20 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
                             ?: return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_INVALID_STATE))
                         val sourcePaths = args.getStringArrayList(ACTION_EXTRA_SUBMIT_QUEUE_QUEUE)
                             ?: return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_INVALID_STATE))
+                        val needSorted =
+                            args.getBoolean(ACTION_EXTRA_SUBMIT_QUEUE_NEED_SORTED, true)
                         lifecycleScope.launch {
                             val trackDao = db.trackDao()
                             val newQueue = sourcePaths.mapNotNull {
                                 trackDao.getBySourcePath(it)
                             }
-                            submitQueue(QueueInfo(QueueMetadata(actionType, classType), newQueue))
+                            submitQueue(
+                                queueInfo = QueueInfo(
+                                    QueueMetadata(actionType, classType),
+                                    newQueue
+                                ),
+                                needSorted = needSorted
+                            )
                         }
                         Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                     }
