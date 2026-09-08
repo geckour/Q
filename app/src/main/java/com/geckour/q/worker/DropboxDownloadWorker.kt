@@ -3,6 +3,7 @@ package com.geckour.q.worker
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
+import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.net.Uri
 import androidx.core.graphics.createBitmap
@@ -102,6 +103,7 @@ class DropboxDownloadWorker(
         ForegroundInfo(
             NOTIFICATION_ID_RETRIEVE,
             getNotification(notificationBitmap),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
         )
 
     private suspend fun download(
