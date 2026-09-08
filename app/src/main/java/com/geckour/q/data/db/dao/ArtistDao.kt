@@ -47,6 +47,9 @@ interface ArtistDao {
     @Query("select * from artist where artist.id in (select artistId from album group by album.id) order by artist.titleSort collate nocase")
     fun getAllOrientedAlbumAsPagingSource(): PagingSource<Int, Artist>
 
+    @Query("select * from artist where artist.id in (select artistId from album group by album.id) order by artist.titleSort collate nocase")
+    suspend fun getAllOrientedAlbum(): List<Artist>
+
     @Query("select exists(select 1 from track where track.dropboxPath is not null and track.albumId in (select id from album where album.artistId = :artistId group by album.id))")
     fun containDropboxContentAsFlow(artistId: Long): Flow<Boolean>
 

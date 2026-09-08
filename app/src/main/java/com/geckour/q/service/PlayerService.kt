@@ -31,6 +31,8 @@ import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
+import androidx.media3.session.LibraryResult
+import androidx.media3.session.MediaConstants
 import androidx.media3.session.MediaLibraryService
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSession.ConnectionResult
@@ -72,6 +74,7 @@ import com.geckour.q.util.setSelectedEqualizerPresetId
 import com.geckour.q.util.toDomainTracks
 import com.geckour.q.util.toUiTrack
 import com.geckour.q.util.verifiedWithDropbox
+import com.google.common.collect.ImmutableList
 import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.SettableFuture
@@ -142,6 +145,8 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         private const val ACTION_COMMAND_TOGGLE_FAVORITE = "action_command_toggle_favorite"
 
         const val PREF_KEY_PLAYER_STATE = "pref_key_player_state"
+
+        private const val SEARCH_RESULT_CACHE_LIMIT = 16
 
         private const val PLAYBACK_POSITION_SAVE_INTERVAL = 100
         private const val QUEUE_HISTORY_SAVE_DEBOUNCE = 200
@@ -311,7 +316,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         ): ConnectionResult =
             ConnectionResult.AcceptedResultBuilder(session, controller)
                 .setAvailableSessionCommands(
-                    ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                    ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
                         .add(SessionCommand(ACTION_COMMAND_SUBMIT_QUEUE, Bundle.EMPTY))
                         .add(SessionCommand(ACTION_COMMAND_CANCEL_SUBMIT, Bundle.EMPTY))
                         .add(SessionCommand(ACTION_COMMAND_REMOVE_QUEUE, Bundle.EMPTY))
@@ -515,6 +520,159 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
             return settableFuture
         }
+
+        override fun onGetLibraryRoot(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            params: LibraryParams?
+        ): ListenableFuture<LibraryResult<MediaItem>> = Futures.immediateFuture(
+            LibraryResult.ofItem(
+                MediaLibraryTree.rootMediaItem(this@PlayerService),
+                LibraryParams.Builder()
+                    .setExtras(
+                        Bundle().apply {
+                            putBoolean(MediaLibraryTree.EXTRA_MEDIA_SEARCH_SUPPORTED, true)
+                            putInt(
+                                MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
+                                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM
+                            )
+                            putInt(
+                                MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
+                                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM
+                            )
+                        }
+                    )
+                    .build()
+            )
+        )
+
+        override fun onGetItem(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            mediaId: String
+        ): ListenableFuture<LibraryResult<MediaItem>> {
+            val settableFuture = SettableFuture.create<LibraryResult<MediaItem>>()
+            lifecycleScope.launch {
+                val item = runCatching {
+                    MediaLibraryTree.getItem(this@PlayerService, mediaId)
+                }
+                    .onFailure { Timber.e(it) }
+                    .getOrNull()
+                settableFuture.set(
+                    item?.let { LibraryResult.ofItem(it, null) }
+                        ?: LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
+                )
+            }
+
+            return settableFuture
+        }
+
+        override fun onGetChildren(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            parentId: String,
+            page: Int,
+            pageSize: Int,
+            params: LibraryParams?
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+            val settableFuture =
+                SettableFuture.create<LibraryResult<ImmutableList<MediaItem>>>()
+            lifecycleScope.launch {
+                val children = runCatching {
+                    MediaLibraryTree.getChildren(this@PlayerService, parentId, page, pageSize)
+                }
+                    .onFailure { Timber.e(it) }
+                    .getOrNull()
+                settableFuture.set(
+                    children?.let { LibraryResult.ofItemList(it, params) }
+                        ?: LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
+                )
+            }
+
+            return settableFuture
+        }
+
+        override fun onSearch(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            params: LibraryParams?
+        ): ListenableFuture<LibraryResult<Void>> {
+            val settableFuture = SettableFuture.create<LibraryResult<Void>>()
+            lifecycleScope.launch {
+                val result = searchLibrary(query)
+                session.notifySearchResultChanged(browser, query, result.size, params)
+                settableFuture.set(LibraryResult.ofVoid())
+            }
+
+            return settableFuture
+        }
+
+        override fun onGetSearchResult(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            page: Int,
+            pageSize: Int,
+            params: LibraryParams?
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+            val settableFuture =
+                SettableFuture.create<LibraryResult<ImmutableList<MediaItem>>>()
+            lifecycleScope.launch {
+                val result = searchResultCache[query] ?: searchLibrary(query)
+                val offset = page * pageSize
+                settableFuture.set(
+                    LibraryResult.ofItemList(
+                        if (offset >= result.size) emptyList()
+                        else result.drop(offset).take(pageSize),
+                        params
+                    )
+                )
+            }
+
+            return settableFuture
+        }
+
+        override fun onAddMediaItems(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: MutableList<MediaItem>
+        ): ListenableFuture<MutableList<MediaItem>> {
+            val settableFuture = SettableFuture.create<MutableList<MediaItem>>()
+            lifecycleScope.launch {
+                settableFuture.set(resolveMediaItems(mediaItems).toMutableList())
+            }
+
+            return settableFuture
+        }
+
+        override fun onSetMediaItems(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: MutableList<MediaItem>,
+            startIndex: Int,
+            startPositionMs: Long
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            val settableFuture = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
+            lifecycleScope.launch {
+                val resolved = resolveMediaItems(mediaItems)
+                if (resolved.isEmpty()) {
+                    settableFuture.set(currentMediaItemsWithStartPosition())
+                    return@launch
+                }
+
+                val expanded = resolved.size != mediaItems.size
+                settableFuture.set(
+                    MediaSession.MediaItemsWithStartPosition(
+                        resolved,
+                        if (expanded) 0 else startIndex,
+                        if (expanded) C.TIME_UNSET else startPositionMs
+                    )
+                )
+            }
+
+            return settableFuture
+        }
     }
 
     private val mediaRouterCallback = object : MediaRouter.Callback() {
@@ -600,6 +758,8 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
     private val lyricRequestedSourcePaths = mutableSetOf<String>()
 
+    private val searchResultCache = mutableMapOf<String, List<MediaItem>>()
+
     private var lastHistorizedMediaItem: MediaItem? = null
     private var shouldPauseOnCurrentTrackEnd = false
     private var inPurge = false
@@ -608,6 +768,51 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession =
         mediaSession
+
+    private suspend fun searchLibrary(query: String): List<MediaItem> =
+        runCatching { MediaLibraryTree.search(this, query) }
+            .onFailure { Timber.e(it) }
+            .getOrDefault(emptyList())
+            .also {
+                if (searchResultCache.size >= SEARCH_RESULT_CACHE_LIMIT) searchResultCache.clear()
+                searchResultCache[query] = it
+            }
+
+    private fun currentMediaItemsWithStartPosition() = MediaSession.MediaItemsWithStartPosition(
+        List(player.mediaItemCount) { player.getMediaItemAt(it) },
+        currentIndex,
+        player.currentPosition
+    )
+
+    private suspend fun resolveMediaItems(mediaItems: List<MediaItem>): List<MediaItem> =
+        mediaItems.flatMap { mediaItem ->
+            val requestMetadata = mediaItem.requestMetadata
+            val searchQuery = requestMetadata.searchQuery
+            when {
+                searchQuery != null -> MediaLibraryTree.resolveQueryToTracks(
+                    context = this,
+                    query = searchQuery,
+                    extras = requestMetadata.extras
+                ).map { it.getMediaItem() }
+
+                mediaItem.mediaId.isNotBlank() -> {
+                    MediaLibraryTree.resolveToTracks(this, mediaItem.mediaId)
+                        .map { it.getMediaItem() }
+                        .ifEmpty { listOfNotNull(mediaItem.takeIf { it.hasPlayableUri }) }
+                }
+
+                mediaItem.hasPlayableUri -> listOf(mediaItem)
+
+                else -> MediaLibraryTree.resolveQueryToTracks(
+                    context = this,
+                    query = "",
+                    extras = null
+                ).map { it.getMediaItem() }
+            }
+        }
+
+    private val MediaItem.hasPlayableUri
+        get() = localConfiguration != null || requestMetadata.mediaUri != null
 
     override fun onCreate() {
         dispatcher.onServicePreSuperOnCreate()

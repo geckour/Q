@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.icu.util.Calendar
+import android.icu.util.TimeZone
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toFile
@@ -49,6 +50,11 @@ const val UNKNOWN: String = "UNKNOWN"
 const val DROPBOX_EXPIRES_IN = 14400000L
 
 private val random = Random(System.currentTimeMillis())
+
+val dailyRandom: Random
+    get() = Calendar.getInstance(TimeZone.getDefault()).let {
+        Random(it.get(Calendar.YEAR) * 1000L + it.get(Calendar.DAY_OF_YEAR))
+    }
 
 val dropboxUrlPattern = Regex("^https://.+\\.dl\\.dropboxusercontent\\.com/.+$")
 
@@ -290,6 +296,10 @@ fun JoinedTrack.getMediaMetadata(): MediaMetadata {
         .setReleaseMonth(month)
         .setReleaseDay(day)
         .setArtworkUri((track.artworkUriString ?: album.artworkUriString)?.toUri())
+        .setGenre(track.genre)
+        .setIsBrowsable(false)
+        .setIsPlayable(true)
+        .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
         .apply {
             track.trackNum?.let { setTrackNumber(it) }
             track.trackTotal?.let { setTotalTrackCount(it) }

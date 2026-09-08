@@ -187,6 +187,9 @@
     <string name="search_category_genre">ジャンル</string>
     <string name="search_category_lyric">歌詞</string>
 
+    <!-- Browse -->
+    <string name="browse_category_favorite">お気に入り</string>
+
     <!-- Settings -->
     <string name="setting_category_title_general">一般</string>
 

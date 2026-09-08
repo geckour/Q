@@ -52,6 +52,10 @@ interface AlbumDao {
     fun getAllAsPagingSource(): PagingSource<Int, JoinedAlbum>
 
     @Transaction
+    @Query("select * from album order by titleSort collate nocase")
+    suspend fun getAll(): List<JoinedAlbum>
+
+    @Transaction
     @Query("select * from album where artistId = :artistId")
     suspend fun getAllByArtistId(artistId: Long): List<JoinedAlbum>
 

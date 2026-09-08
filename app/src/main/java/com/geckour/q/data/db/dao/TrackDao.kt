@@ -92,6 +92,14 @@ interface TrackDao {
     fun getAllAsPagingSource(ignore: Bool = Bool.UNDEFINED): PagingSource<Int, JoinedTrack>
 
     @Transaction
+    @Query("select * from track where ignored != :ignore order by titleSort collate nocase limit :limit offset :offset")
+    suspend fun getAllPaged(
+        limit: Int,
+        offset: Int,
+        ignore: Bool = Bool.UNDEFINED
+    ): List<JoinedTrack>
+
+    @Transaction
     @Query("select * from track where title like ('%'||:title||'%') escape '\\'")
     suspend fun getAllByTitle(title: String): List<JoinedTrack>
 
