@@ -28,6 +28,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
@@ -415,7 +416,7 @@ fun QueueItem(
                             .size(20.dp)
                     )
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_remove),
+                        imageVector = Icons.Default.RemoveCircleOutline,
                         contentDescription = null,
                         tint = QTheme.colors.colorButtonNormal,
                         modifier = Modifier

@@ -32,9 +32,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.FastForward
+import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Lyrics
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.VerticalAlignCenter
 import androidx.compose.material.icons.outlined.DownloadForOffline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -427,7 +434,7 @@ fun Controller(
                             .size(24.dp)
                     )
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_shuffle),
+                        imageVector = Icons.Default.Shuffle,
                         contentDescription = null,
                         tint = QTheme.colors.colorButtonNormal,
                         modifier = Modifier
@@ -461,7 +468,7 @@ fun Controller(
                         label = ""
                     )
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_backward),
+                        imageVector = Icons.Default.FastRewind,
                         contentDescription = null,
                         tint = QTheme.colors.colorButtonNormal,
                         modifier = Modifier
@@ -479,9 +486,10 @@ fun Controller(
                             .size(24.dp)
                     )
                     Icon(
-                        painter = painterResource(
-                            id = if (playbackInfo.first && playbackInfo.second == Player.STATE_READY) R.drawable.ic_pause else R.drawable.ic_play
-                        ),
+                        imageVector =
+                            if (playbackInfo.first && playbackInfo.second == Player.STATE_READY)
+                                Icons.Default.Pause
+                            else Icons.Default.PlayArrow,
                         contentDescription = null,
                         tint = QTheme.colors.colorButtonNormal,
                         modifier = Modifier
@@ -504,7 +512,7 @@ fun Controller(
                             }
                     )
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_forward),
+                        imageVector = Icons.Default.FastForward,
                         contentDescription = null,
                         tint = QTheme.colors.colorButtonNormal,
                         modifier = Modifier
@@ -618,7 +626,7 @@ fun Controller(
                     .height(IntrinsicSize.Min)
             ) {
                 Icon(
-                    painter = painterResource(id = R.drawable.ic_current),
+                    imageVector = Icons.Default.VerticalAlignCenter,
                     contentDescription = null,
                     tint =
                         if (showLyric && isLyricScrolledByUser.not()) QTheme.colors.colorInactive
@@ -666,7 +674,9 @@ fun Controller(
                 } else {
                     // Applying both padding and size redundantly as same as Icon which will be toggled to
                     // because the calculated size may fluctuate within 1px due to round density error
-                    Spacer(modifier = Modifier.padding(4.dp).size(20.dp))
+                    Spacer(modifier = Modifier
+                        .padding(4.dp)
+                        .size(20.dp))
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
@@ -688,10 +698,11 @@ fun Controller(
                 )
             }
             Icon(
-                painter = painterResource(id = R.drawable.ic_remove),
+                imageVector = Icons.Default.RemoveCircleOutline,
                 contentDescription = null,
                 tint = QTheme.colors.colorButtonNormal,
                 modifier = Modifier
+                    .padding(end = 4.dp)
                     .clickable(
                         indication = ripple(bounded = false),
                         interactionSource = remember { MutableInteractionSource() },
