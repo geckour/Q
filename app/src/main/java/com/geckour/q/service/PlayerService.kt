@@ -7,7 +7,6 @@ import android.content.SharedPreferences
 import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.media.audiofx.Equalizer
-import android.os.Build
 import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.core.content.edit
@@ -911,12 +910,9 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
     private fun onUpdateQAudioDeviceInfoList(router: MediaRouter = mediaRouter) {
         val audioDeviceInfoList =
             audioManager?.getDevices(AudioManager.GET_DEVICES_OUTPUTS)?.toList().orEmpty()
-        val activeAudioDeviceInfo =
-            if (Build.VERSION.SDK_INT > 30) {
-                audioManager?.activePlaybackConfigurations
-                    ?.firstOrNull { it.audioDeviceInfo != null }
-                    ?.audioDeviceInfo
-            } else null
+        val activeAudioDeviceInfo = audioManager?.activePlaybackConfigurations
+            ?.firstOrNull { it.audioDeviceInfo != null }
+            ?.audioDeviceInfo
         val activeQAudioDeviceInfo =
             getActiveQAudioDeviceInfo(router.routes, audioDeviceInfoList, activeAudioDeviceInfo)
         lifecycleScope.launch {

@@ -3,8 +3,6 @@ package com.geckour.q
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.os.Build
-import androidx.annotation.RequiresApi
 import com.geckour.q.data.dataModule
 import com.geckour.q.data.db.DB
 import com.geckour.q.ui.di.viewModelModule
@@ -32,7 +30,7 @@ class App : Application() {
             Timber.plant(Timber.DebugTree())
         }
 
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) createNotificationChannel()
+        createNotificationChannel()
 
         MainScope().launch {
             if (getAlreadyRunHiraganized().not()) {

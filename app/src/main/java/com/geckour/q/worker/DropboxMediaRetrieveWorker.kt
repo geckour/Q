@@ -1,14 +1,11 @@
 package com.geckour.q.worker
 
-import android.Manifest
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.Context
-import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.net.Uri
-import android.os.Build
 import android.webkit.MimeTypeMap
 import androidx.core.app.NotificationCompat
 import androidx.core.graphics.createBitmap
@@ -78,79 +75,61 @@ class DropboxMediaRetrieveWorker(
     private var speeds = listOf<Float>()
 
     override suspend fun doWork(): Result {
-        if (Build.VERSION.SDK_INT >= 33
-            || applicationContext.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-        ) {
-            val dbxClient = obtainDbxClient(applicationContext).firstOrNull()
-                ?: return Result.failure(
-                    Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build()
-                )
-
-            try {
-                setForeground(getForegroundInfo())
-            } catch (_: Throwable) {
-                return Result.failure(
-                    Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build()
-                )
-            }
-
-            seed = System.currentTimeMillis()
-            Timber.d("qgeck Dropbox media retrieve worker started")
-
-            val rootPath = requireNotNull(inputData.getString(KEY_ROOT_PATH))
-            Timber.d("qgeck rootPath: $rootPath")
-            val needDownloaded = requireNotNull(inputData.getBoolean(KEY_NEED_DOWNLOADED, false))
-
-            setProgress(
-                createProgressData(
-                    title = applicationContext.getString(R.string.progress_title_retrieve_media),
-                    progressFraction = 0f
-                )
+        val dbxClient = obtainDbxClient(applicationContext).firstOrNull()
+            ?: return Result.failure(
+                Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build()
             )
 
-            files.clear()
-            retrieveAudioFilePaths(rootPath, dbxClient, needDownloaded)
-            files.forEach {
-                if (isStopped) {
-                    return Result.success(
-                        Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build()
-                    )
-                }
-
-                it.storeMediaInfo(dbxClient, needDownloaded)
-            }
-
-            Timber.d("qgeck track in db count: ${db.trackDao().count()}")
-            delay(200.milliseconds)
-            return Result.success(Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build())
+        try {
+            setForeground(getForegroundInfo())
+        } catch (_: Throwable) {
+            return Result.failure(
+                Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build()
+            )
         }
 
-        return Result.failure(Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build())
+        seed = System.currentTimeMillis()
+        Timber.d("qgeck Dropbox media retrieve worker started")
+
+        val rootPath = requireNotNull(inputData.getString(KEY_ROOT_PATH))
+        Timber.d("qgeck rootPath: $rootPath")
+        val needDownloaded = requireNotNull(inputData.getBoolean(KEY_NEED_DOWNLOADED, false))
+
+        setProgress(
+            createProgressData(
+                title = applicationContext.getString(R.string.progress_title_retrieve_media),
+                progressFraction = 0f
+            )
+        )
+
+        files.clear()
+        retrieveAudioFilePaths(rootPath, dbxClient, needDownloaded)
+        files.forEach {
+            if (isStopped) {
+                return Result.success(
+                    Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build()
+                )
+            }
+
+            it.storeMediaInfo(dbxClient, needDownloaded)
+        }
+
+        Timber.d("qgeck track in db count: ${db.trackDao().count()}")
+        delay(200.milliseconds)
+        return Result.success(Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build())
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo =
-        if (Build.VERSION.SDK_INT < 29) {
-            ForegroundInfo(
-                NOTIFICATION_ID_RETRIEVE,
-                getNotification(
-                    currentPath,
-                    progressFraction,
-                    seed,
-                    notificationBitmap
-                )
-            )
-        } else {
-            ForegroundInfo(
-                NOTIFICATION_ID_RETRIEVE,
-                getNotification(
-                    currentPath,
-                    progressFraction,
-                    seed,
-                    notificationBitmap
-                ),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-            )
-        }
+        ForegroundInfo(
+            NOTIFICATION_ID_RETRIEVE,
+            getNotification(
+                currentPath,
+                progressFraction,
+                seed,
+                notificationBitmap
+            ),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        )
 
     private suspend fun retrieveAudioFilePaths(
         root: String,

@@ -2,7 +2,6 @@ package com.geckour.q.domain.model
 
 import android.content.Context
 import android.media.AudioDeviceInfo
-import android.os.Build
 import androidx.mediarouter.media.MediaRouter
 import com.geckour.q.R
 import kotlinx.serialization.Serializable
@@ -23,11 +22,9 @@ data class QAudioDeviceInfo(
             audioDeviceInfo: AudioDeviceInfo,
             activeAudioDeviceInfo: AudioDeviceInfo?,
         ): QAudioDeviceInfo {
-            val audioDeviceAddress =
-                if (Build.VERSION.SDK_INT > 27) audioDeviceInfo.address else null
             return QAudioDeviceInfo(
                 routeId = mediaRouteInfo.id,
-                address = audioDeviceAddress,
+                address = audioDeviceInfo.address,
                 audioDeviceId = audioDeviceInfo.id,
                 audioDeviceName = audioDeviceInfo.productName.toString(),
                 selected = activeAudioDeviceInfo?.let { it.id == audioDeviceInfo.id }

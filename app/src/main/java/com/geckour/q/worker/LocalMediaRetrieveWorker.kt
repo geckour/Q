@@ -1,15 +1,12 @@
 package com.geckour.q.worker
 
-import android.Manifest
 import android.app.Notification
 import android.app.PendingIntent
 import android.content.ContentUris
 import android.content.Context
-import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.graphics.Bitmap
 import android.net.Uri
-import android.os.Build
 import android.provider.MediaStore
 import androidx.work.CoroutineWorker
 import androidx.work.Data
@@ -51,103 +48,85 @@ class LocalMediaRetrieveWorker(
     private var seed: Long = -1
 
     override suspend fun doWork(): Result {
-        if (Build.VERSION.SDK_INT >= 33
-            || applicationContext.checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
-        ) {
-            try {
-                setForeground(getForegroundInfo())
-            } catch (t: Throwable) {
-                return Result.failure(
-                    Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build()
-                )
-            }
-
-            seed = System.currentTimeMillis()
-            Timber.d("qgeck media retrieve worker started")
-            val db = DB.getInstance(applicationContext)
-            val onlyAdded = inputData.getBoolean(KEY_ONLY_ADDED, false)
-            val selection =
-                if (onlyAdded) {
-                    val latest =
-                        (db.trackDao().getLatestModifiedEpochTime() ?: 0) / 1000
-                    "$SELECTION AND ${MediaStore.Audio.Media.DATE_MODIFIED} > $latest"
-                } else SELECTION
-            applicationContext.contentResolver
-                .query(
-                    if (Build.VERSION.SDK_INT < 29) MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-                    else MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL),
-                    projection,
-                    selection,
-                    null,
-                    ORDER
-                )?.use { cursor ->
-                    val newTrackMediaIds = mutableListOf<Long>()
-                    while (cursor.moveToNext()) {
-                        if (isStopped) {
-                            return Result.success(
-                                Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build()
-                            )
-                        }
-
-                        currentIndex = cursor.position + 1
-                        totalFilesCount = cursor.count
-                        val trackPath = cursor.getString(
-                            cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
-                        )
-                        val trackMediaId = cursor.getLong(
-                            cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
-                        )
-                        setProgress(
-                            createProgressData(
-                                title = applicationContext.getString(R.string.progress_title_retrieve_media),
-                                progressFraction = currentIndex.toFloat() / totalFilesCount,
-                                path = trackPath
-                            )
-                        )
-
-                        runCatching {
-                            db.storeMediaInfo(applicationContext, trackPath, trackMediaId)
-                        }.onSuccess {
-                            newTrackMediaIds.add(trackMediaId)
-                        }.onFailure { Timber.e(it) }
-                    }
-
-                    if (onlyAdded.not()) {
-                        val diff = db.trackDao().getAllLocalMediaIds() - newTrackMediaIds.toSet()
-                        db.deleteTracks(diff)
-                    }
-                }
-
-            Timber.d("qgeck track in db count: ${runBlocking { db.trackDao().count() }}")
-            delay(200)
-
-            return Result.success(Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build())
+        try {
+            setForeground(getForegroundInfo())
+        } catch (t: Throwable) {
+            return Result.failure(
+                Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build()
+            )
         }
 
-        return Result.failure(Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build())
+        seed = System.currentTimeMillis()
+        Timber.d("qgeck media retrieve worker started")
+        val db = DB.getInstance(applicationContext)
+        val onlyAdded = inputData.getBoolean(KEY_ONLY_ADDED, false)
+        val selection =
+            if (onlyAdded) {
+                val latest =
+                    (db.trackDao().getLatestModifiedEpochTime() ?: 0) / 1000
+                "$SELECTION AND ${MediaStore.Audio.Media.DATE_MODIFIED} > $latest"
+            } else SELECTION
+        applicationContext.contentResolver
+            .query(
+                MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL),
+                projection,
+                selection,
+                null,
+                ORDER
+            )?.use { cursor ->
+                val newTrackMediaIds = mutableListOf<Long>()
+                while (cursor.moveToNext()) {
+                    if (isStopped) {
+                        return Result.success(
+                            Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build()
+                        )
+                    }
+
+                    currentIndex = cursor.position + 1
+                    totalFilesCount = cursor.count
+                    val trackPath = cursor.getString(
+                        cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+                    )
+                    val trackMediaId = cursor.getLong(
+                        cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+                    )
+                    setProgress(
+                        createProgressData(
+                            title = applicationContext.getString(R.string.progress_title_retrieve_media),
+                            progressFraction = currentIndex.toFloat() / totalFilesCount,
+                            path = trackPath
+                        )
+                    )
+
+                    runCatching {
+                        db.storeMediaInfo(applicationContext, trackPath, trackMediaId)
+                    }.onSuccess {
+                        newTrackMediaIds.add(trackMediaId)
+                    }.onFailure { Timber.e(it) }
+                }
+
+                if (onlyAdded.not()) {
+                    val diff = db.trackDao().getAllLocalMediaIds() - newTrackMediaIds.toSet()
+                    db.deleteTracks(diff)
+                }
+            }
+
+        Timber.d("qgeck track in db count: ${runBlocking { db.trackDao().count() }}")
+        delay(200)
+
+        return Result.success(Data.Builder().putBoolean(KEY_PROGRESS_FINISHED, true).build())
     }
 
     override suspend fun getForegroundInfo(): ForegroundInfo =
-        if (Build.VERSION.SDK_INT < 29) {
-            ForegroundInfo(
-                NOTIFICATION_ID_RETRIEVE,
-                getNotification(
-                    currentTrackPath,
-                    seed,
-                    notificationBitmap
-                )
-            )
-        } else {
-            ForegroundInfo(
-                NOTIFICATION_ID_RETRIEVE,
-                getNotification(
-                    currentTrackPath,
-                    seed,
-                    notificationBitmap
-                ),
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
-            )
-        }
+        ForegroundInfo(
+            NOTIFICATION_ID_RETRIEVE,
+            getNotification(
+                currentTrackPath,
+                seed,
+                notificationBitmap
+            ),
+            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+        )
 
     private fun getNotification(
         trackPath: String?,
