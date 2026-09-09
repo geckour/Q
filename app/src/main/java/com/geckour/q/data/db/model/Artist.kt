@@ -3,12 +3,13 @@ package com.geckour.q.data.db.model
 import android.os.Parcelable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.geckour.q.domain.model.MediaItem
 import kotlinx.android.parcel.Parcelize
 import kotlinx.serialization.Serializable
 
-@Entity
+@Entity(indices = [Index("title")])
 @Parcelize
 @Serializable
 data class Artist(

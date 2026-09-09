@@ -51,7 +51,7 @@ import kotlinx.serialization.json.Json
         SavedQueue::class,
         SavedQueueTrack::class,
     ],
-    version = 13,
+    version = 16,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -86,10 +86,49 @@ abstract class DB : RoomDatabase() {
             }
         }
 
+        private val migrationFrom13To14 = object : Migration(13, 14) {
+
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "create index if not exists index_Track_dropboxPath on Track (dropboxPath)"
+                )
+            }
+        }
+
+        private val migrationFrom14To15 = object : Migration(14, 15) {
+
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "create index if not exists index_Track_mediaId on Track (mediaId)"
+                )
+            }
+        }
+
+        private val migrationFrom15To16 = object : Migration(15, 16) {
+
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "create index if not exists index_Album_title_artistId " +
+                            "on Album (title, artistId)"
+                )
+                db.execSQL(
+                    "create index if not exists index_Album_artistId on Album (artistId)"
+                )
+                db.execSQL(
+                    "create index if not exists index_Artist_title on Artist (title)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): DB =
             instance ?: synchronized(this) {
                 Room.databaseBuilder(context, DB::class.java, DB_NAME)
-                    .addMigrations(migrationFrom11To12(context))
+                    .addMigrations(
+                        migrationFrom11To12(context),
+                        migrationFrom13To14,
+                        migrationFrom14To15,
+                        migrationFrom15To16
+                    )
                     .build()
                     .apply { instance = this }
             }

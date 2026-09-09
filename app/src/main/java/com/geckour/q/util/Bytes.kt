@@ -21,6 +21,8 @@ fun ByteArray.storeArtwork(context: Context): String? = catchAsNull {
     val dir = File(context.dataDir, dirName)
     if (dir.exists().not()) dir.mkdir()
     val imgFile = File(dir, "$hex$ext")
+    if (imgFile.exists()) return@catchAsNull imgFile.path
+
     FileOutputStream(imgFile).use {
         it.write(this)
         it.flush()

@@ -42,6 +42,7 @@ fun Library(
     navController: NavHostController,
     scrollToTop: Long,
     snackbarMessage: String?,
+    snackbarPaths: ImmutableList<String>,
     snackbarProgress: Float?,
     endItemMargin: Dp = 0.dp,
     isSearchActive: MutableState<Boolean>,
@@ -328,6 +329,7 @@ fun Library(
         }
         QSnackbar(
             message = snackbarMessage,
+            paths = snackbarPaths,
             progress = snackbarProgress,
             onCancelProgress = onCancelProgress
         )

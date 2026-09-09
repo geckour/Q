@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.geckour.q.domain.model.EqualizerParams
+import com.geckour.q.domain.model.PendingMediaRetrieve
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.last
@@ -30,6 +31,7 @@ private val selectedEqualizerPresetIdKey = longPreferencesKey("key_selected_equa
 private val selectedQAudioDeviceInfoKey = stringPreferencesKey("key_selected_q_audio_device_info")
 private val alreadyRunHiraganizedKey = booleanPreferencesKey("key_already_run_hiraganized")
 private val showLyricKey = booleanPreferencesKey("key_show_lyric")
+private val pendingMediaRetrieveKey = stringPreferencesKey("key_pending_media_retrieve")
 
 fun Context.getIsInNightMode(): Flow<Boolean> = dataStore.data.map {
     it[isNightModeKey] ?: false
@@ -69,6 +71,18 @@ fun Context.getEqualizerEnabled(): Flow<Boolean> = dataStore.data.map {
 
 suspend fun Context.setEqualizerEnabled(enabled: Boolean) {
     dataStore.edit { it[equalizerEnabledKey] = enabled }
+}
+
+fun Context.getPendingMediaRetrieve(): Flow<PendingMediaRetrieve?> =
+    dataStore.data.map { preferences ->
+        preferences[pendingMediaRetrieveKey]?.let { catchAsNull { Json.decodeFromString(it) } }
+    }
+
+suspend fun Context.setPendingMediaRetrieve(pendingMediaRetrieve: PendingMediaRetrieve?) {
+    dataStore.edit { preferences ->
+        preferences[pendingMediaRetrieveKey] =
+            pendingMediaRetrieve?.let { Json.encodeToString(it) }.orEmpty()
+    }
 }
 
 fun Context.getEqualizerParams(): Flow<EqualizerParams?> = dataStore.data.map { preferences ->

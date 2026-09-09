@@ -25,7 +25,7 @@
     <string name="notification_channel_description_sleep_timer">Notification for sleep timer</string>
     <string name="notification_title_retriever">Retrieving media</string>
     <string name="notification_text_retriever">Remaining %d files\nSyncing library…</string>
-    <string name="notification_text_retriever_with_path">Remaining %1$d files (processed %2$s)\n%3$s left\nSyncing library…\n%4$s</string>
+    <string name="notification_text_retriever_with_path">Remaining %1$d files (processed %2$s/%3$s) skipped %4$d files\n%5$s left\nSyncing library…\n%6$s</string>
     <string name="notification_title_media_add">Adding media</string>
     <string name="notification_text_media_add">Adding %s…</string>
     <string name="notification_title_sleep_timer">Sleep timer</string>
@@ -36,10 +36,10 @@
     <!-- Indicator -->
     <string name="syncing">Syncing library…</string>
     <string name="starting">Starting sync…</string>
-    <string name="progress_title_retrieve_media">@string/syncing</string>
-    <string name="progress_title_download_dropbox">@string/syncing</string>
+    <string name="progress_title_retrieve_media">@string/starting</string>
+    <string name="progress_title_download_dropbox">Downloading…</string>
     <string name="loading">Loading items…</string>
-    <string name="remaining">Remaining: %1$d (processed %2$s)</string>
+    <string name="remaining">Remaining: %1$d (processed %2$s/%3$s), skipped: %4$d</string>
     <string name="remaining_duration">%s left</string>
     <string name="button_apply">Apply</string>
     <string name="button_cancel">Cancel</string>

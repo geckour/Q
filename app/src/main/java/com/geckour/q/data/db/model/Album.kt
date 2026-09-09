@@ -4,13 +4,19 @@ import android.os.Parcelable
 import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
 import com.geckour.q.domain.model.MediaItem
 import kotlinx.android.parcel.Parcelize
 import kotlinx.serialization.Serializable
 
-@Entity
+@Entity(
+    indices = [
+        Index("title", "artistId"),
+        Index("artistId"),
+    ]
+)
 @Parcelize
 @Serializable
 data class Album(

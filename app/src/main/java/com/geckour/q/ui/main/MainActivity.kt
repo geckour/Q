@@ -75,6 +75,9 @@ import com.geckour.q.util.getActiveQAudioDeviceInfo
 import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getExtension
 import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
+import com.geckour.q.service.DropboxMediaSyncJobService
+import com.geckour.q.util.SyncProgressState
+import com.geckour.q.util.getPendingMediaRetrieve
 import com.geckour.q.util.getIsInNightMode
 import com.geckour.q.util.getReadableStringWithUnit
 import com.geckour.q.util.getShowLyric
@@ -82,18 +85,18 @@ import com.geckour.q.util.getTimeString
 import com.geckour.q.util.isFavoriteToggled
 import com.geckour.q.util.parseLrc
 import com.geckour.q.util.setIsNightMode
+import com.geckour.q.util.setPendingMediaRetrieve
 import com.geckour.q.util.setShowLyric
 import com.geckour.q.util.toLrcString
-import com.geckour.q.worker.DROPBOX_DOWNLOAD_WORKER_NAME
-import com.geckour.q.worker.DropboxDownloadWorker
-import com.geckour.q.worker.DropboxMediaRetrieveWorker
 import com.geckour.q.worker.KEY_PROGRESS_FINISHED
 import com.geckour.q.worker.KEY_PROGRESS_PROCESSED_FILES_SIZE
 import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_FRACTION
-import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_PATH
+import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_PATHS
 import com.geckour.q.worker.KEY_PROGRESS_REMAINING_DURATION
 import com.geckour.q.worker.KEY_PROGRESS_REMAINING_FILES
+import com.geckour.q.worker.KEY_PROGRESS_SKIPPED_FILES
 import com.geckour.q.worker.KEY_PROGRESS_TITLE
+import com.geckour.q.worker.KEY_PROGRESS_TOTAL_FILES_SIZE
 import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import kotlinx.collections.immutable.ImmutableList
@@ -102,6 +105,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -315,6 +319,9 @@ class MainActivity : ComponentActivity() {
                 .collectAsState(initial = emptyList())
             var progressMessage by remember { mutableStateOf<String?>(null) }
             var progressFraction by remember { mutableStateOf<Float?>(null) }
+            var progressPaths by remember {
+                mutableStateOf<ImmutableList<String>>(persistentListOf())
+            }
             var finishedWorkIdSet by remember { mutableStateOf(emptySet<UUID>()) }
             val hasAlreadyShownDropboxSyncAlert by context.getHasAlreadyShownDropboxSyncAlert()
                 .collectAsState(initial = false)
@@ -407,11 +414,52 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
+            val syncProgress by SyncProgressState.progress.collectAsState()
+
+            LaunchedEffect(syncProgress) {
+                val progress = syncProgress
+                if (progress == null) {
+                    if (workInfoList.none { it.state == WorkInfo.State.RUNNING }) {
+                        progressMessage = null
+                        progressPaths = persistentListOf()
+                        progressFraction = null
+                        onCancelProgress = null
+                    }
+                    return@LaunchedEffect
+                }
+
+                val remainingText = getString(
+                    R.string.remaining,
+                    progress.remainingFiles,
+                    "${progress.processedFilesSize.toFloat().getReadableStringWithUnit()}B",
+                    "${progress.totalFilesSize.toFloat().getReadableStringWithUnit()}B",
+                    progress.skippedFiles,
+                )
+                val remainingDurationText =
+                    if (progress.remainingDuration < 0) ""
+                    else getString(
+                        R.string.remaining_duration,
+                        progress.remainingDuration.getTimeString(),
+                    )
+
+                progressMessage = listOf(progress.title, remainingText, remainingDurationText)
+                    .filter { it.isNotEmpty() }
+                    .joinToString("\n")
+                progressPaths = progress.paths.toImmutableList()
+                progressFraction = progress.progressFraction
+                onCancelProgress = {
+                    DropboxMediaSyncJobService.cancel(context)
+                    lifecycleScope.launch { setPendingMediaRetrieve(null) }
+                }
+            }
+
             LaunchedEffect(
                 workInfoList.map { it.progress },
                 workInfoList.map { it.state }
             ) {
                 launch(Dispatchers.IO) {
+                    if (SyncProgressState.progress.value != null) return@launch
+
                     if (workInfoList.none { it.state == WorkInfo.State.RUNNING }) {
                         workInfoList.firstOrNull {
                             it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED
@@ -422,9 +470,11 @@ class MainActivity : ComponentActivity() {
                                 it.tags.forEach {
                                     workManager.cancelAllWorkByTag(it)
                                 }
+                                lifecycleScope.launch { setPendingMediaRetrieve(null) }
                             }
                         } ?: run {
                             progressMessage = null
+                            progressPaths = persistentListOf()
                             progressFraction = null
                             onCancelProgress = null
                         }
@@ -438,13 +488,24 @@ class MainActivity : ComponentActivity() {
 
                             val title = progress.getString(KEY_PROGRESS_TITLE).orEmpty()
 
-                            val path = progress.getString(KEY_PROGRESS_PROGRESS_PATH).orEmpty()
+                            val paths = progress.getStringArray(KEY_PROGRESS_PROGRESS_PATHS)
+                                ?.toList()
+                                .orEmpty()
+                                .toImmutableList()
                             val remainingFilesCount = progress.getInt(
                                 KEY_PROGRESS_REMAINING_FILES,
                                 -1
                             )
+                            val totalFilesSize = progress.getLong(
+                                KEY_PROGRESS_TOTAL_FILES_SIZE,
+                                1
+                            )
                             val processedFilesSize = progress.getLong(
                                 KEY_PROGRESS_PROCESSED_FILES_SIZE,
+                                0
+                            )
+                            val skippedFilesCount = progress.getInt(
+                                KEY_PROGRESS_SKIPPED_FILES,
                                 0
                             )
                             val remainingText =
@@ -452,7 +513,9 @@ class MainActivity : ComponentActivity() {
                                 else getString(
                                     R.string.remaining,
                                     remainingFilesCount,
-                                    "${processedFilesSize.toFloat().getReadableStringWithUnit()}B"
+                                    "${processedFilesSize.toFloat().getReadableStringWithUnit()}B",
+                                    "${totalFilesSize.toFloat().getReadableStringWithUnit()}B",
+                                    skippedFilesCount,
                                 )
                             val remainingDuration = progress.getLong(
                                 KEY_PROGRESS_REMAINING_DURATION,
@@ -468,8 +531,7 @@ class MainActivity : ComponentActivity() {
                             listOf(
                                 title,
                                 remainingText,
-                                remainingDurationText,
-                                path
+                                remainingDurationText
                             )
                                 .filter { it.isNotEmpty() }
                                 .joinToString("\n")
@@ -477,12 +539,14 @@ class MainActivity : ComponentActivity() {
                                     if (message.isEmpty()) return@let
 
                                     progressMessage = message
+                                    progressPaths = paths
                                     progressFraction = fraction
                                     onCancelProgress = {
                                         val workManager = WorkManager.getInstance(context)
                                         workInfo.tags.forEach {
                                             workManager.cancelAllWorkByTag(it)
                                         }
+                                        lifecycleScope.launch { setPendingMediaRetrieve(null) }
                                     }
                                 }
                         }
@@ -495,7 +559,10 @@ class MainActivity : ComponentActivity() {
                             ))
                         ) {
                             finishedWorkIdSet += workInfo.id
-                            progressMessage = null
+                            if (workInfoList.all { it.state.isFinished }) {
+                                progressMessage = null
+                                progressPaths = persistentListOf()
+                            }
                         }
                     }
                 }
@@ -535,6 +602,7 @@ class MainActivity : ComponentActivity() {
                                 downloadTargets = downloadTargets,
                                 invalidateDownloadedTargets = invalidateDownloadedTargets,
                                 snackbarMessage = progressMessage ?: snackbarMessage,
+                                snackbarPaths = progressPaths,
                                 snackbarProgress = progressFraction,
                                 forceScrollToCurrent = forceScrollToCurrent,
                                 showDropboxDialog = showDropboxDialog,
@@ -593,7 +661,7 @@ class MainActivity : ComponentActivity() {
                                 onDownload = { downloadTargets = it.toImmutableList() },
                                 onCancelDownload = { downloadTargets = persistentListOf() },
                                 onStartDownloader = {
-                                    enqueueDropboxDownloadWorker(downloadTargets)
+                                    viewModel.downloadDropboxMedia(downloadTargets)
                                     downloadTargets = persistentListOf()
                                 },
                                 onInvalidateDownloaded = {
@@ -705,6 +773,7 @@ class MainActivity : ComponentActivity() {
                                 searchQuery = searchQuery,
                                 isFavoriteOnly = isFavoriteOnly,
                                 snackbarMessage = progressMessage ?: snackbarMessage,
+                                snackbarPaths = progressPaths,
                                 snackbarProgress = progressFraction,
                                 forceScrollToCurrent = forceScrollToCurrent,
                                 showDropboxDialog = showDropboxDialog,
@@ -759,7 +828,7 @@ class MainActivity : ComponentActivity() {
                                 onDownload = { downloadTargets = it.toImmutableList() },
                                 onCancelDownload = { downloadTargets = persistentListOf() },
                                 onStartDownloader = {
-                                    enqueueDropboxDownloadWorker(downloadTargets)
+                                    viewModel.downloadDropboxMedia(downloadTargets)
                                     downloadTargets = persistentListOf()
                                 },
                                 onInvalidateDownloaded = {
@@ -864,6 +933,7 @@ class MainActivity : ComponentActivity() {
         super.onStart()
 
         viewModel.initializeMediaController(this)
+        retrievePendingDropboxMedia()
     }
 
     override fun onResume() {
@@ -927,10 +997,24 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun retrievePendingDropboxMedia() {
+        lifecycleScope.launch {
+            val pending = getPendingMediaRetrieve().firstOrNull() ?: return@launch
+            if (DropboxMediaSyncJobService.isScheduled(this@MainActivity)) return@launch
+
+            setPendingMediaRetrieve(null)
+            DropboxMediaSyncJobService.schedule(
+                this@MainActivity,
+                pending.rootPath,
+                pending.needDownloaded,
+                pending.generation
+            )
+        }
+    }
+
     private fun retrieveDropboxMedia(rootPath: String, needDownloaded: Boolean) {
-        WorkManager.getInstance(this)
-            .cancelAllWorkByTag(DropboxMediaRetrieveWorker.TAG)
-        enqueueDropboxRetrieveWorker(rootPath, needDownloaded)
+        lifecycleScope.launch { setPendingMediaRetrieve(null) }
+        DropboxMediaSyncJobService.schedule(this, rootPath, needDownloaded)
     }
 
     private fun enqueueLocalRetrieveWorker(onlyAdded: Boolean) {
@@ -944,40 +1028,6 @@ class MainActivity : ComponentActivity() {
                         .build()
                 )
                 .addTag(LocalMediaRetrieveWorker.TAG)
-                .build()
-        ).enqueue()
-    }
-
-    private fun enqueueDropboxRetrieveWorker(rootPath: String, needDownloaded: Boolean) {
-        viewModel.workManager.beginUniqueWork(
-            MEDIA_RETRIEVE_WORKER_NAME,
-            ExistingWorkPolicy.KEEP,
-            OneTimeWorkRequestBuilder<DropboxMediaRetrieveWorker>()
-                .setInputData(
-                    Data.Builder()
-                        .putString(DropboxMediaRetrieveWorker.KEY_ROOT_PATH, rootPath)
-                        .putBoolean(DropboxMediaRetrieveWorker.KEY_NEED_DOWNLOADED, needDownloaded)
-                        .build()
-                )
-                .addTag(DropboxMediaRetrieveWorker.TAG)
-                .build()
-        ).enqueue()
-    }
-
-    private fun enqueueDropboxDownloadWorker(targetPaths: ImmutableList<String>) {
-        viewModel.workManager.beginUniqueWork(
-            DROPBOX_DOWNLOAD_WORKER_NAME,
-            ExistingWorkPolicy.KEEP,
-            OneTimeWorkRequestBuilder<DropboxDownloadWorker>()
-                .setInputData(
-                    Data.Builder()
-                        .putStringArray(
-                            DropboxDownloadWorker.KEY_TARGET_PATHS,
-                            targetPaths.toTypedArray()
-                        )
-                        .build()
-                )
-                .addTag(DropboxDownloadWorker.TAG)
                 .build()
         ).enqueue()
     }

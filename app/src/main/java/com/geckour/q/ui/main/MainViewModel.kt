@@ -16,8 +16,15 @@ import androidx.media3.common.Tracks
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
+import androidx.work.Data
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
+import com.dropbox.core.NetworkIOException
+import com.dropbox.core.RateLimitException
+import com.dropbox.core.ServerException
 import com.dropbox.core.android.Auth
+import com.dropbox.core.v2.DbxClientV2
 import com.dropbox.core.v2.files.FileMetadata
 import com.dropbox.core.v2.files.FolderMetadata
 import com.dropbox.core.v2.files.Metadata
@@ -27,19 +34,21 @@ import com.geckour.q.data.BillingApiClient
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.service.DropboxMediaSyncJobService
 import com.geckour.q.service.PlayerService
 import com.geckour.q.util.DownloadState
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType
+import com.geckour.q.util.DROPBOX_EXPIRES_IN
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.setDropboxCredential
 import com.geckour.q.util.toUiTrack
-import com.geckour.q.worker.DROPBOX_DOWNLOAD_WORKER_NAME
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -51,6 +60,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import kotlin.time.Duration.Companion.milliseconds
 import androidx.core.net.toUri
 
@@ -59,15 +69,16 @@ class MainViewModel(private val app: App) : ViewModel() {
     companion object {
 
         const val DROPBOX_PATH_ROOT = "/"
+
+        private const val MAX_RETRY_COUNT = 5
+
+        private const val MAX_RATE_LIMIT_RETRY_COUNT = 2
     }
 
     private val db = DB.getInstance(app)
     internal val workManager = WorkManager.getInstance(app)
     internal val workInfoListFlow =
         workManager.getWorkInfosForUniqueWorkFlow(MEDIA_RETRIEVE_WORKER_NAME)
-            .combine(workManager.getWorkInfosForUniqueWorkFlow(DROPBOX_DOWNLOAD_WORKER_NAME)) { mediaRetrieveWorkInfo, downloadWorkInfo ->
-                mediaRetrieveWorkInfo + downloadWorkInfo
-            }
 
     private var mediaController: MediaController? = null
 
@@ -415,6 +426,11 @@ class MainViewModel(private val app: App) : ViewModel() {
             db.trackDao().deleteIncludingRootIfEmpty(db, uiTrack.id)
         }
     }
+
+    internal fun downloadDropboxMedia(targetPaths: List<String>): Job =
+        viewModelScope.launch {
+            DropboxMediaSyncJobService.schedule(app, targetPaths)
+        }
 
     internal fun purgeDownloaded(targetSourcePaths: List<String>): Job = viewModelScope.launch {
         if (targetSourcePaths.contains(currentSourcePathsFlow.value.getOrNull(currentIndexFlow.value))) {

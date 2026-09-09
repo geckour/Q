@@ -1,17 +1,11 @@
 package com.geckour.q.worker
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.PointF
-import android.graphics.PorterDuff
 import androidx.work.Data
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.catchAsNull
@@ -22,38 +16,38 @@ import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import java.io.File
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
-import kotlin.random.Random
-
-internal const val NOTIFICATION_ID_RETRIEVE = 300
 
 internal const val MEDIA_RETRIEVE_WORKER_NAME = "MediaRetrieveWorker"
 
 internal const val KEY_PROGRESS_TITLE = "key_progress_title"
 internal const val KEY_PROGRESS_PROGRESS_FRACTION = "key_progress_progress_fraction"
 internal const val KEY_PROGRESS_REMAINING_FILES = "key_progress_remaining_files"
+internal const val KEY_PROGRESS_SKIPPED_FILES = "key_progress_skipped_files"
+internal const val KEY_PROGRESS_TOTAL_FILES_SIZE = "key_progress_total_files_size"
 internal const val KEY_PROGRESS_PROCESSED_FILES_SIZE = "key_progress_processed_files_size"
 internal const val KEY_PROGRESS_REMAINING_DURATION = "key_progress_processed_remaining_duration"
-internal const val KEY_PROGRESS_PROGRESS_PATH = "key_progress_progress_path"
+internal const val KEY_PROGRESS_PROGRESS_PATHS = "key_progress_progress_paths"
 internal const val KEY_PROGRESS_FINISHED = "key_progress_finished"
 
 internal fun createProgressData(
     title: String,
     progressFraction: Float = -1f,
     remainingFiles: Int = -1,
+    skippedFiles: Int = 0,
+    totalFilesSize: Long = 1,
     processedFileSize: Long = 0,
     remainingDuration: Long = -1,
-    path: String? = null,
+    paths: List<String> = emptyList(),
 ): Data =
     Data.Builder()
         .putString(KEY_PROGRESS_TITLE, title)
         .putFloat(KEY_PROGRESS_PROGRESS_FRACTION, progressFraction)
         .putInt(KEY_PROGRESS_REMAINING_FILES, remainingFiles)
+        .putInt(KEY_PROGRESS_SKIPPED_FILES, skippedFiles)
+        .putLong(KEY_PROGRESS_TOTAL_FILES_SIZE, totalFilesSize)
         .putLong(KEY_PROGRESS_PROCESSED_FILES_SIZE, processedFileSize)
         .putLong(KEY_PROGRESS_REMAINING_DURATION, remainingDuration)
-        .putString(KEY_PROGRESS_PROGRESS_PATH, path)
+        .putStringArray(KEY_PROGRESS_PROGRESS_PATHS, paths.toTypedArray())
         .build()
 
 internal suspend fun File.storeMediaInfo(
@@ -67,11 +61,14 @@ internal suspend fun File.storeMediaInfo(
 ): Long = withContext(Dispatchers.IO) {
     val db = DB.getInstance(context)
 
+    val existingTrack = trackId?.let { db.trackDao().get(it)?.track }
+
     val audioFile = AudioFileIO.read(this@storeMediaInfo)
     val tag = audioFile.tag ?: throw IllegalArgumentException("No media metadata found.")
     val header = audioFile.audioHeader
 
     val duration = header.trackLength.toLong() * 1000
+    val durationToAdd = duration - (existingTrack?.duration ?: 0)
     val codec = header.encodingType
     val bitrate = audioFile.file.length() * 8 / (header.trackLength * 1000L)
     val sampleRate = header.sampleRateAsNumber
@@ -134,7 +131,7 @@ internal suspend fun File.storeMediaInfo(
         totalDuration = 0,
         artworkUriString = artworkUriString ?: existingArtist?.artworkUriString
     )
-    val artistId = db.artistDao().upsert(db, artist, duration)
+    val artistId = db.artistDao().upsert(db, artist, durationToAdd)
     val albumArtistId =
         if (albumArtistTitle != null && albumArtistTitleSort != null) {
             val albumArtist = Artist(
@@ -145,7 +142,7 @@ internal suspend fun File.storeMediaInfo(
                 totalDuration = 0,
                 artworkUriString = artworkUriString ?: existingAlbumArtist?.artworkUriString
             )
-            db.artistDao().upsert(db, albumArtist, duration)
+            db.artistDao().upsert(db, albumArtist, durationToAdd)
         } else null
 
     val album = Album(
@@ -158,11 +155,11 @@ internal suspend fun File.storeMediaInfo(
         playbackCount = 0,
         totalDuration = 0
     )
-    val albumId = db.albumDao().upsert(db, album, duration)
+    val albumId = db.albumDao().upsert(db, album, durationToAdd)
 
     val track = Track(
         id = trackId ?: 0,
-        mediaId = trackMediaId ?: -1,
+        mediaId = trackMediaId ?: existingTrack?.mediaId ?: -1,
         codec = codec,
         bitrate = bitrate,
         sampleRate = sampleRate,
@@ -185,50 +182,10 @@ internal suspend fun File.storeMediaInfo(
         releaseDate = releaseDate,
         genre = genre,
         artworkUriString = artworkUriString,
-        playbackCount = 0
+        playbackCount = existingTrack?.playbackCount ?: 0,
+        ignored = existingTrack?.ignored ?: Bool.FALSE,
+        isFavorite = existingTrack?.isFavorite ?: false,
     )
 
     return@withContext db.trackDao().insert(track)
-}
-
-internal fun Bitmap.drawProgressIcon(
-    progressFraction: Float,
-    seed: Long
-): Bitmap {
-    val maxTileNumber = 24
-    val tileNumber = (maxTileNumber * progressFraction).toInt()
-    val canvas = Canvas(this)
-    val paint = Paint().apply {
-        isAntiAlias = true
-    }
-    val offset = PointF(canvas.width * 0.5f, canvas.height * 0.5f)
-    val innerR = canvas.width * 0.35f
-    val outerR = canvas.width * 0.45f
-    val random = Random(seed)
-    canvas.drawColor(0, PorterDuff.Mode.CLEAR)
-    repeat(tileNumber + 1) {
-        val start = 3
-        val angleLeft = ((start + it) * PI / 12).toFloat()
-        val angleRight = ((start + it + 1) * PI / 12).toFloat()
-        val path = Path().apply {
-            fillType = Path.FillType.EVEN_ODD
-            moveTo(offset.x + outerR * cos(angleLeft), offset.y + outerR * sin(angleLeft))
-            lineTo(offset.x + outerR * cos(angleRight), offset.y + outerR * sin(angleRight))
-            lineTo(offset.x + innerR * cos(angleRight), offset.y + innerR * sin(angleRight))
-            lineTo(offset.x + innerR * cos(angleLeft), offset.y + innerR * sin(angleLeft))
-            close()
-        }
-        val alphaC =
-            if (it == tileNumber) maxTileNumber * progressFraction % 1f
-            else 1f
-        paint.color = Color.argb(
-            (150 * alphaC).toInt(),
-            random.nextInt(255),
-            random.nextInt(255),
-            random.nextInt(255)
-        )
-        canvas.drawPath(path, paint)
-    }
-
-    return this
 }

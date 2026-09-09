@@ -17,13 +17,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.geckour.q.R
 import com.geckour.q.ui.compose.QTheme
+import kotlinx.collections.immutable.ImmutableList
 
 @Composable
-fun QSnackbar(message: String?, progress: Float?, onCancelProgress: (() -> Unit)?) {
+fun QSnackbar(
+    message: String?,
+    paths: ImmutableList<String>,
+    progress: Float?,
+    onCancelProgress: (() -> Unit)?
+) {
     AnimatedVisibility(
         visible = message != null
     ) {
@@ -45,14 +52,26 @@ fun QSnackbar(message: String?, progress: Float?, onCancelProgress: (() -> Unit)
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = message.orEmpty(),
-                            fontSize = 16.sp,
-                            color = QTheme.colors.colorTextPrimary,
+                        Column(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxWidth()
-                        )
+                        ) {
+                            Text(
+                                text = message.orEmpty(),
+                                fontSize = 16.sp,
+                                color = QTheme.colors.colorTextPrimary,
+                            )
+                            paths.forEach { path ->
+                                Text(
+                                    text = path,
+                                    fontSize = 16.sp,
+                                    color = QTheme.colors.colorTextPrimary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.MiddleEllipsis,
+                                )
+                            }
+                        }
                         onCancelProgress?.let {
                             TextButton(onClick = it) {
                                 Text(

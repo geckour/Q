@@ -3,10 +3,11 @@ package com.geckour.q.data.db.model
 import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
 
-@Entity
+@Entity(indices = [Index("dropboxPath"), Index("mediaId")])
 data class Track(
     @PrimaryKey(autoGenerate = true) val id: Long,
     val mediaId: Long,
