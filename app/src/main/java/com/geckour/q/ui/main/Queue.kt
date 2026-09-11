@@ -154,7 +154,9 @@ fun Queue(
             }
         }
         LaunchedEffect(isDragged) {
-            isLyricScrolledByUser.value = true
+            if (showLyric) {
+                isLyricScrolledByUser.value = true
+            }
         }
             Column(
                 modifier = Modifier
