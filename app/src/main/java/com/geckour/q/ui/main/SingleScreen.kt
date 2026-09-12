@@ -111,6 +111,7 @@ fun SingleScreen(
     resetShuffleQueue: () -> Unit,
     moveToCurrentIndex: () -> Unit,
     clearQueue: () -> Unit,
+    onSaveQueue: (title: String) -> Unit,
     onToggleShowLyrics: () -> Unit,
     onNewQueue: (
         queue: List<UiTrack>,
@@ -148,7 +149,9 @@ fun SingleScreen(
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onCancelEnablePauseOnCurrentTrackEnd: () -> Unit,
     onPositiveEnablePauseOnCurrentTrackEnd: () -> Unit,
+    onSelectQueue: (queue: List<String>, actionType: InsertActionType) -> Unit,
     showEnablePauseOnCurrentTrackEndDialog: Boolean,
+    showSaveQueueDialog: MutableState<Boolean>,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val scaffoldState = rememberBottomSheetScaffoldState()
@@ -232,6 +235,7 @@ fun SingleScreen(
                     isLoading = isLoading,
                     routeInfo = routeInfo,
                     showLyric = showLyric,
+                    showSaveQueueDialog = showSaveQueueDialog,
                     forceScrollToCurrent = forceScrollToCurrent,
                     onTogglePlayPause = onTogglePlayPause,
                     onPrev = onPrev,
@@ -331,6 +335,7 @@ fun SingleScreen(
                             else -> Unit
                         }
                     },
+                    onSelectQueue = onSelectQueue,
                 )
                 Dialogs(
                     selectedTrack = selectedTrack,
@@ -371,7 +376,9 @@ fun SingleScreen(
                     onStartInvalidateDownloaded = onStartInvalidateDownloaded,
                     onCancelEnablePauseOnCurrentTrackEnd = onCancelEnablePauseOnCurrentTrackEnd,
                     onPositiveEnablePauseOnCurrentTrackEnd = onPositiveEnablePauseOnCurrentTrackEnd,
+                    onSaveQueue = onSaveQueue,
                     showEnablePauseOnCurrentTrackEndDialog = showEnablePauseOnCurrentTrackEndDialog,
+                    showSaveQueueDialog = showSaveQueueDialog,
                 )
             }
         }

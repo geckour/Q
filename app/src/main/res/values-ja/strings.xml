@@ -59,6 +59,7 @@
     <string name="nav_track">曲</string>
     <string name="nav_genre">ジャンル</string>
     <string name="nav_history">履歴</string>
+    <string name="nav_saved_queue">保存したキュー</string>
     <string name="nav_dropbox">Dropbox</string>
     <string name="nav_setting">設定</string>
     <string name="nav_equalizer">イコライザ</string>
@@ -159,11 +160,15 @@
 
     <string name="dialog_message_enable_pause_on_current_track_end">現在再生中の曲の終わりでの自動一時停止を有効にしますか？</string>
 
+    <string name="dialog_message_save_queue">保存するキューのタイトルを決めてください</string>
+    <string name="dialog_title_save_queue">キュー %d</string>
+
     <string name="content_description_folder">Folder</string>
     <string name="content_description_file">File</string>
 
     <!-- Snackbar -->
     <string name="snackbar_message_dropbox_sync_failure">Dropbox との同期に失敗しました: %s</string>
+    <string name="snackbar_message_save_queue_complete">キューを保存しました</string>
 
     <!-- Payment -->
     <string name="payment_desc">投げ銭を受け付けています</string>
@@ -226,6 +231,9 @@
     <string name="equalizer_clear_default_for_the_device">%s\nのデフォルトを解除する</string>
     <string name="equalizer_preset_label_edit">編集</string>
     <string name="equalizer_preset_label_confirm">決定</string>
+
+    <!-- Saved Queue -->
+    <string name="saved_queue_item_metadata">%1$d曲・計%2$s</string>
 
     <!-- Metadata Editor -->
     <string name="metadata_edit_dialog_title">曲情報を編集</string>

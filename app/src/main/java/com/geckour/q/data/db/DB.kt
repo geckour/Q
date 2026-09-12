@@ -51,7 +51,7 @@ import kotlinx.serialization.json.Json
         SavedQueue::class,
         SavedQueueTrack::class,
     ],
-    version = 16,
+    version = 17,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -64,6 +64,7 @@ import kotlinx.serialization.json.Json
         AutoMigration(from = 9, to = 10),
         AutoMigration(from = 10, to = 11),
         AutoMigration(from = 12, to = 13),
+        AutoMigration(from = 16, to = 17),
     ]
 )
 @TypeConverters(BoolConverter::class, LyricLineConverter::class)

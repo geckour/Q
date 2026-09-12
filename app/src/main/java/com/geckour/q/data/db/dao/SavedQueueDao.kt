@@ -11,6 +11,7 @@ import com.geckour.q.data.db.model.SavedQueue
 import com.geckour.q.data.db.model.SavedQueueSummary
 import com.geckour.q.data.db.model.SavedQueueTrack
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
 @Dao
 interface SavedQueueDao {
@@ -28,6 +29,8 @@ interface SavedQueueDao {
         "select ifnull((select seq from sqlite_sequence where name = 'SavedQueue'), 0) + 1"
     )
     suspend fun getNextId(): Long
+
+    fun getNextIdAsFlow(): Flow<Long> = countAsFlow().map { getNextId() }
 
     @Query(
         "select savedQueue.*, " +
@@ -97,7 +100,7 @@ interface SavedQueueDao {
     suspend fun save(
         trackIds: List<Long>,
         savedQueueId: Long? = null,
-        title: String? = null,
+        title: String,
         now: Long = System.currentTimeMillis(),
     ): Long? {
         if (trackIds.isEmpty()) return null
@@ -106,7 +109,7 @@ interface SavedQueueDao {
         val id = insertSavedQueue(
             SavedQueue(
                 id = existing?.id ?: 0,
-                title = title ?: existing?.title,
+                title = title,
                 createdAt = existing?.createdAt ?: now,
                 updatedAt = now,
             )

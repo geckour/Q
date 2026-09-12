@@ -53,6 +53,7 @@ import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.encodeUrlSafe
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.launch
+import kotlin.String
 
 @Composable
 fun TwinScreen(
@@ -111,6 +112,7 @@ fun TwinScreen(
     resetShuffleQueue: () -> Unit,
     moveToCurrentIndex: () -> Unit,
     clearQueue: () -> Unit,
+    onSaveQueue: (title: String) -> Unit,
     onToggleShowLyrics: () -> Unit,
     onNewQueue: (
         queue: List<UiTrack>,
@@ -148,7 +150,9 @@ fun TwinScreen(
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onCancelEnablePauseOnCurrentTrackEnd: () -> Unit,
     onPositiveEnablePauseOnCurrentTrackEnd: () -> Unit,
+    onSelectQueue: (queue: List<String>, actionType: InsertActionType) -> Unit,
     showEnablePauseOnCurrentTrackEndDialog: Boolean,
+    showSaveQueueDialog: MutableState<Boolean>,
 ) {
     val endItemMargin = with(LocalDensity.current) {
         WindowInsets.navigationBars.getBottom(this).toDp()
@@ -217,7 +221,10 @@ fun TwinScreen(
             onToggleFavorite = onToggleFavorite,
             onCancelEnablePauseOnCurrentTrackEnd = onCancelEnablePauseOnCurrentTrackEnd,
             onPositiveEnablePauseOnCurrentTrackEnd = onPositiveEnablePauseOnCurrentTrackEnd,
+            onSaveQueue = onSaveQueue,
+            onSelectQueue = onSelectQueue,
             showEnablePauseOnCurrentTrackEndDialog = showEnablePauseOnCurrentTrackEndDialog,
+            showSaveQueueDialog = showSaveQueueDialog,
         )
         TwinEndPage(
             modifier = Modifier.weight(1f),
@@ -231,6 +238,7 @@ fun TwinScreen(
             isLoading = isLoading,
             routeInfo = routeInfo,
             showLyric = showLyric,
+            showSaveQueueDialog = showSaveQueueDialog,
             forceScrollToCurrent = forceScrollToCurrent,
             onTogglePlayPause = onTogglePlayPause,
             onPrev = onPrev,
@@ -327,7 +335,10 @@ fun RowScope.TwinStartPage(
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onCancelEnablePauseOnCurrentTrackEnd: () -> Unit,
     onPositiveEnablePauseOnCurrentTrackEnd: () -> Unit,
+    onSaveQueue: (title: String) -> Unit,
+    onSelectQueue: (queue: List<String>, actionType: InsertActionType) -> Unit,
     showEnablePauseOnCurrentTrackEndDialog: Boolean,
+    showSaveQueueDialog: MutableState<Boolean>,
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     ModalNavigationDrawer(
@@ -446,6 +457,7 @@ fun RowScope.TwinStartPage(
                             else -> Unit
                         }
                     },
+                    onSelectQueue = onSelectQueue,
                 )
                 Dialogs(
                     selectedTrack = selectedTrack,
@@ -486,7 +498,9 @@ fun RowScope.TwinStartPage(
                     onStartInvalidateDownloaded = onStartInvalidateDownloaded,
                     onCancelEnablePauseOnCurrentTrackEnd = onCancelEnablePauseOnCurrentTrackEnd,
                     onPositiveEnablePauseOnCurrentTrackEnd = onPositiveEnablePauseOnCurrentTrackEnd,
+                    onSaveQueue = onSaveQueue,
                     showEnablePauseOnCurrentTrackEndDialog = showEnablePauseOnCurrentTrackEndDialog,
+                    showSaveQueueDialog = showSaveQueueDialog,
                 )
             }
         }
@@ -507,6 +521,7 @@ fun RowScope.TwinEndPage(
     isLoading: Pair<Boolean, (() -> Unit)?>,
     routeInfo: QAudioDeviceInfo?,
     showLyric: Boolean,
+    showSaveQueueDialog: MutableState<Boolean>,
     onTogglePlayPause: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
@@ -559,6 +574,7 @@ fun RowScope.TwinEndPage(
                 isLoading = isLoading,
                 routeInfo = routeInfo,
                 showLyric = showLyric,
+                showSaveQueueDialog = showSaveQueueDialog,
                 forceScrollToCurrent = forceScrollToCurrent,
                 onTogglePlayPause = onTogglePlayPause,
                 onPrev = onPrev,

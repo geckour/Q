@@ -25,6 +25,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -1702,6 +1703,72 @@ fun EnablePauseOnCurrentTrackEndDialog(
 }
 
 @Composable
+fun SaveQueueDialog(
+    onCancel: () -> Unit,
+    onPositive: (title: String) -> Unit,
+) {
+    var title by remember { mutableStateOf<String?>(null) }
+    val currentContext = LocalContext.current
+    val savedQueueNextId by remember(currentContext) {
+        DB.getInstance(currentContext).savedQueueDao().getNextIdAsFlow()
+    }.collectAsState(1L)
+    val defaultTitle =
+        stringResource(R.string.dialog_title_save_queue, savedQueueNextId)
+    Dialog(onDismissRequest = onCancel) {
+        Card(
+            colors = CardDefaults.cardColors()
+                .copy(containerColor = QTheme.colors.colorBackground)
+        ) {
+            Column(
+                modifier = Modifier.padding(
+                    horizontal = 24.dp,
+                    vertical = 16.dp,
+                )
+            ) {
+                Text(
+                    text = stringResource(id = R.string.dialog_message_save_queue),
+                    fontSize = 18.sp,
+                    color = QTheme.colors.colorTextPrimary,
+                )
+                TextField(
+                    title.orEmpty(),
+                    onValueChange = { title = it },
+                    placeholder = {
+                        Text(
+                            defaultTitle,
+                            fontSize = 16.sp,
+                            color = QTheme.colors.colorTextSecondary,
+                        )
+                    },
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .padding(top = 8.dp)
+                ) {
+                    TextButton(onClick = onCancel) {
+                        Text(
+                            text = stringResource(R.string.dialog_ng),
+                            fontSize = 16.sp,
+                            color = QTheme.colors.colorTextPrimary,
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(onClick = { onPositive(title ?: defaultTitle) }) {
+                        Text(
+                            text = stringResource(R.string.dialog_ok),
+                            fontSize = 16.sp,
+                            color = QTheme.colors.colorAccent,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun BoxScope.Dialogs(
     selectedTrack: UiTrack?,
     selectedAlbum: Album?,
@@ -1749,7 +1816,9 @@ fun BoxScope.Dialogs(
     onStartInvalidateDownloaded: () -> Unit,
     onCancelEnablePauseOnCurrentTrackEnd: () -> Unit,
     onPositiveEnablePauseOnCurrentTrackEnd: () -> Unit,
+    onSaveQueue: (title: String) -> Unit,
     showEnablePauseOnCurrentTrackEndDialog: Boolean,
+    showSaveQueueDialog: MutableState<Boolean>,
 ) {
     val innerIsFavoriteOnly = remember { mutableStateOf(isFavoriteOnly.value) }
     LaunchedEffect(isFavoriteOnly.value) {
@@ -1842,6 +1911,15 @@ fun BoxScope.Dialogs(
         EnablePauseOnCurrentTrackEndDialog(
             onCancel = onCancelEnablePauseOnCurrentTrackEnd,
             onPositive = onPositiveEnablePauseOnCurrentTrackEnd,
+        )
+    }
+    if (showSaveQueueDialog.value) {
+        SaveQueueDialog(
+            onCancel = { showSaveQueueDialog.value = false },
+            onPositive = {
+                showSaveQueueDialog.value = false
+                onSaveQueue(it)
+            }
         )
     }
 }

@@ -31,6 +31,7 @@ import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.decodeUrlSafe
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
@@ -64,6 +65,7 @@ fun Library(
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onSearchItemClicked: (item: SearchItem) -> Unit,
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
+    onSelectQueue: (queue: List<String>, actionType: InsertActionType) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -265,6 +267,25 @@ fun Library(
                     onScrollPositionUpdated = scrollPosition::update,
                     onSearchItemClicked = onSearchItemClicked,
                     onSearchItemLongClicked = onSearchItemLongClicked,
+                )
+            }
+            composable("saved_queue") { backStackEntry ->
+                BackHandler(enabled = onBackHandle != null) {
+                    onBackHandle?.invoke()
+                }
+                val topBarTitle = stringResource(id = R.string.nav_saved_queue)
+                LaunchedEffect(navController.currentDestination) {
+                    onSelectNav(Nav.SAVED_QUEUE)
+                    onChangeTopBarTitle(topBarTitle)
+                    onSetOptionMediaItem(null)
+                }
+                val scrollPosition = rememberScrollPosition(backStackEntry)
+                SavedQueues(
+                    endItemMargin = endItemMargin,
+                    onSelectQueue = onSelectQueue,
+                    initialScrollPosition = scrollPosition.initialPosition,
+                    scrollToTop = scrollToTop,
+                    onScrollPositionUpdated = scrollPosition::update,
                 )
             }
             composable("history") { backStackEntry ->

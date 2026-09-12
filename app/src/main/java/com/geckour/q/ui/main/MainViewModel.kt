@@ -3,10 +3,10 @@ package com.geckour.q.ui.main
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
-import android.net.Uri
 import android.os.Bundle
 import androidx.concurrent.futures.await
 import androidx.core.net.toFile
+import androidx.core.net.toUri
 import androidx.core.os.bundleOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -16,15 +16,8 @@ import androidx.media3.common.Tracks
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
-import androidx.work.Data
-import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
-import com.dropbox.core.NetworkIOException
-import com.dropbox.core.RateLimitException
-import com.dropbox.core.ServerException
 import com.dropbox.core.android.Auth
-import com.dropbox.core.v2.DbxClientV2
 import com.dropbox.core.v2.files.FileMetadata
 import com.dropbox.core.v2.files.FolderMetadata
 import com.dropbox.core.v2.files.Metadata
@@ -40,7 +33,6 @@ import com.geckour.q.util.DownloadState
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType
-import com.geckour.q.util.DROPBOX_EXPIRES_IN
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.setDropboxCredential
 import com.geckour.q.util.toUiTrack
@@ -48,7 +40,6 @@ import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -60,9 +51,7 @@ import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import timber.log.Timber
 import kotlin.time.Duration.Companion.milliseconds
-import androidx.core.net.toUri
 
 class MainViewModel(private val app: App) : ViewModel() {
 
@@ -225,7 +214,7 @@ class MainViewModel(private val app: App) : ViewModel() {
     }
 
     internal fun onNewQueue(
-        uiTracks: List<UiTrack>,
+        sourcePaths: List<String>,
         actionType: InsertActionType,
         classType: OrientedClassType,
     ) {
@@ -247,7 +236,8 @@ class MainViewModel(private val app: App) : ViewModel() {
             ), bundleOf(
                 PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_ACTION_TYPE to actionType,
                 PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_CLASS_TYPE to classType,
-                PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_QUEUE to uiTracks.map { it.sourcePath })
+                PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_QUEUE to sourcePaths,
+            )
         )
     }
 
@@ -370,6 +360,13 @@ class MainViewModel(private val app: App) : ViewModel() {
                 PlayerService.ACTION_COMMAND_CLEAR_QUEUE, Bundle.EMPTY
             ), bundleOf(PlayerService.ACTION_EXTRA_CLEAR_QUEUE_NEED_TO_KEEP_CURRENT to true)
         )
+    }
+
+    internal fun saveQueue(title: String, queue: List<UiTrack>, onComplete: () -> Unit) {
+        viewModelScope.launch {
+            db.savedQueueDao().save(title = title, trackIds = queue.map { it.id })
+            onComplete()
+        }
     }
 
     internal fun onClickRepeatButton() {

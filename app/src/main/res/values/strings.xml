@@ -64,6 +64,7 @@
     <string name="nav_track">Tracks</string>
     <string name="nav_genre">Genres</string>
     <string name="nav_history">History</string>
+    <string name="nav_saved_queue">Saved Queues</string>
     <string name="nav_dropbox">Dropbox</string>
     <string name="nav_setting">Settings</string>
     <string name="nav_equalizer">Equalizer</string>
@@ -164,11 +165,15 @@
 
     <string name="dialog_message_enable_pause_on_current_track_end">Enable auto pause on end of current track playback?</string>
 
+    <string name="dialog_message_save_queue">Decide the title of the saving queue</string>
+    <string name="dialog_title_save_queue">Queue %d</string>
+
     <string name="content_description_folder">Folder</string>
     <string name="content_description_file">File</string>
 
     <!-- Snackbar -->
     <string name="snackbar_message_dropbox_sync_failure">Failed to sync with Dropbox: %s</string>
+    <string name="snackbar_message_save_queue_complete">Completed saving queue</string>
 
     <!-- Track -->
     <string name="track_item_artist_and_album" translatable="false">%1$s - %2$s</string>
@@ -241,6 +246,9 @@
     <string name="equalizer_clear_default_for_the_device">Clear default for\n%s</string>
     <string name="equalizer_preset_label_edit">Edit</string>
     <string name="equalizer_preset_label_confirm">Confirm</string>
+
+    <!-- Saved Queue -->
+    <string name="saved_queue_item_metadata">%1$d tracks・total %2$s</string>
 
     <!-- Metadata Editor -->
     <string name="metadata_edit_dialog_title">Edit metadata</string>
