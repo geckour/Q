@@ -8,7 +8,7 @@ import androidx.room.PrimaryKey
 @Entity(indices = [Index("updatedAt")])
 data class SavedQueue(
     @PrimaryKey(autoGenerate = true) val id: Long,
-    val title: String?,
+    val title: String,
     val createdAt: Long,
     val updatedAt: Long,
 )

@@ -16,6 +16,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Equalizer
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Highlight
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Queue
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
@@ -32,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
@@ -121,6 +132,35 @@ fun DrawerItem(
 }
 
 @Composable
+fun DrawerItem(
+    imageVector: ImageVector,
+    title: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .background(color = if (isSelected) QTheme.colors.colorBackgroundSelected else QTheme.colors.colorBackground)
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Icon(
+            imageVector = imageVector,
+            contentDescription = null,
+            tint = if (isSelected) QTheme.colors.colorAccent else QTheme.colors.colorTextPrimary,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = title,
+            fontSize = 16.sp,
+            color = if (isSelected) QTheme.colors.colorAccent else QTheme.colors.colorTextPrimary
+        )
+    }
+}
+
+@Composable
 fun DrawerSectionHeader(title: String) {
     Text(
         text = title,
@@ -165,7 +205,7 @@ fun Drawer(
         }
         item {
             DrawerItem(
-                iconResId = R.drawable.ic_artist,
+                imageVector = Icons.Default.Face,
                 title = stringResource(id = R.string.nav_artist),
                 isSelected = selectedNav == Nav.ARTIST,
                 onClick = {
@@ -177,7 +217,7 @@ fun Drawer(
         }
         item {
             DrawerItem(
-                iconResId = R.drawable.ic_album,
+                imageVector = Icons.Default.Album,
                 title = stringResource(id = R.string.nav_album),
                 isSelected = selectedNav == Nav.ALBUM,
                 onClick = {
@@ -189,7 +229,7 @@ fun Drawer(
         }
         item {
             DrawerItem(
-                iconResId = R.drawable.ic_track,
+                imageVector = Icons.Default.MusicNote,
                 title = stringResource(id = R.string.nav_track),
                 isSelected = selectedNav == Nav.TRACK,
                 onClick = {
@@ -201,7 +241,7 @@ fun Drawer(
         }
         item {
             DrawerItem(
-                iconResId = R.drawable.ic_genre,
+                imageVector = Icons.Default.Category,
                 title = stringResource(id = R.string.nav_genre),
                 isSelected = selectedNav == Nav.GENRE,
                 onClick = {
@@ -219,7 +259,19 @@ fun Drawer(
         }
         item {
             DrawerItem(
-                iconResId = R.drawable.ic_history,
+                imageVector = Icons.Default.Queue,
+                title = stringResource(id = R.string.nav_saved_queue),
+                isSelected = selectedNav == Nav.SAVED_QUEUE,
+                onClick = {
+                    navController.navigate("saved_queue")
+                    onSelectNav(Nav.SAVED_QUEUE)
+                    coroutineScope.launch { drawerState.close() }
+                }
+            )
+        }
+        item {
+            DrawerItem(
+                imageVector = Icons.Default.History,
                 title = stringResource(id = R.string.nav_history),
                 isSelected = selectedNav == Nav.HISTORY,
                 onClick = {
@@ -242,7 +294,7 @@ fun Drawer(
         }
         item {
             DrawerItem(
-                iconResId = R.drawable.ic_sync,
+                imageVector = Icons.Default.Sync,
                 title = stringResource(id = R.string.nav_sync),
                 isSelected = selectedNav == Nav.SYNC,
                 onClick = {
@@ -253,7 +305,7 @@ fun Drawer(
         }
         item {
             DrawerItem(
-                iconResId = R.drawable.ic_motive,
+                imageVector = Icons.Default.Highlight,
                 title = stringResource(id = R.string.nav_pay),
                 isSelected = selectedNav == Nav.PAY,
                 onClick = {
@@ -266,7 +318,7 @@ fun Drawer(
         if (equalizerParams != null) {
             item {
                 DrawerItem(
-                    iconResId = R.drawable.ic_spectrum,
+                    imageVector = Icons.Default.Equalizer,
                     title = stringResource(id = R.string.nav_equalizer),
                     isSelected = selectedNav == Nav.EQUALIZER,
                     onClick = {

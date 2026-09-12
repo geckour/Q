@@ -6,6 +6,7 @@ enum class Nav {
     TRACK,
     GENRE,
     HISTORY,
+    SAVED_QUEUE,
     DROPBOX_SYNC,
     SYNC,
     PAY,

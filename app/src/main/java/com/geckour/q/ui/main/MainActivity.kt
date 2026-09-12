@@ -21,7 +21,6 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
@@ -63,22 +62,24 @@ import com.geckour.q.domain.model.LayoutType
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.PlaybackButton
+import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.service.DropboxMediaSyncJobService
 import com.geckour.q.ui.compose.ColorBackground
 import com.geckour.q.ui.compose.ColorBackgroundInverse
 import com.geckour.q.ui.compose.ColorPrimaryDark
 import com.geckour.q.ui.compose.ColorPrimaryDarkInverse
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.ui.widget.player.PlayerSheetWidgetProvider
+import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.SyncProgressState
 import com.geckour.q.util.dbxRequestConfig
 import com.geckour.q.util.getActiveQAudioDeviceInfo
 import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getExtension
 import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
-import com.geckour.q.service.DropboxMediaSyncJobService
-import com.geckour.q.util.SyncProgressState
-import com.geckour.q.util.getPendingMediaRetrieve
 import com.geckour.q.util.getIsInNightMode
+import com.geckour.q.util.getPendingMediaRetrieve
 import com.geckour.q.util.getReadableStringWithUnit
 import com.geckour.q.util.getShowLyric
 import com.geckour.q.util.getTimeString
@@ -314,6 +315,8 @@ class MainActivity : ComponentActivity() {
             var selectedArtist by remember { mutableStateOf<Artist?>(null) }
             var selectedAllArtists by remember { mutableStateOf<AllArtists?>(null) }
             var selectedGenre by remember { mutableStateOf<Genre?>(null) }
+            var selectedSavedQueueForOption by remember { mutableStateOf<UiSavedQueue?>(null) }
+            var selectedSavedQueueForModify by remember { mutableStateOf<UiSavedQueue?>(null) }
             var selectedNav by remember { mutableStateOf<Nav?>(null) }
             val workInfoList by viewModel.workInfoListFlow
                 .collectAsState(initial = emptyList())
@@ -371,6 +374,7 @@ class MainActivity : ComponentActivity() {
             val isFavoriteOnly = rememberSaveable { mutableStateOf(false) }
             val activeQAudioDeviceInfo by getActiveQAudioDeviceInfo().collectAsState(initial = null)
             var showEnablePauseOnCurrentTrackEndDialog by remember { mutableStateOf(false) }
+            val showSaveQueueDialog = remember { mutableStateOf(false) }
 
             onLrcFileLoaded = {
                 if (attachLyricTargetTrackId > 0) {
@@ -591,12 +595,15 @@ class MainActivity : ComponentActivity() {
                                 isLoading = isLoading,
                                 routeInfo = activeQAudioDeviceInfo,
                                 showLyric = showLyric,
+                                showSaveQueueDialog = showSaveQueueDialog,
                                 selectedNav = selectedNav,
                                 selectedTrack = selectedTrack,
                                 selectedAlbum = selectedAlbum,
                                 selectedArtist = selectedArtist,
                                 selectedAllArtists = selectedAllArtists,
                                 selectedGenre = selectedGenre,
+                                selectedSavedQueueForOption = selectedSavedQueueForOption,
+                                selectedSavedQueueForModify = selectedSavedQueueForModify,
                                 equalizerParams = equalizerParams,
                                 currentDropboxItemList = currentDropboxItemList,
                                 downloadTargets = downloadTargets,
@@ -623,6 +630,8 @@ class MainActivity : ComponentActivity() {
                                 onSelectArtist = { selectedArtist = it },
                                 onSelectAllArtists = { selectedAllArtists = it },
                                 onSelectGenre = { selectedGenre = it },
+                                onSelectSavedQueueForOption = { selectedSavedQueueForOption = it },
+                                onSelectSavedQueueForModify = { selectedSavedQueueForModify = it },
                                 onTogglePlayPause = {
                                     viewModel.onPlayOrPause(
                                         currentPlaybackInfo.first &&
@@ -633,7 +642,9 @@ class MainActivity : ComponentActivity() {
                                 onNext = viewModel::onNext,
                                 onRewind = viewModel::onRewind,
                                 onFastForward = viewModel::onFF,
-                                onEnablePauseOnCurrentTrackEnd = { showEnablePauseOnCurrentTrackEndDialog = true },
+                                onEnablePauseOnCurrentTrackEnd = {
+                                    showEnablePauseOnCurrentTrackEndDialog = true
+                                },
                                 resetPlaybackButton = { viewModel.onNewPlaybackButton(PlaybackButton.UNDEFINED) },
                                 onNewProgress = viewModel::onNewSeekBarProgress,
                                 rotateRepeatMode = viewModel::onClickRepeatButton,
@@ -646,12 +657,44 @@ class MainActivity : ComponentActivity() {
                                     forceScrollToCurrent = System.currentTimeMillis()
                                 },
                                 clearQueue = viewModel::onClickClearQueueButton,
+                                onSaveQueue = {
+                                    viewModel.saveQueue(
+                                        title = it,
+                                        trackIds = queue.map { it.id },
+                                        onComplete = {
+                                            coroutineScope.launch {
+                                                viewModel.emitSnackbarMessage(
+                                                    getString(R.string.snackbar_message_save_queue_complete)
+                                                )
+                                                delay(2000.milliseconds)
+                                                viewModel.emitSnackbarMessage(null)
+                                            }
+                                        },
+                                    )
+                                },
+                                onModifySavedQueue = { savedQueueId, title, trackIds ->
+                                    viewModel.saveQueue(
+                                        savedQueueId = savedQueueId,
+                                        title = title,
+                                        trackIds = trackIds,
+                                    )
+                                },
+                                onDeleteSavedQueue = { savedQueueId ->
+                                    viewModel.deleteSavedQueue(savedQueueId)
+                                },
                                 onToggleShowLyrics = {
                                     coroutineScope.launch {
                                         context.setShowLyric(showLyric.not())
                                     }
                                 },
-                                onNewQueue = viewModel::onNewQueue,
+                                onNewQueue = { queue, actionType, classType, needSorted ->
+                                    viewModel.onNewQueue(
+                                        sourcePaths = queue,
+                                        actionType = actionType,
+                                        classType = classType,
+                                        needSorted = needSorted,
+                                    )
+                                },
                                 onGenerateQueue = viewModel::onGenerateQueue,
                                 onQueueMove = viewModel::onQueueMove,
                                 onChangeIndexRequested = viewModel::onChangeIndexRequested,
@@ -736,7 +779,9 @@ class MainActivity : ComponentActivity() {
                                     appBarOptionMediaItem = mediaItem
                                 },
                                 onToggleFavorite = onToggleFavorite,
-                                onCancelEnablePauseOnCurrentTrackEnd = { showEnablePauseOnCurrentTrackEndDialog = false },
+                                onCancelEnablePauseOnCurrentTrackEnd = {
+                                    showEnablePauseOnCurrentTrackEndDialog = false
+                                },
                                 onPositiveEnablePauseOnCurrentTrackEnd = {
                                     viewModel.enablePauseOnCurrentTrackEnd()
                                     showEnablePauseOnCurrentTrackEndDialog = false
@@ -759,12 +804,15 @@ class MainActivity : ComponentActivity() {
                                 isLoading = isLoading,
                                 routeInfo = activeQAudioDeviceInfo,
                                 showLyric = showLyric,
+                                showSaveQueueDialog = showSaveQueueDialog,
                                 selectedNav = selectedNav,
                                 selectedTrack = selectedTrack,
                                 selectedAlbum = selectedAlbum,
                                 selectedArtist = selectedArtist,
                                 selectedAllArtists = selectedAllArtists,
                                 selectedGenre = selectedGenre,
+                                selectedSavedQueueForOption = selectedSavedQueueForOption,
+                                selectedSavedQueueForModify = selectedSavedQueueForModify,
                                 equalizerParams = equalizerParams,
                                 currentDropboxItemList = currentDropboxItemList,
                                 downloadTargets = downloadTargets,
@@ -793,6 +841,8 @@ class MainActivity : ComponentActivity() {
                                 onSelectArtist = { selectedArtist = it },
                                 onSelectAllArtists = { selectedAllArtists = it },
                                 onSelectGenre = { selectedGenre = it },
+                                onSelectSavedQueueForOption = { selectedSavedQueueForOption = it },
+                                onSelectSavedQueueForModify = { selectedSavedQueueForModify = it },
                                 onTogglePlayPause = {
                                     viewModel.onPlayOrPause(
                                         currentPlaybackInfo.first &&
@@ -803,7 +853,9 @@ class MainActivity : ComponentActivity() {
                                 onNext = viewModel::onNext,
                                 onRewind = viewModel::onRewind,
                                 onFastForward = viewModel::onFF,
-                                onEnablePauseOnCurrentTrackEnd = { showEnablePauseOnCurrentTrackEndDialog = true },
+                                onEnablePauseOnCurrentTrackEnd = {
+                                    showEnablePauseOnCurrentTrackEndDialog = true
+                                },
                                 resetPlaybackButton = { viewModel.onNewPlaybackButton(PlaybackButton.UNDEFINED) },
                                 onNewProgress = viewModel::onNewSeekBarProgress,
                                 rotateRepeatMode = viewModel::onClickRepeatButton,
@@ -813,12 +865,44 @@ class MainActivity : ComponentActivity() {
                                     forceScrollToCurrent = System.currentTimeMillis()
                                 },
                                 clearQueue = viewModel::onClickClearQueueButton,
+                                onSaveQueue = {
+                                    viewModel.saveQueue(
+                                        title = it,
+                                        trackIds = queue.map { it.id },
+                                        onComplete = {
+                                            coroutineScope.launch {
+                                                viewModel.emitSnackbarMessage(
+                                                    getString(R.string.snackbar_message_save_queue_complete)
+                                                )
+                                                delay(2000.milliseconds)
+                                                viewModel.emitSnackbarMessage(null)
+                                            }
+                                        },
+                                    )
+                                },
+                                onModifySavedQueue = { savedQueueId, title, trackIds ->
+                                    viewModel.saveQueue(
+                                        savedQueueId = savedQueueId,
+                                        title = title,
+                                        trackIds = trackIds,
+                                    )
+                                },
+                                onDeleteSavedQueue= { savedQueueId ->
+                                    viewModel.deleteSavedQueue(savedQueueId)
+                                },
                                 onToggleShowLyrics = {
                                     coroutineScope.launch {
                                         context.setShowLyric(showLyric.not())
                                     }
                                 },
-                                onNewQueue = viewModel::onNewQueue,
+                                onNewQueue = { queue, actionType, classType, needSorted ->
+                                    viewModel.onNewQueue(
+                                        sourcePaths = queue,
+                                        actionType = actionType,
+                                        classType = classType,
+                                        needSorted = needSorted,
+                                    )
+                                },
                                 onGenerateQueue = viewModel::onGenerateQueue,
                                 onQueueMove = viewModel::onQueueMove,
                                 onChangeIndexRequested = viewModel::onChangeIndexRequested,
@@ -903,7 +987,9 @@ class MainActivity : ComponentActivity() {
                                     appBarOptionMediaItem = mediaItem
                                 },
                                 onToggleFavorite = onToggleFavorite,
-                                onCancelEnablePauseOnCurrentTrackEnd = { showEnablePauseOnCurrentTrackEndDialog = false },
+                                onCancelEnablePauseOnCurrentTrackEnd = {
+                                    showEnablePauseOnCurrentTrackEndDialog = false
+                                },
                                 onPositiveEnablePauseOnCurrentTrackEnd = {
                                     viewModel.enablePauseOnCurrentTrackEnd()
                                     showEnablePauseOnCurrentTrackEndDialog = false

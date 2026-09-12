@@ -45,6 +45,7 @@ import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SearchItem
+import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.InsertActionType
@@ -74,6 +75,8 @@ fun TwinScreen(
     selectedArtist: Artist?,
     selectedAllArtists: AllArtists?,
     selectedGenre: Genre?,
+    selectedSavedQueueForOption: UiSavedQueue?,
+    selectedSavedQueueForModify: UiSavedQueue?,
     equalizerParams: EqualizerParams?,
     currentDropboxItemList: Triple<String, ImmutableList<FolderMetadata>, ImmutableList<FileMetadata>>,
     downloadTargets: ImmutableList<String>,
@@ -98,6 +101,8 @@ fun TwinScreen(
     onSelectArtist: (artist: Artist?) -> Unit,
     onSelectAllArtists: (allArtists: AllArtists?) -> Unit,
     onSelectGenre: (genre: Genre?) -> Unit,
+    onSelectSavedQueueForOption: (uiSavedQueue: UiSavedQueue?) -> Unit,
+    onSelectSavedQueueForModify: (uiSavedQueue: UiSavedQueue?) -> Unit,
     onTogglePlayPause: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
@@ -111,16 +116,18 @@ fun TwinScreen(
     resetShuffleQueue: () -> Unit,
     moveToCurrentIndex: () -> Unit,
     clearQueue: () -> Unit,
+    onSaveQueue: (title: String) -> Unit,
     onToggleShowLyrics: () -> Unit,
     onNewQueue: (
-        queue: List<UiTrack>,
+        queue: List<String>,
         actionType: InsertActionType,
-        classType: OrientedClassType
+        classType: OrientedClassType,
+        needSorted: Boolean?,
     ) -> Unit,
     onGenerateQueue: (
         track: UiTrack,
         actionType: InsertActionType,
-        classType: OrientedClassType
+        classType: OrientedClassType,
     ) -> Unit,
     onQueueMove: (from: Int, to: Int) -> Unit,
     onChangeIndexRequested: (index: Int) -> Unit,
@@ -148,7 +155,10 @@ fun TwinScreen(
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onCancelEnablePauseOnCurrentTrackEnd: () -> Unit,
     onPositiveEnablePauseOnCurrentTrackEnd: () -> Unit,
+    onModifySavedQueue: (savedQueueId: Long, newTitle: String, newTrackIds: List<Long>) -> Unit,
+    onDeleteSavedQueue: (savedQueueId: Long) -> Unit,
     showEnablePauseOnCurrentTrackEndDialog: Boolean,
+    showSaveQueueDialog: MutableState<Boolean>,
 ) {
     val endItemMargin = with(LocalDensity.current) {
         WindowInsets.navigationBars.getBottom(this).toDp()
@@ -167,6 +177,9 @@ fun TwinScreen(
             selectedAlbum = selectedAlbum,
             selectedTrack = selectedTrack,
             selectedGenre = selectedGenre,
+            selectedSavedQueueForOption = selectedSavedQueueForOption,
+            selectedSavedQueueForModify = selectedSavedQueueForModify,
+            queue = queue,
             equalizerParams = equalizerParams,
             currentDropboxItemList = currentDropboxItemList,
             downloadTargets = downloadTargets,
@@ -191,6 +204,8 @@ fun TwinScreen(
             onSelectAlbum = onSelectAlbum,
             onSelectTrack = onSelectTrack,
             onSelectGenre = onSelectGenre,
+            onSelectSavedQueueForOption = onSelectSavedQueueForOption,
+            onSelectSavedQueueForModify = onSelectSavedQueueForModify,
             onNewQueue = onNewQueue,
             onGenerateQueue = onGenerateQueue,
             onDownload = onDownload,
@@ -217,7 +232,11 @@ fun TwinScreen(
             onToggleFavorite = onToggleFavorite,
             onCancelEnablePauseOnCurrentTrackEnd = onCancelEnablePauseOnCurrentTrackEnd,
             onPositiveEnablePauseOnCurrentTrackEnd = onPositiveEnablePauseOnCurrentTrackEnd,
+            onSaveQueue = onSaveQueue,
+            onModifySavedQueue = onModifySavedQueue,
+            onDeleteSavedQueue = onDeleteSavedQueue,
             showEnablePauseOnCurrentTrackEndDialog = showEnablePauseOnCurrentTrackEndDialog,
+            showSaveQueueDialog = showSaveQueueDialog,
         )
         TwinEndPage(
             modifier = Modifier.weight(1f),
@@ -231,6 +250,7 @@ fun TwinScreen(
             isLoading = isLoading,
             routeInfo = routeInfo,
             showLyric = showLyric,
+            showSaveQueueDialog = showSaveQueueDialog,
             forceScrollToCurrent = forceScrollToCurrent,
             onTogglePlayPause = onTogglePlayPause,
             onPrev = onPrev,
@@ -262,6 +282,7 @@ fun RowScope.TwinStartPage(
     navController: NavHostController,
     topBarTitle: String,
     appBarOptionMediaItem: MediaItem?,
+    queue: ImmutableList<UiTrack>,
     scrollToTop: Long,
     selectedNav: Nav?,
     selectedAllArtists: AllArtists?,
@@ -269,6 +290,8 @@ fun RowScope.TwinStartPage(
     selectedAlbum: Album?,
     selectedTrack: UiTrack?,
     selectedGenre: Genre?,
+    selectedSavedQueueForOption: UiSavedQueue?,
+    selectedSavedQueueForModify: UiSavedQueue?,
     equalizerParams: EqualizerParams?,
     currentDropboxItemList: Triple<String, ImmutableList<FolderMetadata>, ImmutableList<FileMetadata>>,
     downloadTargets: ImmutableList<String>,
@@ -293,10 +316,13 @@ fun RowScope.TwinStartPage(
     onSelectAlbum: (album: Album?) -> Unit,
     onSelectTrack: (track: UiTrack?) -> Unit,
     onSelectGenre: (genre: Genre?) -> Unit,
+    onSelectSavedQueueForOption: (uiSavedQueue: UiSavedQueue?) -> Unit,
+    onSelectSavedQueueForModify: (uiSavedQueue: UiSavedQueue?) -> Unit,
     onNewQueue: (
-        queue: List<UiTrack>,
+        queue: List<String>,
         actionType: InsertActionType,
-        classType: OrientedClassType
+        classType: OrientedClassType,
+        needSorted: Boolean?,
     ) -> Unit,
     onGenerateQueue: (
         track: UiTrack,
@@ -327,7 +353,11 @@ fun RowScope.TwinStartPage(
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onCancelEnablePauseOnCurrentTrackEnd: () -> Unit,
     onPositiveEnablePauseOnCurrentTrackEnd: () -> Unit,
+    onSaveQueue: (title: String) -> Unit,
+    onModifySavedQueue: (savedQueueId: Long, newTitle: String, newTrackIds: List<Long>) -> Unit,
+    onDeleteSavedQueue: (savedQueueId: Long) -> Unit,
     showEnablePauseOnCurrentTrackEndDialog: Boolean,
+    showSaveQueueDialog: MutableState<Boolean>,
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     ModalNavigationDrawer(
@@ -387,6 +417,7 @@ fun RowScope.TwinStartPage(
                     snackbarProgress = snackbarProgress,
                     isSearchActive = isSearchActive,
                     query = searchQuery,
+                    selectedSavedQueueForModify = selectedSavedQueueForModify,
                     isFavoriteOnly = isFavoriteOnly,
                     routeInfo = routeInfo,
                     onBackHandle = if (drawerState.currentValue == DrawerValue.Open) {
@@ -446,6 +477,9 @@ fun RowScope.TwinStartPage(
                             else -> Unit
                         }
                     },
+                    onSelectSavedQueueForOption = onSelectSavedQueueForOption,
+                    onSelectSavedQueueForModify = onSelectSavedQueueForModify,
+                    onDeleteSavedQueue = onDeleteSavedQueue,
                 )
                 Dialogs(
                     selectedTrack = selectedTrack,
@@ -453,6 +487,9 @@ fun RowScope.TwinStartPage(
                     selectedArtist = selectedArtist,
                     selectedAllArtists = selectedAllArtists,
                     selectedGenre = selectedGenre,
+                    selectedSavedQueueForOption = selectedSavedQueueForOption,
+                    selectedSavedQueueForModify = selectedSavedQueueForModify,
+                    currentQueue = queue,
                     navController = navController,
                     isSearchActive = isSearchActive,
                     currentDropboxItemList = currentDropboxItemList,
@@ -467,6 +504,8 @@ fun RowScope.TwinStartPage(
                     onSelectArtist = onSelectArtist,
                     onSelectAllArtists = onSelectAllArtists,
                     onSelectGenre = onSelectGenre,
+                    onSelectSavedQueueForOption = onSelectSavedQueueForOption,
+                    onSelectSavedQueueForModify = onSelectSavedQueueForModify,
                     onDeleteTrack = onDeleteTrack,
                     onExportLyric = onExportLyric,
                     onAttachLyric = onAttachLyric,
@@ -486,7 +525,11 @@ fun RowScope.TwinStartPage(
                     onStartInvalidateDownloaded = onStartInvalidateDownloaded,
                     onCancelEnablePauseOnCurrentTrackEnd = onCancelEnablePauseOnCurrentTrackEnd,
                     onPositiveEnablePauseOnCurrentTrackEnd = onPositiveEnablePauseOnCurrentTrackEnd,
+                    onSaveQueue = onSaveQueue,
+                    onModifySavedQueue = onModifySavedQueue,
+                    onDeleteSavedQueue = onDeleteSavedQueue,
                     showEnablePauseOnCurrentTrackEndDialog = showEnablePauseOnCurrentTrackEndDialog,
+                    showSaveQueueDialog = showSaveQueueDialog,
                 )
             }
         }
@@ -507,6 +550,7 @@ fun RowScope.TwinEndPage(
     isLoading: Pair<Boolean, (() -> Unit)?>,
     routeInfo: QAudioDeviceInfo?,
     showLyric: Boolean,
+    showSaveQueueDialog: MutableState<Boolean>,
     onTogglePlayPause: () -> Unit,
     onPrev: () -> Unit,
     onNext: () -> Unit,
@@ -559,6 +603,7 @@ fun RowScope.TwinEndPage(
                 isLoading = isLoading,
                 routeInfo = routeInfo,
                 showLyric = showLyric,
+                showSaveQueueDialog = showSaveQueueDialog,
                 forceScrollToCurrent = forceScrollToCurrent,
                 onTogglePlayPause = onTogglePlayPause,
                 onPrev = onPrev,

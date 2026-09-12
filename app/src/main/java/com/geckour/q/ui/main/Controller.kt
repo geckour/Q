@@ -38,6 +38,7 @@ import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -109,6 +110,7 @@ fun Controller(
     isLoading: Boolean,
     routeInfo: QAudioDeviceInfo?,
     showLyric: Boolean,
+    showSaveQueueDialog: MutableState<Boolean>,
     isInLyricEditMode: MutableState<Boolean>,
     isLyricScrolledByUser: Boolean,
     onTogglePlayPause: () -> Unit,
@@ -696,6 +698,23 @@ fun Controller(
                     fontSize = 12.sp,
                     color = QTheme.colors.colorTextPrimary,
                 )
+            }
+            if (currentTrack != null) {
+                Icon(
+                    imageVector = Icons.Default.Save,
+                    contentDescription = null,
+                    tint = QTheme.colors.colorButtonNormal,
+                    modifier = Modifier
+                        .padding(end = 4.dp)
+                        .clickable(
+                            indication = ripple(bounded = false),
+                            interactionSource = remember { MutableInteractionSource() },
+                            onClick = { showSaveQueueDialog.value = true }
+                        )
+                        .padding(4.dp)
+                        .size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
             }
             Icon(
                 imageVector = Icons.Default.RemoveCircleOutline,
