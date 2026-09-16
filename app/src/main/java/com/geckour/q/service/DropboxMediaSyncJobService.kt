@@ -30,7 +30,6 @@ import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Track
-import com.geckour.q.domain.model.PendingMediaRetrieve
 import com.geckour.q.domain.model.SyncProgress
 import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.util.DROPBOX_EXPIRES_IN
@@ -45,7 +44,6 @@ import com.geckour.q.util.isDownloaded
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.saveAudioFileFromUrl
 import com.geckour.q.util.saveTempAudioFileFromUrl
-import com.geckour.q.util.setPendingMediaRetrieve
 import com.geckour.q.worker.storeMediaInfo
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -54,7 +52,9 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.onCompletion
@@ -80,10 +80,7 @@ class DropboxMediaSyncJobService : JobService() {
 
         const val JOB_ID = 300
 
-        private const val KEY_ROOT_PATH = "key_root_path"
-        private const val KEY_TARGET_PATHS_FILE_PATH = "key_target_paths_file_path"
-        private const val KEY_NEED_DOWNLOADED = "key_need_downloaded"
-        private const val KEY_RETRY_GENERATION = "key_retry_generation"
+        private const val KEY_TOKEN = "key_token"
 
         private const val PROGRESS_UPDATE_THRESHOLD_MILLIS = 200
 
@@ -102,42 +99,47 @@ class DropboxMediaSyncJobService : JobService() {
 
         private const val NOTIFICATION_UPDATE_THRESHOLD_MILLIS = 1000
 
-        private const val TARGET_PATHS_DIR_NAME = "download"
+        private const val REQUESTS_DIR_NAME = "dropbox_sync_requests"
 
-        private const val STALE_TARGET_PATHS_MILLIS = 24 * 60 * 60 * 1000L
+        private val requestJson = Json { ignoreUnknownKeys = true }
 
-        private val targetPathsJson = Json { ignoreUnknownKeys = true }
+        private val requestLock = Any()
 
-        fun schedule(
-            context: Context,
-            rootPath: String,
-            needDownloaded: Boolean,
-            retryGeneration: Int = 0,
-        ): Boolean = schedule(
-            context,
-            PersistableBundle().apply {
-                putString(KEY_ROOT_PATH, rootPath)
-                putBoolean(KEY_NEED_DOWNLOADED, needDownloaded)
-                putInt(KEY_RETRY_GENERATION, retryGeneration)
-            }
-        )
+        private var activeSession: DropboxMediaSyncJobService.Session? = null
+
+        fun schedule(context: Context, rootPath: String, needDownloaded: Boolean): Boolean =
+            enqueue(context, SyncRequest(rootPath = rootPath, needDownloaded = needDownloaded))
 
         fun schedule(context: Context, targetPaths: List<String>): Boolean {
             if (targetPaths.isEmpty()) return false
 
-            val targetPathsFile =
-                writeTargetPaths(context, UUID.randomUUID().toString(), targetPaths)
-
-            return schedule(
-                context,
-                PersistableBundle().apply {
-                    putString(KEY_TARGET_PATHS_FILE_PATH, targetPathsFile.absolutePath)
-                    putBoolean(KEY_NEED_DOWNLOADED, true)
-                }
-            )
+            return enqueue(context, SyncRequest(targetPaths = targetPaths, needDownloaded = true))
         }
 
-        private fun schedule(context: Context, extras: PersistableBundle): Boolean {
+        fun resume(context: Context): Boolean = synchronized(requestLock) {
+            if (activeSession != null || isScheduled(context) || requestFiles(context).isEmpty()) {
+                return@synchronized false
+            }
+
+            scheduleJob(context)
+        }
+
+        fun cancel(context: Context) {
+            synchronized(requestLock) {
+                requestFiles(context).forEach { it.delete() }
+                activeSession?.stop()
+                activeSession = null
+                context.getSystemService(JobScheduler::class.java)?.cancel(JOB_ID)
+            }
+        }
+
+        private fun enqueue(context: Context, request: SyncRequest): Boolean =
+            synchronized(requestLock) {
+                writeRequest(context, request)
+                activeSession != null || scheduleJob(context)
+            }
+
+        private fun scheduleJob(context: Context): Boolean {
             val jobInfo = JobInfo.Builder(
                 JOB_ID,
                 ComponentName(context, DropboxMediaSyncJobService::class.java)
@@ -148,7 +150,11 @@ class DropboxMediaSyncJobService : JobService() {
                     ESTIMATED_BYTES_PER_TARGET,
                     JobInfo.NETWORK_BYTES_UNKNOWN.toLong()
                 )
-                .setExtras(extras)
+                .setExtras(
+                    PersistableBundle().apply {
+                        putString(KEY_TOKEN, UUID.randomUUID().toString())
+                    }
+                )
                 .build()
 
             val result = context.getSystemService(JobScheduler::class.java)?.schedule(jobInfo)
@@ -157,30 +163,30 @@ class DropboxMediaSyncJobService : JobService() {
             return result == JobScheduler.RESULT_SUCCESS
         }
 
-        fun cancel(context: Context) {
-            context.getSystemService(JobScheduler::class.java)?.cancel(JOB_ID)
-        }
-
-        fun isScheduled(context: Context): Boolean =
+        private fun isScheduled(context: Context): Boolean =
             context.getSystemService(JobScheduler::class.java)
                 ?.allPendingJobs
                 ?.any { it.id == JOB_ID } == true
 
-        private fun writeTargetPaths(context: Context, name: String, paths: List<String>): File {
-            val dir = File(context.dataDir, TARGET_PATHS_DIR_NAME)
+        private fun requestFiles(context: Context): List<File> =
+            File(context.dataDir, REQUESTS_DIR_NAME).listFiles()?.sortedBy { it.name }.orEmpty()
+
+        private fun writeRequest(context: Context, request: SyncRequest) {
+            val dir = File(context.dataDir, REQUESTS_DIR_NAME)
             if (dir.exists().not()) dir.mkdir()
 
-            val staleThreshold = System.currentTimeMillis() - STALE_TARGET_PATHS_MILLIS
-            dir.listFiles()?.forEach { if (it.lastModified() < staleThreshold) it.delete() }
-
-            return File(dir, "$name.json").apply {
-                writeText(targetPathsJson.encodeToString(paths))
-            }
+            File(dir, "${System.currentTimeMillis()}-${UUID.randomUUID()}.json")
+                .writeText(requestJson.encodeToString(request))
         }
-
-        private fun readTargetPaths(file: File): List<String> =
-            targetPathsJson.decodeFromString(file.readText())
     }
+
+    @Serializable
+    private data class SyncRequest(
+        val rootPath: String? = null,
+        val targetPaths: List<String> = emptyList(),
+        val needDownloaded: Boolean,
+        val generation: Int = 0,
+    )
 
     @Serializable
     private data class RetrieveTarget(
@@ -195,79 +201,37 @@ class DropboxMediaSyncJobService : JobService() {
 
     private val db by lazy { DB.getInstance(this) }
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
-    private var runningJob: Job? = null
-
-    @Volatile
-    private var isStopped = false
-
-    private val targets = mutableListOf<RetrieveTarget>()
-    private val targetsMutex = Mutex()
-    private val progressMutex = Mutex()
     private val dbMutex = Mutex()
-    private val linkFetchSemaphore = Semaphore(LINK_FETCH_CONCURRENCY)
-    private val storeSemaphore = Semaphore(STORE_CONCURRENCY)
-    private val currentPaths = mutableListOf<String>()
-
-    private var isRetrieving = true
-    private var retryGeneration = 0
-    private var seed = 0L
-    private var totalFilesSize = 0L
-    private var processedFilesSize = 0L
-    private var lastProcessedFileSize = 0L
-    private var lastProgressSampledTime = 0L
-    private var lastNotifiedTime = 0L
-    private var speeds = listOf<Float>()
-    private var completedTargetsCount = 0
-    private var storedTargetsCount = 0
-    private var skippedTargetsCount = 0
-    private var expiredTargetsCount = 0
 
     private val notificationBitmap =
         createBitmap(NOTIFICATION_LARGE_ICON_SIZE, NOTIFICATION_LARGE_ICON_SIZE)
 
-    private val remainingFilesCount
-        get() = if (isRetrieving) targets.size else targets.size - completedTargetsCount
-    private val currentPathNames: List<String>
-        get() = currentPaths.toList().map { it.substringAfterLast('/') }
-    private val progressFraction: Float
-        get() =
-            if (isRetrieving || totalFilesSize <= 0) 0f
-            else processedFilesSize.toFloat() / totalFilesSize
-    private val remainingDuration
-        get() = ((totalFilesSize - processedFilesSize) / speeds.average()).toLong()
-
     override fun onStartJob(params: JobParameters): Boolean {
-        seed = System.currentTimeMillis()
-        retryGeneration = params.extras.getInt(KEY_RETRY_GENERATION, 0)
+        val session = Session(params)
+        synchronized(requestLock) { activeSession = session }
 
         setNotification(
             params,
             NOTIFICATION_ID_RETRIEVE,
-            getNotification(notificationBitmap),
-            JOB_END_NOTIFICATION_POLICY_DETACH
+            getNotification(getString(R.string.notification_text_retriever, 0), 0f, session.seed),
+            JOB_END_NOTIFICATION_POLICY_REMOVE
         )
 
-        runningJob = scope.launch {
-            runCatching { sync(params) }
-                .onFailure {
-                    if (it is CancellationException) return@onFailure
-
-                    Timber.e(it)
-                }
-
-            SyncProgressState.update(null)
-            jobFinished(params, false)
-        }
+        session.start()
 
         return true
     }
 
     override fun onStopJob(params: JobParameters): Boolean {
-        isStopped = true
         Timber.d("qgeck sync job stopped: ${params.stopReason}")
 
-        runningJob?.cancel()
-        SyncProgressState.update(null)
+        val token = params.extras.getString(KEY_TOKEN)
+        synchronized(requestLock) {
+            activeSession?.takeIf { it.token == token }?.let {
+                it.stop()
+                activeSession = null
+            }
+        }
 
         return true
     }
@@ -278,450 +242,511 @@ class DropboxMediaSyncJobService : JobService() {
         super.onDestroy()
     }
 
-    private suspend fun sync(params: JobParameters) {
-        val client = obtainDbxClient(applicationContext).firstOrNull() ?: return
-        val rootPath = params.extras.getString(KEY_ROOT_PATH)
-        val targetPathsFile = params.extras.getString(KEY_TARGET_PATHS_FILE_PATH)?.let { File(it) }
-        if (rootPath == null && targetPathsFile == null) return
+    private inner class Session(val params: JobParameters) {
 
-        val needDownloaded = params.extras.getBoolean(KEY_NEED_DOWNLOADED, false)
+        val token: String? = params.extras.getString(KEY_TOKEN)
+        val seed = System.currentTimeMillis()
 
-        if (rootPath != null) {
-            applicationContext.setPendingMediaRetrieve(
-                PendingMediaRetrieve(
-                    rootPath = rootPath,
-                    needDownloaded = needDownloaded,
-                    generation = retryGeneration,
+        @Volatile
+        var isStopped = false
+            private set
+
+        private var job: Job? = null
+        private val failedRequestFiles = mutableSetOf<File>()
+
+        fun start() {
+            job = scope.launch { process() }
+        }
+
+        fun stop() {
+            isStopped = true
+            job?.cancel()
+            SyncProgressState.update(null)
+        }
+
+        private suspend fun process() {
+            try {
+                while (true) {
+                    currentCoroutineContext().ensureActive()
+
+                    val (file, request) = takeRequest() ?: break
+                    val succeeded = runCatching { SyncTask(this, request).execute() }
+                        .onFailure { if (it !is CancellationException) Timber.e(it) }
+                        .isSuccess
+                    if (isStopped) return
+
+                    if (succeeded) file.delete()
+                    else failedRequestFiles += file
+                }
+
+                SyncProgressState.update(null)
+                jobFinished(params, false)
+            } finally {
+                synchronized(requestLock) {
+                    if (activeSession === this) activeSession = null
+                }
+            }
+        }
+
+        private fun takeRequest(): Pair<File, SyncRequest>? = synchronized(requestLock) {
+            requestFiles(this@DropboxMediaSyncJobService)
+                .filterNot { it in failedRequestFiles }
+                .firstNotNullOfOrNull { file ->
+                    runCatching {
+                        file to requestJson.decodeFromString<SyncRequest>(file.readText())
+                    }.onFailure {
+                        Timber.e(it)
+                        file.delete()
+                    }.getOrNull()
+                }
+                ?: run {
+                    if (activeSession === this) activeSession = null
+                    null
+                }
+        }
+    }
+
+    private inner class SyncTask(
+        private val session: Session,
+        private val request: SyncRequest,
+    ) {
+
+        private val params get() = session.params
+        private val isStopped get() = session.isStopped
+
+        private val targets = mutableListOf<RetrieveTarget>()
+        private val targetsMutex = Mutex()
+        private val progressMutex = Mutex()
+        private val linkFetchSemaphore = Semaphore(LINK_FETCH_CONCURRENCY)
+        private val storeSemaphore = Semaphore(STORE_CONCURRENCY)
+        private val currentPaths = mutableListOf<String>()
+
+        private var isRetrieving = true
+        private var totalFilesSize = 0L
+        private var processedFilesSize = 0L
+        private var lastProcessedFileSize = 0L
+        private var lastProgressSampledTime = 0L
+        private var lastNotifiedTime = 0L
+        private var speeds = listOf<Float>()
+        private var completedTargetsCount = 0
+        private var storedTargetsCount = 0
+        private var skippedTargetsCount = 0
+        private var expiredTargetsCount = 0
+
+        private val remainingFilesCount
+            get() = if (isRetrieving) targets.size else targets.size - completedTargetsCount
+        private val currentPathNames: List<String>
+            get() = currentPaths.toList().map { it.substringAfterLast('/') }
+        private val progressFraction: Float
+            get() =
+                if (isRetrieving || totalFilesSize <= 0) 0f
+                else processedFilesSize.toFloat() / totalFilesSize
+        private val remainingDuration
+            get() = ((totalFilesSize - processedFilesSize) / speeds.average()).toLong()
+
+        suspend fun execute() {
+            val client = obtainDbxClient(applicationContext).firstOrNull() ?: return
+
+            updateProgress()
+
+            coroutineScope {
+                if (request.rootPath != null) {
+                    retrieveAudioFilePaths(this, request.rootPath, client)
+                } else {
+                    retrieveTargetPaths(this, client)
+                }
+            }
+            if (isStopped) return
+
+            Timber.d("qgeck retrieved files count: ${targets.size}")
+
+            runCatching {
+                updateEstimatedNetworkBytes(
+                    params,
+                    totalFilesSize,
+                    JobInfo.NETWORK_BYTES_UNKNOWN.toLong()
                 )
-            )
-        }
+            }.onFailure { Timber.e(it) }
 
-        targets.clear()
-        totalFilesSize = 0L
-        skippedTargetsCount = 0
-        updateProgress(params)
+            isRetrieving = false
+            updateProgress()
 
-        coroutineScope {
-            if (rootPath != null) {
-                retrieveAudioFilePaths(this, params, rootPath, client, needDownloaded)
-            } else {
-                retrieveTargetPaths(this, params, requireNotNull(targetPathsFile), client)
-            }
-        }
-        if (isStopped) return
-
-        targetPathsFile?.delete()
-
-        Timber.d("qgeck retrieved files count: ${targets.size}")
-
-        runCatching {
-            updateEstimatedNetworkBytes(
-                params,
-                totalFilesSize,
-                JobInfo.NETWORK_BYTES_UNKNOWN.toLong()
-            )
-        }.onFailure { Timber.e(it) }
-
-        isRetrieving = false
-        completedTargetsCount = 0
-        processedFilesSize = 0L
-        updateProgress(params)
-
-        coroutineScope {
-            targets.forEach { target ->
-                launch(Dispatchers.IO) {
-                    storeSemaphore.withPermit {
-                        if (isStopped) return@withPermit
-
-                        target.storeMediaInfo(params, needDownloaded)
-                    }
-                }
-            }
-        }
-        if (isStopped) return
-
-        if (rootPath != null) {
-            if (expiredTargetsCount > 0) {
-                savePendingRetrieve(rootPath, needDownloaded)
-            } else {
-                applicationContext.setPendingMediaRetrieve(null)
-            }
-        }
-
-        Timber.d("qgeck track in db count: ${db.trackDao().count()}")
-    }
-
-    private suspend fun retrieveTargetPaths(
-        scope: CoroutineScope,
-        params: JobParameters,
-        targetPathsFile: File,
-        client: DbxClientV2,
-    ) {
-        val targetPaths = runCatching { readTargetPaths(targetPathsFile) }
-            .onFailure { Timber.e(it) }
-            .getOrNull()
-            ?: return
-
-        targetPaths.forEach { targetPath ->
-            scope.launch(Dispatchers.IO) {
-                linkFetchSemaphore.withPermit {
-                    if (isStopped) return@withPermit
-
-                    val metadata = runCatching {
-                        client.files().getMetadata(targetPath) as? FileMetadata
-                    }.onFailure { Timber.e(it) }.getOrNull() ?: return@withPermit
-                    val target = metadata.toRetrieveTargetIfNeeded(params, client, true)
-                        ?: return@withPermit
-
-                    targetsMutex.withLock {
-                        targets.add(target)
-                        totalFilesSize += target.size
-                        updateProgress(params)
-                    }
-                }
-            }
-        }
-    }
-
-    private suspend fun retrieveAudioFilePaths(
-        scope: CoroutineScope,
-        params: JobParameters,
-        root: String,
-        client: DbxClientV2,
-        needDownloaded: Boolean,
-        retryCount: Int = 0,
-    ) {
-        if (isStopped) return
-        try {
-            var fileAndFolders = client.files().listFolder(root)
-            val entries = fileAndFolders.entries.toMutableList()
-            while (fileAndFolders.hasMore) {
-                if (isStopped) return
-
-                fileAndFolders = client.files().listFolderContinue(fileAndFolders.cursor)
-                entries += fileAndFolders.entries
-            }
-
-            entries.filterIsInstance<FileMetadata>()
-                .filter { it.name.isAudioFilePath }
-                .forEach { metadata ->
-                    scope.launch(Dispatchers.IO) {
-                        linkFetchSemaphore.withPermit {
+            coroutineScope {
+                targets.forEach { target ->
+                    launch(Dispatchers.IO) {
+                        storeSemaphore.withPermit {
                             if (isStopped) return@withPermit
 
-                            val target =
-                                metadata.toRetrieveTargetIfNeeded(params, client, needDownloaded)
+                            target.storeMediaInfo()
+                        }
+                    }
+                }
+            }
+            if (isStopped) return
+
+            if (expiredTargetsCount > 0) enqueueRetry()
+
+            Timber.d("qgeck track in db count: ${db.trackDao().count()}")
+        }
+
+        private fun retrieveTargetPaths(scope: CoroutineScope, client: DbxClientV2) {
+            request.targetPaths.forEach { targetPath ->
+                scope.launch(Dispatchers.IO) {
+                    linkFetchSemaphore.withPermit {
+                        if (isStopped) return@withPermit
+
+                        val metadata = runCatching {
+                            client.files().getMetadata(targetPath) as? FileMetadata
+                        }.onFailure { Timber.e(it) }.getOrNull() ?: return@withPermit
+                        val target = metadata.toRetrieveTargetIfNeeded(client)
+                            ?: return@withPermit
+
+                        targetsMutex.withLock {
+                            targets.add(target)
+                            totalFilesSize += target.size
+                            updateProgress()
+                        }
+                    }
+                }
+            }
+        }
+
+        private suspend fun retrieveAudioFilePaths(
+            scope: CoroutineScope,
+            root: String,
+            client: DbxClientV2,
+            retryCount: Int = 0,
+        ) {
+            if (isStopped) return
+            try {
+                var fileAndFolders = client.files().listFolder(root)
+                val entries = fileAndFolders.entries.toMutableList()
+                while (fileAndFolders.hasMore) {
+                    if (isStopped) return
+
+                    fileAndFolders = client.files().listFolderContinue(fileAndFolders.cursor)
+                    entries += fileAndFolders.entries
+                }
+
+                entries.filterIsInstance<FileMetadata>()
+                    .filter { it.name.isAudioFilePath }
+                    .forEach { metadata ->
+                        scope.launch(Dispatchers.IO) {
+                            linkFetchSemaphore.withPermit {
+                                if (isStopped) return@withPermit
+
+                                val target = metadata.toRetrieveTargetIfNeeded(client)
                                     ?: return@withPermit
 
-                            targetsMutex.withLock {
-                                targets.add(target)
-                                totalFilesSize += target.size
-                                updateProgress(params)
+                                targetsMutex.withLock {
+                                    targets.add(target)
+                                    totalFilesSize += target.size
+                                    updateProgress()
+                                }
                             }
                         }
                     }
-                }
 
-            entries.filterIsInstance<FolderMetadata>().forEach { metadata ->
-                retrieveAudioFilePaths(
-                    scope,
-                    params,
-                    metadata.pathLower ?: return@forEach,
-                    client,
-                    needDownloaded
+                entries.filterIsInstance<FolderMetadata>().forEach { metadata ->
+                    retrieveAudioFilePaths(scope, metadata.pathLower ?: return@forEach, client)
+                }
+            } catch (e: RateLimitException) {
+                if (retryCount >= MAX_RATE_LIMIT_RETRY_COUNT) throw e
+                delay(e.backoffMillis.milliseconds)
+                retrieveAudioFilePaths(scope, root, client, retryCount + 1)
+            } catch (e: ServerException) {
+                if (retryCount >= MAX_RETRY_COUNT) throw e
+                delay(3000.milliseconds)
+                retrieveAudioFilePaths(scope, root, client, retryCount + 1)
+            } catch (e: NetworkIOException) {
+                if (retryCount >= MAX_RETRY_COUNT) throw e
+                delay(3000.milliseconds)
+                retrieveAudioFilePaths(scope, root, client, retryCount + 1)
+            }
+        }
+
+        private suspend fun FileMetadata.toRetrieveTargetIfNeeded(
+            client: DbxClientV2,
+        ): RetrieveTarget? {
+            val path = pathLower ?: return null
+            val existingTrack = db.trackDao().getByDropboxPath(path)?.track
+            val existingTrackLastModified = existingTrack?.lastModified
+            if (existingTrackLastModified != null &&
+                existingTrackLastModified >= serverModified.time &&
+                (request.needDownloaded.not() || existingTrack.isDownloaded)
+            ) {
+                targetsMutex.withLock {
+                    skippedTargetsCount++
+                    updateProgress()
+                }
+                return null
+            }
+
+            return toRetrieveTarget(client)
+        }
+
+        private suspend fun FileMetadata.toRetrieveTarget(
+            client: DbxClientV2,
+            retryCount: Int = 0,
+        ): RetrieveTarget? {
+            val path = pathLower ?: return null
+
+            return runCatching {
+                RetrieveTarget(
+                    id = id,
+                    pathLower = path,
+                    pathDisplay = pathDisplay ?: path,
+                    size = size,
+                    serverModifiedAt = serverModified.time,
+                    url = client.files().getTemporaryLink(path).link,
+                    urlExpiredAt = System.currentTimeMillis() + DROPBOX_EXPIRES_IN,
                 )
-            }
-        } catch (e: RateLimitException) {
-            if (retryCount >= MAX_RATE_LIMIT_RETRY_COUNT) throw e
-            delay(e.backoffMillis.milliseconds)
-            retrieveAudioFilePaths(scope, params, root, client, needDownloaded, retryCount + 1)
-        } catch (e: ServerException) {
-            if (retryCount >= MAX_RETRY_COUNT) throw e
-            delay(3000.milliseconds)
-            retrieveAudioFilePaths(scope, params, root, client, needDownloaded, retryCount + 1)
-        } catch (e: NetworkIOException) {
-            if (retryCount >= MAX_RETRY_COUNT) throw e
-            delay(3000.milliseconds)
-            retrieveAudioFilePaths(scope, params, root, client, needDownloaded, retryCount + 1)
-        }
-    }
-
-    private suspend fun FileMetadata.toRetrieveTargetIfNeeded(
-        params: JobParameters,
-        client: DbxClientV2,
-        needDownloaded: Boolean,
-    ): RetrieveTarget? {
-        val path = pathLower ?: return null
-        val existingTrack = db.trackDao().getByDropboxPath(path)?.track
-        val existingTrackLastModified = existingTrack?.lastModified
-        if (existingTrackLastModified != null &&
-            existingTrackLastModified >= serverModified.time &&
-            (needDownloaded.not() || existingTrack.isDownloaded)
-        ) {
-            targetsMutex.withLock {
-                skippedTargetsCount++
-                updateProgress(params)
-            }
-            return null
-        }
-
-        return toRetrieveTarget(client)
-    }
-
-    private suspend fun FileMetadata.toRetrieveTarget(
-        client: DbxClientV2,
-        retryCount: Int = 0,
-    ): RetrieveTarget? {
-        val path = pathLower ?: return null
-
-        return runCatching {
-            RetrieveTarget(
-                id = id,
-                pathLower = path,
-                pathDisplay = pathDisplay ?: path,
-                size = size,
-                serverModifiedAt = serverModified.time,
-                url = client.files().getTemporaryLink(path).link,
-                urlExpiredAt = System.currentTimeMillis() + DROPBOX_EXPIRES_IN,
-            )
-        }.getOrElse { t ->
-            when {
-                t is CancellationException -> throw t
-
-                t is RateLimitException && retryCount < MAX_RATE_LIMIT_RETRY_COUNT -> {
-                    delay(t.backoffMillis.milliseconds)
-                    toRetrieveTarget(client, retryCount + 1)
-                }
-
-                (t is ServerException || t is NetworkIOException) &&
-                        retryCount < MAX_RETRY_COUNT -> {
-                    delay(3000.milliseconds)
-                    toRetrieveTarget(client, retryCount + 1)
-                }
-
-                else -> {
-                    Timber.e(t)
-                    null
-                }
-            }
-        }
-    }
-
-    private val String.isAudioFilePath: Boolean
-        get() = MimeTypeMap.getSingleton()
-            .getMimeTypeFromExtension(this.getExtension())
-            ?.contains("audio") == true
-
-    private suspend fun RetrieveTarget.storeMediaInfo(
-        params: JobParameters,
-        needDownloaded: Boolean,
-    ) {
-        val existingTrack = db.trackDao().getByDropboxPath(pathLower)?.track
-        if (existingTrack != null &&
-            existingTrack.lastModified >= serverModifiedAt &&
-            (needDownloaded.not() || existingTrack.isDownloaded)
-        ) {
-            completeTarget(params, size) { skippedTargetsCount++ }
-            return
-        }
-
-        if (urlExpiredAt <= System.currentTimeMillis()) {
-            Timber.d("qgeck link has expired: $pathDisplay")
-            completeTarget(params, size) { expiredTargetsCount++ }
-            return
-        }
-
-        addCurrentPath(params, pathDisplay)
-        try {
-            var retryCount = 0
-            while (true) {
-                val failure = runCatching { download(params, needDownloaded, existingTrack) }
-                    .exceptionOrNull()
-                    ?: return
-
+            }.getOrElse { t ->
                 when {
-                    failure is CancellationException -> throw failure
+                    t is CancellationException -> throw t
 
-                    failure is DownloadFailedException && failure.code in 400..499 -> {
-                        Timber.e(failure)
-                        completeTarget(params, size) { expiredTargetsCount++ }
-                        return
+                    t is RateLimitException && retryCount < MAX_RATE_LIMIT_RETRY_COUNT -> {
+                        delay(t.backoffMillis.milliseconds)
+                        toRetrieveTarget(client, retryCount + 1)
                     }
 
-                    retryCount >= MAX_RETRY_COUNT -> {
-                        Timber.e(failure)
-                        completeTarget(params, size) { }
-                        return
+                    (t is ServerException || t is NetworkIOException) &&
+                            retryCount < MAX_RETRY_COUNT -> {
+                        delay(3000.milliseconds)
+                        toRetrieveTarget(client, retryCount + 1)
                     }
 
                     else -> {
-                        Timber.e(failure)
-                        retryCount++
-                        delay(3000.milliseconds)
+                        Timber.e(t)
+                        null
                     }
                 }
             }
-        } finally {
-            removeCurrentPath(pathDisplay)
         }
-    }
 
-    private suspend fun RetrieveTarget.download(
-        params: JobParameters,
-        needDownloaded: Boolean,
-        existingTrack: Track?,
-    ) {
-        var processedSize = 0L
-        var stored = false
-        var target: File? = null
-        val fileAndProgressFlow =
-            if (needDownloaded) saveAudioFileFromUrl(applicationContext, id, pathLower, url)
-            else saveTempAudioFileFromUrl(applicationContext, id, pathLower, url)
+        private val String.isAudioFilePath: Boolean
+            get() = MimeTypeMap.getSingleton()
+                .getMimeTypeFromExtension(this.getExtension())
+                ?.contains("audio") == true
 
-        try {
-            fileAndProgressFlow
-                .onCompletion { cause ->
-                    if (cause != null) return@onCompletion
+        private suspend fun RetrieveTarget.storeMediaInfo() {
+            val existingTrack = db.trackDao().getByDropboxPath(pathLower)?.track
+            if (existingTrack != null &&
+                existingTrack.lastModified >= serverModifiedAt &&
+                (request.needDownloaded.not() || existingTrack.isDownloaded)
+            ) {
+                completeTarget(size) { skippedTargetsCount++ }
+                return
+            }
 
-                    target?.let { file ->
-                        dbMutex.withLock {
-                            file.storeMediaInfo(
-                                applicationContext,
-                                if (needDownloaded) Uri.fromFile(file).toString() else url,
-                                existingTrack?.id,
-                                null,
-                                pathLower,
-                                urlExpiredAt,
-                                serverModifiedAt
-                            )
+            if (urlExpiredAt <= System.currentTimeMillis()) {
+                Timber.d("qgeck link has expired: $pathDisplay")
+                completeTarget(size) { expiredTargetsCount++ }
+                return
+            }
+
+            addCurrentPath(pathDisplay)
+            try {
+                var retryCount = 0
+                while (true) {
+                    val failure = runCatching { download(existingTrack) }
+                        .exceptionOrNull()
+                        ?: return
+
+                    when {
+                        failure is CancellationException -> throw failure
+
+                        failure is DownloadFailedException && failure.code in 400..499 -> {
+                            Timber.e(failure)
+                            completeTarget(size) { expiredTargetsCount++ }
+                            return
                         }
-                        if (needDownloaded.not()) file.delete()
-                        stored = true
+
+                        retryCount >= MAX_RETRY_COUNT -> {
+                            Timber.e(failure)
+                            completeTarget(size) { }
+                            return
+                        }
+
+                        else -> {
+                            Timber.e(failure)
+                            retryCount++
+                            delay(3000.milliseconds)
+                        }
                     }
                 }
-                .collectLatest { (file, processed) ->
-                    if (processed == null) {
-                        return@collectLatest
-                    }
-                    target = file
-                    advanceProgress(params, processed - processedSize)
-                    processedSize = processed
+            } finally {
+                removeCurrentPath(pathDisplay)
+            }
+        }
+
+        private suspend fun RetrieveTarget.download(existingTrack: Track?) {
+            var processedSize = 0L
+            var stored = false
+            var target: File? = null
+            val fileAndProgressFlow =
+                if (request.needDownloaded) {
+                    saveAudioFileFromUrl(applicationContext, id, pathLower, url)
+                } else {
+                    saveTempAudioFileFromUrl(applicationContext, id, pathLower, url)
                 }
-        } catch (t: Throwable) {
-            advanceProgress(params, -processedSize)
-            throw t
+
+            try {
+                fileAndProgressFlow
+                    .onCompletion { cause ->
+                        if (cause != null) return@onCompletion
+
+                        target?.let { file ->
+                            dbMutex.withLock {
+                                file.storeMediaInfo(
+                                    applicationContext,
+                                    if (request.needDownloaded) Uri.fromFile(file).toString()
+                                    else url,
+                                    existingTrack?.id,
+                                    null,
+                                    pathLower,
+                                    urlExpiredAt,
+                                    serverModifiedAt
+                                )
+                            }
+                            if (request.needDownloaded.not()) file.delete()
+                            stored = true
+                        }
+                    }
+                    .collectLatest { (file, processed) ->
+                        if (processed == null) {
+                            return@collectLatest
+                        }
+                        target = file
+                        advanceProgress(processed - processedSize)
+                        processedSize = processed
+                    }
+            } catch (t: Throwable) {
+                advanceProgress(-processedSize)
+                throw t
+            }
+
+            if (stored.not()) {
+                advanceProgress(-processedSize)
+                throw IllegalStateException("Downloaded nothing: $pathDisplay")
+            }
+
+            completeTarget(size - processedSize) { storedTargetsCount++ }
         }
 
-        if (stored.not()) {
-            advanceProgress(params, -processedSize)
-            throw IllegalStateException("Downloaded nothing: $pathDisplay")
+        private suspend fun completeTarget(deltaSize: Long, count: () -> Unit) {
+            progressMutex.withLock {
+                count()
+                completedTargetsCount++
+                processedFilesSize += deltaSize
+                sampleProgress(force = true)
+            }
         }
 
-        completeTarget(params, size - processedSize) { storedTargetsCount++ }
-    }
-
-    private suspend fun completeTarget(
-        params: JobParameters,
-        deltaSize: Long,
-        count: () -> Unit,
-    ) {
-        progressMutex.withLock {
-            count()
-            completedTargetsCount++
-            processedFilesSize += deltaSize
-            sampleProgress(params, force = true)
-        }
-    }
-
-    private suspend fun advanceProgress(params: JobParameters, deltaSize: Long) {
-        progressMutex.withLock {
-            processedFilesSize += deltaSize
-            sampleProgress(params)
-        }
-    }
-
-    private fun sampleProgress(params: JobParameters, force: Boolean = false) {
-        val now = System.currentTimeMillis()
-        val elapsed = now - lastProgressSampledTime
-        if (elapsed < PROGRESS_UPDATE_THRESHOLD_MILLIS) {
-            if (force) updateProgress(params)
-            return
+        private suspend fun advanceProgress(deltaSize: Long) {
+            progressMutex.withLock {
+                processedFilesSize += deltaSize
+                sampleProgress()
+            }
         }
 
-        if (lastProgressSampledTime > 0) {
-            speeds = (speeds +
-                    ((processedFilesSize - lastProcessedFileSize).toFloat() / elapsed)).takeLast(10)
-        }
-        lastProgressSampledTime = now
-        lastProcessedFileSize = processedFilesSize
-        updateProgress(params)
-    }
+        private fun sampleProgress(force: Boolean = false) {
+            val now = System.currentTimeMillis()
+            val elapsed = now - lastProgressSampledTime
+            if (elapsed < PROGRESS_UPDATE_THRESHOLD_MILLIS) {
+                if (force) updateProgress()
+                return
+            }
 
-    private suspend fun addCurrentPath(params: JobParameters, path: String) {
-        progressMutex.withLock {
-            currentPaths.add(path)
-            updateNotification(params)
+            if (lastProgressSampledTime > 0) {
+                speeds = (speeds +
+                        ((processedFilesSize - lastProcessedFileSize).toFloat() / elapsed))
+                    .takeLast(10)
+            }
+            lastProgressSampledTime = now
+            lastProcessedFileSize = processedFilesSize
+            updateProgress()
         }
-    }
 
-    private suspend fun removeCurrentPath(path: String) {
-        progressMutex.withLock {
-            currentPaths.remove(path)
+        private suspend fun addCurrentPath(path: String) {
+            progressMutex.withLock {
+                currentPaths.add(path)
+                updateNotification()
+            }
         }
-    }
 
-    private suspend fun savePendingRetrieve(rootPath: String, needDownloaded: Boolean) {
-        if (storedTargetsCount < 1 || retryGeneration >= MAX_RETRY_GENERATION) {
-            Timber.d(
-                "qgeck gave up retrieving $expiredTargetsCount expired targets " +
-                        "at generation $retryGeneration"
+        private suspend fun removeCurrentPath(path: String) {
+            progressMutex.withLock {
+                currentPaths.remove(path)
+            }
+        }
+
+        private fun enqueueRetry() {
+            if (storedTargetsCount < 1 || request.generation >= MAX_RETRY_GENERATION) {
+                Timber.d(
+                    "qgeck gave up retrieving $expiredTargetsCount expired targets " +
+                            "at generation ${request.generation}"
+                )
+                return
+            }
+
+            synchronized(requestLock) {
+                writeRequest(
+                    applicationContext,
+                    request.copy(generation = request.generation + 1)
+                )
+            }
+        }
+
+        private fun updateProgress() {
+            if (isStopped) return
+
+            SyncProgressState.update(
+                SyncProgress(
+                    title = getString(R.string.progress_title_retrieve_media),
+                    progressFraction = progressFraction,
+                    remainingFiles = remainingFilesCount,
+                    skippedFiles = skippedTargetsCount,
+                    totalFilesSize = totalFilesSize,
+                    processedFilesSize = processedFilesSize,
+                    remainingDuration = remainingDuration,
+                    paths = currentPathNames,
+                )
             )
-            applicationContext.setPendingMediaRetrieve(null)
-            return
+            updateNotification()
         }
 
-        applicationContext.setPendingMediaRetrieve(
-            PendingMediaRetrieve(
-                rootPath = rootPath,
-                needDownloaded = needDownloaded,
-                generation = retryGeneration + 1,
-            )
-        )
-    }
+        private fun updateNotification() {
+            if (isStopped) return
 
-    private fun updateProgress(params: JobParameters) {
-        if (isStopped) return
+            val now = System.currentTimeMillis()
+            if (now - lastNotifiedTime < NOTIFICATION_UPDATE_THRESHOLD_MILLIS) return
 
-        SyncProgressState.update(
-            SyncProgress(
-                title = getString(R.string.progress_title_retrieve_media),
-                progressFraction = progressFraction,
-                remainingFiles = remainingFilesCount,
-                skippedFiles = skippedTargetsCount,
-                totalFilesSize = totalFilesSize,
-                processedFilesSize = processedFilesSize,
-                remainingDuration = remainingDuration,
-                paths = currentPathNames,
-            )
-        )
-        updateNotification(params)
-    }
+            lastNotifiedTime = now
+            runCatching {
+                setNotification(
+                    params,
+                    NOTIFICATION_ID_RETRIEVE,
+                    getNotification(notificationText, progressFraction, session.seed),
+                    JOB_END_NOTIFICATION_POLICY_REMOVE
+                )
+            }.onFailure { Timber.e(it) }
+        }
 
-    private fun updateNotification(params: JobParameters) {
-        if (isStopped) return
-
-        val now = System.currentTimeMillis()
-        if (now - lastNotifiedTime < NOTIFICATION_UPDATE_THRESHOLD_MILLIS) return
-
-        lastNotifiedTime = now
-        runCatching {
-            setNotification(
-                params,
-                NOTIFICATION_ID_RETRIEVE,
-                getNotification(notificationBitmap),
-                JOB_END_NOTIFICATION_POLICY_DETACH
-            )
-        }.onFailure { Timber.e(it) }
+        private val notificationText: String
+            get() = currentPathNames.takeIf { it.isNotEmpty() }
+                ?.joinToString("\n")
+                ?.let {
+                    getString(
+                        R.string.notification_text_retriever_with_path,
+                        remainingFilesCount,
+                        "${processedFilesSize.toFloat().getReadableStringWithUnit()}B",
+                        "${totalFilesSize.toFloat().getReadableStringWithUnit()}B",
+                        skippedTargetsCount,
+                        remainingDuration.getTimeString(),
+                        it
+                    )
+                } ?: getString(R.string.notification_text_retriever, remainingFilesCount)
     }
 
     private fun Bitmap.drawProgressIcon(progressFraction: Float, seed: Long): Bitmap {
@@ -763,25 +788,11 @@ class DropboxMediaSyncJobService : JobService() {
         return this
     }
 
-    private fun getNotification(bitmap: Bitmap): Notification {
-        val text = currentPathNames.takeIf { it.isNotEmpty() }
-            ?.joinToString("\n")
-            ?.let {
-                getString(
-                    R.string.notification_text_retriever_with_path,
-                    remainingFilesCount,
-                    "${processedFilesSize.toFloat().getReadableStringWithUnit()}B",
-                    "${totalFilesSize.toFloat().getReadableStringWithUnit()}B",
-                    skippedTargetsCount,
-                    remainingDuration.getTimeString(),
-                    it
-                )
-            } ?: getString(R.string.notification_text_retriever, remainingFilesCount)
-
-        return getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER)
+    private fun getNotification(text: String, progressFraction: Float, seed: Long): Notification =
+        getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setSmallIcon(R.drawable.ic_notification_sync)
-            .setLargeIcon(bitmap.drawProgressIcon(progressFraction, seed))
+            .setLargeIcon(notificationBitmap.drawProgressIcon(progressFraction, seed))
             .setOngoing(true)
             .setShowWhen(false)
             .setContentIntent(
@@ -795,5 +806,4 @@ class DropboxMediaSyncJobService : JobService() {
             .setContentTitle(getString(R.string.notification_title_retriever))
             .setContentText(text)
             .build()
-    }
 }

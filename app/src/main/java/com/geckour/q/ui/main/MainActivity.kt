@@ -79,14 +79,12 @@ import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getExtension
 import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.getIsInNightMode
-import com.geckour.q.util.getPendingMediaRetrieve
 import com.geckour.q.util.getReadableStringWithUnit
 import com.geckour.q.util.getShowLyric
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.isFavoriteToggled
 import com.geckour.q.util.parseLrc
 import com.geckour.q.util.setIsNightMode
-import com.geckour.q.util.setPendingMediaRetrieve
 import com.geckour.q.util.setShowLyric
 import com.geckour.q.util.toLrcString
 import com.geckour.q.worker.KEY_PROGRESS_FINISHED
@@ -106,7 +104,6 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -451,10 +448,7 @@ class MainActivity : ComponentActivity() {
                     .joinToString("\n")
                 progressPaths = progress.paths.toImmutableList()
                 progressFraction = progress.progressFraction
-                onCancelProgress = {
-                    DropboxMediaSyncJobService.cancel(context)
-                    lifecycleScope.launch { setPendingMediaRetrieve(null) }
-                }
+                onCancelProgress = { DropboxMediaSyncJobService.cancel(context) }
             }
 
             LaunchedEffect(
@@ -474,7 +468,6 @@ class MainActivity : ComponentActivity() {
                                 it.tags.forEach {
                                     workManager.cancelAllWorkByTag(it)
                                 }
-                                lifecycleScope.launch { setPendingMediaRetrieve(null) }
                             }
                         } ?: run {
                             progressMessage = null
@@ -550,7 +543,6 @@ class MainActivity : ComponentActivity() {
                                         workInfo.tags.forEach {
                                             workManager.cancelAllWorkByTag(it)
                                         }
-                                        lifecycleScope.launch { setPendingMediaRetrieve(null) }
                                     }
                                 }
                         }
@@ -1084,22 +1076,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun retrievePendingDropboxMedia() {
-        lifecycleScope.launch {
-            val pending = getPendingMediaRetrieve().firstOrNull() ?: return@launch
-            if (DropboxMediaSyncJobService.isScheduled(this@MainActivity)) return@launch
-
-            setPendingMediaRetrieve(null)
-            DropboxMediaSyncJobService.schedule(
-                this@MainActivity,
-                pending.rootPath,
-                pending.needDownloaded,
-                pending.generation
-            )
+        lifecycleScope.launch(Dispatchers.IO) {
+            DropboxMediaSyncJobService.resume(this@MainActivity)
         }
     }
 
     private fun retrieveDropboxMedia(rootPath: String, needDownloaded: Boolean) {
-        lifecycleScope.launch { setPendingMediaRetrieve(null) }
         DropboxMediaSyncJobService.schedule(this, rootPath, needDownloaded)
     }
 

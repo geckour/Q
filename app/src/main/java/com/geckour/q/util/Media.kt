@@ -28,6 +28,7 @@ import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.domain.model.UiTrack
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
@@ -420,6 +421,8 @@ private fun saveFileFromUrl(
                     val buffer = ByteArray(DOWNLOAD_BUFFER_SIZE)
                     var processed = 0L
                     while (true) {
+                        ensureActive()
+
                         val read = input.read(buffer)
                         if (read < 0) break
 
