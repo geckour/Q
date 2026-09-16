@@ -154,7 +154,7 @@ fun Queue(
             }
         }
         LaunchedEffect(isDragged) {
-            if (showLyric) {
+            if (showLyric && isSyncedLyric && isInLyricEditMode.not()) {
                 isLyricScrolledByUser.value = true
             }
         }
