@@ -41,7 +41,13 @@ class LocalMediaRetrieveWorker(
     private var currentPath: String? = null
     private var lastProgressUpdatedTime = 0L
     private var speeds = listOf<Float>()
-    private val remainingDuration get() = ((totalFilesCount - currentIndex) / speeds.average()).toLong()
+    private val remainingDuration: Long
+        get() {
+            val speed = speeds.average()
+            if (speed.isNaN() || speed <= 0) return -1
+
+            return ((totalFilesCount - currentIndex) / speed).toLong()
+        }
 
     override suspend fun doWork(): Result {
         Timber.d("qgeck media retrieve worker started")
@@ -83,7 +89,7 @@ class LocalMediaRetrieveWorker(
                     }.onSuccess {
                         val now = System.currentTimeMillis()
                         speeds =
-                            (speeds + (1 / (now - lastProgressSampledTime)).toFloat())
+                            (speeds + 1f / (now - lastProgressSampledTime).coerceAtLeast(1))
                                 .takeLast(10)
                         lastProgressSampledTime = now
                     }.onFailure { Timber.e(it) }

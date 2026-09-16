@@ -365,8 +365,13 @@ class DropboxMediaSyncJobService : JobService() {
             get() =
                 if (isRetrieving || totalFilesSize <= 0) 0f
                 else processedFilesSize.toFloat() / totalFilesSize
-        private val remainingDuration
-            get() = ((totalFilesSize - processedFilesSize) / speeds.average()).toLong()
+        private val remainingDuration: Long
+            get() {
+                val speed = speeds.average()
+                if (speed.isNaN() || speed <= 0) return -1
+
+                return ((totalFilesSize - processedFilesSize) / speed).toLong()
+            }
 
         suspend fun execute() {
             val client = obtainDbxClient(applicationContext).firstOrNull() ?: return
