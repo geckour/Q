@@ -57,18 +57,8 @@ class App : Application() {
                 this.description = getString(R.string.notification_channel_description_retriever)
             }
 
-        val channelSleepTimer =
-            NotificationChannel(
-                QNotificationChannel.NOTIFICATION_CHANNEL_ID_SLEEP_TIMER.name,
-                getString(R.string.notification_channel_sleep_timer),
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                this.description = getString(R.string.notification_channel_description_sleep_timer)
-            }
-
         getSystemService(NotificationManager::class.java)?.apply {
             createNotificationChannel(channelRetriever)
-            createNotificationChannel(channelSleepTimer)
         }
     }
 }

@@ -6,8 +6,7 @@ import androidx.core.app.NotificationCompat
 
 enum class QNotificationChannel {
     NOTIFICATION_CHANNEL_ID_PLAYER,
-    NOTIFICATION_CHANNEL_ID_RETRIEVER,
-    NOTIFICATION_CHANNEL_ID_SLEEP_TIMER
+    NOTIFICATION_CHANNEL_ID_RETRIEVER
 }
 
 fun Context.getNotificationBuilder(channel: QNotificationChannel) =
