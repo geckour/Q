@@ -367,12 +367,12 @@ class MainActivity : ComponentActivity() {
         if (viewModel.isDropboxAuthOngoing) {
             viewModel.isDropboxAuthOngoing = false
             lifecycleScope.launch {
-                viewModel.storeDropboxApiToken {
+                val stored = viewModel.storeDropboxApiToken {
                     lifecycleScope.launch {
                         onDropboxSyncFailure(it)
                     }
                 }
-                viewModel.showDialog(DialogState.Dropbox())
+                if (stored) viewModel.showDialog(DialogState.Dropbox())
             }
         }
 

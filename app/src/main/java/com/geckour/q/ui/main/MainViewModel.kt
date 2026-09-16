@@ -948,10 +948,11 @@ class MainViewModel(private val app: App) : ViewModel() {
         )
     }
 
-    internal suspend fun storeDropboxApiToken(onFailure: (Throwable) -> Unit) {
-        val credential = Auth.getDbxCredential() ?: return
+    internal suspend fun storeDropboxApiToken(onFailure: (Throwable) -> Unit): Boolean {
+        val credential = Auth.getDbxCredential() ?: return false
         app.setDropboxCredential(credential.toString())
         showDropboxFolderChooser(onFailure = onFailure)
+        return true
     }
 
     internal fun showDropboxFolderChooser(
