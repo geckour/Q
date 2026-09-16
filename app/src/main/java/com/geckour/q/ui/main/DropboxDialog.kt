@@ -1,0 +1,287 @@
+package com.geckour.q.ui.main
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FilePresent
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import com.dropbox.core.v2.files.FileMetadata
+import com.dropbox.core.v2.files.FolderMetadata
+import com.geckour.q.R
+import com.geckour.q.ui.compose.QTheme
+import com.geckour.q.util.getDropboxCredential
+import com.geckour.q.util.setHasAlreadyShownDropboxSyncAlert
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+
+@Composable
+fun DropboxDialog(
+    hasAlreadyShownDropboxSyncAlert: Boolean,
+    currentDropboxItemList: Triple<String, ImmutableList<FolderMetadata>, ImmutableList<FileMetadata>>,
+    onStartAuthDropbox: () -> Unit,
+    onShowDropboxFolderChooser: (selectedFolder: FolderMetadata?) -> Unit,
+    hideDropboxDialog: () -> Unit,
+    startDropboxSync: (targetFolderPath: String?, needDownloaded: Boolean) -> Unit
+) {
+    val context = LocalContext.current
+    val credential = runBlocking {
+        context.getDropboxCredential().firstOrNull()
+    }
+    if (hasAlreadyShownDropboxSyncAlert) {
+        if (credential.isNullOrBlank()) {
+            onStartAuthDropbox()
+        } else {
+            if (currentDropboxItemList.first.isEmpty() && currentDropboxItemList.second.isEmpty()) {
+                onShowDropboxFolderChooser(null)
+                return
+            }
+            var selectedHistory by remember {
+                mutableStateOf<ImmutableList<FolderMetadata>>(persistentListOf())
+            }
+            Dialog(onDismissRequest = hideDropboxDialog) {
+                var needDownloaded by remember { mutableStateOf(false) }
+                Card(
+                    colors = CardDefaults.cardColors()
+                        .copy(containerColor = QTheme.colors.colorBackground),
+                    modifier = Modifier.heightIn(max = 800.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(
+                            horizontal = 12.dp,
+                            vertical = 8.dp
+                        )
+                    ) {
+                        Text(
+                            text = stringResource(id = R.string.dialog_title_dropbox_choose_folder),
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = QTheme.colors.colorAccent
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = stringResource(id = R.string.dialog_desc_dropbox_choose_folder),
+                            fontSize = 18.sp,
+                            color = QTheme.colors.colorTextPrimary,
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.End,
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = stringResource(id = R.string.dialog_switch_need_downloaded),
+                                fontSize = 18.sp,
+                                color = QTheme.colors.colorTextPrimary,
+                            )
+                            QSwitch(
+                                checked = needDownloaded,
+                                onCheckedChange = {
+                                    needDownloaded =
+                                        needDownloaded.not()
+                                })
+                        }
+                        Text(
+                            text = currentDropboxItemList.first,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = QTheme.colors.colorAccent
+                        )
+                        if (currentDropboxItemList.second.isEmpty() && currentDropboxItemList.third.isEmpty()) {
+                            Text(
+                                text = stringResource(
+                                    R.string.dialog_desc_dropbox_empty_folder
+                                ),
+                                fontSize = 16.sp,
+                                color = QTheme.colors.colorAccent
+                            )
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                            ) {
+                                items(currentDropboxItemList.second) {
+                                    Row(
+                                        modifier = Modifier
+                                            .clickable {
+                                                selectedHistory = (selectedHistory.toList() + it)
+                                                    .toImmutableList()
+                                                onShowDropboxFolderChooser(it)
+                                            }
+                                            .padding(
+                                                horizontal = 8.dp,
+                                                vertical = 12.dp
+                                            )
+                                            .fillMaxWidth()
+                                    ) {
+                                        val iconId = "id-icon"
+                                        Text(
+                                            text = buildAnnotatedString {
+                                                appendInlineContent(iconId, "Icon")
+                                                append(" ${it.name}")
+                                            },
+                                            inlineContent = mapOf(
+                                                iconId to InlineTextContent(
+                                                    Placeholder(
+                                                        20.sp,
+                                                        20.sp,
+                                                        PlaceholderVerticalAlign.Center,
+                                                    )
+                                                ) {
+                                                    Icon(
+                                                        contentDescription = stringResource(R.string.content_description_folder),
+                                                        tint = QTheme.colors.colorTextPrimary,
+                                                        imageVector = Icons.Default.Folder,
+                                                    )
+                                                },
+                                            ),
+                                            fontSize = 20.sp,
+                                            color = QTheme.colors.colorTextPrimary,
+                                        )
+                                    }
+                                }
+                                items(currentDropboxItemList.third) {
+                                    Row(
+                                        modifier = Modifier
+                                            .padding(
+                                                horizontal = 8.dp,
+                                                vertical = 12.dp
+                                            )
+                                            .fillMaxWidth()
+                                    ) {
+                                        val iconId = "id-icon"
+                                        Text(
+                                            text = buildAnnotatedString {
+                                                appendInlineContent(iconId, "Icon")
+                                                append(" ${it.name}")
+                                            },
+                                            inlineContent = mapOf(
+                                                iconId to InlineTextContent(
+                                                    Placeholder(
+                                                        20.sp,
+                                                        20.sp,
+                                                        PlaceholderVerticalAlign.Center,
+                                                    )
+                                                ) {
+                                                    Icon(
+                                                        contentDescription = stringResource(R.string.content_description_folder),
+                                                        tint = QTheme.colors.colorTextSecondary,
+                                                        imageVector = Icons.Default.FilePresent,
+                                                    )
+                                                },
+                                            ),
+                                            fontSize = 20.sp,
+                                            color = QTheme.colors.colorTextSecondary,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        Row(
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            val prev = {
+                                selectedHistory =
+                                    selectedHistory.dropLast(1).toImmutableList()
+                                onShowDropboxFolderChooser(selectedHistory.lastOrNull())
+                            }
+                            BackHandler(selectedHistory.isNotEmpty()) {
+                                prev()
+                            }
+                            if (selectedHistory.isNotEmpty()) {
+                                TextButton(onClick = prev) {
+                                    Text(
+                                        text = stringResource(R.string.dialog_prev),
+                                        fontSize = 16.sp,
+                                        color = QTheme.colors.colorTextPrimary
+                                    )
+                                }
+                            }
+                            Spacer(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                            )
+                            TextButton(onClick = hideDropboxDialog) {
+                                Text(
+                                    text = stringResource(R.string.dialog_ng),
+                                    fontSize = 16.sp,
+                                    color = QTheme.colors.colorTextPrimary
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            TextButton(
+                                onClick = {
+                                    startDropboxSync(
+                                        selectedHistory.lastOrNull()?.pathLower,
+                                        needDownloaded
+                                    )
+                                    hideDropboxDialog()
+                                }
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.dialog_ok),
+                                    fontSize = 16.sp,
+                                    color = QTheme.colors.colorAccent
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        val coroutineScope = rememberCoroutineScope()
+        QConfirmDialog(
+            title = stringResource(id = R.string.dialog_title_dropbox_sync_caution),
+            message = stringResource(id = R.string.dialog_desc_dropbox_sync_caution),
+            onPositive = {
+                coroutineScope.launch {
+                    context.setHasAlreadyShownDropboxSyncAlert(true)
+                }
+            },
+            onDismissRequest = hideDropboxDialog,
+        )
+    }
+}
