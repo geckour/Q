@@ -234,12 +234,25 @@ class MainViewModel(private val app: App) : ViewModel() {
         mediaController.sendCustomCommand(
             SessionCommand(
                 PlayerService.ACTION_COMMAND_SUBMIT_QUEUE, Bundle.EMPTY
-            ), bundleOf(
-                PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_ACTION_TYPE to actionType,
-                PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_CLASS_TYPE to classType,
-                PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_QUEUE to sourcePaths,
-                PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_NEED_SORTED to needSorted,
-            )
+            ),
+            Bundle().apply {
+                putSerializable(
+                    PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_ACTION_TYPE,
+                    actionType,
+                )
+                putSerializable(
+                    PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_CLASS_TYPE,
+                    classType,
+                )
+                putStringArrayList(
+                    PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_QUEUE,
+                    ArrayList(sourcePaths),
+                )
+                putBoolean(
+                    PlayerService.ACTION_EXTRA_SUBMIT_QUEUE_NEED_SORTED,
+                    needSorted != false,
+                )
+            }
         )
     }
 
