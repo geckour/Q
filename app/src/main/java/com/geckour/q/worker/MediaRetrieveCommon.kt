@@ -1,17 +1,11 @@
 package com.geckour.q.worker
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.PointF
-import android.graphics.PorterDuff
 import androidx.work.Data
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.util.UNKNOWN
 import com.geckour.q.util.catchAsNull
@@ -22,41 +16,35 @@ import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import java.io.File
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
-import kotlin.random.Random
-
-internal const val NOTIFICATION_ID_RETRIEVE = 300
 
 internal const val MEDIA_RETRIEVE_WORKER_NAME = "MediaRetrieveWorker"
 
 internal const val KEY_PROGRESS_TITLE = "key_progress_title"
-internal const val KEY_PROGRESS_PROGRESS_NUMERATOR = "key_progress_progress_numerator"
-internal const val KEY_PROGRESS_PROGRESS_DENOMINATOR = "key_progress_progress_denominator"
-internal const val KEY_PROGRESS_PROGRESS_TOTAL_FILES = "key_progress_progress_total_files"
-internal const val KEY_PROGRESS_PROGRESS_PATH = "key_progress_progress_path"
-internal const val KEY_PROGRESS_REMAINING = "key_progress_remaining"
-internal const val KEY_PROGRESS_REMAINING_FILES_SIZE = "key_progress_remaining_files_size"
+internal const val KEY_PROGRESS_PROGRESS_FRACTION = "key_progress_progress_fraction"
+internal const val KEY_PROGRESS_REMAINING_FILES = "key_progress_remaining_files"
+internal const val KEY_PROGRESS_SKIPPED_FILES = "key_progress_skipped_files"
+internal const val KEY_PROGRESS_TOTAL_FILES = "key_progress_total_files"
+internal const val KEY_PROGRESS_REMAINING_DURATION = "key_progress_processed_remaining_duration"
+internal const val KEY_PROGRESS_PROGRESS_PATHS = "key_progress_progress_paths"
 internal const val KEY_PROGRESS_FINISHED = "key_progress_finished"
 
 internal fun createProgressData(
     title: String,
-    numerator: Int,
-    denominator: Int = -1,
+    progressFraction: Float = -1f,
+    remainingFiles: Int = -1,
+    skippedFiles: Int = 0,
     totalFiles: Int = -1,
-    path: String? = null,
-    remaining: Long = -1,
-    remainingFileSize: Long = -1,
+    remainingDuration: Long = -1,
+    paths: List<String> = emptyList(),
 ): Data =
     Data.Builder()
         .putString(KEY_PROGRESS_TITLE, title)
-        .putInt(KEY_PROGRESS_PROGRESS_NUMERATOR, numerator)
-        .putInt(KEY_PROGRESS_PROGRESS_DENOMINATOR, denominator)
-        .putInt(KEY_PROGRESS_PROGRESS_TOTAL_FILES, totalFiles)
-        .putString(KEY_PROGRESS_PROGRESS_PATH, path)
-        .putLong(KEY_PROGRESS_REMAINING, remaining)
-        .putLong(KEY_PROGRESS_REMAINING_FILES_SIZE, remainingFileSize)
+        .putFloat(KEY_PROGRESS_PROGRESS_FRACTION, progressFraction)
+        .putInt(KEY_PROGRESS_REMAINING_FILES, remainingFiles)
+        .putInt(KEY_PROGRESS_SKIPPED_FILES, skippedFiles)
+        .putInt(KEY_PROGRESS_TOTAL_FILES, totalFiles)
+        .putLong(KEY_PROGRESS_REMAINING_DURATION, remainingDuration)
+        .putStringArray(KEY_PROGRESS_PROGRESS_PATHS, paths.toTypedArray())
         .build()
 
 internal suspend fun File.storeMediaInfo(
@@ -70,6 +58,8 @@ internal suspend fun File.storeMediaInfo(
 ): Long = withContext(Dispatchers.IO) {
     val db = DB.getInstance(context)
 
+    val existingTrack = trackId?.let { db.trackDao().get(it)?.track }
+
     val audioFile = AudioFileIO.read(this@storeMediaInfo)
     val tag = audioFile.tag ?: throw IllegalArgumentException("No media metadata found.")
     val header = audioFile.audioHeader
@@ -81,32 +71,30 @@ internal suspend fun File.storeMediaInfo(
 
     val title = tag.getAll(FieldKey.TITLE).lastOrNull { it.isNotBlank() }
         ?: this@storeMediaInfo.name
-    val titleSort = (tag.getAll(FieldKey.TITLE_SORT).lastOrNull { it.isNotBlank() } ?: title)
-        ?.hiraganized
-        ?: this@storeMediaInfo.name
+    val titleSort = (tag.getAll(FieldKey.TITLE_SORT).lastOrNull { it.isNotBlank() }
+        ?: title)?.hiraganized
 
     val albumTitle = tag.getAll(FieldKey.ALBUM).lastOrNull { it.isNotBlank() }
-    val cachedAlbum = albumTitle?.let { db.albumDao().findAllByTitle(it).firstOrNull() }
+    val existingAlbum = albumTitle?.let { db.albumDao().findAllByTitle(it).firstOrNull() }
     val albumTitleSort =
-        (tag.getAll(FieldKey.ALBUM_SORT).lastOrNull { it.isNotBlank() } ?: albumTitle)
-            ?.hiraganized
-            ?: cachedAlbum?.album?.titleSort
+        (tag.getAll(FieldKey.ALBUM_SORT).lastOrNull { it.isNotBlank() }
+            ?: existingAlbum?.album?.titleSort
+            ?: albumTitle)?.hiraganized
 
     val artistTitle = tag.getAll(FieldKey.ARTIST).firstOrNull { it.isNotBlank() }
-    val cachedArtist = artistTitle?.let { db.artistDao().getAllByTitle(it).firstOrNull() }
+    val existingArtist = artistTitle?.let { db.artistDao().getAllByTitle(it).firstOrNull() }
     val artistTitleSort =
-        (tag.getAll(FieldKey.ARTIST_SORT).firstOrNull { it.isNotBlank() } ?: artistTitle)
-            ?.hiraganized
-            ?: cachedArtist?.titleSort
+        (tag.getAll(FieldKey.ARTIST_SORT).firstOrNull { it.isNotBlank() }
+            ?: existingArtist?.titleSort
+            ?: artistTitle)?.hiraganized
 
     val albumArtistTitle = tag.getAll(FieldKey.ALBUM_ARTIST).firstOrNull { it.isNotBlank() }
-    val cachedAlbumArtist =
+    val existingAlbumArtist =
         albumArtistTitle?.let { db.artistDao().getAllByTitle(it).firstOrNull() }
     val albumArtistTitleSort =
         (tag.getAll(FieldKey.ALBUM_ARTIST_SORT).firstOrNull { it.isNotBlank() }
-            ?: albumArtistTitle)
-            ?.hiraganized
-            ?: cachedAlbumArtist?.titleSort
+            ?: existingAlbumArtist?.titleSort
+            ?: albumArtistTitle)?.hiraganized
 
     val trackNum = catchAsNull {
         tag.getFirst(FieldKey.TRACK).let { if (it.isNullOrBlank()) null else it }?.toInt()
@@ -129,7 +117,7 @@ internal suspend fun File.storeMediaInfo(
             ?.hiraganized
 
     val artworkUriString = tag.artworkList.lastOrNull()?.binaryData?.storeArtwork(context)
-        ?: cachedAlbum?.album?.artworkUriString
+        ?: existingAlbum?.album?.artworkUriString
 
     val artist = Artist(
         id = 0,
@@ -137,9 +125,9 @@ internal suspend fun File.storeMediaInfo(
         titleSort = artistTitleSort ?: UNKNOWN,
         playbackCount = 0,
         totalDuration = 0,
-        artworkUriString = artworkUriString ?: cachedArtist?.artworkUriString
+        artworkUriString = artworkUriString ?: existingArtist?.artworkUriString
     )
-    val artistId = db.artistDao().upsert(db, artist, duration)
+    val artistId = db.artistDao().upsert(db, artist)
     val albumArtistId =
         if (albumArtistTitle != null && albumArtistTitleSort != null) {
             val albumArtist = Artist(
@@ -148,9 +136,9 @@ internal suspend fun File.storeMediaInfo(
                 titleSort = albumArtistTitleSort,
                 playbackCount = 0,
                 totalDuration = 0,
-                artworkUriString = artworkUriString ?: cachedAlbumArtist?.artworkUriString
+                artworkUriString = artworkUriString ?: existingAlbumArtist?.artworkUriString
             )
-            db.artistDao().upsert(db, albumArtist, duration)
+            db.artistDao().upsert(db, albumArtist)
         } else null
 
     val album = Album(
@@ -163,11 +151,11 @@ internal suspend fun File.storeMediaInfo(
         playbackCount = 0,
         totalDuration = 0
     )
-    val albumId = db.albumDao().upsert(db, album, duration)
+    val albumId = db.albumDao().upsert(db, album)
 
     val track = Track(
         id = trackId ?: 0,
-        mediaId = trackMediaId ?: -1,
+        mediaId = trackMediaId ?: existingTrack?.mediaId ?: -1,
         codec = codec,
         bitrate = bitrate,
         sampleRate = sampleRate,
@@ -190,52 +178,16 @@ internal suspend fun File.storeMediaInfo(
         releaseDate = releaseDate,
         genre = genre,
         artworkUriString = artworkUriString,
-        playbackCount = 0
+        playbackCount = existingTrack?.playbackCount ?: 0,
+        ignored = existingTrack?.ignored ?: Bool.FALSE,
+        isFavorite = existingTrack?.isFavorite ?: false,
     )
 
-    return@withContext db.trackDao().upsert(track, albumId, artistId, duration)
-}
+    val newTrackId = db.trackDao().insert(track)
+    db.albumDao().refreshTotalDurationsIncludingArtists(
+        db,
+        listOfNotNull(albumId, existingTrack?.albumId).distinct()
+    )
 
-internal fun Bitmap.drawProgressIcon(
-    progressNumerator: Int,
-    progressDenominator: Int,
-    seed: Long
-): Bitmap {
-    val maxTileNumber = 24
-    val progressRatio = progressNumerator.toFloat() / progressDenominator
-    val tileNumber = (maxTileNumber * progressRatio).toInt()
-    val canvas = Canvas(this)
-    val paint = Paint().apply {
-        isAntiAlias = true
-    }
-    val offset = PointF(canvas.width * 0.5f, canvas.height * 0.5f)
-    val innerR = canvas.width * 0.35f
-    val outerR = canvas.width * 0.45f
-    val random = Random(seed)
-    canvas.drawColor(0, PorterDuff.Mode.CLEAR)
-    repeat(tileNumber + 1) {
-        val start = 3
-        val angleLeft = ((start + it) * PI / 12).toFloat()
-        val angleRight = ((start + it + 1) * PI / 12).toFloat()
-        val path = Path().apply {
-            fillType = Path.FillType.EVEN_ODD
-            moveTo(offset.x + outerR * cos(angleLeft), offset.y + outerR * sin(angleLeft))
-            lineTo(offset.x + outerR * cos(angleRight), offset.y + outerR * sin(angleRight))
-            lineTo(offset.x + innerR * cos(angleRight), offset.y + innerR * sin(angleRight))
-            lineTo(offset.x + innerR * cos(angleLeft), offset.y + innerR * sin(angleLeft))
-            close()
-        }
-        val alphaC =
-            if (it == tileNumber) maxTileNumber * progressRatio % 1f
-            else 1f
-        paint.color = Color.argb(
-            (150 * alphaC).toInt(),
-            random.nextInt(255),
-            random.nextInt(255),
-            random.nextInt(255)
-        )
-        canvas.drawPath(path, paint)
-    }
-
-    return this
+    return@withContext newTrackId
 }

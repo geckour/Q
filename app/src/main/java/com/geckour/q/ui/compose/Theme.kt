@@ -1,14 +1,13 @@
 package com.geckour.q.ui.compose
 
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material.Colors
-import androidx.compose.material.MaterialTheme
+import androidx.compose.material3.ColorScheme
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
-import com.google.android.material.color.MaterialColors
 
 private val lightColorPalette = QColors(
     colorPrimary = ColorPrimary,
@@ -21,10 +20,12 @@ private val lightColorPalette = QColors(
     colorInactive = ColorInactive,
     colorCoverInactive = ColorCoverInactive,
     colorButtonNormal = ColorPrimary,
-    colorTextSettingNormal = ColorPrimary,
+    colorTextSettingNormal = ColorTextStrong,
+    colorBackgroundSelected = ColorBackgroundSelected,
     colorBackgroundBottomSheet = ColorBackgroundBottomSheet,
     colorBackgroundProgress = ColorBackgroundProgress,
     colorBackgroundSearch = ColorBackgroundSearch,
+    colorDivider = ColorDivider,
     isLight = true
 )
 
@@ -39,10 +40,12 @@ private val darkColorPalette = QColors(
     colorInactive = ColorInactiveInverse,
     colorCoverInactive = ColorCoverInactiveInverse,
     colorButtonNormal = ColorStrong,
-    colorTextSettingNormal = ColorTextStrong,
+    colorTextSettingNormal = ColorTextStrongInverse,
+    colorBackgroundSelected = ColorBackgroundSelectedInverse,
     colorBackgroundBottomSheet = ColorBackgroundBottomSheetInverse,
     colorBackgroundProgress = ColorBackgroundProgressInverse,
     colorBackgroundSearch = ColorBackgroundSearchInverse,
+    colorDivider = ColorDividerInverse,
     isLight = false
 )
 
@@ -59,51 +62,73 @@ data class QColors(
     val colorCoverInactive: Color,
     val colorButtonNormal: Color,
     val colorTextSettingNormal: Color,
+    val colorBackgroundSelected: Color,
     val colorBackgroundBottomSheet: Color,
     val colorBackgroundProgress: Color,
     val colorBackgroundSearch: Color,
+    val colorDivider: Color,
     val isLight: Boolean,
 ) {
 
-    val asMaterialColors = Colors(
+    val asMaterialColorScheme = ColorScheme(
         primary = colorPrimary,
-        primaryVariant = colorPrimaryDark,
-        secondary = colorPrimary,
-        secondaryVariant = colorPrimaryDark,
-        background = colorBackground,
-        surface = colorBackground,
-        error = colorAccent,
         onPrimary = colorTextPrimary,
+        primaryContainer = colorPrimaryDark,
+        onPrimaryContainer = colorTextPrimary,
+        inversePrimary = colorPrimaryDark,
+        secondary = colorPrimary,
         onSecondary = colorTextPrimary,
+        secondaryContainer = colorPrimaryDark,
+        onSecondaryContainer = colorTextPrimary,
+        tertiary = colorPrimary,
+        onTertiary = colorTextPrimary,
+        tertiaryContainer = colorPrimaryDark,
+        onTertiaryContainer = colorTextPrimary,
+        background = colorBackground,
         onBackground = colorTextPrimary,
+        surface = colorBackground,
         onSurface = colorTextPrimary,
+        surfaceVariant = colorBackground,
+        onSurfaceVariant = colorTextPrimary,
+        surfaceTint = colorBackground,
+        inverseSurface = colorTextPrimary,
+        inverseOnSurface = colorBackground,
+        error = colorAccent,
         onError = colorTextPrimary,
-        isLight = isLight
+        errorContainer = colorBackground,
+        onErrorContainer = colorAccent,
+        outline = colorTextSecondary,
+        outlineVariant = colorWeekAccent,
+        scrim = colorCoverInactive,
+        surfaceBright = colorBackground,
+        surfaceDim = colorBackground,
+        surfaceContainer = colorBackground,
+        surfaceContainerHigh = colorBackgroundBottomSheet,
+        surfaceContainerHighest = colorBackgroundBottomSheet,
+        surfaceContainerLow = colorBackground,
+        surfaceContainerLowest = colorBackground,
+        primaryFixed = colorPrimary,
+        primaryFixedDim = colorPrimaryDark,
+        onPrimaryFixed = colorTextPrimary,
+        onPrimaryFixedVariant = colorTextSecondary,
+        secondaryFixed = colorPrimary,
+        secondaryFixedDim = colorPrimaryDark,
+        onSecondaryFixed = colorTextPrimary,
+        onSecondaryFixedVariant = colorTextSecondary,
+        tertiaryFixed = colorPrimary,
+        tertiaryFixedDim = colorPrimaryDark,
+        onTertiaryFixed = colorTextPrimary,
+        onTertiaryFixedVariant = colorTextSecondary,
     )
 }
 
-val LocalQColors = staticCompositionLocalOf {
-    QColors(
-        colorPrimary = Color.Unspecified,
-        colorPrimaryDark = Color.Unspecified,
-        colorAccent = Color.Unspecified,
-        colorWeekAccent = Color.Unspecified,
-        colorBackground = Color.Unspecified,
-        colorTextPrimary = Color.Unspecified,
-        colorTextSecondary = Color.Unspecified,
-        colorInactive = Color.Unspecified,
-        colorCoverInactive = Color.Unspecified,
-        colorButtonNormal = Color.Unspecified,
-        colorTextSettingNormal = Color.Unspecified,
-        colorBackgroundBottomSheet = Color.Unspecified,
-        colorBackgroundProgress = Color.Unspecified,
-        colorBackgroundSearch = Color.Unspecified,
-        isLight = true
-    )
-}
+val LocalQColors = staticCompositionLocalOf { lightColorPalette }
 
 @Composable
-fun QTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
+fun QTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    content: @Composable () -> Unit
+) {
     val qColors = if (darkTheme) {
         darkColorPalette
     } else {
@@ -112,8 +137,8 @@ fun QTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -
 
     CompositionLocalProvider(LocalQColors provides qColors) {
         MaterialTheme(
-            content = content,
-            colors = qColors.asMaterialColors
+            colorScheme = qColors.asMaterialColorScheme,
+            content = content
         )
     }
 }

@@ -12,6 +12,6 @@ val viewModelModule = module {
         MainViewModel(app = androidApplication() as App)
     }
     viewModel {
-        InstantPlayerViewModel(app = androidApplication() as App)
+        InstantPlayerViewModel()
     }
 }

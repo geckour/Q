@@ -1,11 +1,13 @@
 package com.geckour.q.data.db.model
 
+import androidx.room.ColumnInfo
 import androidx.room.Embedded
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
 
-@Entity
+@Entity(indices = [Index("dropboxPath"), Index("mediaId"), Index("albumId")])
 data class Track(
     @PrimaryKey(autoGenerate = true) val id: Long,
     val mediaId: Long,
@@ -32,7 +34,8 @@ data class Track(
     val genre: String?,
     val playbackCount: Long,
     val artworkUriString: String?,
-    val ignored: Bool = Bool.FALSE
+    val ignored: Bool = Bool.FALSE,
+    @ColumnInfo(defaultValue = "FALSE") val isFavorite: Boolean = false,
 )
 
 data class JoinedTrack(

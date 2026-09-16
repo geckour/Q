@@ -1,5 +1,6 @@
 package com.geckour.q.ui.main
 
+import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -9,27 +10,57 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material.Icon
-import androidx.compose.material.Text
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Album
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Equalizer
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Highlight
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.Queue
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.ripple.rememberRipple
+import androidx.compose.material3.DrawerState
+import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberDrawerState
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.googlefonts.Font
 import androidx.compose.ui.text.googlefonts.GoogleFont
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import com.geckour.q.R
+import com.geckour.q.domain.model.EqualizerParams
+import com.geckour.q.domain.model.Nav
+import com.geckour.q.ui.compose.ColorShadowTextDrawerHeader
 import com.geckour.q.ui.compose.ColorStrong
 import com.geckour.q.ui.compose.QTheme
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -53,8 +84,8 @@ fun DrawerHeader(openQzi: () -> Unit) {
                 .combinedClickable(
                     onClick = {},
                     onLongClick = openQzi,
-                    interactionSource = MutableInteractionSource(),
-                    indication = rememberRipple(bounded = false)
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = ripple(bounded = false)
                 )
                 .weight(1f)
                 .fillMaxWidth()
@@ -62,8 +93,11 @@ fun DrawerHeader(openQzi: () -> Unit) {
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = stringResource(id = R.string.nav_header_desc),
-            fontFamily = FontFamily(Font(googleFont = fontName, fontProvider = fontProvider)),
-            color = Color.White
+            style = TextStyle(
+                color = Color.White,
+                fontFamily = FontFamily(Font(googleFont = fontName, fontProvider = fontProvider)),
+                shadow = Shadow(color = ColorShadowTextDrawerHeader, Offset(2f, 2f), 8f)
+            )
         )
     }
 }
@@ -78,12 +112,41 @@ fun DrawerItem(
     Row(
         modifier = Modifier
             .clickable(onClick = onClick)
-            .background(color = if (isSelected) QTheme.colors.colorPrimaryDark else QTheme.colors.colorBackground)
+            .background(color = if (isSelected) QTheme.colors.colorBackgroundSelected else QTheme.colors.colorBackground)
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Icon(
             painter = painterResource(id = iconResId),
+            contentDescription = null,
+            tint = if (isSelected) QTheme.colors.colorAccent else QTheme.colors.colorTextPrimary,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = title,
+            fontSize = 16.sp,
+            color = if (isSelected) QTheme.colors.colorAccent else QTheme.colors.colorTextPrimary
+        )
+    }
+}
+
+@Composable
+fun DrawerItem(
+    imageVector: ImageVector,
+    title: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .clickable(onClick = onClick)
+            .background(color = if (isSelected) QTheme.colors.colorBackgroundSelected else QTheme.colors.colorBackground)
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        Icon(
+            imageVector = imageVector,
             contentDescription = null,
             tint = if (isSelected) QTheme.colors.colorAccent else QTheme.colors.colorTextPrimary,
             modifier = Modifier.size(24.dp)
@@ -104,5 +167,181 @@ fun DrawerSectionHeader(title: String) {
         fontSize = 16.sp,
         color = QTheme.colors.colorTextPrimary,
         modifier = Modifier.padding(16.dp)
+    )
+}
+
+@Composable
+fun Drawer(
+    drawerState: DrawerState,
+    navController: NavHostController,
+    selectedNav: Nav?,
+    equalizerParams: EqualizerParams?,
+    onSelectNav: (nav: Nav?) -> Unit,
+    onShowDropboxDialog: () -> Unit,
+    onRetrieveMedia: (onlyAdded: Boolean) -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope()
+    LazyColumn(
+        modifier = Modifier
+            .background(color = QTheme.colors.colorBackground)
+            .fillMaxSize()
+    ) {
+        item {
+            BackHandler(drawerState.isOpen) {
+                coroutineScope.launch { drawerState.close() }
+            }
+        }
+
+        item {
+            DrawerHeader(
+                openQzi = {
+                    navController.navigate("qzi")
+                    coroutineScope.launch { drawerState.close() }
+                }
+            )
+        }
+        item {
+            DrawerSectionHeader(title = stringResource(id = R.string.nav_category_library))
+        }
+        item {
+            DrawerItem(
+                imageVector = Icons.Default.Face,
+                title = stringResource(id = R.string.nav_artist),
+                isSelected = selectedNav == Nav.ARTIST,
+                onClick = {
+                    navController.navigate("artists")
+                    onSelectNav(Nav.ARTIST)
+                    coroutineScope.launch { drawerState.close() }
+                }
+            )
+        }
+        item {
+            DrawerItem(
+                imageVector = Icons.Default.Album,
+                title = stringResource(id = R.string.nav_album),
+                isSelected = selectedNav == Nav.ALBUM,
+                onClick = {
+                    navController.navigate("albums")
+                    onSelectNav(Nav.ALBUM)
+                    coroutineScope.launch { drawerState.close() }
+                }
+            )
+        }
+        item {
+            DrawerItem(
+                imageVector = Icons.Default.MusicNote,
+                title = stringResource(id = R.string.nav_track),
+                isSelected = selectedNav == Nav.TRACK,
+                onClick = {
+                    navController.navigate("tracks")
+                    onSelectNav(Nav.TRACK)
+                    coroutineScope.launch { drawerState.close() }
+                }
+            )
+        }
+        item {
+            DrawerItem(
+                imageVector = Icons.Default.Category,
+                title = stringResource(id = R.string.nav_genre),
+                isSelected = selectedNav == Nav.GENRE,
+                onClick = {
+                    navController.navigate("genres")
+                    onSelectNav(Nav.GENRE)
+                    coroutineScope.launch { drawerState.close() }
+                }
+            )
+        }
+        item {
+            HorizontalDivider(color = QTheme.colors.colorDivider)
+        }
+        item {
+            DrawerSectionHeader(title = stringResource(id = R.string.nav_category_others))
+        }
+        item {
+            DrawerItem(
+                imageVector = Icons.Default.Queue,
+                title = stringResource(id = R.string.nav_saved_queue),
+                isSelected = selectedNav == Nav.SAVED_QUEUE,
+                onClick = {
+                    navController.navigate("saved_queue")
+                    onSelectNav(Nav.SAVED_QUEUE)
+                    coroutineScope.launch { drawerState.close() }
+                }
+            )
+        }
+        item {
+            DrawerItem(
+                imageVector = Icons.Default.History,
+                title = stringResource(id = R.string.nav_history),
+                isSelected = selectedNav == Nav.HISTORY,
+                onClick = {
+                    navController.navigate("history")
+                    onSelectNav(Nav.HISTORY)
+                    coroutineScope.launch { drawerState.close() }
+                }
+            )
+        }
+        item {
+            DrawerItem(
+                iconResId = R.drawable.ic_dropbox,
+                title = stringResource(id = R.string.nav_dropbox_sync),
+                isSelected = selectedNav == Nav.DROPBOX_SYNC,
+                onClick = {
+                    onShowDropboxDialog()
+                    coroutineScope.launch { drawerState.close() }
+                }
+            )
+        }
+        item {
+            DrawerItem(
+                imageVector = Icons.Default.Sync,
+                title = stringResource(id = R.string.nav_sync),
+                isSelected = selectedNav == Nav.SYNC,
+                onClick = {
+                    onRetrieveMedia(false)
+                    coroutineScope.launch { drawerState.close() }
+                }
+            )
+        }
+        item {
+            DrawerItem(
+                imageVector = Icons.Default.Highlight,
+                title = stringResource(id = R.string.nav_pay),
+                isSelected = selectedNav == Nav.PAY,
+                onClick = {
+                    navController.navigate("pay")
+                    onSelectNav(Nav.PAY)
+                    coroutineScope.launch { drawerState.close() }
+                }
+            )
+        }
+        if (equalizerParams != null) {
+            item {
+                DrawerItem(
+                    imageVector = Icons.Default.Equalizer,
+                    title = stringResource(id = R.string.nav_equalizer),
+                    isSelected = selectedNav == Nav.EQUALIZER,
+                    onClick = {
+                        navController.navigate("equalizer")
+                        onSelectNav(Nav.EQUALIZER)
+                        coroutineScope.launch { drawerState.close() }
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun DrawerPreview() {
+    Drawer(
+        drawerState = rememberDrawerState(initialValue = DrawerValue.Open),
+        navController = rememberNavController(),
+        selectedNav = Nav.TRACK,
+        equalizerParams = null,
+        onSelectNav = {},
+        onShowDropboxDialog = {},
+        onRetrieveMedia = {},
     )
 }

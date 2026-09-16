@@ -1,5 +1,6 @@
 package com.geckour.q.data.db.dao
 
+import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -10,7 +11,10 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.Track
+import com.geckour.q.util.containsKatakana
+import com.geckour.q.util.hiraganized
 import kotlinx.coroutines.flow.Flow
+import kotlin.random.Random
 
 @Dao
 interface TrackDao {
@@ -18,14 +22,11 @@ interface TrackDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(track: Track): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(tracks: List<Track>)
+
     @Update
     suspend fun update(track: Track): Int
-
-    @Query("update track set sourcePath = '' where id in (:ids)")
-    suspend fun clearAllSourcePaths(ids: List<Long>)
-
-    @Query("select id from track where dropboxPath is not null and sourcePath like '%/com.geckour.q%/cache/audio/id%%3A%'")
-    suspend fun getAllDownloadedIds(): List<Long>
 
     @Query("delete from track where id = :id")
     suspend fun delete(id: Long): Int
@@ -42,16 +43,15 @@ interface TrackDao {
     suspend fun getAllByIds(ids: List<Long>): List<JoinedTrack>
 
     @Transaction
-    @Query("select sourcePath from track where id in (:ids)")
-    suspend fun getAllSourcePathsByIds(ids: List<Long>): List<String>
-
-    @Transaction
     @Query("select * from track where sourcePath = :sourcePath")
     suspend fun getBySourcePath(sourcePath: String): JoinedTrack?
 
     @Transaction
     @Query("select * from track where sourcePath in (:sourcePaths)")
     suspend fun getAllBySourcePaths(sourcePaths: List<String>): List<JoinedTrack>
+
+    @Query("select id from track where sourcePath in (:sourcePaths)")
+    suspend fun getAllIdsBySourcePaths(sourcePaths: List<String>): List<Long>
 
     @Transaction
     @Query("select * from track where dropboxPath = :dropboxPath")
@@ -76,18 +76,31 @@ interface TrackDao {
     @Query("select * from track where ignored != :ignore")
     suspend fun getAll(ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
-    @Query("select mediaId from track")
-    suspend fun getAllMediaIds(): List<Long>
+    @Transaction
+    @Query("select * from track inner join album on track.albumId = album.id inner join artist on album.artistId = artist.id where (track.isFavorite or album.isFavorite or artist.isFavorite) and ignored != :ignore")
+    suspend fun getAllWithFavorite(ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
-    @Query("select mediaId from track where dropboxPath == null")
+    @Query("select mediaId from track where dropboxPath is null")
     suspend fun getAllLocalMediaIds(): List<Long>
 
     @Transaction
     @Query("select * from track where ignored != :ignore order by titleSort collate nocase")
-    fun getAllAsync(ignore: Bool = Bool.UNDEFINED): Flow<List<JoinedTrack>>
+    fun getAllAsFlow(ignore: Bool = Bool.UNDEFINED): Flow<List<JoinedTrack>>
 
     @Transaction
-    @Query("select * from track where title like :title")
+    @Query("select * from track where ignored != :ignore order by titleSort collate nocase")
+    fun getAllAsPagingSource(ignore: Bool = Bool.UNDEFINED): PagingSource<Int, JoinedTrack>
+
+    @Transaction
+    @Query("select * from track where ignored != :ignore order by titleSort collate nocase limit :limit offset :offset")
+    suspend fun getAllPaged(
+        limit: Int,
+        offset: Int,
+        ignore: Bool = Bool.UNDEFINED
+    ): List<JoinedTrack>
+
+    @Transaction
+    @Query("select * from track where title like ('%'||:title||'%') escape '\\'")
     suspend fun getAllByTitle(title: String): List<JoinedTrack>
 
     @Transaction
@@ -95,15 +108,22 @@ interface TrackDao {
     suspend fun getAllByAlbum(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
     @Transaction
-    @Query("select * from track where albumId = :albumId and ignored != :ignore order by trackNum")
-    suspend fun getAllByAlbumSorted(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
+    @Query("select * from track where albumId = :albumId and ignored != :ignore")
+    fun getAllByAlbumAsFlow(albumId: Long, ignore: Bool = Bool.UNDEFINED): Flow<List<Track>>
+
+    @Transaction
+    @Query("select * from track where albumId = :albumId and isFavorite and ignored != :ignore")
+    suspend fun getAllWithFavoriteByAlbum(
+        albumId: Long,
+        ignore: Bool = Bool.UNDEFINED
+    ): List<JoinedTrack>
 
     @Transaction
     @Query("select * from track where albumId = :albumId and ignored != :ignore order by discNum, trackNum")
-    fun getAllByAlbumAsync(
+    fun getAllByAlbumAsPagingSource(
         albumId: Long,
         ignore: Bool = Bool.UNDEFINED
-    ): Flow<List<JoinedTrack>>
+    ): PagingSource<Int, JoinedTrack>
 
     @Transaction
     @Query("select * from track where genre = :genreName")
@@ -111,23 +131,37 @@ interface TrackDao {
 
     @Transaction
     @Query("select * from track where genre = :genreName")
-    fun getAllByGenreNameAsync(genreName: String): Flow<List<JoinedTrack>>
+    fun getAllByGenreNameAsPagingSource(genreName: String): PagingSource<Int, JoinedTrack>
 
     @Transaction
-    @Query("select * from track where artistId = :artistId and ignored != :ignore")
+    @Query("select * from track where albumId in (select id from album where artistId = :artistId) and ignored != :ignore")
     suspend fun getAllByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
 
     @Transaction
-    @Query("select distinct genre from track where genre is not null")
-    suspend fun getAllGenre(): List<String>
+    @Query("select dropboxPath from track where albumId in (select id from album where artistId = :artistId) and ignored != :ignore")
+    suspend fun getAllDropboxPathsByArtist(
+        artistId: Long,
+        ignore: Bool = Bool.UNDEFINED
+    ): List<String>
+
+    @Transaction
+    @Query("select * from track inner join album on track.albumId = album.id where album.artistId = :artistId and (track.isFavorite or album.isFavorite) and track.ignored != :ignore")
+    suspend fun getAllWithFavoriteByArtist(
+        artistId: Long,
+        ignore: Bool = Bool.UNDEFINED
+    ): List<JoinedTrack>
 
     @Transaction
     @Query("select distinct genre from track where genre is not null")
-    fun getAllGenreAsync(): Flow<List<String>>
+    fun getAllGenreAsFlow(): Flow<List<String>>
 
     @Transaction
-    @Query("select distinct genre from track where genre is not null and genre like :name")
-    suspend fun getAllGenreByName(name: String): List<String>
+    @Query("select distinct genre from track where genre is not null and genre like ('%'||:name||'%') escape '\\'")
+    suspend fun findAllByName(name: String): List<String>
+
+    @Transaction
+    @Query("select * from track where exists (select 1 from lyric where lyric.trackId = track.id and exists (select 1 from json_each(lyric.lines) where json_extract(json_each.value, '\$.sentence') like ('%'||:keyword||'%') escape '\\'))")
+    suspend fun findAllByLyricKeyword(keyword: String): List<JoinedTrack>
 
     @Query("update track set playbackCount = (select playbackCount from track where id = :trackId) + 1 where id = :trackId")
     suspend fun increasePlaybackCount(trackId: Long)
@@ -139,69 +173,82 @@ interface TrackDao {
     suspend fun count(): Int
 
     @Query("select count(*) from track")
-    fun countAsync(): Flow<Int>
+    fun countAsFlow(): Flow<Int>
 
-    @Query("select lastModified from track order by lastModified desc limit 1")
+    @Query("select lastModified from track where dropboxPath is null order by lastModified desc limit 1")
     suspend fun getLatestModifiedEpochTime(): Long?
 
     @Transaction
     suspend fun deleteIncludingRootIfEmpty(db: DB, vararg trackIds: Long) {
         val tracks = getAllByIds(trackIds.toList())
+        db.queueHistoryDao().deleteByTrackIds(trackIds.toList())
+        db.savedQueueDao().deleteByTrackIds(trackIds.toList())
         deleteAllByIds(trackIds.toList())
 
         tracks.forEach {
             if (getAllByAlbum(it.track.albumId, Bool.UNDEFINED).isEmpty()) {
                 db.albumDao().deleteIncludingRootIfEmpty(db, it.track.albumId)
             } else {
-                db.albumDao()
-                    .update(
-                        it.album.copy(
-                            totalDuration = it.album.totalDuration - it.track.duration
-                        )
-                    )
-                db.artistDao()
-                    .update(
-                        it.artist.copy(
-                            totalDuration = it.artist.totalDuration - it.track.duration
-                        )
-                    )
+                db.albumDao().refreshTotalDurationsIncludingArtists(db, listOf(it.track.albumId))
             }
         }
     }
 
     @Transaction
-    suspend fun upsert(
-        newTrack: Track,
-        albumId: Long,
-        artistId: Long,
-        newDuration: Long? = null
-    ): Long {
-        val existingTrack =
-            if (newTrack.mediaId < 0) get(newTrack.id)
-            else getByMediaId(newTrack.mediaId)
-        existingTrack?.track?.let {
-            update(
-                newTrack.copy(
-                    id = it.id,
-                    playbackCount = it.playbackCount,
-                    ignored = it.ignored,
-                    duration = newDuration ?: it.duration,
-                    artworkUriString = newTrack.artworkUriString ?: it.artworkUriString
-                )
-            )
+    suspend fun getByRandom(
+        db: DB,
+        random: Random = Random(System.currentTimeMillis())
+    ): JoinedTrack? {
+        val artistId = db.artistDao().getAllIds().let {
+            if (it.isEmpty()) return null
+            else it[random.nextInt(it.size)]
         }
-
-        return existingTrack?.track?.id ?: insert(newTrack)
+        val albumId = db.albumDao().getAllByArtistId(artistId)
+            .let {
+                if (it.isEmpty()) return getByRandom(db, random)
+                else it[random.nextInt(it.size)].album.id
+            }
+        return db.trackDao().getAllByAlbum(albumId)
+            .let {
+                if (it.isEmpty()) return getByRandom(db, random)
+                else it[random.nextInt(it.size)]
+            }
     }
 
-    @Transaction
-    suspend fun getDurationWithTitles(
-        title: String,
-        albumTitle: String?,
-        artistTitle: String?
-    ): Long? =
-        getAllByTitle(title)
-            .firstOrNull { it.album.title == albumTitle && it.artist.title == artistTitle }
-            ?.track
-            ?.duration
+    suspend fun hiraganizeSortAll(db: DB) {
+        val hiraganized = db.trackDao().getAll().map { it.hiraganizeRecursively() }
+
+        db.trackDao().insertAll(hiraganized.map { it.track })
+        db.albumDao().insertAll(hiraganized.map { it.album })
+        db.artistDao().insertAll(hiraganized.map { it.artist })
+    }
+
+    fun JoinedTrack.hiraganizeRecursively(): JoinedTrack = when {
+        track.titleSort.containsKatakana -> {
+            copy(track = track.copy(titleSort = track.titleSort.hiraganized))
+                .hiraganizeRecursively()
+        }
+
+        track.composerSort?.containsKatakana == true -> {
+            copy(track = track.copy(composerSort = track.composerSort.hiraganized))
+                .hiraganizeRecursively()
+        }
+
+        album.titleSort.containsKatakana -> {
+            copy(album = album.copy(titleSort = album.titleSort.hiraganized))
+                .hiraganizeRecursively()
+        }
+
+        artist.titleSort.containsKatakana -> {
+            copy(artist = artist.copy(titleSort = artist.titleSort.hiraganized))
+                .hiraganizeRecursively()
+        }
+
+        albumArtist?.titleSort?.containsKatakana == true -> {
+            copy(albumArtist = albumArtist.copy(titleSort = albumArtist.titleSort.hiraganized))
+                .hiraganizeRecursively()
+        }
+
+        else -> this
+    }
 }

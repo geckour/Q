@@ -1,5 +1,6 @@
 package com.geckour.q.data.db.dao
 
+import androidx.paging.PagingSource
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -15,6 +16,9 @@ interface ArtistDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(artist: Artist): Long
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertAll(artists: List<Artist>)
 
     @Update
     suspend fun update(artist: Artist): Int
@@ -37,11 +41,20 @@ interface ArtistDao {
     @Query("select * from artist where title = :title")
     suspend fun getAllByTitle(title: String): List<Artist>
 
-    @Query("select * from artist where title like :title")
+    @Query("select * from artist where title like ('%'||:title||'%') escape '\\'")
     suspend fun findAllByTitle(title: String): List<Artist>
 
-    @Query("select * from artist where id in (select artistId from album group by id) order by titleSort collate nocase")
-    fun getAllOrientedAlbumAsync(): Flow<List<Artist>>
+    @Query("select * from artist where artist.id in (select artistId from album group by album.id) order by artist.titleSort collate nocase")
+    fun getAllOrientedAlbumAsPagingSource(): PagingSource<Int, Artist>
+
+    @Query("select * from artist where artist.id in (select artistId from album group by album.id) order by artist.titleSort collate nocase")
+    suspend fun getAllOrientedAlbum(): List<Artist>
+
+    @Query("select exists(select 1 from track where track.dropboxPath is not null and track.albumId in (select id from album where album.artistId = :artistId group by album.id))")
+    fun containDropboxContentAsFlow(artistId: Long): Flow<Boolean>
+
+    @Query("select sourcePath from track where track.dropboxPath is not null and track.albumId in (select id from album where album.artistId = :artistId group by album.id)")
+    fun getIncludingDropboxSourcePathsAsFlow(artistId: Long): Flow<List<String>>
 
     @Query("select artworkUriString from album where artistId = :artistId and artworkUriString is not null order by playbackCount limit 1")
     suspend fun getThumbnailUriString(artistId: Long): String
@@ -49,8 +62,14 @@ interface ArtistDao {
     @Query("update artist set playbackCount = (select playbackCount from artist where id = :artistId) + 1, artworkUriString = (select artworkUriString from album where artistId = :artistId order by playbackCount desc limit 1) where id = :artistId")
     suspend fun increasePlaybackCount(artistId: Long)
 
-    @Query("update artist set totalDuration = 0")
-    suspend fun resetTotalDurations()
+    @Query(
+        "update artist set totalDuration = " +
+                "(select coalesce(sum(track.duration), 0) from track " +
+                "inner join album on track.albumId = album.id " +
+                "where album.artistId = artist.id) " +
+                "where id in (:artistIds)"
+    )
+    suspend fun refreshTotalDurations(artistIds: List<Long>)
 
     @Transaction
     suspend fun deleteRecursively(artistId: Long) {
@@ -59,17 +78,11 @@ interface ArtistDao {
         delete(artistId)
     }
 
-    @Query("select exists(select 1 from track where (artistId = :artistId or albumArtistId = :artistId) and dropboxPath is not null)")
-    fun containDropboxContent(artistId: Long): Flow<Boolean>
-
-    @Query("select dropboxPath from track where (artistId = :artistId or albumArtistId = :artistId) and dropboxPath is not null and (sourcePath is '' or sourcePath like 'https://%.dl.dropboxusercontent.com/%')")
-    fun downloadableDropboxPaths(artistId: Long): Flow<List<String>>
-
-    @Query("select id from track where (artistId = :artistId or albumArtistId = :artistId)")
-    suspend fun getContainTrackIds(artistId: Long): List<Long>
+    @Query("select sourcePath from track where (artistId = :artistId or albumArtistId = :artistId)")
+    suspend fun getContainTrackIds(artistId: Long): List<String>
 
     @Transaction
-    suspend fun upsert(db: DB, newArtist: Artist, durationToAdd: Long = 0): Long {
+    suspend fun upsert(db: DB, newArtist: Artist): Long {
         val existingArtist = getByTitle(newArtist.title)
         val id = existingArtist?.let { existing ->
             val artworkUriString = db.albumDao()
@@ -81,21 +94,16 @@ interface ArtistDao {
             val target = newArtist.copy(
                 id = existing.id,
                 playbackCount = existing.playbackCount,
-                totalDuration = existing.totalDuration + durationToAdd,
+                totalDuration = existing.totalDuration,
                 artworkUriString = artworkUriString
             )
             update(target)
             existing.id
-        } ?: insert(newArtist.copy(totalDuration = durationToAdd))
+        } ?: insert(newArtist.copy(totalDuration = 0))
 
         return id
     }
 
-    @Transaction
-    suspend fun refreshTotalDurations(db: DB) {
-        resetTotalDurations()
-        db.trackDao().getAll().forEach {
-            upsert(db, it.artist, it.track.duration)
-        }
-    }
+    @Query("select id from artist")
+    suspend fun getAllIds(): List<Long>
 }

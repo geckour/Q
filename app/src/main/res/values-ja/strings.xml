@@ -7,6 +7,10 @@
     <string name="app_theme_light">ライト</string>
     <string name="app_theme_dark">ダーク</string>
 
+    <string name="default_device_name">端末のスピーカー</string>
+
+    <string name="text_edit_reset">リセット</string>
+
     <!-- Drawer -->
     <string name="drawer_open">開</string>
     <string name="drawer_close">閉</string>
@@ -19,26 +23,28 @@
     <string name="notification_channel_sleep_timer">おやすみタイマー</string>
     <string name="notification_channel_description_sleep_timer">おやすみタイマーの通知</string>
     <string name="notification_title_retriever">メディアを探索中</string>
-    <string name="notification_text_retriever">%1$d / %2$d | ライブラリを同期しています…</string>
-    <string name="notification_text_retriever_with_path">%1$d / %2$d | ライブラリを同期しています…%3$s</string>
+    <string name="notification_text_retriever">残り %d ファイル\nライブラリを同期しています…</string>
+    <string name="notification_text_retriever_with_path">残り %1$d ファイル (%2$s/%3$s 処理済み) %4$d ファイルスキップ\nあと %5$s\nライブラリを同期しています…\n%6$s</string>
     <string name="notification_title_media_add">メディアを追加中</string>
     <string name="notification_text_media_add">%s を追加しています…</string>
     <string name="notification_title_sleep_timer">おやすみタイマー</string>
     <string name="notification_text_sleep_timer">残り: %s</string>
     <string name="notification_text_sleep_timer_with_tolerance">残り: %1$s ± %2$s</string>
-    <string name="notification_action_prev">前へ</string>
-    <string name="notification_action_play">再生</string>
-    <string name="notification_action_pause">停止</string>
-    <string name="notification_action_next">次へ</string>
+    <string name="notification_action_toggle_favorite">お気に入りを切り替え</string>
 
     <!-- Indicator -->
     <string name="syncing">ライブラリを同期中…</string>
-    <string name="progress_title_retrieve_media">@string/syncing</string>
+    <string name="starting">同期を開始中…</string>
+    <string name="progress_title_retrieve_media">@string/starting</string>
     <string name="progress_title_download_dropbox">ダウンロード中…</string>
     <string name="loading">アイテムを読み込み中…</string>
-    <string name="remaining">残り: %s (%sB)</string>
+    <string name="remaining">残り: %1$d (%2$s/%3$s 処理済み)、スキップ: %4$d</string>
+    <string name="remaining_files">残り: %1$d (%2$d/%3$d ファイル処理済み)、スキップ: %4$d</string>
+    <string name="remaining_duration">あと %s</string>
     <string name="button_apply">適用</string>
     <string name="button_cancel">キャンセル</string>
+    <string name="message_export_lyric_success">歌詞の書き出しに成功しました</string>
+    <string name="message_export_lyric_failure">歌詞の書き出しに失敗しました</string>
     <string name="message_attach_lyric_success">歌詞の紐づけに成功しました</string>
     <string name="message_attach_lyric_failure">歌詞の紐づけに失敗しました</string>
     <string name="message_delete_lyric_complete">歌詞の削除が完了しました</string>
@@ -55,11 +61,13 @@
     <string name="nav_album">アルバム</string>
     <string name="nav_track">曲</string>
     <string name="nav_genre">ジャンル</string>
+    <string name="nav_history">履歴</string>
+    <string name="nav_saved_queue">保存したキュー</string>
     <string name="nav_dropbox">Dropbox</string>
     <string name="nav_setting">設定</string>
     <string name="nav_equalizer">イコライザ</string>
-    <string name="nav_sync">ライブラリを同期</string>
     <string name="nav_dropbox_sync">Dropboxと同期</string>
+    <string name="nav_sync">ライブラリを同期</string>
     <string name="nav_pay">投げ銭</string>
     <string name="nav_fortune">おみQじ</string>
 
@@ -73,6 +81,7 @@
     <string name="menu_ignore_to_false">一括追加時スキップを無効にする</string>
     <string name="menu_ignore_to_true">一括追加時スキップを有効にする</string>
 
+    <string name="menu_export_lyric">歌詞を書き出し</string>
     <string name="menu_attach_lyric">歌詞を紐づけ</string>
     <string name="menu_detach_lyric">歌詞の紐づけを解除</string>
 
@@ -81,6 +90,10 @@
     <string name="menu_insert_next">次へ挿入</string>
     <string name="menu_insert_last">最後へ挿入</string>
     <string name="menu_override">上書き</string>
+
+    <string name="menu_insert_generated_queue_next">この曲から生成したキューを次へ挿入</string>
+    <string name="menu_insert_generated_queue_last">この曲から生成したキューを最後へ挿入</string>
+    <string name="menu_override_generated_queue">この曲から生成したキューで上書き</string>
 
     <string name="menu_insert_all_simple_shuffle_next">単純シャッフルで次へ挿入</string>
     <string name="menu_insert_all_simple_shuffle_last">単純シャッフルで最後へ挿入</string>
@@ -133,6 +146,7 @@
 
     <string name="dialog_title_dropbox_choose_folder">フォルダを選択</string>
     <string name="dialog_desc_dropbox_choose_folder">メディアを探索するルートフォルダを選択</string>
+    <string name="dialog_desc_dropbox_empty_folder">このフォルダは空です</string>
 
     <string name="dialog_title_dropbox_sync_caution">警告</string>
     <string name="dialog_desc_dropbox_sync_caution">同期する曲を全て一時的にダウンロードし、楽曲データ取得後一時ファイルを削除します。\nそのため完了まで時間がかかり、大容量の通信が発生する可能性があります。\n実行しますか？</string>
@@ -141,9 +155,31 @@
 
     <string name="dialog_title_dropbox_download">ダウンロード</string>
     <string name="dialog_desc_dropbox_download">ファイルを端末内に保存しますか？</string>
+    <string name="dialog_title_dropbox_sync_size">ストレージを圧迫する可能性があります</string>
+    <string name="dialog_desc_dropbox_sync_size">同期を続けるには %1$s 以上の空き容量が必要です。現在の空き容量は %2$s ですが、ダウンロードを続けますか？</string>
+    <string name="dialog_title_dropbox_sync_size_exceeded">空き容量が不足しています</string>
+    <string name="dialog_desc_dropbox_sync_size_exceeded">同期を続けるには %1$s 以上の空き容量が必要です。現在の空き容量は %2$s のため、ダウンロードできません。</string>
 
     <string name="dialog_title_dropbox_invalidate_downloaded">削除</string>
     <string name="dialog_desc_dropbox_invalidate_downloaded">端末からダウンロードしたファイルを削除しますか？</string>
+
+    <string name="dialog_switch_desc_filter_only_favorite">お気に入りのみ</string>
+
+    <string name="dialog_message_enable_pause_on_current_track_end">現在再生中の曲の終わりでの自動一時停止を有効にしますか？</string>
+
+    <string name="dialog_message_save_queue">保存するキューのタイトルを決めてください</string>
+    <string name="dialog_title_save_queue">キュー %d</string>
+
+    <string name="dialog_title_saved_queue_modify">保存したキューを編集</string>
+    <string name="dialog_label_saved_queue_modify_title">タイトル</string>
+    <string name="dialog_saved_queue_modify_switch_title">現在のキューで上書き保存する</string>
+
+    <string name="content_description_folder">Folder</string>
+    <string name="content_description_file">File</string>
+
+    <!-- Snackbar -->
+    <string name="snackbar_message_dropbox_sync_failure">Dropbox との同期に失敗しました: %s</string>
+    <string name="snackbar_message_save_queue_complete">キューを保存しました</string>
 
     <!-- Payment -->
     <string name="payment_desc">投げ銭を受け付けています</string>
@@ -165,6 +201,10 @@
     <string name="search_category_album">アルバム</string>
     <string name="search_category_track">曲</string>
     <string name="search_category_genre">ジャンル</string>
+    <string name="search_category_lyric">歌詞</string>
+
+    <!-- Browse -->
+    <string name="browse_category_favorite">お気に入り</string>
 
     <!-- Settings -->
     <string name="setting_category_title_general">一般</string>
@@ -198,6 +238,13 @@
     <string name="equalizer_switch_enabled">ON</string>
     <string name="equalizer_switch_disabled">OFF</string>
     <string name="equalizer_flatten">リセット</string>
+    <string name="equalizer_set_as_default_for_the_device">%s\nのデフォルトに設定する</string>
+    <string name="equalizer_clear_default_for_the_device">%s\nのデフォルトを解除する</string>
+    <string name="equalizer_preset_label_edit">編集</string>
+    <string name="equalizer_preset_label_confirm">決定</string>
+
+    <!-- Saved Queue -->
+    <string name="saved_queue_item_metadata">%1$d曲・計%2$s</string>
 
     <!-- Metadata Editor -->
     <string name="metadata_edit_dialog_title">曲情報を編集</string>
@@ -210,4 +257,7 @@
     <string name="metadata_edit_artist_name_kana">アーティスト名読みがな</string>
     <string name="metadata_edit_composer_name">作曲者名</string>
     <string name="metadata_edit_composer_name_kana">作曲者名読みがな</string>
+
+    <string name="widget_player_sheet_label">プレイヤー</string>
+    <string name="widget_player_sheet_description">キューとコントローラーを表示します。</string>
 </resources>

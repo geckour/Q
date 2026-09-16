@@ -5,27 +5,66 @@ import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.geckour.q.data.db.dao.AlbumDao
 import com.geckour.q.data.db.dao.ArtistDao
+import com.geckour.q.data.db.dao.AudioDeviceEqualizerInfoDao
+import com.geckour.q.data.db.dao.EqualizerPresetDao
 import com.geckour.q.data.db.dao.LyricDao
+import com.geckour.q.data.db.dao.QueueHistoryDao
+import com.geckour.q.data.db.dao.SavedQueueDao
 import com.geckour.q.data.db.dao.TrackDao
+import com.geckour.q.data.db.dao.TrackHistoryDao
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.AudioDeviceEqualizerInfo
 import com.geckour.q.data.db.model.Bool
+import com.geckour.q.data.db.model.EqualizerLevelRatio
+import com.geckour.q.data.db.model.EqualizerPreset
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
+import com.geckour.q.data.db.model.QueueHistory
+import com.geckour.q.data.db.model.QueueHistoryTrack
+import com.geckour.q.data.db.model.SavedQueue
+import com.geckour.q.data.db.model.SavedQueueTrack
 import com.geckour.q.data.db.model.Track
+import com.geckour.q.data.db.model.TrackHistory
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 @Database(
-    entities = [Track::class, Album::class, Artist::class, Lyric::class],
-    version = 2,
+    entities = [
+        Track::class,
+        Album::class,
+        Artist::class,
+        Lyric::class,
+        TrackHistory::class,
+        EqualizerPreset::class,
+        EqualizerLevelRatio::class,
+        AudioDeviceEqualizerInfo::class,
+        QueueHistory::class,
+        QueueHistoryTrack::class,
+        SavedQueue::class,
+        SavedQueueTrack::class,
+    ],
+    version = 18,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
+        AutoMigration(from = 2, to = 3),
+        AutoMigration(from = 3, to = 4),
+        AutoMigration(from = 4, to = 5),
+        AutoMigration(from = 5, to = 6),
+        AutoMigration(from = 6, to = 7),
+        AutoMigration(from = 7, to = 8),
+        AutoMigration(from = 8, to = 9),
+        AutoMigration(from = 9, to = 10),
+        AutoMigration(from = 10, to = 11),
+        AutoMigration(from = 12, to = 13),
+        AutoMigration(from = 16, to = 17),
     ]
 )
 @TypeConverters(BoolConverter::class, LyricLineConverter::class)
@@ -37,11 +76,83 @@ abstract class DB : RoomDatabase() {
         @Volatile
         private var instance: DB? = null
 
+        private fun migrationFrom11To12(context: Context) = object : Migration(11, 12) {
+
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "update track set sourcePath = ? || replace(dropboxPath, '/', '%2F') " +
+                            "where sourcePath = '' and dropboxPath is not null",
+                    arrayOf("file://${context.dataDir.absolutePath}/audio/")
+                )
+            }
+        }
+
+        private val migrationFrom13To14 = object : Migration(13, 14) {
+
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "create index if not exists index_Track_dropboxPath on Track (dropboxPath)"
+                )
+            }
+        }
+
+        private val migrationFrom14To15 = object : Migration(14, 15) {
+
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "create index if not exists index_Track_mediaId on Track (mediaId)"
+                )
+            }
+        }
+
+        private val migrationFrom15To16 = object : Migration(15, 16) {
+
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "create index if not exists index_Album_title_artistId " +
+                            "on Album (title, artistId)"
+                )
+                db.execSQL(
+                    "create index if not exists index_Album_artistId on Album (artistId)"
+                )
+                db.execSQL(
+                    "create index if not exists index_Artist_title on Artist (title)"
+                )
+            }
+        }
+
+        private val migrationFrom17To18 = object : Migration(17, 18) {
+
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "create index if not exists index_Track_albumId on Track (albumId)"
+                )
+                db.execSQL(
+                    "update album set totalDuration = " +
+                            "(select coalesce(sum(track.duration), 0) from track " +
+                            "where track.albumId = album.id)"
+                )
+                db.execSQL(
+                    "update artist set totalDuration = " +
+                            "(select coalesce(sum(track.duration), 0) from track " +
+                            "inner join album on track.albumId = album.id " +
+                            "where album.artistId = artist.id)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): DB =
             instance ?: synchronized(this) {
-                Room.databaseBuilder(context, DB::class.java, DB_NAME).build().apply {
-                    instance = this
-                }
+                Room.databaseBuilder(context, DB::class.java, DB_NAME)
+                    .addMigrations(
+                        migrationFrom11To12(context),
+                        migrationFrom13To14,
+                        migrationFrom14To15,
+                        migrationFrom15To16,
+                        migrationFrom17To18
+                    )
+                    .build()
+                    .apply { instance = this }
             }
     }
 
@@ -49,6 +160,11 @@ abstract class DB : RoomDatabase() {
     abstract fun albumDao(): AlbumDao
     abstract fun artistDao(): ArtistDao
     abstract fun lyricDao(): LyricDao
+    abstract fun trackHistoryDao(): TrackHistoryDao
+    abstract fun queueHistoryDao(): QueueHistoryDao
+    abstract fun savedQueueDao(): SavedQueueDao
+    abstract fun equalizerPresetDao(): EqualizerPresetDao
+    abstract fun audioDeviceEqualizerInfoDao(): AudioDeviceEqualizerInfoDao
 }
 
 internal class BoolConverter {

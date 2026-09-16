@@ -1,0 +1,262 @@
+package com.geckour.q.ui.main.library
+
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Download
+import androidx.compose.material.icons.outlined.DownloadForOffline
+import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.StarBorder
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.SoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.paging.LoadState
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.filter
+import coil.compose.AsyncImage
+import com.geckour.q.R
+import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.JoinedAlbum
+import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.domain.model.SearchItem
+import com.geckour.q.ui.component.QSwitch
+import com.geckour.q.ui.compose.QTheme
+import com.geckour.q.util.getTimeString
+import com.geckour.q.util.DownloadState
+import com.geckour.q.util.isDownloaded
+import kotlinx.collections.immutable.ImmutableList
+import kotlinx.coroutines.flow.map
+
+private const val HEADER_ITEM_COUNT = 2
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun Albums(
+    endItemMargin: Dp,
+    navController: NavController,
+    artistId: Long = -1,
+    isSearchActive: MutableState<Boolean>,
+    isFavoriteOnly: MutableState<Boolean>,
+    query: MutableState<String>,
+    result: MutableState<ImmutableList<SearchItem>>,
+    keyboardController: SoftwareKeyboardController?,
+    changeTopBarTitle: (title: String) -> Unit,
+    onSelectAlbum: (item: JoinedAlbum) -> Unit,
+    onDownload: (dropboxPaths: List<String>) -> Unit,
+    onInvalidateDownloaded: (albumId: Long) -> Unit,
+    initialScrollPosition: Pair<Int, Int>,
+    scrollToTop: Long,
+    onScrollPositionUpdated: (newIndex: Int, newOffset: Int) -> Unit,
+    onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
+    onSearchItemClicked: (item: SearchItem) -> Unit,
+    onSearchItemLongClicked: (item: SearchItem) -> Unit,
+) {
+    val db = DB.getInstance(LocalContext.current)
+    val listState = rememberLazyListState()
+    val pager = remember {
+        Pager(
+            config = PagingConfig(pageSize = 30, enablePlaceholders = true),
+            initialKey = (initialScrollPosition.first - HEADER_ITEM_COUNT).coerceAtLeast(0)
+        ) {
+            if (artistId < 1) db.albumDao().getAllAsPagingSource()
+            else db.albumDao().getAllByArtistIdAsPagingSource(artistId)
+        }
+    }
+    val lazyPagingItems =
+        (if (isFavoriteOnly.value) {
+            pager.flow.map { pagingData -> pagingData.filter { (album, _) -> album.isFavorite } }
+        } else pager.flow)
+            .collectAsLazyPagingItems()
+    val defaultTabBarTitle = stringResource(id = R.string.nav_album)
+
+    LaunchedEffect(artistId) {
+        changeTopBarTitle(
+            if (artistId > 0) db.artistDao().get(artistId)?.title ?: defaultTabBarTitle
+            else defaultTabBarTitle
+        )
+    }
+
+    ScrollPositionEffect(
+        listState = listState,
+        initialScrollPosition = initialScrollPosition,
+        headerItemCount = HEADER_ITEM_COUNT,
+        isItemLoaded = { lazyPagingItems.itemSnapshotList.getOrNull(it) != null },
+        onScrollPositionUpdated = onScrollPositionUpdated
+    )
+
+    ScrollToTopEffect(listState = listState, scrollToTop = scrollToTop)
+
+    LazyColumn(
+        state = listState,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        item {
+            QSearchBar(
+                isSearchActive = isSearchActive,
+                query = query,
+                result = result,
+                keyboardController = keyboardController,
+                onSearchItemClicked = onSearchItemClicked,
+                onSearchItemLongClicked = onSearchItemLongClicked
+            )
+        }
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End
+            ) {
+                Text(
+                    text = stringResource(id = R.string.dialog_switch_desc_filter_only_favorite),
+                    fontSize = 12.sp
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                QSwitch(
+                    checked = isFavoriteOnly.value,
+                    onCheckedChange = { isFavoriteOnly.value = isFavoriteOnly.value.not() }
+                )
+            }
+        }
+        items(lazyPagingItems.itemCount) { index ->
+            val joinedAlbum = lazyPagingItems[index] ?: return@items
+            val tracks by db.trackDao().getAllByAlbumAsFlow(joinedAlbum.album.id)
+                .collectAsState(initial = emptyList())
+            val containDropboxContent = tracks.any { it.dropboxPath != null }
+            val downloadChangedCount by DownloadState.changedCount.collectAsState()
+            val downloadableDropboxPaths = remember(tracks, downloadChangedCount) {
+                tracks.mapNotNull { if (it.isDownloaded) null else it.dropboxPath }
+            }
+            Surface(
+                color = QTheme.colors.colorBackground,
+                shadowElevation = 0.dp,
+                modifier = Modifier.combinedClickable(
+                    onClick = { navController.navigate(route = "tracks?albumId=${joinedAlbum.album.id}") },
+                    onLongClick = { onSelectAlbum(joinedAlbum) }
+                )
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    AsyncImage(
+                        model = joinedAlbum.album.artworkUriString ?: R.drawable.ic_empty,
+                        contentDescription = null,
+                        modifier = Modifier.size(80.dp)
+                    )
+                    Column(
+                        verticalArrangement = Arrangement.Center,
+                        modifier = Modifier
+                            .padding(horizontal = 12.dp)
+                            .weight(1f)
+                            .width(IntrinsicSize.Max)
+                    ) {
+                        Text(
+                            text = joinedAlbum.album.title,
+                            fontSize = 20.sp,
+                            color = QTheme.colors.colorTextPrimary
+                        )
+                        Text(
+                            text = joinedAlbum.artist.title,
+                            fontSize = 16.sp,
+                            color = QTheme.colors.colorTextPrimary
+                        )
+                    }
+                    Text(
+                        text = joinedAlbum.album.totalDuration.getTimeString(),
+                        fontSize = 12.sp,
+                        color = QTheme.colors.colorTextPrimary,
+                        modifier = Modifier.padding(horizontal = 4.dp)
+                    )
+                    if (containDropboxContent) {
+                        IconButton(
+                            onClick = {
+                                if (downloadableDropboxPaths.isEmpty()) onInvalidateDownloaded(
+                                    joinedAlbum.album.id
+                                )
+                                else onDownload(downloadableDropboxPaths)
+                            },
+                            modifier = Modifier
+                                .padding(8.dp)
+                                .size(24.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (downloadableDropboxPaths.isNotEmpty()) Icons.Outlined.Download else Icons.Outlined.DownloadForOffline,
+                                contentDescription = null,
+                                tint = QTheme.colors.colorTextPrimary
+                            )
+                        }
+                    }
+                    IconButton(
+                        onClick = { onToggleFavorite(joinedAlbum.album) },
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .size(24.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (joinedAlbum.album.isFavorite) Icons.Outlined.Star else Icons.Outlined.StarBorder,
+                            contentDescription = null,
+                            tint = QTheme.colors.colorTextPrimary
+                        )
+                    }
+                    IconButton(
+                        onClick = { onSelectAlbum(joinedAlbum) },
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .size(24.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_option),
+                            contentDescription = null,
+                            tint = QTheme.colors.colorTextPrimary
+                        )
+                    }
+                }
+            }
+        }
+        if (lazyPagingItems.loadState.append == LoadState.Loading) {
+            item {
+                CircularProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .wrapContentWidth(Alignment.CenterHorizontally)
+                )
+            }
+        }
+        item {
+            Spacer(modifier = Modifier.height(endItemMargin))
+        }
+    }
+}

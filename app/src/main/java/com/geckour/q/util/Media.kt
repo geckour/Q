@@ -1,49 +1,52 @@
 package com.geckour.q.util
 
-import android.app.Notification
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
-import android.net.Uri
-import android.support.v4.media.MediaMetadataCompat
-import android.support.v4.media.session.MediaSessionCompat
-import android.support.v4.media.session.PlaybackStateCompat
-import android.webkit.MimeTypeMap
-import androidx.core.app.NotificationCompat
-import androidx.core.content.FileProvider
+import android.icu.util.Calendar
+import android.icu.util.TimeZone
+import androidx.core.graphics.createBitmap
 import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toFile
-import androidx.media.session.MediaButtonReceiver
+import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.exoplayer.ExoPlayer
 import coil.Coil
 import coil.request.ImageRequest
 import coil.size.Scale
+import com.dropbox.core.util.IOUtil.ProgressListener
 import com.dropbox.core.v2.DbxClientV2
-import com.geckour.q.BuildConfig
 import com.geckour.q.R
 import com.geckour.q.data.db.BoolConverter
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.dao.ArtistDao
+import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
-import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.Track
-import com.geckour.q.databinding.DialogEditMetadataBinding
-import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.domain.model.UiTrack
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
-import org.apache.commons.io.FileUtils
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import org.jaudiotagger.tag.images.ArtworkFactory
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStream
-import java.net.URLConnection
+import java.io.IOException
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
 
@@ -51,10 +54,29 @@ const val UNKNOWN: String = "UNKNOWN"
 
 const val DROPBOX_EXPIRES_IN = 14400000L
 
+private const val AUDIO_DIR_NAME = "audio"
+
+private const val DOWNLOAD_BUFFER_SIZE = 16 * 1024
+
+private const val DOWNLOAD_CONNECT_TIMEOUT_SECONDS = 30L
+
+private const val DOWNLOAD_READ_TIMEOUT_SECONDS = 60L
+
+private val downloadClient by lazy {
+    OkHttpClient.Builder()
+        .connectTimeout(DOWNLOAD_CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .readTimeout(DOWNLOAD_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+        .build()
+}
+
 private val random = Random(System.currentTimeMillis())
 
+val dailyRandom: Random
+    get() = Calendar.getInstance(TimeZone.getDefault()).let {
+        Random(it.get(Calendar.YEAR) * 1000L + it.get(Calendar.DAY_OF_YEAR))
+    }
+
 val dropboxUrlPattern = Regex("^https://.+\\.dl\\.dropboxusercontent\\.com/.+$")
-val dropboxCachePathPattern = Regex("^.*/com\\.geckour\\.q.*/cache/audio/id%3A.+$")
 
 enum class InsertActionType {
     NEXT,
@@ -81,10 +103,6 @@ enum class OrientedClassType {
     GENRE
 }
 
-enum class PlayerControlCommand {
-    DESTROY
-}
-
 data class QueueMetadata(
     val actionType: InsertActionType,
     val classType: OrientedClassType
@@ -92,14 +110,15 @@ data class QueueMetadata(
 
 data class QueueInfo(
     val metadata: QueueMetadata,
-    val queue: List<DomainTrack>
+    val queue: List<JoinedTrack>
 )
 
-fun JoinedTrack.toDomainTrack(
+fun JoinedTrack.toUiTrack(
     trackNum: Int? = null,
     nowPlaying: Boolean = false
-): DomainTrack {
-    return DomainTrack(
+): UiTrack {
+    val (year, month, day) = dates
+    return UiTrack(
         "${random.nextLong()}-${track.id}",
         track.id,
         track.mediaId,
@@ -110,6 +129,7 @@ fun JoinedTrack.toDomainTrack(
         track.title,
         track.titleSort,
         artist,
+        albumArtist,
         track.composer,
         track.composerSort,
         album.artworkUriString,
@@ -118,73 +138,141 @@ fun JoinedTrack.toDomainTrack(
         track.trackTotal,
         track.discNum,
         track.discTotal,
-        track.releaseDate,
+        year,
+        month,
+        day,
         track.genre,
         track.sourcePath,
         track.dropboxPath,
         track.dropboxExpiredAt,
         track.artworkUriString,
         BoolConverter().toBoolean(track.ignored),
-        nowPlaying
+        nowPlaying,
+        isFavorite = track.isFavorite
     )
 }
 
-val DomainTrack.isDownloaded
-    get() = dropboxPath != null && sourcePath.isNotBlank() && sourcePath.matches(dropboxUrlPattern)
-        .not()
+val JoinedTrack.dates: Triple<Int?, Int?, Int?>
+    get() {
+        val releaseDateString = track.releaseDate ?: return Triple(null, null, null)
 
-val Track.isDownloaded
-    get() = dropboxPath != null && sourcePath.isNotBlank() && sourcePath.matches(dropboxUrlPattern)
-        .not()
+        runCatching {
+            val calendar = Calendar.getInstance().apply {
+                time = SimpleDateFormat("yyyy-MM-dd", Locale.JAPAN).parse(releaseDateString)
+            }
+            return Triple(
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+            )
+        }
+        runCatching {
+            val calendar = Calendar.getInstance().apply {
+                time = SimpleDateFormat("yyyy-MM", Locale.JAPAN).parse(releaseDateString)
+            }
+            return Triple(
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                null
+            )
+        }
+        runCatching {
+            val calendar = Calendar.getInstance().apply {
+                time = SimpleDateFormat("yyyy", Locale.JAPAN).parse(releaseDateString)
+            }
+            return Triple(
+                calendar.get(Calendar.YEAR),
+                null,
+                null
+            )
+        }
 
-suspend fun DB.searchArtistByFuzzyTitle(title: String): List<Artist> =
-    this@searchArtistByFuzzyTitle.artistDao().findAllByTitle("%${title.escapeSql}%")
+        return Triple(null, null, null)
+    }
 
-suspend fun DB.searchAlbumByFuzzyTitle(title: String): List<JoinedAlbum> =
-    this@searchAlbumByFuzzyTitle.albumDao().findAllByTitle("%${title.escapeSql}%")
+val UiTrack.isDownloaded get() = dropboxPath != null && sourcePath.existsAsFile()
 
-suspend fun DB.searchTrackByFuzzyTitle(title: String): List<JoinedTrack> =
-    this@searchTrackByFuzzyTitle.trackDao().getAllByTitle("%${title.escapeSql}%")
+val Track.isDownloaded get() = dropboxPath != null && sourcePath.existsAsFile()
 
-suspend fun List<String>.getThumb(context: Context): Bitmap? {
+fun ArtistDao.isAllIncludingTracksDownloadedAsFlow(artistId: Long): Flow<Boolean> =
+    combine(
+        getIncludingDropboxSourcePathsAsFlow(artistId),
+        DownloadState.changedCount
+    ) { sourcePaths, _ ->
+        sourcePaths.all { it.existsAsFile() }
+    }.flowOn(Dispatchers.IO)
+
+private fun String.existsAsFile(): Boolean =
+    isNotBlank() &&
+            matches(dropboxUrlPattern).not() &&
+            runCatching { toUri().toFile().exists() }.getOrDefault(false)
+
+suspend fun List<String?>.getThumb(context: Context): Bitmap? {
     if (this.isEmpty()) return null
     val unit = 100
     val width = ((this.size * 0.9 - 0.1) * unit).toInt()
-    val bitmap = Bitmap.createBitmap(width, unit, Bitmap.Config.ARGB_8888)
+    val bitmap = createBitmap(width, unit)
     val canvas = Canvas(bitmap)
     withContext(Dispatchers.IO) {
-        this@getThumb.reversed().forEachIndexed { i, uriString ->
-            val b = catchAsNull {
-                Coil.imageLoader(context)
-                    .execute(
-                        ImageRequest.Builder(context)
-                            .data(uriString)
-                            .size(unit)
-                            .scale(Scale.FIT)
-                            .allowHardware(false)
-                            .build()
-                    )
-                    .drawable
-                    ?.toBitmap()
-            } ?: return@forEachIndexed
-            canvas.drawBitmap(
-                b,
-                bitmap.width - (i + 1) * unit * 0.9f,
-                (unit - b.height) / 2f,
-                Paint()
-            )
-        }
+        this@getThumb.reversed()
+            .fold(emptyList<String?>()) { acc, uriString ->
+                if (acc.isNotEmpty() && acc.last() == uriString) acc else acc + uriString
+            }
+            .forEachIndexed { i, uriString ->
+                val b = catchAsNull {
+                    Coil.imageLoader(context)
+                        .execute(
+                            ImageRequest.Builder(context)
+                                .data(uriString ?: R.drawable.ic_empty)
+                                .size(unit)
+                                .scale(Scale.FIT)
+                                .allowHardware(false)
+                                .build()
+                        )
+                        .drawable
+                        ?.toBitmap()
+                } ?: return@forEachIndexed
+                canvas.drawBitmap(
+                    b,
+                    bitmap.width - (i + 1) * unit * 0.9f,
+                    (unit - b.height) / 2f,
+                    Paint()
+                )
+            }
     }
     return bitmap
 }
 
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-fun DomainTrack.getMediaItem(): MediaItem = MediaItem.fromUri(Uri.parse(sourcePath))
+suspend fun String.getMediaItem(context: Context): MediaItem =
+    DB.getInstance(context)
+        .trackDao()
+        .getBySourcePath(this)
+        ?.getMediaItem()
+        ?: this.getMediaItem()
 
-fun List<DomainTrack>.sortedByTrackOrder(
+private fun String.getMediaItem(): MediaItem = MediaItem.Builder()
+    .setMediaId(this)
+    .setUri(this.toUri())
+    .build()
+
+fun JoinedTrack.getMediaItem(): MediaItem =
+    MediaItem.Builder()
+        .setMediaId(track.sourcePath)
+        .setUri(track.sourcePath.toUri())
+        .setMediaMetadata(getMediaMetadata())
+        .build()
+
+fun List<JoinedTrack>.orderModified(
     classType: OrientedClassType,
     actionType: InsertActionType
-): List<DomainTrack> {
+): List<JoinedTrack> {
+    val simpleShuffleConditional = actionType in listOf(
+        InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
+        InsertActionType.SHUFFLE_SIMPLE_NEXT,
+        InsertActionType.SHUFFLE_SIMPLE_LAST,
+    )
+    if (simpleShuffleConditional) return shuffled()
+
     val shuffleConditional = actionType in listOf(
         InsertActionType.SHUFFLE_OVERRIDE,
         InsertActionType.SHUFFLE_NEXT,
@@ -192,9 +280,9 @@ fun List<DomainTrack>.sortedByTrackOrder(
     )
     return this.groupBy { it.album }
         .map { (album, tracks) ->
-            album to tracks.groupBy { it.discNum }
+            album to tracks.groupBy { it.track.discNum }
                 .map { (diskNum, track) ->
-                    diskNum to track.sortedBy { it.trackNum }
+                    diskNum to track.sortedBy { it.track.trackNum }
                 }
                 .sortedBy { it.first }
                 .flatMap { it.second }
@@ -212,211 +300,142 @@ fun List<DomainTrack>.sortedByTrackOrder(
         }
 }
 
-suspend fun DomainTrack.getMediaMetadata(context: Context): MediaMetadataCompat =
-    MediaMetadataCompat.Builder()
-        .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaId.toString())
-        .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_URI, sourcePath)
-        .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_TITLE, title)
-        .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_SUBTITLE, artist.title)
-        .putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_DESCRIPTION, album.title)
-        .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
-        .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist.title)
-        .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album.title)
-        .putString(MediaMetadataCompat.METADATA_KEY_COMPOSER, composer)
-        .putString(MediaMetadataCompat.METADATA_KEY_DATE, releaseDate)
+fun JoinedTrack.getMediaMetadata(): MediaMetadata {
+    val (year, month, day) = dates
+
+    return MediaMetadata.Builder()
+        .setTitle(track.title)
+        .setDisplayTitle(track.title)
+        .setSubtitle(artist.title)
+        .setDescription(album.title)
+        .setArtist(artist.title)
+        .setAlbumArtist(albumArtist?.title)
+        .setAlbumTitle(album.title)
+        .setComposer(track.composer)
+        .setReleaseYear(year)
+        .setReleaseMonth(month)
+        .setReleaseDay(day)
+        .setArtworkUri((track.artworkUriString ?: album.artworkUriString)?.toUri())
+        .setGenre(track.genre)
+        .setIsBrowsable(false)
+        .setIsPlayable(true)
+        .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
         .apply {
-            val artworkUriString = getTempArtworkUriString(context)
-            val artwork = withContext(Dispatchers.IO) {
-                album.artworkUriString?.let {
-                    Coil.imageLoader(context)
-                        .execute(ImageRequest.Builder(context).data(it).build())
-                        .drawable
-                        ?.toBitmap()
-                }
-            }
-            putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, artwork)
-            putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI, artworkUriString)
-            putString(MediaMetadataCompat.METADATA_KEY_DISPLAY_ICON_URI, artworkUriString)
-            trackNum?.let { putLong(MediaMetadataCompat.METADATA_KEY_TRACK_NUMBER, it.toLong()) }
-            trackTotal?.let { putLong(MediaMetadataCompat.METADATA_KEY_NUM_TRACKS, it.toLong()) }
-            discNum?.let { putLong(MediaMetadataCompat.METADATA_KEY_DISC_NUMBER, it.toLong()) }
-            releaseDate?.parseDateLong()?.let { putLong(MediaMetadataCompat.METADATA_KEY_YEAR, it) }
-            DB.getInstance(context).artistDao().get(album.artistId)?.title?.let {
-                putString(MediaMetadataCompat.METADATA_KEY_ALBUM_ARTIST, it)
-            }
+            track.trackNum?.let { setTrackNumber(it) }
+            track.trackTotal?.let { setTotalTrackCount(it) }
+            track.discNum?.let { setDiscNumber(it) }
+            track.discTotal?.let { setTotalDiscCount(it) }
         }
-        .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration)
-        .build()
-
-fun String.parseDateLong(): Long? = catchAsNull {
-    SimpleDateFormat("yyyy-MM-dd", Locale.JAPAN).parse(this)?.time
-} ?: catchAsNull {
-    SimpleDateFormat("yyyy-MM", Locale.JAPAN).parse(this)?.time
-} ?: catchAsNull {
-    SimpleDateFormat("yyyy", Locale.JAPAN).parse(this)?.time
-}
-
-fun DomainTrack.getTempArtworkUriString(context: Context): String? =
-    album.artworkUriString?.let { uriString ->
-        val ext = MimeTypeMap.getFileExtensionFromUrl(uriString)
-        val dirName = "images"
-        val fileName = "temp_artwork.$ext"
-        val dir = File(context.cacheDir, dirName)
-        val file = File(dir, fileName)
-
-        if (file.exists()) file.delete()
-        if (dir.exists().not()) dir.mkdirs()
-
-        File(uriString).copyTo(file, overwrite = true)
-        return FileProvider.getUriForFile(context, BuildConfig.FILES_AUTHORITY, file)
-            .toString()
-    }
-
-fun getPlayerNotification(
-    context: Context,
-    mediaSession: MediaSessionCompat,
-    playing: Boolean
-): Notification {
-    val description = mediaSession.controller.metadata.description
-
-    return context.getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER)
-        .setSmallIcon(R.drawable.ic_notification_player)
-        .setLargeIcon(description.iconBitmap)
-        .setContentTitle(description.title)
-        .setContentText(description.subtitle)
-        .setSubText(description.description)
-        .setOngoing(playing)
-        .setStyle(
-            androidx.media.app.NotificationCompat.MediaStyle()
-                .setShowActionsInCompactView(0, 1, 2)
-                .setMediaSession(mediaSession.sessionToken)
-        )
-        .setShowWhen(false)
-        .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-        .setContentIntent(mediaSession.controller.sessionActivity)
-        .setDeleteIntent(
-            MediaButtonReceiver.buildMediaButtonPendingIntent(
-                context,
-                PlaybackStateCompat.ACTION_STOP
-            )
-        )
-        .addAction(
-            NotificationCompat.Action(
-                R.drawable.ic_backward,
-                context.getString(R.string.notification_action_prev),
-                MediaButtonReceiver.buildMediaButtonPendingIntent(
-                    context,
-                    PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS
-                )
-            )
-        )
-        .addAction(
-            if (playing) {
-                NotificationCompat.Action(
-                    R.drawable.ic_pause,
-                    context.getString(R.string.notification_action_pause),
-                    MediaButtonReceiver.buildMediaButtonPendingIntent(
-                        context,
-                        PlaybackStateCompat.ACTION_PAUSE
-                    )
-                )
-            } else {
-                NotificationCompat.Action(
-                    R.drawable.ic_play,
-                    context.getString(R.string.notification_action_play),
-                    MediaButtonReceiver.buildMediaButtonPendingIntent(
-                        context,
-                        PlaybackStateCompat.ACTION_PLAY
-                    )
-                )
-            }
-        )
-        .addAction(
-            NotificationCompat.Action(
-                R.drawable.ic_forward,
-                context.getString(R.string.notification_action_next),
-                MediaButtonReceiver.buildMediaButtonPendingIntent(
-                    context,
-                    PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                )
-            )
-        )
         .build()
 }
 
-fun Long.getTimeString(): String {
+fun Long.getDateTimeString(): String =
+    SimpleDateFormat("yyyy-MM-dd hh:mm:ss", Locale.JAPAN).format(Date(this))
+
+fun Long.getTimeString(withMillis: Boolean = false): String {
     val hour = this / 3600000
     val minute = (this % 3600000) / 60000
     val second = (this % 60000) / 1000
-    return (if (hour > 0) String.format("%d:", hour) else "") + String.format(
-        "%02d:%02d", minute, second
-    )
+    val secondWithMillis = (this % 60000) / 1000.0
+    return (if (hour > 0) String.format("%d:", hour) else "") +
+            if (withMillis) String.format("%02d:%05.2f", minute, secondWithMillis)
+            else String.format("%02d:%02d", minute, second)
 }
 
-fun DbxClientV2.saveTempAudioFile(context: Context, pathLower: String): File {
-    val dirName = "audio"
-    val fileName = "temp_audio.${pathLower.getExtension()}"
-    val dir = File(context.cacheDir, dirName)
-    val file = File(dir, fileName)
+fun DbxClientV2.saveTempAudioFile(
+    context: Context,
+    id: String,
+    pathLower: String,
+): Flow<Pair<File, Long?>> = saveFile(tempAudioFile(context, id, pathLower), pathLower)
+
+fun DbxClientV2.saveAudioFile(
+    context: Context,
+    id: String,
+    pathLower: String
+): Flow<Pair<File, Long?>> = saveFile(audioFile(context, id, pathLower), pathLower)
+
+fun saveTempAudioFileFromUrl(
+    context: Context,
+    id: String,
+    pathLower: String,
+    url: String,
+): Flow<Pair<File, Long?>> = saveFileFromUrl(tempAudioFile(context, id, pathLower), url)
+
+fun saveAudioFileFromUrl(
+    context: Context,
+    id: String,
+    pathLower: String,
+    url: String,
+): Flow<Pair<File, Long?>> = saveFileFromUrl(audioFile(context, id, pathLower), url)
+
+private fun tempAudioFile(context: Context, id: String, pathLower: String): File {
+    val dir = File(context.cacheDir, AUDIO_DIR_NAME)
+    val file = File(dir, "temp_$id.${pathLower.getExtension()}")
 
     if (file.exists()) file.delete()
     if (dir.exists().not()) dir.mkdir()
 
-    FileOutputStream(file).use { files().download(pathLower).download(it) }
-
     return file
 }
 
-fun DbxClientV2.saveAudioFile(context: Context, id: String, pathLower: String): File {
-    val dirName = "audio"
-    val dir = File(context.cacheDir, dirName)
+private fun audioFile(context: Context, id: String, pathLower: String): File {
+    val dir = File(context.dataDir, AUDIO_DIR_NAME)
     val file = File(dir, "$id.${pathLower.getExtension()}")
 
     if (file.exists()) file.delete()
     if (dir.exists().not()) dir.mkdir()
 
-    FileOutputStream(file).use { files().download(pathLower).download(it) }
-
     return file
 }
 
-fun InputStream.saveTempAudioFile(context: Context): File {
-    val ext = URLConnection.guessContentTypeFromStream(this)
-        ?.replace(Regex(".+/(.+)"), ".$1")
-        ?: ""
-
-    val dirName = "audio"
-    val fileName = "temp_audio$ext"
-    val dir = File(context.cacheDir, dirName)
-    val file = File(dir, fileName)
-
-    if (file.exists()) file.delete()
-    if (dir.exists().not()) dir.mkdir()
-
-    FileUtils.copyToFile(this, file)
-
-    return file
+private fun DbxClientV2.saveFile(
+    file: File,
+    pathLower: String,
+): Flow<Pair<File, Long?>> {
+    return callbackFlow {
+        val callback = ProgressListener { processed ->
+            trySend(file to processed)
+        }
+        FileOutputStream(file).use {
+            files().download(pathLower).download(it, callback)
+        }
+        trySend(file to null)
+        channel.close()
+    }.flowOn(Dispatchers.IO)
 }
 
-suspend fun DialogEditMetadataBinding.updateFileMetadata(
-    context: Context,
-    db: DB,
-    targets: List<JoinedTrack>
-) {
-    targets.asSequence().forEach {
-        it.updateFileMetadata(
-            context,
-            db,
-            inputTrackName.text?.toString(),
-            inputTrackNameKana.text?.toString(),
-            inputAlbumName.text?.toString(),
-            inputAlbumNameKana.text?.toString(),
-            inputArtistName.text?.toString(),
-            inputArtistNameKana.text?.toString(),
-            inputComposerName.text?.toString(),
-            inputComposerNameKana.text?.toString(),
-        )
-    }
+class DownloadFailedException(val code: Int) : IOException("Failed to download: $code")
+
+private fun saveFileFromUrl(
+    file: File,
+    url: String,
+): Flow<Pair<File, Long?>> {
+    return callbackFlow {
+        downloadClient.newCall(Request.Builder().url(url).build()).execute().use { response ->
+            if (response.isSuccessful.not()) {
+                throw DownloadFailedException(response.code)
+            }
+
+            response.body.byteStream().use { input ->
+                FileOutputStream(file).use { output ->
+                    val buffer = ByteArray(DOWNLOAD_BUFFER_SIZE)
+                    var processed = 0L
+                    while (true) {
+                        ensureActive()
+
+                        val read = input.read(buffer)
+                        if (read < 0) break
+
+                        output.write(buffer, 0, read)
+                        processed += read
+                        trySend(file to processed)
+                    }
+                }
+            }
+        }
+        trySend(file to null)
+        channel.close()
+    }.flowOn(Dispatchers.IO)
 }
 
 /**
@@ -485,7 +504,7 @@ suspend fun JoinedTrack.updateFileMetadata(
                     )
                 } else album.id
                 if (newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not()) {
-                    db.trackDao().upsert(
+                    db.trackDao().insert(
                         track.copy(
                             title = newTrackName ?: track.title,
                             titleSort = newTrackNameSort ?: track.titleSort,
@@ -493,11 +512,11 @@ suspend fun JoinedTrack.updateFileMetadata(
                             composerSort = newComposerNameSort ?: track.composerSort,
                             artistId = artistId,
                             albumId = albumId
-                        ),
-                        albumId,
-                        artistId
+                        )
                     )
                 }
+                db.albumDao()
+                    .refreshTotalDurationsIncludingArtists(db, listOf(album.id, albumId).distinct())
             }
 
             newAlbumName.isNullOrBlank().not()
@@ -533,19 +552,18 @@ suspend fun JoinedTrack.updateFileMetadata(
                     }
                 )
                 if (newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not()) {
-                    db.trackDao().upsert(
+                    db.trackDao().insert(
                         track.copy(
                             title = newTrackName ?: track.title,
                             titleSort = newTrackNameSort ?: track.titleSort,
                             composer = newComposerName ?: track.composer,
                             composerSort = newComposerNameSort ?: track.composerSort,
                             albumId = albumId
-                        ),
-                        artist.id,
-                        albumId,
-                        track.duration
+                        )
                     )
                 }
+                db.albumDao()
+                    .refreshTotalDurationsIncludingArtists(db, listOf(album.id, albumId).distinct())
             }
 
             newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not() -> {
@@ -581,39 +599,52 @@ val ExoPlayer.currentSourcePaths: List<String>
     }.filterNotNull()
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-suspend fun MediaItem.toDomainTrack(db: DB): DomainTrack? =
-    localConfiguration?.uri?.toString()?.toDomainTrack(db)
+suspend fun MediaItem.toUiTrack(db: DB): UiTrack? =
+    (localConfiguration?.uri ?: mediaId).toString().toUiTrack(db)
 
-suspend fun String.toDomainTrack(db: DB): DomainTrack? =
-    db.trackDao().getBySourcePath(this)?.toDomainTrack()
+suspend fun String.toUiTrack(db: DB): UiTrack? =
+    db.trackDao().getBySourcePath(this)?.toUiTrack()
 
-suspend fun List<String>.toDomainTracks(db: DB): List<DomainTrack> =
-    db.trackDao().getAllBySourcePaths(this).map { it.toDomainTrack() }
+suspend fun List<String>.toDomainTracks(db: DB): List<UiTrack> =
+    db.trackDao().getAllBySourcePaths(this).map { it.toUiTrack() }
 
-/**
- * @return First value of `Pair` is the old (passed) sourcePath.
- */
-suspend fun DomainTrack.verifiedWithDropbox(
+fun com.geckour.q.domain.model.MediaItem?.isFavoriteToggled(): com.geckour.q.domain.model.MediaItem? =
+    when (this) {
+        is UiTrack -> {
+            copy(isFavorite = isFavorite.not())
+        }
+
+        is Album -> {
+            copy(isFavorite = isFavorite.not())
+        }
+
+        is Artist -> {
+            copy(isFavorite = isFavorite.not())
+        }
+
+        else -> null
+    }
+
+suspend fun JoinedTrack.verifiedWithDropbox(
     context: Context,
     client: DbxClientV2,
     force: Boolean = false
-): DomainTrack? =
+): JoinedTrack? =
     withContext(Dispatchers.IO) {
-        dropboxPath ?: return@withContext null
+        track.dropboxPath ?: return@withContext null
 
         if (force
-            || sourcePath.isBlank()
-            || (sourcePath.matches(dropboxUrlPattern)
-                    && (dropboxExpiredAt ?: 0) <= System.currentTimeMillis())
-            || (sourcePath.matches(dropboxUrlPattern).not()
-                    && Uri.parse(sourcePath).toFile().exists().not())
+            || track.sourcePath.isBlank()
+            || (track.sourcePath.matches(dropboxUrlPattern)
+                    && (track.dropboxExpiredAt ?: 0) <= System.currentTimeMillis())
+            || (track.sourcePath.matches(dropboxUrlPattern).not()
+                    && track.sourcePath.toUri().toFile().exists().not())
         ) {
-            val currentTime = System.currentTimeMillis()
-            val url = client.files().getTemporaryLink(dropboxPath).link
-            val expiredAt = currentTime + DROPBOX_EXPIRES_IN
+            val url = client.files().getTemporaryLink(track.dropboxPath).link
+            val expiredAt = System.currentTimeMillis() + DROPBOX_EXPIRES_IN
 
             val trackDao = DB.getInstance(context).trackDao()
-            trackDao.get(id)?.let { joinedTrack ->
+            trackDao.get(track.id)?.let { joinedTrack ->
                 trackDao.update(
                     joinedTrack.track.copy(
                         sourcePath = url,
@@ -623,8 +654,10 @@ suspend fun DomainTrack.verifiedWithDropbox(
             }
 
             return@withContext copy(
-                sourcePath = url,
-                dropboxExpiredAt = expiredAt
+                track = track.copy(
+                    sourcePath = url,
+                    dropboxExpiredAt = expiredAt
+                )
             )
         }
 
@@ -635,4 +668,7 @@ private fun Bitmap.toByteArray(): ByteArray =
     ByteArrayOutputStream().apply { compress(Bitmap.CompressFormat.PNG, 100, this) }
         .toByteArray()
 
-private val String.escapeSql: String get() = replace("'", "''")
+val String.escapeSql: String
+    get() = replace("\\", "\\\\")
+        .replace("%", "\\%")
+        .replace("_", "\\_")

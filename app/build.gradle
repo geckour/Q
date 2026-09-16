@@ -1,14 +1,10 @@
 plugins {
     id 'com.android.application'
-    id 'kotlin-android'
+    id 'org.jetbrains.kotlin.plugin.compose'
     id 'kotlin-parcelize'
     id 'kotlinx-serialization'
+    id 'com.google.gms.google-services'
     id 'com.google.devtools.ksp'
-    id 'kotlin-kapt'
-}
-
-kotlin {
-    jvmToolchain 17
 }
 
 android {
@@ -19,25 +15,31 @@ android {
 
     buildFeatures.buildConfig true
 
-    compileSdk 34
+    compileSdk = 37
     defaultConfig {
         applicationId "com.geckour.q"
-        minSdk 24
-        targetSdk 34
-        versionCode 17
-        versionName "2.4.2"
+        minSdk 34
+        targetSdk 37
+        versionCode 48
+        versionName "3.0.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
-        buildConfigField "String", keyNameDropBoxAppKey, getQuotedKey(keyNameDropBoxAppKey)
-        buildConfigField "String", keyNameDropBoxAppSecret, getQuotedKey(keyNameDropBoxAppSecret)
+        buildConfigField "String", keyNameDropBoxAppKey, getQuotedKey(keyNameDropBoxAppKey, project.rootDir)
+        buildConfigField "String", keyNameDropBoxAppSecret, getQuotedKey(keyNameDropBoxAppSecret, project.rootDir)
 
         def filesAuthorityValue = applicationId + ".files"
         buildConfigField "String", "FILES_AUTHORITY", "\"${filesAuthorityValue}\""
 
         manifestPlaceholders = [
-                dropboxAppKey : "db-" + getKey(keyNameDropBoxAppKey),
+                dropboxAppKey : "db-" + getKey(keyNameDropBoxAppKey, project.rootDir),
                 filesAuthority: filesAuthorityValue
         ]
+
+        externalNativeBuild {
+            cmake {
+                arguments "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
+            }
+        }
     }
     sourceSets.main {
         jniLibs.srcDir 'src/main/libs'
@@ -61,40 +63,26 @@ android {
         }
         release {
             minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
         }
     }
-    dataBinding.enabled = true
-    kotlinOptions {
-        freeCompilerArgs += ["-Xopt-in=kotlin.RequiresOptIn"]
+    kotlin {
+        compilerOptions {
+            freeCompilerArgs.add("-opt-in=kotlin.RequiresOptIn")
+        }
     }
     buildFeatures {
         compose true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion "1.5.4"
-    }
     ksp {
         arg(new RoomSchemaArgProvider(new File(projectDir, "schemas")))
     }
-    ndkVersion = "21.0.6113669"
-    repositories {
-        maven {
-            name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/geckour/NowPlayingSubjectBuilder")
-
-            credentials {
-                username = getKey('gpr.usr')
-                password = getKey('gpr.key')
-            }
-        }
-    }
 }
 
-static def getKey(keyName) {
+static def getKey(keyName, projectRootDir) {
     Properties props = new Properties()
-    props.load(new FileInputStream(new File("secret.properties")))
+    props.load(new FileInputStream(new File(projectRootDir, "secret.properties")))
     return props[keyName]
 }
 
@@ -102,112 +90,124 @@ static def quoted(value) {
     return "\"" + value + "\""
 }
 
-static def getQuotedKey(keyName) {
-    return quoted(getKey(keyName))
-}
-
-repositories {
-    maven { url "https://jitpack.io" }
+static def getQuotedKey(keyName, projectRootDir) {
+    return quoted(getKey(keyName, projectRootDir))
 }
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
-    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
-    implementation 'androidx.appcompat:appcompat:1.6.1'
-    implementation "androidx.media:media:1.7.0"
-    implementation 'com.google.android.material:material:1.10.0'
+    implementation "org.jetbrains.kotlinx:kotlinx-collections-immutable:0.5.1"
+    implementation 'androidx.constraintlayout:constraintlayout:2.2.2'
+    implementation 'androidx.appcompat:appcompat:1.8.0'
+    implementation "androidx.concurrent:concurrent-futures-ktx:1.3.0"
     testImplementation 'junit:junit:4.13.2'
-    testImplementation "com.google.truth:truth:1.1.3"
-    androidTestImplementation 'androidx.test:runner:1.5.2'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
+    testImplementation "com.google.truth:truth:1.4.5"
+    androidTestImplementation 'androidx.test:runner:1.7.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.7.0'
 
-    implementation platform('com.google.firebase:firebase-bom:26.4.0')
+    implementation platform('com.google.firebase:firebase-bom:34.18.0')
+    implementation("com.google.firebase:firebase-crashlytics")
 
     // DI
-    implementation "io.insert-koin:koin-android:3.4.0"
+    implementation "io.insert-koin:koin-android:4.2.2"
 
     // Logging
-    implementation 'com.google.firebase:firebase-core'
-    implementation 'com.google.firebase:firebase-crashlytics-ktx'
     implementation 'com.jakewharton.timber:timber:5.0.1'
 
     // JSON
-    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.0"
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0"
 
     // Networking
-    def retrofit2_version = "2.9.0"
-    def okhttp_version = "4.11.0"
+    def retrofit2_version = "3.0.0"
+    def okhttp_version = "5.5.0"
     implementation "com.squareup.retrofit2:retrofit:$retrofit2_version"
     implementation "com.squareup.retrofit2:converter-gson:$retrofit2_version"
     implementation "com.squareup.okhttp3:okhttp:$okhttp_version"
     implementation "com.squareup.okhttp3:logging-interceptor:$okhttp_version"
 
     // Preferences
-    implementation "androidx.datastore:datastore-preferences:1.0.0"
+    implementation "androidx.datastore:datastore-preferences:1.2.1"
 
     // AAC ViewModel
-    def aac_lifecycle_ver = '2.6.2'
+    def aac_lifecycle_ver = '2.11.0'
+    implementation "androidx.lifecycle:lifecycle-service:$aac_lifecycle_ver"
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:$aac_lifecycle_ver"
     implementation "androidx.lifecycle:lifecycle-livedata-ktx:$aac_lifecycle_ver"
     testImplementation 'androidx.arch.core:core-testing:2.2.0'
 
     // AAC Room
-    def aac_room_ver = '2.6.1'
+    def aac_room_ver = '2.8.4'
     implementation "androidx.room:room-runtime:$aac_room_ver"
     implementation "androidx.room:room-ktx:$aac_room_ver"
+    implementation "androidx.room:room-paging:$aac_room_ver"
     ksp "androidx.room:room-compiler:$aac_room_ver"
     testImplementation "androidx.room:room-testing:$aac_room_ver"
 
     // AndroidX
     implementation 'androidx.preference:preference-ktx:1.2.1'
-    implementation "androidx.browser:browser:1.7.0"
+    implementation "androidx.browser:browser:1.10.0"
+    implementation "androidx.window:window:1.5.1"
+    implementation "androidx.mediarouter:mediarouter:1.8.1"
 
     // KTX
-    implementation 'androidx.fragment:fragment-ktx:1.6.2'
-    implementation 'androidx.activity:activity-ktx:1.8.1'
-    implementation "androidx.core:core-ktx:1.12.0"
+    implementation 'androidx.fragment:fragment-ktx:1.9.0'
+    implementation 'androidx.activity:activity-ktx:1.13.0'
+    implementation "androidx.core:core-ktx:1.19.0"
 
     // WorkManager
-    implementation 'androidx.work:work-runtime-ktx:2.9.0'
+    implementation 'androidx.work:work-runtime-ktx:2.11.2'
 
     // Permission
     implementation 'com.github.permissions-dispatcher:ktx:1.1.4'
 
     // Image processing
-    implementation "io.coil-kt:coil-compose:2.5.0"
+    implementation "io.coil-kt:coil-compose:2.7.0"
+    implementation "io.coil-kt:coil-svg:2.7.0"
 
     // Player
-    implementation project(':media-lib-exoplayer')
-    implementation project(':media-lib-decoder-ffmpeg')
-    compileOnly 'org.checkerframework:checker-qual:3.13.0'
-    compileOnly 'org.checkerframework:checker-compat-qual:2.5.5'
+    implementation 'androidx.media3:media3-session'
+    implementation 'androidx.media3:media3-exoplayer'
+    implementation 'androidx.media3:media3-decoder-ffmpeg'
+    implementation 'androidx.media3:media3-ui'
+    compileOnly 'org.checkerframework:checker-qual:4.2.2'
+    compileOnly 'org.checkerframework:checker-compat-qual:2.5.6'
 
     // Compose
-    implementation "androidx.compose.ui:ui:1.5.4"
-    implementation "androidx.compose.material:material:1.5.4"
-    implementation "androidx.compose.material3:material3:1.1.2"
-    implementation "androidx.compose.material:material-icons-extended:1.5.4"
-    implementation "androidx.compose.ui:ui-tooling-preview:1.5.4"
-    implementation "androidx.activity:activity-compose:1.8.1"
-    implementation "androidx.navigation:navigation-compose:2.7.5"
-    implementation "androidx.compose.ui:ui-text-google-fonts:1.5.4"
-    implementation "org.burnoutcrew.composereorderable:reorderable:0.9.6"
+    implementation "androidx.compose.ui:ui:1.12.0"
+    implementation "androidx.compose.material3:material3:1.4.0"
+    implementation "androidx.compose.material:material-icons-extended:1.7.8"
+    debugImplementation "androidx.compose.ui:ui-tooling:1.12.0"
+    implementation "androidx.compose.ui:ui-tooling-preview:1.12.0"
+    implementation "androidx.activity:activity-compose:1.13.0"
+    implementation "androidx.navigation:navigation-compose:2.9.8"
+    implementation "androidx.compose.ui:ui-text-google-fonts:1.12.0"
+    implementation "sh.calvin.reorderable:reorderable:3.1.0"
+    implementation "androidx.paging:paging-compose:3.5.1"
+
+    // RemoteCompose (App Widget)
+    def remote_compose_ver = "1.0.0-alpha18"
+    implementation "androidx.compose.remote:remote-creation-compose:$remote_compose_ver"
+    implementation "androidx.compose.remote:remote-creation:$remote_compose_ver"
+    implementation "androidx.compose.remote:remote-creation-core:$remote_compose_ver"
 
     // Hash
-    implementation 'commons-codec:commons-codec:1.15'
+    implementation 'commons-codec:commons-codec:1.22.1'
 
     // Dropbox
-    implementation 'com.dropbox.core:dropbox-core-sdk:5.4.4'
+    implementation 'com.dropbox.core:dropbox-core-sdk:8.0.2'
+    implementation 'com.dropbox.core:dropbox-android-sdk:8.0.2'
 
     // Audio Metadata
     implementation "net.jthink:jaudiotagger:3.0.1"
 
     // Billing
-    implementation "com.android.billingclient:billing-ktx:6.1.0"
+    implementation "com.android.billingclient:billing-ktx:9.1.0"
 
     // File Utils
-    implementation "commons-io:commons-io:2.11.0"
+    implementation "commons-io:commons-io:2.22.0"
+
+    // Animation
+    implementation "com.airbnb.android:lottie-compose:6.7.1"
 }
 
 class RoomSchemaArgProvider implements CommandLineArgumentProvider {

@@ -3,12 +3,14 @@ package com.geckour.q
 import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.os.Build
-import androidx.annotation.RequiresApi
 import com.geckour.q.data.dataModule
 import com.geckour.q.data.db.DB
 import com.geckour.q.ui.di.viewModelModule
 import com.geckour.q.util.QNotificationChannel
+import com.geckour.q.util.getAlreadyRunHiraganized
+import com.geckour.q.util.setAlreadyRunHiraganized
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import org.koin.android.ext.koin.androidContext
 import org.koin.android.ext.koin.androidLogger
 import org.koin.core.context.startKoin
@@ -28,7 +30,15 @@ class App : Application() {
             Timber.plant(Timber.DebugTree())
         }
 
-        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.O) createNotificationChannel()
+        createNotificationChannel()
+
+        MainScope().launch {
+            if (getAlreadyRunHiraganized().not()) {
+                val db = DB.getInstance(this@App)
+                db.trackDao().hiraganizeSortAll(db)
+                setAlreadyRunHiraganized(true)
+            }
+        }
 
         startKoin {
             androidLogger()
@@ -37,17 +47,7 @@ class App : Application() {
         }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannel() {
-        val channelPlayer =
-            NotificationChannel(
-                QNotificationChannel.NOTIFICATION_CHANNEL_ID_PLAYER.name,
-                getString(R.string.notification_channel_player),
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                this.description = getString(R.string.notification_channel_description_player)
-            }
-
         val channelRetriever =
             NotificationChannel(
                 QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER.name,
@@ -67,7 +67,6 @@ class App : Application() {
             }
 
         getSystemService(NotificationManager::class.java)?.apply {
-            createNotificationChannel(channelPlayer)
             createNotificationChannel(channelRetriever)
             createNotificationChannel(channelSleepTimer)
         }

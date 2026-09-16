@@ -10,6 +10,10 @@
     <string name="app_theme_light">Light</string>
     <string name="app_theme_dark">Dark</string>
 
+    <string name="default_device_name">This device\'s speaker</string>
+
+    <string name="text_edit_reset">Reset</string>
+
     <!-- Drawer -->
     <string name="drawer_open">Open</string>
     <string name="drawer_close">Close</string>
@@ -22,27 +26,28 @@
     <string name="notification_channel_sleep_timer">Sleep timer</string>
     <string name="notification_channel_description_sleep_timer">Notification for sleep timer</string>
     <string name="notification_title_retriever">Retrieving media</string>
-    <string name="notification_text_retriever">%1$d / %2$d | Syncing library…</string>
-    <string name="notification_text_retriever_with_path">%1$d / %2$d | Syncing library…\n%3$s</string>
+    <string name="notification_text_retriever">Remaining %d files\nSyncing library…</string>
+    <string name="notification_text_retriever_with_path">Remaining %1$d files (processed %2$s/%3$s) skipped %4$d files\n%5$s left\nSyncing library…\n%6$s</string>
     <string name="notification_title_media_add">Adding media</string>
     <string name="notification_text_media_add">Adding %s…</string>
     <string name="notification_title_sleep_timer">Sleep timer</string>
     <string name="notification_text_sleep_timer">Remaining: %s</string>
     <string name="notification_text_sleep_timer_with_tolerance">Remaining: %1$s ± %2$s</string>
-    <string name="notification_action_prev">PREV</string>
-    <string name="notification_action_play">PLAY</string>
-    <string name="notification_action_pause">PAUSE</string>
-    <string name="notification_action_next">NEXT</string>
+    <string name="notification_action_toggle_favorite">Toggle favorite</string>
 
     <!-- Indicator -->
     <string name="syncing">Syncing library…</string>
-    <string name="progress_title_retrieve_media">@string/syncing</string>
-    <string name="progress_title_download_dropbox">@string/syncing</string>
+    <string name="starting">Starting sync…</string>
+    <string name="progress_title_retrieve_media">@string/starting</string>
+    <string name="progress_title_download_dropbox">Downloading…</string>
     <string name="loading">Loading items…</string>
-    <string name="progress_sync" translatable="false">%1$d / %2$d (%3$d)</string>
-    <string name="remaining">Remaining: %s (%sB)</string>
+    <string name="remaining">Remaining: %1$d (processed %2$s/%3$s), skipped: %4$d</string>
+    <string name="remaining_files">Remaining: %1$d (processed %2$d/%3$d files), skipped: %4$d</string>
+    <string name="remaining_duration">%s left</string>
     <string name="button_apply">Apply</string>
     <string name="button_cancel">Cancel</string>
+    <string name="message_export_lyric_success">Success to export the lyric</string>
+    <string name="message_export_lyric_failure">Failure to export the lyric</string>
     <string name="message_attach_lyric_success">Success to link the lyric</string>
     <string name="message_attach_lyric_failure">Failure to link the lyric</string>
     <string name="message_delete_lyric_complete">Complete to delete the lyric</string>
@@ -61,11 +66,13 @@
     <string name="nav_album">Albums</string>
     <string name="nav_track">Tracks</string>
     <string name="nav_genre">Genres</string>
+    <string name="nav_history">History</string>
+    <string name="nav_saved_queue">Saved Queues</string>
     <string name="nav_dropbox">Dropbox</string>
     <string name="nav_setting">Settings</string>
     <string name="nav_equalizer">Equalizer</string>
-    <string name="nav_sync">Sync library</string>
     <string name="nav_dropbox_sync">Sync with Dropbox</string>
+    <string name="nav_sync">Sync library</string>
     <string name="nav_pay">Donate</string>
     <string name="nav_fortune">Fortune</string>
 
@@ -79,6 +86,7 @@
     <string name="menu_ignore_to_false">Disable skip on multiple add</string>
     <string name="menu_ignore_to_true">Enable skip on multiple add</string>
 
+    <string name="menu_export_lyric">Export lyric</string>
     <string name="menu_attach_lyric">Attach lyric</string>
     <string name="menu_detach_lyric">Detach lyric</string>
 
@@ -87,6 +95,10 @@
     <string name="menu_insert_next">Insert to next</string>
     <string name="menu_insert_last">Insert to last</string>
     <string name="menu_override">Override</string>
+
+    <string name="menu_insert_generated_queue_next">Insert generated queue by this track to next</string>
+    <string name="menu_insert_generated_queue_last">Insert generated queue by this track to last</string>
+    <string name="menu_override_generated_queue">Override by generated queue by this track</string>
 
     <string name="menu_insert_all_simple_shuffle_next">Shuffle simply to next</string>
     <string name="menu_insert_all_simple_shuffle_last">Shuffle simply to last</string>
@@ -139,6 +151,7 @@
 
     <string name="dialog_title_dropbox_choose_folder">Select folder</string>
     <string name="dialog_desc_dropbox_choose_folder">Select root folder of retrieving media</string>
+    <string name="dialog_desc_dropbox_empty_folder">This folder is empty</string>
 
     <string name="dialog_title_dropbox_sync_caution">Caution</string>
     <string name="dialog_desc_dropbox_sync_caution">Dropbox sync feature will download all target tracks temporary and delete it after the task is done.\nTherefore it may take a lot of time and cause large amount of download.\nAre you sure?</string>
@@ -147,9 +160,31 @@
 
     <string name="dialog_title_dropbox_download">Download</string>
     <string name="dialog_desc_dropbox_download">Save files into the device?</string>
+    <string name="dialog_title_dropbox_sync_size">May take up storage space</string>
+    <string name="dialog_desc_dropbox_sync_size">To continue syncing, at least %1$s of free space is required. Current free space is %2$s; continue downloading?</string>
+    <string name="dialog_title_dropbox_sync_size_exceeded">Not enough free space</string>
+    <string name="dialog_desc_dropbox_sync_size_exceeded">To continue syncing, at least %1$s of free space is required. The download cannot continue because the current free space is %2$s.</string>
 
     <string name="dialog_title_dropbox_invalidate_downloaded">Purge</string>
     <string name="dialog_desc_dropbox_invalidate_downloaded">Remove downloaded file from the device?</string>
+
+    <string name="dialog_switch_desc_filter_only_favorite">Only favorites</string>
+
+    <string name="dialog_message_enable_pause_on_current_track_end">Enable auto pause on end of current track playback?</string>
+
+    <string name="dialog_message_save_queue">Decide the title of the saving queue</string>
+    <string name="dialog_title_save_queue">Queue %d</string>
+
+    <string name="dialog_title_saved_queue_modify">Modify saved queue</string>
+    <string name="dialog_label_saved_queue_modify_title">タイトル</string>
+    <string name="dialog_saved_queue_modify_switch_title">Override with current queue</string>
+
+    <string name="content_description_folder">Folder</string>
+    <string name="content_description_file">File</string>
+
+    <!-- Snackbar -->
+    <string name="snackbar_message_dropbox_sync_failure">Failed to sync with Dropbox: %s</string>
+    <string name="snackbar_message_save_queue_complete">Completed saving queue</string>
 
     <!-- Track -->
     <string name="track_item_artist_and_album" translatable="false">%1$s - %2$s</string>
@@ -176,6 +211,10 @@
     <string name="search_category_album">Album</string>
     <string name="search_category_track">Track</string>
     <string name="search_category_genre">Genre</string>
+    <string name="search_category_lyric">Lyric</string>
+
+    <!-- Browse -->
+    <string name="browse_category_favorite">Favorites</string>
 
     <!-- Settings -->
     <string name="setting_switch_on" translatable="false">ON</string>
@@ -214,6 +253,13 @@
     <string name="equalizer_switch_enabled">Enabled</string>
     <string name="equalizer_switch_disabled">Disabled</string>
     <string name="equalizer_flatten">Flatten</string>
+    <string name="equalizer_set_as_default_for_the_device">Set as default for\n%s</string>
+    <string name="equalizer_clear_default_for_the_device">Clear default for\n%s</string>
+    <string name="equalizer_preset_label_edit">Edit</string>
+    <string name="equalizer_preset_label_confirm">Confirm</string>
+
+    <!-- Saved Queue -->
+    <string name="saved_queue_item_metadata">%1$d tracks・total %2$s</string>
 
     <!-- Metadata Editor -->
     <string name="metadata_edit_dialog_title">Edit metadata</string>
@@ -266,4 +312,8 @@
 
     <string name="license_name_codec" translatable="false">Apache Commons Codec</string>
     <string name="license_text_codec" translatable="false">Licensed to the Apache Software Foundation (ASF) under one or more\ncontributor license agreements.  See the NOTICE file distributed with\nthis work for additional information regarding copyright ownership.\nThe ASF licenses this file to You under the Apache License, Version 2.0\n(the "License"); you may not use this file except in compliance with\nthe License.  You may obtain a copy of the License at\n     http://www.apache.org/licenses/LICENSE-2.0\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an "AS IS" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.</string>
+
+    <!-- Widget -->
+    <string name="widget_player_sheet_label">Player</string>
+    <string name="widget_player_sheet_description">Shows the controller and the queue.</string>
 </resources>

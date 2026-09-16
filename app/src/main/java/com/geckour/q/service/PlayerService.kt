@@ -1,285 +1,203 @@
 package com.geckour.q.service
 
-import android.app.Notification
-import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
-import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
-import android.content.pm.ServiceInfo
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
 import android.media.audiofx.Equalizer
-import android.media.session.PlaybackState
-import android.os.Binder
-import android.os.Build
-import android.os.IBinder
-import android.support.v4.media.session.MediaSessionCompat
-import android.support.v4.media.session.PlaybackStateCompat
-import android.view.KeyEvent
+import android.os.Bundle
+import androidx.annotation.OptIn
 import androidx.core.content.edit
+import androidx.core.content.getSystemService
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ServiceLifecycleDispatcher
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.media.session.MediaButtonReceiver
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
+import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.common.Tracks
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
-import androidx.media3.exoplayer.util.EventLogger
+import androidx.media3.session.CommandButton
+import androidx.media3.session.DefaultMediaNotificationProvider
+import androidx.media3.session.LibraryResult
+import androidx.media3.session.MediaConstants
+import androidx.media3.session.MediaLibraryService
+import androidx.media3.session.MediaSession
+import androidx.media3.session.MediaSession.ConnectionResult
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import androidx.mediarouter.media.MediaRouteSelector
+import androidx.mediarouter.media.MediaRouter
 import com.geckour.q.App
+import com.geckour.q.R
+import com.geckour.q.data.LrcLibApiClient
 import com.geckour.q.data.db.DB
-import com.geckour.q.domain.model.DomainTrack
+import com.geckour.q.data.db.model.EqualizerLevelRatio
+import com.geckour.q.data.db.model.EqualizerPreset
+import com.geckour.q.data.db.model.Lyric
+import com.geckour.q.data.db.model.LyricSource
+import com.geckour.q.data.db.model.TrackHistory
+import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.PlayerState
+import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.ui.LauncherActivity
-import com.geckour.q.util.EqualizerParams
+import com.geckour.q.ui.widget.player.PlayerSheetWidgetProvider
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.PlayerControlCommand
 import com.geckour.q.util.QueueInfo
 import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.catchAsNull
 import com.geckour.q.util.currentSourcePaths
-import com.geckour.q.util.dropboxCachePathPattern
 import com.geckour.q.util.getEqualizerEnabled
 import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getMediaItem
-import com.geckour.q.util.getMediaMetadata
-import com.geckour.q.util.getPlayerNotification
+import com.geckour.q.util.getSelectedEqualizerPresetId
 import com.geckour.q.util.obtainDbxClient
+import com.geckour.q.util.orderModified
 import com.geckour.q.util.removedAt
+import com.geckour.q.util.setActiveQAudioDeviceInfo
 import com.geckour.q.util.setEqualizerParams
-import com.geckour.q.util.sortedByTrackOrder
-import com.geckour.q.util.toDomainTrack
+import com.geckour.q.util.setSelectedEqualizerPresetId
 import com.geckour.q.util.toDomainTracks
+import com.geckour.q.util.toUiTrack
 import com.geckour.q.util.verifiedWithDropbox
+import com.google.common.collect.ImmutableList
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
+import com.google.common.util.concurrent.SettableFuture
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.lastOrNull
 import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.koin.android.ext.android.inject
 import timber.log.Timber
 import java.io.FileNotFoundException
+import kotlin.time.Duration.Companion.milliseconds
 
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-class PlayerService : Service(), LifecycleOwner {
-
-    inner class PlayerBinder : Binder() {
-        val service: PlayerService get() = this@PlayerService
-    }
+@OptIn(UnstableApi::class)
+class PlayerService : MediaLibraryService(), LifecycleOwner {
 
     companion object {
+        const val ACTION_COMMAND_SUBMIT_QUEUE = "action_command_submit_queue"
+        const val ACTION_EXTRA_SUBMIT_QUEUE_ACTION_TYPE = "action_extra_submit_queue_action_type"
+        const val ACTION_EXTRA_SUBMIT_QUEUE_CLASS_TYPE = "action_extra_submit_queue_class_type"
+        const val ACTION_EXTRA_SUBMIT_QUEUE_QUEUE = "action_extra_submit_queue_queue"
+        const val ACTION_EXTRA_SUBMIT_QUEUE_NEED_SORTED = "action_extra_submit_queue_need_sorted"
 
-        private const val TAG: String = "com.geckour.q.service.PlayerService"
+        const val ACTION_COMMAND_CANCEL_SUBMIT = "action_command_cancel_submit"
 
-        private const val NOTIFICATION_ID_PLAYER = 320
+        const val ACTION_COMMAND_REMOVE_QUEUE = "action_command_remove_queue"
+        const val ACTION_EXTRA_REMOVE_QUEUE_TARGET_SOURCE_PATH =
+            "action_extra_remove_queue_target_source_path"
+        const val ACTION_EXTRA_REMOVE_QUEUE_TARGET_INDEX =
+            "action_extra_remove_queue_target_index"
 
-        const val ARGS_KEY_CONTROL_COMMAND = "args_key_control_command"
+        const val ACTION_COMMAND_CLEAR_QUEUE = "action_command_clear_queue"
+        const val ACTION_EXTRA_CLEAR_QUEUE_NEED_TO_KEEP_CURRENT =
+            "action_extra_clear_queue_need_to_keep_current"
+
+        const val ACTION_COMMAND_MOVE_QUEUE = "action_command_move_queue"
+        const val ACTION_EXTRA_MOVE_QUEUE_FROM = "action_extra_move_queue_from"
+        const val ACTION_EXTRA_MOVE_QUEUE_TO = "action_extra_move_queue_to"
+
+        const val ACTION_COMMAND_SHUFFLE_QUEUE = "action_command_shuffle_queue"
+        const val ACTION_EXTRA_SHUFFLE_ACTION_TYPE = "action_extra_shuffle_action_type"
+
+        const val ACTION_COMMAND_RESET_QUEUE_ORDER = "action_command_reset_queue_order"
+
+        const val ACTION_COMMAND_RESET_QUEUE_INDEX = "action_command_reset_queue_index"
+        const val ACTION_EXTRA_RESET_QUEUE_INDEX_FORCE = "action_extra_reset_queue_index_force"
+        const val ACTION_EXTRA_RESET_QUEUE_INDEX_INDEX = "action_extra_reset_queue_index_index"
+
+        const val ACTION_COMMAND_ROTATE_REPEAT_MODE = "action_command_rotate_repeat_mode"
+
+        const val ACTION_COMMAND_RESTORE_STATE = "action_command_restore_state"
+
+        const val ACTION_COMMAND_FAST_FORWARD = "action_command_fast_forward"
+        const val ACTION_COMMAND_REWIND = "action_command_rewind"
+        const val ACTION_COMMAND_STOP_FAST_SEEK = "action_command_stop_fast_seek"
+
+        const val ACTION_COMMAND_SHOULD_PAUSE_ON_END_CURRENT =
+            "action_command_should_pause_on_end_current"
+
+        private const val ACTION_COMMAND_TOGGLE_FAVORITE = "action_command_toggle_favorite"
 
         const val PREF_KEY_PLAYER_STATE = "pref_key_player_state"
 
-        fun createIntent(context: Context): Intent = Intent(context, PlayerService::class.java)
+        private const val SEARCH_RESULT_CACHE_LIMIT = 16
 
-        fun destroy(context: Context) {
-            context.startService(
-                createIntent(context).putExtra(
-                    ARGS_KEY_CONTROL_COMMAND,
-                    PlayerControlCommand.DESTROY
-                )
-            )
-        }
+        private const val PLAYBACK_POSITION_SAVE_INTERVAL = 100
+        private const val QUEUE_HISTORY_SAVE_DEBOUNCE = 200
     }
 
     private val dispatcher = ServiceLifecycleDispatcher(this)
     override val lifecycle: Lifecycle
         get() = dispatcher.lifecycle
 
-    private val binder = PlayerBinder()
-
-    private val mediaSessionCallback = object : MediaSessionCompat.Callback() {
-        override fun onPlay() {
-            super.onPlay()
-            play()
-        }
-
-        override fun onPause() {
-            super.onPause()
-            pause()
-        }
-
-        override fun onSkipToNext() {
-            super.onSkipToNext()
-            next()
-        }
-
-        override fun onSkipToPrevious() {
-            super.onSkipToPrevious()
-            headOrPrev()
-        }
-
-        override fun onFastForward() {
-            super.onFastForward()
-            fastForward()
-        }
-
-        override fun onRewind() {
-            super.onRewind()
-            rewind()
-        }
-
-        override fun onSeekTo(pos: Long) {
-            super.onSeekTo(pos)
-            seek(pos)
-        }
-
-        override fun onMediaButtonEvent(mediaButtonEvent: Intent): Boolean {
-            val keyEvent: KeyEvent =
-                if (Build.VERSION.SDK_INT >= 33) {
-                    mediaButtonEvent.getParcelableExtra(
-                        Intent.EXTRA_KEY_EVENT,
-                        KeyEvent::class.java
-                    )
-                } else {
-                    mediaButtonEvent.getParcelableExtra(Intent.EXTRA_KEY_EVENT)
-                } ?: return false
-            return when (keyEvent.action) {
-                KeyEvent.ACTION_DOWN -> {
-                    when (keyEvent.keyCode) {
-                        KeyEvent.KEYCODE_MEDIA_PLAY -> {
-                            onPlay()
-                            true
-                        }
-
-                        KeyEvent.KEYCODE_MEDIA_PAUSE -> {
-                            onPause()
-                            true
-                        }
-
-                        KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
-                            onPlayPause()
-                            true
-                        }
-
-                        KeyEvent.KEYCODE_MEDIA_NEXT,
-                        KeyEvent.KEYCODE_MEDIA_SKIP_FORWARD -> {
-                            onSkipToNext()
-                            true
-                        }
-
-                        KeyEvent.KEYCODE_MEDIA_PREVIOUS,
-                        KeyEvent.KEYCODE_MEDIA_SKIP_BACKWARD -> {
-                            onSkipToPrevious()
-                            true
-                        }
-
-                        KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
-                            onFastForward()
-                            true
-                        }
-
-                        KeyEvent.KEYCODE_MEDIA_REWIND -> {
-                            onRewind()
-                            true
-                        }
-
-                        else -> false
-                    }
-                }
-
-                KeyEvent.ACTION_UP -> {
-                    when (keyEvent.keyCode) {
-                        KeyEvent.KEYCODE_MEDIA_FAST_FORWARD,
-                        KeyEvent.KEYCODE_MEDIA_REWIND,
-                        KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> {
-                            stopFastSeek()
-                            true
-                        }
-
-                        else -> false
-                    }
-                }
-
-                else -> false
-            }
-        }
-
-        private fun onPlayPause() {
-            togglePlayPause()
-        }
-    }
-
-    private lateinit var player: ExoPlayer
-
-    private lateinit var mediaSession: MediaSessionCompat
-    private val currentIndex
-        get() =
-            if (player.currentMediaItemIndex == -1) 0
-            else player.currentMediaItemIndex
-
-    private var equalizer: Equalizer? = null
-
-    private lateinit var db: DB
-
-    private val cachedSourcePaths = mutableListOf<String>()
-    internal val sourcePathsFlow = MutableStateFlow(emptyList<String>())
-    internal val currentIndexFlow = MutableStateFlow(0)
-
-    /**
-     * Pair: isLoading to onAbort
-     */
-    internal val loadStateFlow = MutableStateFlow<Pair<Boolean, (() -> Unit)?>>(false to null)
-    internal val playbackInfoFlow = MutableStateFlow(false to Player.STATE_IDLE)
-    internal val playbackPositionFLow = MutableStateFlow(0L)
-    internal val repeatModeFlow = MutableStateFlow(Player.REPEAT_MODE_OFF)
-    internal val onDestroyFlow = MutableStateFlow(0L)
-
-    private val listener = object : Player.Listener {
+    private val playerListener = object : Player.Listener {
 
         var lastMediaItem: MediaItem? = null
 
         override fun onTracksChanged(tracks: Tracks) {
             super.onTracksChanged(tracks)
 
-            Timber.d("qgeck player tracks changed: ${tracks.groups}")
+            Timber.d(
+                "qgeck player tracks changed: ${
+                    tracks.groups.map { group ->
+                        List(
+                            group.length
+                        ) { group.getTrackFormat(it) }
+                    }
+                }"
+            )
 
-            onSourcesChanged()
-        }
-
-        override fun onRepeatModeChanged(repeatMode: Int) {
-            repeatModeFlow.value = repeatMode
+            onStateChanged()
         }
 
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) = Unit
 
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            super.onMediaItemTransition(mediaItem, reason)
+
+            Timber.d("qgeck player on media item transition: $mediaItem, $reason")
+
+            fetchLyricIfNeeded()
+        }
+
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
+            super.onTimelineChanged(timeline, reason)
+
             Timber.d("qgeck player on timeline changed: $timeline, $reason")
 
-            onSourcesChanged()
+            onStateChanged()
 
-            if (timeline.isEmpty) {
-                destroyNotification()
+            if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED && player.playWhenReady) {
+                saveQueueHistory()
             }
+
+            fetchLyricIfNeeded()
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
@@ -297,127 +215,615 @@ class PlayerService : Service(), LifecycleOwner {
                 }"
             )
 
-            mediaSession.setPlaybackState(
-                getPlaybackState(
-                    player.isPlaying,
-                    playbackState,
-                    player.currentPosition
-                )
-            )
+            if (playbackState == Player.STATE_READY) {
+                saveQueueHistory()
+            }
+
+            onStateChanged()
 
             if (currentIndex == player.mediaItemCount - 1
                 && playbackState == Player.STATE_ENDED
                 && player.repeatMode == Player.REPEAT_MODE_OFF
             ) {
                 stop()
-                onSourcesChanged()
             }
-
-            playbackInfoFlow.value = player.playWhenReady to playbackState
-
-            notificationUpdateJob.cancel()
-            notificationUpdateJob = updateNotification()
 
             if (playbackState == Player.STATE_READY &&
                 player.playWhenReady &&
                 player.currentMediaItem != lastMediaItem
             ) {
                 lastMediaItem = player.currentMediaItem
-                playbackCountIncreaseJob = increasePlaybackCount()
+                increasePlaybackCount()
             }
         }
 
-        override fun onPlayWhenReadyChanged(playWhenReady: Boolean, reason: Int) {
+        override fun onPlayWhenReadyChanged(
+            playWhenReady: Boolean,
+            reason: Int
+        ) {
             super.onPlayWhenReadyChanged(playWhenReady, reason)
 
             Timber.d("qgeck player play when ready: $playWhenReady")
 
-            mediaSession.setPlaybackState(
-                getPlaybackState(
-                    player.isPlaying,
-                    player.playbackState,
-                    player.currentPosition
-                )
-            )
-
-            playbackInfoFlow.value = playWhenReady to player.playbackState
-
-            notificationUpdateJob.cancel()
-            notificationUpdateJob = updateNotification()
-
-            storeState()
+            onStateChanged()
 
             if (player.playbackState == Player.STATE_READY &&
                 playWhenReady &&
                 player.currentMediaItem != lastMediaItem
             ) {
                 lastMediaItem = player.currentMediaItem
-                playbackCountIncreaseJob = increasePlaybackCount()
+                increasePlaybackCount()
             }
         }
 
-        override fun onPlayerError(error: PlaybackException) {
-            super.onPlayerError(error)
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int
+        ) {
+            super.onPositionDiscontinuity(oldPosition, newPosition, reason)
 
+            Timber.d("qgeck player old position: ${oldPosition.positionMs} new position: ${newPosition.positionMs} discontinuity reason: $reason")
+
+            onStateChanged()
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
             Timber.e(error)
             FirebaseCrashlytics.getInstance().recordException(error)
+            val index = currentIndex
+            val position = player.currentPosition
+            val playWhenReady = player.playWhenReady
+            lifecycleScope.launch {
+                val isVerified = verifyByCauseIfNeeded(error, index)
+                Timber.d("qgeck onPlayerError position: $position, isVerified: $isVerified")
 
-            val currentPlayWhenReady = player.playWhenReady
-            pause()
-            if (verifyByCauseIfNeeded(error).not()) {
-                removeQueue(currentIndex)
+                if (isVerified) {
+                    if (player.playbackState == Player.STATE_IDLE) player.prepare()
+                    player.seekTo(position)
+                    if (playWhenReady) resume()
+                }
             }
-            if (currentPlayWhenReady) resume()
 
-            notificationUpdateJob.cancel()
-            notificationUpdateJob = updateNotification()
+            super.onPlayerError(error)
         }
 
         override fun onAudioSessionIdChanged(audioSessionId: Int) {
             super.onAudioSessionIdChanged(audioSessionId)
+            Timber.d("qgeck audio session ID: $audioSessionId")
 
             setEqualizer(audioSessionId)
         }
     }
 
-    private var notificationUpdateJob: Job = Job()
-    private var notifyPlaybackPositionJob: Job = Job()
-    private var playbackCountIncreaseJob: Job = Job()
+    private val playerAnalyticsListener = object : AnalyticsListener {
+
+        override fun onAudioSessionIdChanged(
+            eventTime: AnalyticsListener.EventTime,
+            audioSessionId: Int
+        ) {
+            super.onAudioSessionIdChanged(eventTime, audioSessionId)
+            Timber.d("qgeck audio session ID: $audioSessionId")
+
+            setEqualizer(audioSessionId)
+        }
+    }
+
+    private val mediaSessionCallback = object : MediaLibrarySession.Callback {
+        override fun onConnect(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo
+        ): ConnectionResult =
+            ConnectionResult.AcceptedResultBuilder(session, controller)
+                .setAvailableSessionCommands(
+                    ConnectionResult.DEFAULT_SESSION_AND_LIBRARY_COMMANDS.buildUpon()
+                        .add(SessionCommand(ACTION_COMMAND_SUBMIT_QUEUE, Bundle.EMPTY))
+                        .add(SessionCommand(ACTION_COMMAND_CANCEL_SUBMIT, Bundle.EMPTY))
+                        .add(SessionCommand(ACTION_COMMAND_REMOVE_QUEUE, Bundle.EMPTY))
+                        .add(SessionCommand(ACTION_COMMAND_CLEAR_QUEUE, Bundle.EMPTY))
+                        .add(SessionCommand(ACTION_COMMAND_MOVE_QUEUE, Bundle.EMPTY))
+                        .add(SessionCommand(ACTION_COMMAND_SHUFFLE_QUEUE, Bundle.EMPTY))
+                        .add(SessionCommand(ACTION_COMMAND_RESET_QUEUE_ORDER, Bundle.EMPTY))
+                        .add(SessionCommand(ACTION_COMMAND_RESET_QUEUE_INDEX, Bundle.EMPTY))
+                        .add(SessionCommand(ACTION_COMMAND_ROTATE_REPEAT_MODE, Bundle.EMPTY))
+                        .add(SessionCommand(ACTION_COMMAND_RESTORE_STATE, Bundle.EMPTY))
+                        .add(SessionCommand(ACTION_COMMAND_FAST_FORWARD, Bundle.EMPTY))
+                        .add(SessionCommand(ACTION_COMMAND_REWIND, Bundle.EMPTY))
+                        .add(SessionCommand(ACTION_COMMAND_STOP_FAST_SEEK, Bundle.EMPTY))
+                        .add(SessionCommand(ACTION_COMMAND_TOGGLE_FAVORITE, Bundle.EMPTY))
+                        .add(
+                            SessionCommand(
+                                ACTION_COMMAND_SHOULD_PAUSE_ON_END_CURRENT,
+                                Bundle.EMPTY
+                            )
+                        )
+                        .build()
+                )
+                .build()
+
+        override fun onCustomCommand(
+            session: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            customCommand: SessionCommand,
+            args: Bundle
+        ): ListenableFuture<SessionResult> {
+            if (customCommand.commandCode == SessionCommand.COMMAND_CODE_CUSTOM) {
+                return when (customCommand.customAction) {
+                    ACTION_COMMAND_SUBMIT_QUEUE -> {
+                        val actionType = args.getParcelableCompat(
+                            ACTION_EXTRA_SUBMIT_QUEUE_ACTION_TYPE,
+                            InsertActionType::class.java
+                        )
+                            ?: return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_INVALID_STATE))
+                        val classType = args.getParcelableCompat(
+                            ACTION_EXTRA_SUBMIT_QUEUE_CLASS_TYPE,
+                            OrientedClassType::class.java
+                        )
+                            ?: return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_INVALID_STATE))
+                        val sourcePaths = args.getStringArrayList(ACTION_EXTRA_SUBMIT_QUEUE_QUEUE)
+                            ?: return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_INVALID_STATE))
+                        val needSorted =
+                            args.getBoolean(ACTION_EXTRA_SUBMIT_QUEUE_NEED_SORTED, true)
+                        lifecycleScope.launch {
+                            val trackDao = db.trackDao()
+                            val newQueue = sourcePaths.mapNotNull {
+                                trackDao.getBySourcePath(it)
+                            }
+                            submitQueue(
+                                queueInfo = QueueInfo(
+                                    QueueMetadata(actionType, classType),
+                                    newQueue
+                                ),
+                                needSorted = needSorted
+                            )
+                        }
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    ACTION_COMMAND_CANCEL_SUBMIT -> {
+                        aliveSubmitQueueTask = false
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    ACTION_COMMAND_REMOVE_QUEUE -> {
+                        val targetIndex = args.getInt(ACTION_EXTRA_REMOVE_QUEUE_TARGET_INDEX, -1)
+                        if (targetIndex > -1) {
+                            removeQueue(targetIndex)
+                            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                        }
+
+                        val targetSourcePath = args.getString(
+                            ACTION_EXTRA_REMOVE_QUEUE_TARGET_SOURCE_PATH
+                        ) ?: return Futures.immediateFuture(
+                            SessionResult(SessionResult.RESULT_ERROR_INVALID_STATE)
+                        )
+
+                        removeQueue(targetSourcePath, force = true)
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    ACTION_COMMAND_CLEAR_QUEUE -> {
+                        val needToKeepCurrent = args.getBoolean(
+                            ACTION_EXTRA_CLEAR_QUEUE_NEED_TO_KEEP_CURRENT,
+                            true
+                        )
+
+                        clear(needToKeepCurrent)
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    ACTION_COMMAND_MOVE_QUEUE -> {
+                        val from = args.getInt(ACTION_EXTRA_MOVE_QUEUE_FROM, -1)
+                        if (from < 0) return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_INVALID_STATE))
+
+                        val to = args.getInt(ACTION_EXTRA_MOVE_QUEUE_TO, -1)
+                        if (to < 0) return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_INVALID_STATE))
+
+                        moveQueuePosition(from, to)
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    ACTION_COMMAND_SHUFFLE_QUEUE -> {
+                        val actionType = args.getParcelableCompat(
+                            ACTION_EXTRA_SHUFFLE_ACTION_TYPE,
+                            ShuffleActionType::class.java
+                        )
+
+                        shuffle(actionType)
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    ACTION_COMMAND_RESET_QUEUE_ORDER -> {
+                        resetQueueOrder()
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    ACTION_COMMAND_RESET_QUEUE_INDEX -> {
+                        val force = args.getBoolean(ACTION_EXTRA_RESET_QUEUE_INDEX_FORCE, false)
+                        val index = args.getInt(ACTION_EXTRA_RESET_QUEUE_INDEX_INDEX, -1)
+                        if (index < 0) return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_INVALID_STATE))
+
+                        if (force || currentIndex != index) {
+                            forceIndex(index)
+                        }
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    ACTION_COMMAND_ROTATE_REPEAT_MODE -> {
+                        rotateRepeatMode()
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    ACTION_COMMAND_RESTORE_STATE -> {
+                        restoreState()
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    ACTION_COMMAND_FAST_FORWARD -> {
+                        fastForward()
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    ACTION_COMMAND_REWIND -> {
+                        rewind()
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    ACTION_COMMAND_STOP_FAST_SEEK -> {
+                        stopFastSeek()
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    ACTION_COMMAND_SHOULD_PAUSE_ON_END_CURRENT -> {
+                        shouldPauseOnCurrentTrackEnd = true
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    ACTION_COMMAND_TOGGLE_FAVORITE -> {
+                        player.currentSourcePaths.getOrNull(currentIndex)?.let {
+                            lifecycleScope.launch {
+                                val trackDao = DB.getInstance(this@PlayerService).trackDao()
+                                val track = trackDao.getBySourcePath(it)?.track ?: return@launch
+                                val isFavorite = track.isFavorite.not()
+                                trackDao.insert(track.copy(isFavorite = isFavorite))
+                                onStateChanged(isFavorite = isFavorite)
+                            }
+                            Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                        }
+                            ?: Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_INVALID_STATE))
+                    }
+
+                    else -> super.onCustomCommand(session, controller, customCommand, args)
+                }
+            }
+            return super.onCustomCommand(session, controller, customCommand, args)
+        }
+
+        @OptIn(UnstableApi::class)
+        override fun onPlaybackResumption(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            isForPlayback: Boolean
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            val playerState = getState()
+            val settableFuture = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
+            lifecycleScope.launch {
+                settableFuture.set(
+                    MediaSession.MediaItemsWithStartPosition(
+                        playerState?.sourcePaths?.map { it.getMediaItem(this@PlayerService) }
+                            ?: emptyList(),
+                        playerState?.currentIndex ?: 0,
+                        playerState?.progress ?: 0L,
+                    )
+                )
+            }
+
+            return settableFuture
+        }
+
+        override fun onGetLibraryRoot(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            params: LibraryParams?
+        ): ListenableFuture<LibraryResult<MediaItem>> = Futures.immediateFuture(
+            LibraryResult.ofItem(
+                MediaLibraryTree.rootMediaItem(this@PlayerService),
+                LibraryParams.Builder()
+                    .setExtras(
+                        Bundle().apply {
+                            putBoolean(MediaLibraryTree.EXTRA_MEDIA_SEARCH_SUPPORTED, true)
+                            putInt(
+                                MediaConstants.EXTRAS_KEY_CONTENT_STYLE_BROWSABLE,
+                                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_GRID_ITEM
+                            )
+                            putInt(
+                                MediaConstants.EXTRAS_KEY_CONTENT_STYLE_PLAYABLE,
+                                MediaConstants.EXTRAS_VALUE_CONTENT_STYLE_LIST_ITEM
+                            )
+                        }
+                    )
+                    .build()
+            )
+        )
+
+        override fun onGetItem(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            mediaId: String
+        ): ListenableFuture<LibraryResult<MediaItem>> {
+            val settableFuture = SettableFuture.create<LibraryResult<MediaItem>>()
+            lifecycleScope.launch {
+                val item = runCatching {
+                    MediaLibraryTree.getItem(this@PlayerService, mediaId)
+                }
+                    .onFailure { Timber.e(it) }
+                    .getOrNull()
+                settableFuture.set(
+                    item?.let { LibraryResult.ofItem(it, null) }
+                        ?: LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
+                )
+            }
+
+            return settableFuture
+        }
+
+        override fun onGetChildren(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            parentId: String,
+            page: Int,
+            pageSize: Int,
+            params: LibraryParams?
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+            val settableFuture =
+                SettableFuture.create<LibraryResult<ImmutableList<MediaItem>>>()
+            lifecycleScope.launch {
+                val children = runCatching {
+                    MediaLibraryTree.getChildren(this@PlayerService, parentId, page, pageSize)
+                }
+                    .onFailure { Timber.e(it) }
+                    .getOrNull()
+                settableFuture.set(
+                    children?.let { LibraryResult.ofItemList(it, params) }
+                        ?: LibraryResult.ofError(LibraryResult.RESULT_ERROR_BAD_VALUE)
+                )
+            }
+
+            return settableFuture
+        }
+
+        override fun onSearch(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            params: LibraryParams?
+        ): ListenableFuture<LibraryResult<Void>> {
+            val settableFuture = SettableFuture.create<LibraryResult<Void>>()
+            lifecycleScope.launch {
+                val result = searchLibrary(query)
+                session.notifySearchResultChanged(browser, query, result.size, params)
+                settableFuture.set(LibraryResult.ofVoid())
+            }
+
+            return settableFuture
+        }
+
+        override fun onGetSearchResult(
+            session: MediaLibrarySession,
+            browser: MediaSession.ControllerInfo,
+            query: String,
+            page: Int,
+            pageSize: Int,
+            params: LibraryParams?
+        ): ListenableFuture<LibraryResult<ImmutableList<MediaItem>>> {
+            val settableFuture =
+                SettableFuture.create<LibraryResult<ImmutableList<MediaItem>>>()
+            lifecycleScope.launch {
+                val result = searchResultCache[query] ?: searchLibrary(query)
+                val offset = page * pageSize
+                settableFuture.set(
+                    LibraryResult.ofItemList(
+                        if (offset >= result.size) emptyList()
+                        else result.drop(offset).take(pageSize),
+                        params
+                    )
+                )
+            }
+
+            return settableFuture
+        }
+
+        override fun onAddMediaItems(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: MutableList<MediaItem>
+        ): ListenableFuture<MutableList<MediaItem>> {
+            val settableFuture = SettableFuture.create<MutableList<MediaItem>>()
+            lifecycleScope.launch {
+                settableFuture.set(resolveMediaItems(mediaItems).toMutableList())
+            }
+
+            return settableFuture
+        }
+
+        override fun onSetMediaItems(
+            mediaSession: MediaSession,
+            controller: MediaSession.ControllerInfo,
+            mediaItems: MutableList<MediaItem>,
+            startIndex: Int,
+            startPositionMs: Long
+        ): ListenableFuture<MediaSession.MediaItemsWithStartPosition> {
+            val settableFuture = SettableFuture.create<MediaSession.MediaItemsWithStartPosition>()
+            lifecycleScope.launch {
+                val resolved = resolveMediaItems(mediaItems)
+                if (resolved.isEmpty()) {
+                    settableFuture.set(currentMediaItemsWithStartPosition())
+                    return@launch
+                }
+
+                val expanded = resolved.size != mediaItems.size
+                settableFuture.set(
+                    MediaSession.MediaItemsWithStartPosition(
+                        resolved,
+                        if (expanded) 0 else startIndex,
+                        if (expanded) C.TIME_UNSET else startPositionMs
+                    )
+                )
+            }
+
+            return settableFuture
+        }
+    }
+
+    private val mediaRouterCallback = object : MediaRouter.Callback() {
+
+        override fun onRouteSelected(
+            router: MediaRouter,
+            route: MediaRouter.RouteInfo,
+            reason: Int
+        ) {
+            super.onRouteSelected(router, route, reason)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onRouteUnselected(
+            router: MediaRouter,
+            route: MediaRouter.RouteInfo,
+            reason: Int
+        ) {
+            super.onRouteUnselected(router, route, reason)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onRouteAdded(router: MediaRouter, route: MediaRouter.RouteInfo) {
+            super.onRouteAdded(router, route)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onRouteRemoved(router: MediaRouter, route: MediaRouter.RouteInfo) {
+            super.onRouteRemoved(router, route)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onRouteChanged(router: MediaRouter, route: MediaRouter.RouteInfo) {
+            super.onRouteChanged(router, route)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onProviderAdded(router: MediaRouter, provider: MediaRouter.ProviderInfo) {
+            super.onProviderAdded(router, provider)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onProviderRemoved(router: MediaRouter, provider: MediaRouter.ProviderInfo) {
+            super.onProviderRemoved(router, provider)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+
+        override fun onProviderChanged(router: MediaRouter, provider: MediaRouter.ProviderInfo) {
+            super.onProviderChanged(router, provider)
+
+            onUpdateQAudioDeviceInfoList(router)
+        }
+    }
+
+    private lateinit var player: ExoPlayer
+    private lateinit var forwardingPlayer: Player
+
+    private lateinit var mediaSession: MediaLibrarySession
+    private var equalizer: Equalizer? = null
+    private val currentIndex
+        get() =
+            if (player.currentMediaItemIndex == -1) 0
+            else player.currentMediaItemIndex
+
+    private lateinit var mediaRouter: MediaRouter
+    private var audioManager: AudioManager? = null
+
+    private lateinit var db: DB
+
     private var seekJob: Job = Job()
+    private var saveQueueHistoryJob: Job = Job()
 
     private val sharedPreferences by inject<SharedPreferences>()
 
-    override fun onBind(intent: Intent): IBinder {
-        dispatcher.onServicePreSuperOnBind()
+    private val lrcLibApiClient by inject<LrcLibApiClient>()
 
-        return binder
-    }
+    private val lyricRequestedSourcePaths = mutableSetOf<String>()
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        intent ?: return START_NOT_STICKY
+    private val searchResultCache = mutableMapOf<String, List<MediaItem>>()
 
-        MediaButtonReceiver.handleIntent(mediaSession, intent)
-        onPlayerServiceControlAction(intent)
+    private var lastHistorizedMediaItem: MediaItem? = null
+    private var shouldPauseOnCurrentTrackEnd = false
+    private var inPurge = false
+    private var inRestore = false
+    private var aliveSubmitQueueTask = false
 
-        return START_NOT_STICKY
-    }
+    override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession =
+        mediaSession
+
+    private suspend fun searchLibrary(query: String): List<MediaItem> =
+        runCatching { MediaLibraryTree.search(this, query) }
+            .onFailure { Timber.e(it) }
+            .getOrDefault(emptyList())
+            .also {
+                if (searchResultCache.size >= SEARCH_RESULT_CACHE_LIMIT) searchResultCache.clear()
+                searchResultCache[query] = it
+            }
+
+    private fun currentMediaItemsWithStartPosition() = MediaSession.MediaItemsWithStartPosition(
+        List(player.mediaItemCount) { player.getMediaItemAt(it) },
+        currentIndex,
+        player.currentPosition
+    )
+
+    private suspend fun resolveMediaItems(mediaItems: List<MediaItem>): List<MediaItem> =
+        mediaItems.flatMap { mediaItem ->
+            val requestMetadata = mediaItem.requestMetadata
+            val searchQuery = requestMetadata.searchQuery
+            when {
+                searchQuery != null -> MediaLibraryTree.resolveQueryToTracks(
+                    context = this,
+                    query = searchQuery,
+                    extras = requestMetadata.extras
+                ).map { it.getMediaItem() }
+
+                mediaItem.mediaId.isNotBlank() -> {
+                    MediaLibraryTree.resolveToTracks(this, mediaItem.mediaId)
+                        .map { it.getMediaItem() }
+                        .ifEmpty { listOfNotNull(mediaItem.takeIf { it.hasPlayableUri }) }
+                }
+
+                mediaItem.hasPlayableUri -> listOf(mediaItem)
+
+                else -> MediaLibraryTree.resolveQueryToTracks(
+                    context = this,
+                    query = "",
+                    extras = null
+                ).map { it.getMediaItem() }
+            }
+        }
+
+    private val MediaItem.hasPlayableUri
+        get() = localConfiguration != null || requestMetadata.mediaUri != null
 
     override fun onCreate() {
         dispatcher.onServicePreSuperOnCreate()
 
         super.onCreate()
 
+        Timber.d("qgeck create PlayerService")
+
+        setShowNotificationForIdlePlayer(SHOW_NOTIFICATION_FOR_IDLE_PLAYER_ALWAYS)
+
         db = DB.getInstance(this@PlayerService)
-
-        mediaSession = MediaSessionCompat(this, TAG).apply {
-            setFlags(
-                MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
-                        MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
-            )
-            setCallback(mediaSessionCallback)
-            isActive = false
-        }
-
         val trackSelector = DefaultTrackSelector(this)
         val renderersFactory = DefaultRenderersFactory(this)
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
@@ -426,7 +832,7 @@ class PlayerService : Service(), LifecycleOwner {
             .setHandleAudioBecomingNoisy(true)
             .build()
             .apply {
-                addListener(listener)
+                addListener(playerListener)
                 setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(C.USAGE_MEDIA)
@@ -434,128 +840,331 @@ class PlayerService : Service(), LifecycleOwner {
                         .build(),
                     true
                 )
-                addAnalyticsListener(object : EventLogger() {
+                addAnalyticsListener(playerAnalyticsListener)
+            }
+        forwardingPlayer = object : ForwardingPlayer(player) {
 
-                    override fun onAudioSessionIdChanged(
-                        eventTime: AnalyticsListener.EventTime,
-                        audioSessionId: Int
-                    ) {
-                        super.onAudioSessionIdChanged(eventTime, audioSessionId)
-                        setEqualizer(audioSessionId)
-                    }
-                })
+            override fun play() {
+                Timber.d("qgeck play forwarded")
+                this@PlayerService.play()
             }
 
-        restoreState()
+            override fun pause() {
+                Timber.d("qgeck pause forwarded")
+                this@PlayerService.pause()
+            }
+
+            override fun stop() {
+                Timber.d("qgeck stop forwarded")
+                this@PlayerService.stop()
+            }
+
+            override fun seekToNext() {
+                Timber.d("qgeck seekToNext forwarded")
+                this@PlayerService.next()
+            }
+
+            override fun seekToPrevious() {
+                Timber.d("qgeck seekToPrevious forwarded")
+                this@PlayerService.headOrPrev()
+            }
+
+            override fun seekForward() {
+                Timber.d("qgeck seekForward forwarded")
+                this@PlayerService.fastForward()
+            }
+
+            override fun seekBack() {
+                Timber.d("qgeck seekBack forwarded")
+                this@PlayerService.rewind()
+            }
+
+            override fun addMediaItems(index: Int, mediaItems: MutableList<MediaItem>) {
+                Timber.d("qgeck addMediaItems forwarded")
+
+                lifecycleScope.launch {
+                    val trackDao = db.trackDao()
+                    val fullMediaItems = mediaItems.mapNotNull {
+                        trackDao.getBySourcePath(it.mediaId)
+                            ?.getMediaItem()
+                    }
+                    player.addMediaItems(index, fullMediaItems)
+
+                    Timber.d("qgeck added full media items")
+                }
+            }
+        }
+        mediaSession = MediaLibrarySession.Builder(
+            this,
+            forwardingPlayer,
+            mediaSessionCallback,
+        )
+            .setId(PlayerService::class.java.name)
+            .setSessionActivity(
+                PendingIntent.getActivity(
+                    this@PlayerService,
+                    App.REQUEST_CODE_LAUNCH_APP,
+                    LauncherActivity.createIntent(this@PlayerService),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                )
+            )
+            .build()
+
+        setMediaNotificationProvider(
+            DefaultMediaNotificationProvider.Builder(this)
+                .build()
+                .apply { setSmallIcon(R.drawable.ic_notification_player) }
+        )
+
+        mediaRouter = MediaRouter.getInstance(this).apply {
+            addCallback(
+                MediaRouteSelector.EMPTY,
+                mediaRouterCallback,
+                MediaRouter.CALLBACK_FLAG_PERFORM_ACTIVE_SCAN
+            )
+        }
+        audioManager = getSystemService()
+
+        onUpdateQAudioDeviceInfoList()
+
+        setEqualizer(player.audioSessionId)
 
         lifecycleScope.launch {
-            getEqualizerParams().collectLatest { params ->
-                params?.let { reflectEqualizerSettings(it) }
-            }
+            db.equalizerPresetDao().getEqualizerPresets()
+                .combine(getSelectedEqualizerPresetId()) { presets, selectedId ->
+                    presets.entries.toList().firstOrNull { it.key.id == selectedId }
+                }
+                .collectLatest { selectedPreset ->
+                    selectedPreset ?: return@collectLatest
+                    val params = getEqualizerParams().take(1).lastOrNull() ?: return@collectLatest
+                    reflectEqualizerSettings(
+                        params = params,
+                        equalizerPresetMapEntry = selectedPreset
+                    )
+                }
         }
         lifecycleScope.launch {
             getEqualizerEnabled().collectLatest { enabled ->
                 setEqualizer(if (enabled) player.audioSessionId else null)
             }
         }
+
+        restoreState()
+
+        lifecycleScope.launch {
+            while (isActive) {
+                delay(PLAYBACK_POSITION_SAVE_INTERVAL.milliseconds)
+                if (inPurge.not() && player.isPlaying) saveState(commit = false)
+            }
+        }
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        Timber.d("qgeck onTaskRemoved called")
+        if (player.playWhenReady.not()) {
+            purge()
+            stopSelf()
+        }
+
+        super.onTaskRemoved(rootIntent)
     }
 
     override fun onDestroy() {
         Timber.d("qgeck onDestroy called")
-
-        stop()
-        player.stop()
-        player.clearMediaItems()
-        destroyNotification()
-        dispatcher.onServicePreSuperOnDestroy()
-        player.release()
-
-        onDestroyFlow.value = System.currentTimeMillis()
+        purge()
 
         super.onDestroy()
     }
 
-    private fun onSourcesChanged() {
-        sourcePathsFlow.value = player.currentSourcePaths
-        currentIndexFlow.value = currentIndex
-        playbackPositionFLow.value = player.currentPosition
-        notificationUpdateJob.cancel()
-        notificationUpdateJob = updateNotification()
-        storeState()
-        setEqualizer(player.audioSessionId)
+    private fun purge() {
+        Timber.d("qgeck purge called")
+        inPurge = true
+
+        dispatcher.onServicePreSuperOnDestroy()
+        player.removeListener(playerListener)
+        player.removeAnalyticsListener(playerAnalyticsListener)
+        mediaSession.release()
+        stop()
+        player.stop()
+        player.release()
+        mediaRouter.removeCallback(mediaRouterCallback)
     }
 
-    private fun onStopServiceRequested() {
-        if (player.playWhenReady.not()) {
-            stopSelf()
-            destroyNotification()
+    private fun saveState(commit: Boolean = true) {
+        if (inPurge || inRestore) return
+
+        val state = PlayerState(
+            player.playWhenReady,
+            player.currentSourcePaths,
+            currentIndex,
+            player.duration,
+            player.currentPosition,
+            player.repeatMode
+        )
+        sharedPreferences.edit(commit = commit) {
+            putString(PREF_KEY_PLAYER_STATE, Json.encodeToString(state))
         }
     }
 
-    fun onMediaButtonEvent(event: KeyEvent) {
-        mediaSession.controller?.dispatchMediaButtonEvent(event)
+    private fun saveQueueHistory() {
+        if (inPurge || inRestore) return
+
+        saveQueueHistoryJob.cancel()
+        saveQueueHistoryJob = lifecycleScope.launch {
+            delay(QUEUE_HISTORY_SAVE_DEBOUNCE.milliseconds)
+
+            val sourcePaths = player.currentSourcePaths
+            if (sourcePaths.isEmpty()) return@launch
+
+            db.queueHistoryDao()
+                .saveQueue(db.trackDao().getAllIdsBySourcePaths(sourcePaths))
+        }
     }
 
-    private fun Throwable.getCausesRecursively(initial: List<Throwable> = emptyList()): List<Throwable> {
-        return cause?.let { it.getCausesRecursively(initial + it) } ?: initial
-    }
+    private fun onStateChanged(isFavorite: Boolean? = null) {
+        if (inPurge) return
 
-    private fun verifyByCauseIfNeeded(throwable: Throwable): Boolean {
-        val isTarget =
-            throwable.getCausesRecursively().apply { Timber.d("qgeck causes: $this") }.any {
-                (it as? HttpDataSource.InvalidResponseCodeException?)?.responseCode == 410 ||
-                        (it is FileNotFoundException &&
-                                player.currentSourcePaths
-                                    .getOrNull(currentIndex)
-                                    .apply { Timber.d("qgeck source path: $this") }
-                                    ?.matches(dropboxCachePathPattern) == true)
+        saveState()
+        PlayerSheetWidgetProvider.requestUpdate(this)
+
+        val currentMediaItem = player.currentMediaItem
+        val shouldStoreTrackHistory = player.playWhenReady &&
+                currentMediaItem != null &&
+                currentMediaItem != lastHistorizedMediaItem
+        if (shouldStoreTrackHistory) lastHistorizedMediaItem = currentMediaItem
+
+        lifecycleScope.launch {
+            val sourcePath = player.currentMediaItem?.let {
+                it.localConfiguration?.uri?.toString() ?: it.mediaId
+            } ?: run {
+                mediaSession.setCustomLayout(emptyList())
+                return@launch
             }
-        if (isTarget) {
-            lifecycleScope.launch {
-                repeatOnLifecycle(Lifecycle.State.STARTED) {
-                    loadStateFlow.value = true to null
-                    val index = currentIndex
-                    val position = player.currentPosition
-                    player.currentSourcePaths
-                        .forEach { path ->
-                            val track = path.toDomainTrack(db) ?: return@forEach
-                            val new = obtainDbxClient(this@PlayerService).firstOrNull()?.let {
-                                track.verifiedWithDropbox(this@PlayerService, it)
-                            } ?: return@forEach
+            val track = db.trackDao().getBySourcePath(sourcePath)?.track
 
-                            replace(track to new)
-                        }
-
-                    forceIndex(index)
-                    seek(position)
-
-                    loadStateFlow.value = false to null
+            if (shouldStoreTrackHistory &&
+                track != null &&
+                db.trackHistoryDao().getLatest()?.trackId != track.id
+            ) {
+                if (shouldPauseOnCurrentTrackEnd) {
+                    shouldPauseOnCurrentTrackEnd = false
+                    pause()
                 }
+
+                db.trackHistoryDao().upsert(
+                    TrackHistory(
+                        id = 0,
+                        trackId = track.id,
+                        createdAt = System.currentTimeMillis(),
+                    )
+                )
             }
-            return true
+
+            val f =
+                isFavorite ?: track?.isFavorite ?: run {
+                    mediaSession.setCustomLayout(emptyList())
+                    return@launch
+                }
+            mediaSession.setCustomLayout(
+                listOf(
+                    CommandButton.Builder(if (f) CommandButton.ICON_STAR_FILLED else CommandButton.ICON_STAR_UNFILLED)
+                        .setDisplayName(getString(R.string.notification_action_toggle_favorite))
+                        .setSessionCommand(
+                            SessionCommand(ACTION_COMMAND_TOGGLE_FAVORITE, Bundle.EMPTY)
+                        ).build()
+                )
+            )
+            verifyTrack(currentIndex)
+            verifyTrack(currentIndex + 1)
         }
-        return false
     }
 
-    suspend fun submitQueue(
+    private fun getState(): PlayerState? = runCatching {
+        sharedPreferences
+            .getString(PREF_KEY_PLAYER_STATE, null)
+            ?.let { catchAsNull { Json.decodeFromString<PlayerState>(it) } }
+    }.getOrNull()
+
+    private fun restoreState() {
+        if (inRestore || player.mediaItemCount > 0) return
+
+        if (player.playWhenReady) player.playWhenReady = false
+
+        val playerState = getState() ?: return
+        if (playerState.sourcePaths.isEmpty()) return
+
+        Timber.d("qgeck set state: $playerState")
+        inRestore = true
+        lifecycleScope.launch {
+            try {
+                val mediaItems = playerState.sourcePaths
+                    .map { it.getMediaItem(this@PlayerService) }
+                player.setMediaItems(
+                    mediaItems,
+                    playerState.currentIndex.coerceIn(mediaItems.indices),
+                    playerState.progress.coerceAtLeast(0)
+                )
+                player.repeatMode = playerState.repeatMode
+                player.prepare()
+            } finally {
+                inRestore = false
+            }
+        }
+    }
+
+    private fun onUpdateQAudioDeviceInfoList(router: MediaRouter = mediaRouter) {
+        val audioDeviceInfoList =
+            audioManager?.getDevices(AudioManager.GET_DEVICES_OUTPUTS)?.toList().orEmpty()
+        val activeAudioDeviceInfo = audioManager?.activePlaybackConfigurations
+            ?.firstOrNull { it.audioDeviceInfo != null }
+            ?.audioDeviceInfo
+        val activeQAudioDeviceInfo =
+            getActiveQAudioDeviceInfo(router.routes, audioDeviceInfoList, activeAudioDeviceInfo)
+        lifecycleScope.launch {
+            setActiveQAudioDeviceInfo(activeQAudioDeviceInfo)
+            activeQAudioDeviceInfo?.let { info ->
+                db.audioDeviceEqualizerInfoDao()
+                    .get(info.routeId, info.audioDeviceId, info.address, info.audioDeviceName)
+                    ?.defaultEqualizerPresetId
+                    ?.let { setSelectedEqualizerPresetId(it) }
+            }
+        }
+    }
+
+    private fun getActiveQAudioDeviceInfo(
+        mediaRouteInfoList: List<MediaRouter.RouteInfo>,
+        audioDeviceInfoList: List<AudioDeviceInfo>,
+        activeAudioDeviceInfo: AudioDeviceInfo?,
+    ) = mediaRouteInfoList.flatMap { mediaRouteInfo ->
+        audioDeviceInfoList.mapNotNull { audioDeviceInfo ->
+            val info = QAudioDeviceInfo.from(
+                mediaRouteInfo = mediaRouteInfo,
+                audioDeviceInfo = audioDeviceInfo,
+                activeAudioDeviceInfo = activeAudioDeviceInfo
+            )
+            if (info.selected) info else null
+        }
+    }.lastOrNull().let { activeQAudioDeviceInfo ->
+        val selectedMediaRouteInfo =
+            mediaRouteInfoList.firstOrNull { it.isSelected } ?: return@let activeQAudioDeviceInfo
+        activeQAudioDeviceInfo ?: QAudioDeviceInfo.getDefaultQAudioDeviceInfo(
+            this,
+            selectedMediaRouteInfo
+        )
+    }
+
+
+    private suspend fun submitQueue(
         queueInfo: QueueInfo,
         positionToKeep: Int? = null,
         needSorted: Boolean = true,
     ) {
-        var alive = true
-        loadStateFlow.value = true to { alive = false }
-
-        val shuffleSimple = queueInfo.metadata.actionType in listOf(
-            InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
-            InsertActionType.SHUFFLE_SIMPLE_NEXT,
-            InsertActionType.SHUFFLE_SIMPLE_LAST,
-        )
+        aliveSubmitQueueTask = true
 
         val newQueue = queueInfo.queue
             .let {
                 when {
-                    shuffleSimple -> it.shuffled()
-                    needSorted -> it.sortedByTrackOrder(
+                    needSorted -> it.orderModified(
                         queueInfo.metadata.classType,
                         queueInfo.metadata.actionType
                     )
@@ -564,14 +1173,12 @@ class PlayerService : Service(), LifecycleOwner {
                 }
             }
             .map { track ->
-                if (alive.not()) {
-                    loadStateFlow.value = false to null
+                if (aliveSubmitQueueTask.not()) {
                     return
                 }
-                (obtainDbxClient(this).firstOrNull()?.let {
-                    track.verifiedWithDropbox(this, it)
-                } ?: track)
-                    .getMediaItem()
+                track.track
+                    .sourcePath
+                    .getMediaItem(this)
             }
         when (queueInfo.metadata.actionType) {
             InsertActionType.OVERRIDE,
@@ -590,94 +1197,20 @@ class PlayerService : Service(), LifecycleOwner {
             InsertActionType.SHUFFLE_OVERRIDE,
             InsertActionType.SHUFFLE_SIMPLE_NEXT,
             InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
-                val position = if (player.mediaItemCount < 1) 0 else currentIndex + 1
-                player.addMediaItems(position, newQueue)
+                player.addMediaItems(currentIndex + 1, newQueue)
             }
 
             InsertActionType.LAST,
             InsertActionType.SHUFFLE_LAST,
             InsertActionType.SHUFFLE_SIMPLE_LAST -> {
-                val position = player.mediaItemCount
-                player.addMediaItems(position, newQueue)
+                player.addMediaItems(newQueue)
             }
         }
 
-        loadStateFlow.value = false to null
-        storeState()
+        player.prepare()
     }
 
-    fun moveQueuePosition(from: Int, to: Int) {
-        if (from == to) return
-        val sourceRange = 0 until player.mediaItemCount
-        if (from !in sourceRange || to !in sourceRange) return
-        player.moveMediaItem(from, to)
-    }
-
-    fun removeQueue(position: Int) {
-        if (position !in 0 until player.mediaItemCount ||
-            player.playWhenReady
-            && (player.playbackState == Player.STATE_READY || player.playbackState == Player.STATE_BUFFERING)
-            && position == currentIndex
-        ) return
-
-        player.removeMediaItem(position)
-    }
-
-    suspend fun removeQueue(track: DomainTrack) {
-        val position = player.currentSourcePaths
-            .indexOfFirst { it.toDomainTrack(db)?.id == track.id }
-        removeQueue(position)
-    }
-
-    private fun play() {
-        Timber.d("qgeck play invoked")
-
-        resume()
-    }
-
-    fun resetQueuePosition(position: Int, force: Boolean = false) {
-        if (force || currentIndex != position) forceIndex(position)
-    }
-
-    private fun resume() {
-        Timber.d("qgeck resume invoked")
-
-        notifyPlaybackPositionJob.cancel()
-        notifyPlaybackPositionJob = lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                while (this.isActive) {
-                    playbackPositionFLow.value = player.currentPosition
-                    delay(100)
-                }
-            }
-        }
-
-        if (player.playbackState == Player.STATE_IDLE) {
-            player.prepare()
-        }
-        if (player.playWhenReady.not()) {
-            player.playWhenReady = true
-        }
-    }
-
-    fun pause() {
-        Timber.d("qgeck pause invoked")
-
-        player.playWhenReady = false
-        notifyPlaybackPositionJob.cancel()
-    }
-
-    fun togglePlayPause() {
-        if (player.playWhenReady) pause()
-        else resume()
-    }
-
-    fun stop() {
-        pause()
-        forceIndex(0)
-    }
-
-    fun clear(keepCurrentIfPlaying: Boolean = false) {
+    private fun clear(keepCurrentIfPlaying: Boolean = true) {
         val needToKeepCurrent = keepCurrentIfPlaying
                 && player.playbackState == Player.STATE_READY
                 && player.playWhenReady
@@ -693,130 +1226,37 @@ class PlayerService : Service(), LifecycleOwner {
         }
     }
 
-    /**
-     * @param with: first: old, second: new
-     */
-    private fun replace(with: Pair<DomainTrack, DomainTrack>) {
-        replace(listOf(with))
+    private fun moveQueuePosition(from: Int, to: Int) {
+        if (from == to) return
+        val sourceRange = 0 until player.mediaItemCount
+        if (from !in sourceRange || to !in sourceRange) return
+        player.moveMediaItem(from, to)
     }
 
-    private fun replace(with: List<Pair<DomainTrack, DomainTrack>>) {
-        if (with.isEmpty()) return
-
-        with.forEach { withTrack ->
-            val index = player.currentSourcePaths.indexOfFirst { it == withTrack.first.sourcePath }
-            Timber.d("qgeck source path: ${withTrack.first.sourcePath}")
-            Timber.d("qgeck index: $index")
-            removeQueue(index)
-            player.addMediaItem(
-                index,
-                withTrack.second.getMediaItem()
-            )
+    private fun removeQueue(position: Int, force: Boolean = false) {
+        if (position in 0 until player.mediaItemCount &&
+            (force ||
+                    player.playWhenReady.not() ||
+                    player.playbackState != Player.STATE_READY ||
+                    player.playbackState != Player.STATE_BUFFERING ||
+                    position != currentIndex)
+        ) {
+            player.removeMediaItem(position)
         }
     }
 
-    fun next() {
-        if (player.repeatMode != Player.REPEAT_MODE_OFF) seekToTail()
-        else {
-            if (player.currentMediaItemIndex < player.mediaItemCount - 1) {
-                val index = player.currentMediaItemIndex + 1
-                forceIndex(index)
-            } else stop()
-        }
+    private fun removeQueue(sourcePath: String, force: Boolean = false) {
+        val position = player.currentSourcePaths.indexOfFirst { it == sourcePath }
+        if (position < 0) return
+
+        removeQueue(position, force)
+        removeQueue(sourcePath, force)
     }
 
-    private fun prev() {
-        val windowIndex = player.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
-        val index = if (player.currentMediaItemIndex > 0) player.currentMediaItemIndex - 1
-        else 0
-        player.seekToDefaultPosition(windowIndex + index)
-        currentIndexFlow.value = index
-    }
-
-    fun fastForward() {
+    private fun shuffle(actionType: ShuffleActionType? = null) {
         lifecycleScope.launch {
-            player.currentMediaItem?.toDomainTrack(db)?.let { track ->
-                seekJob.cancel()
-                seekJob = lifecycleScope.launch {
-                    repeatOnLifecycle(Lifecycle.State.STARTED) {
-                        while (true) {
-                            withContext(Dispatchers.Main) {
-                                val seekTo = (player.currentPosition + 1000).let {
-                                    if (it > track.duration) track.duration else it
-                                }
-                                seek(seekTo)
-                            }
-                            delay(100)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    fun rewind() {
-        if (player.mediaItemCount > 0 && currentIndex > -1) {
-            seekJob.cancel()
-            seekJob = lifecycleScope.launch {
-                repeatOnLifecycle(Lifecycle.State.STARTED) {
-                    while (true) {
-                        val seekTo = (player.currentPosition - 1000).let {
-                            if (it < 0) 0 else it
-                        }
-                        seek(seekTo)
-                        delay(100)
-                    }
-                }
-            }
-        }
-    }
-
-    fun stopFastSeek() {
-        seekJob.cancel()
-    }
-
-    private fun seekToHead() {
-        seek(0)
-    }
-
-    private fun seekToTail() {
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                player.currentMediaItem?.toDomainTrack(db)?.duration?.let { seek(it) }
-            }
-        }
-    }
-
-    fun headOrPrev() {
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                val currentDuration =
-                    player.currentMediaItem?.toDomainTrack(db)?.duration ?: return@repeatOnLifecycle
-
-                if (currentIndex > 0 && player.contentPosition < currentDuration / 100) prev()
-                else seekToHead()
-            }
-        }
-    }
-
-    fun seek(playbackPosition: Long) {
-        player.seekTo(playbackPosition)
-        mediaSession.setPlaybackState(
-            getPlaybackState(
-                player.isPlaying,
-                player.playbackState,
-                playbackPosition
-            )
-        )
-        playbackPositionFLow.value = playbackPosition
-    }
-
-    fun shuffle(actionType: ShuffleActionType? = null) {
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                val currentQueue = player.currentSourcePaths
-                if (player.mediaItemCount < 1 || player.mediaItemCount != currentQueue.size) return@repeatOnLifecycle
-
+            val currentQueue = player.currentSourcePaths
+            if (player.mediaItemCount > 0) {
                 val shuffled = when (actionType) {
                     null,
                     ShuffleActionType.SHUFFLE_SIMPLE -> {
@@ -847,40 +1287,39 @@ class PlayerService : Service(), LifecycleOwner {
         }
     }
 
-    fun resetQueueOrder() {
+    private fun resetQueueOrder() {
         if (player.mediaItemCount < 1) return
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                val sourcePaths = player.currentSourcePaths
-                val isCacheValid =
-                    sourcePaths.size == cachedSourcePaths.size && sourcePaths.containsAll(
-                        cachedSourcePaths
-                    )
-                if (isCacheValid.not()) return@repeatOnLifecycle
+        val sourcePaths = player.currentSourcePaths
+        val cachedSourcePaths =
+            sharedPreferences.getString(PREF_KEY_PLAYER_STATE, null)
+                ?.let { catchAsNull { Json.decodeFromString<PlayerState>(it) } }
+                ?.sourcePaths
+                .orEmpty()
+        val isCacheValid =
+            sourcePaths.size == cachedSourcePaths.size &&
+                    sourcePaths.containsAll(cachedSourcePaths)
+        if (isCacheValid.not()) return
 
-                reorderQueue(cachedSourcePaths)
-            }
-        }
+        reorderQueue(cachedSourcePaths)
     }
 
     private fun reorderQueue(newSourcePaths: List<String>) {
         lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                val targetIndex = newSourcePaths.indexOfFirst {
-                    it == player.currentSourcePaths.getOrNull(currentIndex)
-                }.coerceAtLeast(0)
-                submitQueue(
-                    QueueInfo(
-                        QueueMetadata(
-                            InsertActionType.OVERRIDE,
-                            OrientedClassType.TRACK
-                        ),
-                        newSourcePaths.removedAt(targetIndex).toDomainTracks(db)
+            val targetIndex = newSourcePaths.indexOfFirst {
+                it == player.currentSourcePaths.getOrNull(currentIndex)
+            }.coerceAtLeast(0)
+            submitQueue(
+                queueInfo = QueueInfo(
+                    QueueMetadata(
+                        InsertActionType.OVERRIDE,
+                        OrientedClassType.TRACK
                     ),
-                    currentIndex
-                )
-                moveQueuePosition(currentIndex, targetIndex)
-            }
+                    db.trackDao().getAllBySourcePaths(newSourcePaths.removedAt(targetIndex))
+                ),
+                positionToKeep = currentIndex,
+                needSorted = false
+            )
+            moveQueuePosition(currentIndex, targetIndex)
         }
     }
 
@@ -891,95 +1330,124 @@ class PlayerService : Service(), LifecycleOwner {
             Player.REPEAT_MODE_ONE -> Player.REPEAT_MODE_OFF
             else -> throw IllegalStateException()
         }
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                repeatModeFlow.emit(player.repeatMode)
-            }
-        }
-    }
-
-    private fun getPlaybackState(isPlaying: Boolean, playbackState: Int, playbackPosition: Long) =
-        PlaybackStateCompat.Builder()
-            .setActions(
-                PlaybackStateCompat.ACTION_PLAY or
-                        PlaybackStateCompat.ACTION_PAUSE or
-                        PlaybackStateCompat.ACTION_PLAY_PAUSE or
-                        PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
-                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
-                        PlaybackStateCompat.ACTION_FAST_FORWARD or
-                        PlaybackStateCompat.ACTION_REWIND or
-                        PlaybackStateCompat.ACTION_SEEK_TO
-            )
-            .setState(
-                when (playbackState) {
-                    Player.STATE_BUFFERING -> PlaybackState.STATE_BUFFERING
-                    Player.STATE_ENDED -> PlaybackState.STATE_STOPPED
-                    Player.STATE_IDLE -> PlaybackState.STATE_NONE
-                    Player.STATE_READY -> {
-                        if (isPlaying) PlaybackState.STATE_PLAYING
-                        else PlaybackState.STATE_PAUSED
-                    }
-
-                    else -> PlaybackState.STATE_ERROR
-                },
-                playbackPosition,
-                player.playbackParameters.speed
-            )
-            .build()
-
-    private fun onPlayerServiceControlAction(intent: Intent) {
-        if (intent.hasExtra(ARGS_KEY_CONTROL_COMMAND)) {
-            val key = if (Build.VERSION.SDK_INT > 32) {
-                intent.getSerializableExtra(
-                    ARGS_KEY_CONTROL_COMMAND,
-                    PlayerControlCommand::class.java
-                )
-            } else {
-                intent.getSerializableExtra(ARGS_KEY_CONTROL_COMMAND)
-            }
-            when (key) {
-                PlayerControlCommand.DESTROY -> onStopServiceRequested()
-            }
-        }
-    }
-
-    private fun PlayerState.set() {
-        lifecycleScope.launch {
-            repeatOnLifecycle(Lifecycle.State.STARTED) {
-                loadStateFlow.value = true to {}
-                val queueInfo = QueueInfo(
-                    QueueMetadata(InsertActionType.OVERRIDE, OrientedClassType.TRACK),
-                    sourcePaths.mapNotNull { it.toDomainTrack(db) }
-                )
-                loadStateFlow.value = false to {}
-                submitQueue(queueInfo, needSorted = false)
-                forceIndex(currentIndex)
-                seek(progress)
-                player.repeatMode = repeatMode
-            }
-        }
     }
 
     private fun forceIndex(index: Int) {
         val windowIndex = player.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
         player.seekToDefaultPosition(windowIndex + index)
-        currentIndexFlow.value = index
+    }
+
+    /**
+     * Fetches lyrics of the current track and the next one from LRCLIB
+     * unless they are already stored in the DB.
+     */
+    private fun fetchLyricIfNeeded() {
+        val nextMediaItem = player.nextMediaItemIndex
+            .takeIf { it != C.INDEX_UNSET }
+            ?.let { player.getMediaItemAt(it) }
+
+        listOfNotNull(player.currentMediaItem, nextMediaItem).forEach { mediaItem ->
+            val sourcePath = (mediaItem.localConfiguration?.uri ?: mediaItem.mediaId).toString()
+            if (lyricRequestedSourcePaths.add(sourcePath).not()) return@forEach
+
+            lifecycleScope.launch {
+                val track = db.trackDao().getBySourcePath(sourcePath)
+                if (track == null) {
+                    lyricRequestedSourcePaths.remove(sourcePath)
+                    return@launch
+                }
+
+                val trackId = track.track.id
+                if (db.lyricDao().getLyricIdByTrackId(trackId) != null) return@launch
+
+                runCatching { lrcLibApiClient.getLyricLines(track) }
+                    .onFailure {
+                        Timber.e(it)
+                        lyricRequestedSourcePaths.remove(sourcePath)
+                    }
+                    .getOrNull()
+                    ?.let { lines ->
+                        if (db.lyricDao().getLyricIdByTrackId(trackId) != null) return@let
+
+                        db.lyricDao().upsertLyric(
+                            Lyric(
+                                id = 0,
+                                trackId = trackId,
+                                lines = lines,
+                                source = LyricSource.LRCLIB
+                            )
+                        )
+                    }
+            }
+        }
     }
 
     private fun increasePlaybackCount() = lifecycleScope.launch {
-        repeatOnLifecycle(Lifecycle.State.STARTED) {
-            player.currentMediaItem?.toDomainTrack(db)
-                ?.let { track ->
-                    db.trackDao().increasePlaybackCount(track.id)
-                    db.albumDao().increasePlaybackCount(track.album.id)
-                    db.artistDao().increasePlaybackCount(track.artist.id)
-                }
+        player.currentMediaItem?.toUiTrack(db)
+            ?.let { track ->
+                db.trackDao().increasePlaybackCount(track.id)
+                db.albumDao().increasePlaybackCount(track.album.id)
+                db.artistDao().increasePlaybackCount(track.artist.id)
+            }
+    }
+
+    private suspend fun verifyByCauseIfNeeded(
+        throwable: Throwable,
+        index: Int,
+    ): Boolean {
+        val isTarget =
+            throwable.getCausesRecursively().any { cause ->
+                cause is HttpDataSource.InvalidResponseCodeException ||
+                        (cause is FileNotFoundException &&
+                                player.currentSourcePaths
+                                    .getOrNull(index)
+                                    ?.let {
+                                        db.trackDao()
+                                            .getBySourcePath(it)?.track?.dropboxPath != null
+                                    } == true)
+            }
+
+        if (isTarget) {
+            if (verifyTrack(index, force = true)) {
+                return true
+            }
+
+            pause()
+        } else {
+            pause()
+            removeQueue(index)
         }
+
+        return false
+    }
+
+    private suspend fun verifyTrack(index: Int, force: Boolean = false): Boolean {
+        val dropboxClient = runCatching { obtainDbxClient(this@PlayerService).firstOrNull() }
+            .onFailure { Timber.e(it) }
+            .getOrNull()
+            ?: return false
+        player.currentSourcePaths.getOrNull(index)?.let { sourcePath ->
+            val track = db.trackDao().getBySourcePath(sourcePath) ?: return false
+            val new = runCatching {
+                track.verifiedWithDropbox(this@PlayerService, dropboxClient, force)
+                    ?.getMediaItem()
+            }
+                .onFailure { Timber.e(it) }
+                .getOrNull()
+                ?: return false
+
+            player.replaceMediaItem(index, new)
+            return true
+        }
+        return false
+    }
+
+    private fun Throwable.getCausesRecursively(initial: List<Throwable> = emptyList()): List<Throwable> {
+        return cause?.let { it.getCausesRecursively(initial + it) } ?: initial
     }
 
     private fun setEqualizer(audioSessionId: Int?) {
         lifecycleScope.launch {
-            player.audioSessionId
             if (audioSessionId != null && audioSessionId != C.AUDIO_SESSION_ID_UNSET) {
                 if (equalizer == null) {
                     try {
@@ -994,8 +1462,7 @@ class PlayerService : Service(), LifecycleOwner {
                                             EqualizerParams.Band(
                                                 freqRange = eq.getBandFreqRange(index.toShort())
                                                     .let { it.first() to it.last() },
-                                                centerFreq = eq.getCenterFreq(index.toShort()),
-                                                level = 0
+                                                centerFreq = eq.getCenterFreq(index.toShort())
                                             )
                                         }
                                     )
@@ -1007,7 +1474,13 @@ class PlayerService : Service(), LifecycleOwner {
                     }
                 }
                 getEqualizerParams().take(1).lastOrNull()?.let {
-                    reflectEqualizerSettings(it)
+                    val selectedPresetId =
+                        getSelectedEqualizerPresetId().take(1).lastOrNull() ?: return@let
+                    val preset =
+                        db.equalizerPresetDao()
+                            .getEqualizerPreset(selectedPresetId).entries.firstOrNull()
+                            ?: return@let
+                    reflectEqualizerSettings(params = it, equalizerPresetMapEntry = preset)
                 }
                 equalizer?.enabled = getEqualizerEnabled().take(1).lastOrNull() == true
             } else {
@@ -1016,105 +1489,122 @@ class PlayerService : Service(), LifecycleOwner {
         }
     }
 
-    private fun reflectEqualizerSettings(equalizerParams: EqualizerParams) {
-        equalizerParams.bands.forEachIndexed { i, band ->
+    private fun reflectEqualizerSettings(
+        params: EqualizerParams,
+        equalizerPresetMapEntry: Map.Entry<EqualizerPreset, List<EqualizerLevelRatio>>
+    ) {
+        equalizerPresetMapEntry.value.forEachIndexed { i, ratio ->
             try {
-                equalizer?.setBandLevel(i.toShort(), band.level.toShort())
+                equalizer?.setBandLevel(
+                    i.toShort(),
+                    params.normalizedLevel(ratio = ratio.ratio).toShort()
+                )
             } catch (t: Throwable) {
                 Timber.e(t)
             }
         }
     }
 
-    private fun storeState(
-        playWhenReady: Boolean = player.playWhenReady,
-        sourcePaths: List<String> = player.currentSourcePaths,
-        currentIndex: Int = this.currentIndex,
-        duration: Long = player.duration,
-        progress: Long = player.currentPosition,
-        repeatMode: Int = player.repeatMode
-    ) = lifecycleScope.launch {
-        repeatOnLifecycle(Lifecycle.State.STARTED) {
-            cachedSourcePaths.clear()
-            cachedSourcePaths.addAll(sourcePaths)
-            val state = PlayerState(
-                playWhenReady,
-                sourcePaths,
-                currentIndex,
-                duration,
-                progress,
-                repeatMode
-            )
-            sharedPreferences.edit {
-                putString(PREF_KEY_PLAYER_STATE, Json.encodeToString(state))
+    internal fun play() {
+        Timber.d("qgeck play invoked")
+
+        resume()
+    }
+
+    private fun resume() {
+        Timber.d("qgeck resume invoked")
+
+        if (player.playWhenReady.not()) {
+            player.play()
+        }
+    }
+
+    fun pause() {
+        Timber.d("qgeck pause invoked")
+
+        player.pause()
+    }
+
+    fun stop() {
+        pause()
+        forceIndex(0)
+        stopForeground(Service.STOP_FOREGROUND_REMOVE)
+    }
+
+    fun next() {
+        if (player.repeatMode != Player.REPEAT_MODE_OFF) seekToTail()
+        else {
+            if (player.currentMediaItemIndex < player.mediaItemCount - 1) {
+                val index = player.currentMediaItemIndex + 1
+                forceIndex(index)
+            } else stop()
+        }
+    }
+
+    private fun prev() {
+        val windowIndex = player.currentTimeline.getFirstWindowIndex(false).coerceAtLeast(0)
+        val index = if (player.currentMediaItemIndex > 0) player.currentMediaItemIndex - 1
+        else 0
+        player.seekToDefaultPosition(windowIndex + index)
+    }
+
+    fun fastForward() {
+        lifecycleScope.launch {
+            player.currentMediaItem?.toUiTrack(db)?.let { track ->
+                seekJob.cancel()
+                seekJob = lifecycleScope.launch {
+                    while (true) {
+                        withContext(Dispatchers.Main) {
+                            val seekTo = (player.currentPosition + 1000).let {
+                                if (it > track.duration) track.duration else it
+                            }
+                            player.seekTo(seekTo)
+                        }
+                        delay(100.milliseconds)
+                    }
+                }
             }
         }
     }
 
-    private fun restoreState() {
-        if (player.playWhenReady.not()) {
-            sharedPreferences.getString(PREF_KEY_PLAYER_STATE, null)
-                ?.let { catchAsNull { Json.decodeFromString<PlayerState>(it) } }
-                ?.set()
+    fun rewind() {
+        if (player.mediaItemCount > 0 && currentIndex > -1) {
+            seekJob.cancel()
+            seekJob = lifecycleScope.launch {
+                while (true) {
+                    val seekTo = (player.currentPosition - 1000).let {
+                        if (it < 0) 0 else it
+                    }
+                    player.seekTo(seekTo)
+                    delay(100.milliseconds)
+                }
+            }
         }
     }
 
-    private fun updateNotification() = lifecycleScope.launch {
-        repeatOnLifecycle(Lifecycle.State.STARTED) {
-            val mediaMetadata = player.currentMediaItem?.toDomainTrack(db)
-                ?.getMediaMetadata(this@PlayerService) ?: return@repeatOnLifecycle
-            mediaSession.setPlaybackState(
-                getPlaybackState(
-                    player.isPlaying,
-                    player.playbackState,
-                    player.currentPosition
-                )
-            )
-            mediaSession.setMetadata(mediaMetadata)
-            mediaSession.isActive = true
-            mediaSession.setSessionActivity(
-                PendingIntent.getActivity(
-                    this@PlayerService,
-                    App.REQUEST_CODE_LAUNCH_APP,
-                    LauncherActivity.createIntent(this@PlayerService),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-            )
-            getPlayerNotification(
-                this@PlayerService,
-                mediaSession,
-                player.isPlaying
-            ).show()
+    fun stopFastSeek() {
+        seekJob.cancel()
+    }
+
+    private fun seekToHead() {
+        player.seekTo(0)
+    }
+
+    private fun seekToTail() {
+        lifecycleScope.launch {
+            player.currentMediaItem?.toUiTrack(db)?.duration?.let { player.seekTo(it) }
         }
     }
 
-    private fun Notification.show() {
-        val isInForeground = Build.VERSION.SDK_INT >= 29
-                && foregroundServiceType != ServiceInfo.FOREGROUND_SERVICE_TYPE_NONE
-        if (isInForeground || Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            getSystemService(NotificationManager::class.java)?.notify(
-                NOTIFICATION_ID_PLAYER,
-                this
-            )
-            return
-        }
+    fun headOrPrev() {
+        lifecycleScope.launch {
+            val currentDuration =
+                player.currentMediaItem?.toUiTrack(db)?.duration ?: return@launch
 
-        Timber.d("qgeck starting foreground player service")
-        if (Build.VERSION.SDK_INT >= 29) {
-            startForeground(
-                NOTIFICATION_ID_PLAYER,
-                this,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-            )
-        } else {
-            startForeground(NOTIFICATION_ID_PLAYER, this)
+            if (currentIndex > 0 && player.contentPosition < currentDuration / 100) prev()
+            else seekToHead()
         }
     }
 
-    private fun destroyNotification() {
-        mediaSession.isActive = false
-        notificationUpdateJob.cancel()
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        getSystemService(NotificationManager::class.java)?.cancel(NOTIFICATION_ID_PLAYER)
-    }
+    fun <T> Bundle.getParcelableCompat(key: String, clazz: Class<T>): T? = getParcelable(key, clazz)
 }
