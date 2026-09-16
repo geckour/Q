@@ -31,11 +31,13 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.domain.model.SyncProgress
+import com.geckour.q.domain.model.SyncSizeAlert
 import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.util.DROPBOX_EXPIRES_IN
 import com.geckour.q.util.DownloadFailedException
 import com.geckour.q.util.QNotificationChannel
 import com.geckour.q.util.SyncProgressState
+import com.geckour.q.util.SyncSizeAlertState
 import com.geckour.q.util.getExtension
 import com.geckour.q.util.getNotificationBuilder
 import com.geckour.q.util.getReadableStringWithUnit
@@ -46,6 +48,7 @@ import com.geckour.q.util.saveAudioFileFromUrl
 import com.geckour.q.util.saveTempAudioFileFromUrl
 import com.geckour.q.worker.storeMediaInfo
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -101,11 +104,15 @@ class DropboxMediaSyncJobService : JobService() {
 
         private const val REQUESTS_DIR_NAME = "dropbox_sync_requests"
 
+        private const val AVAILABLE_SIZE_USAGE_LIMIT_RATIO = 0.9
+
         private val requestJson = Json { ignoreUnknownKeys = true }
 
         private val requestLock = Any()
 
         private var activeSession: DropboxMediaSyncJobService.Session? = null
+
+        private var pendingSizeApproval: CompletableDeferred<Boolean>? = null
 
         fun schedule(context: Context, rootPath: String, needDownloaded: Boolean): Boolean =
             enqueue(context, SyncRequest(rootPath = rootPath, needDownloaded = needDownloaded))
@@ -129,8 +136,18 @@ class DropboxMediaSyncJobService : JobService() {
                 requestFiles(context).forEach { it.delete() }
                 activeSession?.stop()
                 activeSession = null
+                pendingSizeApproval = null
                 context.getSystemService(JobScheduler::class.java)?.cancel(JOB_ID)
             }
+            SyncSizeAlertState.update(null)
+        }
+
+        fun respondSizeConfirmation(approved: Boolean) {
+            val approval = synchronized(requestLock) {
+                pendingSizeApproval.also { pendingSizeApproval = null }
+            }
+            SyncSizeAlertState.update(null)
+            approval?.complete(approved)
         }
 
         private fun enqueue(context: Context, request: SyncRequest): Boolean =
@@ -186,6 +203,7 @@ class DropboxMediaSyncJobService : JobService() {
         val targetPaths: List<String> = emptyList(),
         val needDownloaded: Boolean,
         val generation: Int = 0,
+        val sizeConfirmed: Boolean = false,
     )
 
     @Serializable
@@ -270,7 +288,7 @@ class DropboxMediaSyncJobService : JobService() {
                     currentCoroutineContext().ensureActive()
 
                     val (file, request) = takeRequest() ?: break
-                    val succeeded = runCatching { SyncTask(this, request).execute() }
+                    val succeeded = runCatching { SyncTask(this, file, request).execute() }
                         .onFailure { if (it !is CancellationException) Timber.e(it) }
                         .isSuccess
                     if (isStopped) return
@@ -306,8 +324,11 @@ class DropboxMediaSyncJobService : JobService() {
         }
     }
 
+    private class SizeDeclinedException : Exception()
+
     private inner class SyncTask(
         private val session: Session,
+        private val requestFile: File,
         private val request: SyncRequest,
     ) {
 
@@ -320,7 +341,10 @@ class DropboxMediaSyncJobService : JobService() {
         private val linkFetchSemaphore = Semaphore(LINK_FETCH_CONCURRENCY)
         private val storeSemaphore = Semaphore(STORE_CONCURRENCY)
         private val currentPaths = mutableListOf<String>()
+        private val availableSize by lazy { applicationContext.dataDir.usableSpace }
 
+        private var sizeApproval: CompletableDeferred<Boolean>? = null
+        private var sizeApproved = false
         private var isRetrieving = true
         private var totalFilesSize = 0L
         private var processedFilesSize = 0L
@@ -349,12 +373,19 @@ class DropboxMediaSyncJobService : JobService() {
 
             updateProgress()
 
-            coroutineScope {
-                if (request.rootPath != null) {
-                    retrieveAudioFilePaths(this, request.rootPath, client)
-                } else {
-                    retrieveTargetPaths(this, client)
+            try {
+                coroutineScope {
+                    if (request.rootPath != null) {
+                        retrieveAudioFilePaths(this, request.rootPath, client)
+                    } else {
+                        retrieveTargetPaths(this, client)
+                    }
                 }
+            } catch (e: SizeDeclinedException) {
+                Timber.d("qgeck declined to download $totalFilesSize bytes")
+                return
+            } finally {
+                clearSizeApproval()
             }
             if (isStopped) return
 
@@ -389,11 +420,74 @@ class DropboxMediaSyncJobService : JobService() {
             Timber.d("qgeck track in db count: ${db.trackDao().count()}")
         }
 
+        private suspend fun awaitSizeApproval() {
+            val approval = targetsMutex.withLock {
+                currentCoroutineContext().ensureActive()
+
+                if (request.needDownloaded.not()) return
+
+                if (totalFilesSize > availableSize) {
+                    Timber.d("qgeck download size exceeds available size: $totalFilesSize bytes")
+                    DropboxMediaSyncJobService.cancel(applicationContext)
+                    SyncSizeAlertState.update(
+                        SyncSizeAlert.Exceeded(
+                            downloadSize = totalFilesSize,
+                            availableSize = availableSize,
+                        )
+                    )
+                    currentCoroutineContext().ensureActive()
+                }
+
+                if (request.sizeConfirmed ||
+                    sizeApproved ||
+                    totalFilesSize < availableSize * AVAILABLE_SIZE_USAGE_LIMIT_RATIO
+                ) {
+                    return
+                }
+
+                sizeApproval ?: CompletableDeferred<Boolean>().also { approval ->
+                    sizeApproval = approval
+                    synchronized(requestLock) { pendingSizeApproval = approval }
+                    SyncSizeAlertState.update(
+                        SyncSizeAlert.Confirmation(
+                            downloadSize = totalFilesSize,
+                            availableSize = availableSize,
+                        )
+                    )
+                }
+            }
+
+            if (approval.await().not()) throw SizeDeclinedException()
+
+            targetsMutex.withLock {
+                if (sizeApproved) return
+
+                sizeApproved = true
+                synchronized(requestLock) {
+                    requestFile.writeText(
+                        requestJson.encodeToString(request.copy(sizeConfirmed = true))
+                    )
+                }
+            }
+        }
+
+        private fun clearSizeApproval() {
+            val approval = sizeApproval ?: return
+            synchronized(requestLock) {
+                if (pendingSizeApproval !== approval) return
+
+                pendingSizeApproval = null
+            }
+            SyncSizeAlertState.update(null)
+        }
+
         private fun retrieveTargetPaths(scope: CoroutineScope, client: DbxClientV2) {
             request.targetPaths.forEach { targetPath ->
                 scope.launch(Dispatchers.IO) {
                     linkFetchSemaphore.withPermit {
                         if (isStopped) return@withPermit
+
+                        awaitSizeApproval()
 
                         val metadata = runCatching {
                             client.files().getMetadata(targetPath) as? FileMetadata
@@ -406,6 +500,8 @@ class DropboxMediaSyncJobService : JobService() {
                             totalFilesSize += target.size
                             updateProgress()
                         }
+
+                        awaitSizeApproval()
                     }
                 }
             }
@@ -418,11 +514,13 @@ class DropboxMediaSyncJobService : JobService() {
             retryCount: Int = 0,
         ) {
             if (isStopped) return
+            awaitSizeApproval()
             try {
                 var fileAndFolders = client.files().listFolder(root)
                 val entries = fileAndFolders.entries.toMutableList()
                 while (fileAndFolders.hasMore) {
                     if (isStopped) return
+                    awaitSizeApproval()
 
                     fileAndFolders = client.files().listFolderContinue(fileAndFolders.cursor)
                     entries += fileAndFolders.entries
@@ -435,6 +533,8 @@ class DropboxMediaSyncJobService : JobService() {
                             linkFetchSemaphore.withPermit {
                                 if (isStopped) return@withPermit
 
+                                awaitSizeApproval()
+
                                 val target = metadata.toRetrieveTargetIfNeeded(client)
                                     ?: return@withPermit
 
@@ -443,6 +543,8 @@ class DropboxMediaSyncJobService : JobService() {
                                     totalFilesSize += target.size
                                     updateProgress()
                                 }
+
+                                awaitSizeApproval()
                             }
                         }
                     }

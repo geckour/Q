@@ -159,6 +159,10 @@
 
     <string name="dialog_title_dropbox_download">Download</string>
     <string name="dialog_desc_dropbox_download">Save files into the device?</string>
+    <string name="dialog_title_dropbox_sync_size">May take up storage space</string>
+    <string name="dialog_desc_dropbox_sync_size">To continue syncing, at least %1$s of free space is required. Current free space is %2$s; continue downloading?</string>
+    <string name="dialog_title_dropbox_sync_size_exceeded">Not enough free space</string>
+    <string name="dialog_desc_dropbox_sync_size_exceeded">To continue syncing, at least %1$s of free space is required. The download cannot continue because the current free space is %2$s.</string>
 
     <string name="dialog_title_dropbox_invalidate_downloaded">Purge</string>
     <string name="dialog_desc_dropbox_invalidate_downloaded">Remove downloaded file from the device?</string>

@@ -73,6 +73,7 @@ import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.ui.widget.player.PlayerSheetWidgetProvider
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.SyncProgressState
+import com.geckour.q.util.SyncSizeAlertState
 import com.geckour.q.util.dbxRequestConfig
 import com.geckour.q.util.getActiveQAudioDeviceInfo
 import com.geckour.q.util.getEqualizerParams
@@ -416,6 +417,7 @@ class MainActivity : ComponentActivity() {
             }
 
             val syncProgress by SyncProgressState.progress.collectAsState()
+            val syncSizeAlert by SyncSizeAlertState.alert.collectAsState()
 
             LaunchedEffect(syncProgress) {
                 val progress = syncProgress
@@ -779,6 +781,14 @@ class MainActivity : ComponentActivity() {
                                     showEnablePauseOnCurrentTrackEndDialog = false
                                 },
                                 showEnablePauseOnCurrentTrackEndDialog = showEnablePauseOnCurrentTrackEndDialog,
+                                syncSizeAlert = syncSizeAlert,
+                                onDeclineSyncSize = {
+                                    DropboxMediaSyncJobService.respondSizeConfirmation(false)
+                                },
+                                onApproveSyncSize = {
+                                    DropboxMediaSyncJobService.respondSizeConfirmation(true)
+                                },
+                                onDismissSyncSizeExceeded = { SyncSizeAlertState.update(null) },
                             )
                         }
 
@@ -987,6 +997,14 @@ class MainActivity : ComponentActivity() {
                                     showEnablePauseOnCurrentTrackEndDialog = false
                                 },
                                 showEnablePauseOnCurrentTrackEndDialog = showEnablePauseOnCurrentTrackEndDialog,
+                                syncSizeAlert = syncSizeAlert,
+                                onDeclineSyncSize = {
+                                    DropboxMediaSyncJobService.respondSizeConfirmation(false)
+                                },
+                                onApproveSyncSize = {
+                                    DropboxMediaSyncJobService.respondSizeConfirmation(true)
+                                },
+                                onDismissSyncSizeExceeded = { SyncSizeAlertState.update(null) },
                             )
                         }
                     }

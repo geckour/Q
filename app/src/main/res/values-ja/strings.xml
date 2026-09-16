@@ -154,6 +154,10 @@
 
     <string name="dialog_title_dropbox_download">ダウンロード</string>
     <string name="dialog_desc_dropbox_download">ファイルを端末内に保存しますか？</string>
+    <string name="dialog_title_dropbox_sync_size">ストレージを圧迫する可能性があります</string>
+    <string name="dialog_desc_dropbox_sync_size">同期を続けるには %1$s 以上の空き容量が必要です。現在の空き容量は %2$s ですが、ダウンロードを続けますか？</string>
+    <string name="dialog_title_dropbox_sync_size_exceeded">空き容量が不足しています</string>
+    <string name="dialog_desc_dropbox_sync_size_exceeded">同期を続けるには %1$s 以上の空き容量が必要です。現在の空き容量は %2$s のため、ダウンロードできません。</string>
 
     <string name="dialog_title_dropbox_invalidate_downloaded">削除</string>
     <string name="dialog_desc_dropbox_invalidate_downloaded">端末からダウンロードしたファイルを削除しますか？</string>

@@ -41,6 +41,7 @@ import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SearchItem
+import com.geckour.q.domain.model.SyncSizeAlert
 import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.compose.QTheme
@@ -155,9 +156,13 @@ fun SingleScreen(
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onCancelEnablePauseOnCurrentTrackEnd: () -> Unit,
     onPositiveEnablePauseOnCurrentTrackEnd: () -> Unit,
+    onDeclineSyncSize: () -> Unit,
+    onApproveSyncSize: () -> Unit,
+    onDismissSyncSizeExceeded: () -> Unit,
     onModifySavedQueue: (savedQueueId: Long, newTitle: String, newTrackIds: List<Long>) -> Unit,
     onDeleteSavedQueue: (savedQueueId: Long) -> Unit,
     showEnablePauseOnCurrentTrackEndDialog: Boolean,
+    syncSizeAlert: SyncSizeAlert?,
     showSaveQueueDialog: MutableState<Boolean>,
 ) {
     val coroutineScope = rememberCoroutineScope()
@@ -391,10 +396,14 @@ fun SingleScreen(
                     onStartInvalidateDownloaded = onStartInvalidateDownloaded,
                     onCancelEnablePauseOnCurrentTrackEnd = onCancelEnablePauseOnCurrentTrackEnd,
                     onPositiveEnablePauseOnCurrentTrackEnd = onPositiveEnablePauseOnCurrentTrackEnd,
+                    onDeclineSyncSize = onDeclineSyncSize,
+                    onApproveSyncSize = onApproveSyncSize,
+                    onDismissSyncSizeExceeded = onDismissSyncSizeExceeded,
                     onSaveQueue = onSaveQueue,
                     onModifySavedQueue = onModifySavedQueue,
                     onDeleteSavedQueue = onDeleteSavedQueue,
                     showEnablePauseOnCurrentTrackEndDialog = showEnablePauseOnCurrentTrackEndDialog,
+                    syncSizeAlert = syncSizeAlert,
                     showSaveQueueDialog = showSaveQueueDialog,
                 )
             }

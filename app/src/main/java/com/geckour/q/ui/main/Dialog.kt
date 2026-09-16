@@ -63,6 +63,7 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.AllArtists
 import com.geckour.q.domain.model.Genre
+import com.geckour.q.domain.model.SyncSizeAlert
 import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.compose.QTheme
@@ -70,6 +71,7 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.getDropboxCredential
+import com.geckour.q.util.getReadableStringWithUnit
 import com.geckour.q.util.setHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
@@ -1645,6 +1647,113 @@ fun ConfirmDownloadDialog(onCancelDownload: () -> Unit, onStartDownloader: () ->
 }
 
 @Composable
+fun ConfirmSyncSizeDialog(
+    confirmation: SyncSizeAlert.Confirmation,
+    onDeclineSyncSize: () -> Unit,
+    onApproveSyncSize: () -> Unit
+) {
+    Dialog(onDismissRequest = onDeclineSyncSize) {
+        Card(
+            colors = CardDefaults.cardColors()
+                .copy(containerColor = QTheme.colors.colorBackground)
+        ) {
+            Column(
+                modifier = Modifier.padding(
+                    horizontal = 12.dp,
+                    vertical = 8.dp
+                )
+            ) {
+                Text(
+                    text = stringResource(id = R.string.dialog_title_dropbox_sync_size),
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = QTheme.colors.colorAccent
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(
+                        id = R.string.dialog_desc_dropbox_sync_size,
+                        "${confirmation.downloadSize.toFloat().getReadableStringWithUnit()}B",
+                        "${confirmation.availableSize.toFloat().getReadableStringWithUnit()}B"
+                    ),
+                    fontSize = 18.sp,
+                    color = QTheme.colors.colorTextPrimary,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDeclineSyncSize) {
+                        Text(
+                            text = stringResource(R.string.dialog_ng),
+                            fontSize = 16.sp,
+                            color = QTheme.colors.colorTextPrimary
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(onClick = onApproveSyncSize) {
+                        Text(
+                            text = stringResource(R.string.dialog_ok),
+                            fontSize = 16.sp,
+                            color = QTheme.colors.colorAccent
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun SyncSizeExceededDialog(
+    exceeded: SyncSizeAlert.Exceeded,
+    onDismiss: () -> Unit
+) {
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            colors = CardDefaults.cardColors()
+                .copy(containerColor = QTheme.colors.colorBackground)
+        ) {
+            Column(
+                modifier = Modifier.padding(
+                    horizontal = 12.dp,
+                    vertical = 8.dp
+                )
+            ) {
+                Text(
+                    text = stringResource(id = R.string.dialog_title_dropbox_sync_size_exceeded),
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = QTheme.colors.colorAccent
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = stringResource(
+                        id = R.string.dialog_desc_dropbox_sync_size_exceeded,
+                        "${exceeded.downloadSize.toFloat().getReadableStringWithUnit()}B",
+                        "${exceeded.availableSize.toFloat().getReadableStringWithUnit()}B"
+                    ),
+                    fontSize = 18.sp,
+                    color = QTheme.colors.colorTextPrimary,
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text(
+                            text = stringResource(R.string.dialog_ok),
+                            fontSize = 16.sp,
+                            color = QTheme.colors.colorAccent
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun ConfirmInvalidateDownloadedDialog(
     onCancelInvalidateDownloaded: () -> Unit,
     onStartInvalidateDownloaded: () -> Unit
@@ -2074,8 +2183,12 @@ fun BoxScope.Dialogs(
     onStartInvalidateDownloaded: () -> Unit,
     onCancelEnablePauseOnCurrentTrackEnd: () -> Unit,
     onPositiveEnablePauseOnCurrentTrackEnd: () -> Unit,
+    onDeclineSyncSize: () -> Unit,
+    onApproveSyncSize: () -> Unit,
+    onDismissSyncSizeExceeded: () -> Unit,
     onSaveQueue: (title: String) -> Unit,
     showEnablePauseOnCurrentTrackEndDialog: Boolean,
+    syncSizeAlert: SyncSizeAlert?,
     showSaveQueueDialog: MutableState<Boolean>,
     onDeleteSavedQueue: (savedQueueId: Long) -> Unit,
     onModifySavedQueue: (savedQueueId: Long, newTitle: String, newTrackIds: List<Long>) -> Unit,
@@ -2172,6 +2285,24 @@ fun BoxScope.Dialogs(
             onCancel = onCancelEnablePauseOnCurrentTrackEnd,
             onPositive = onPositiveEnablePauseOnCurrentTrackEnd,
         )
+    }
+    when (syncSizeAlert) {
+        is SyncSizeAlert.Confirmation -> {
+            ConfirmSyncSizeDialog(
+                confirmation = syncSizeAlert,
+                onDeclineSyncSize = onDeclineSyncSize,
+                onApproveSyncSize = onApproveSyncSize,
+            )
+        }
+
+        is SyncSizeAlert.Exceeded -> {
+            SyncSizeExceededDialog(
+                exceeded = syncSizeAlert,
+                onDismiss = onDismissSyncSizeExceeded,
+            )
+        }
+
+        null -> Unit
     }
     if (showSaveQueueDialog.value) {
         SaveQueueDialog(
