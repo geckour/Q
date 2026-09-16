@@ -1,5 +1,6 @@
 package com.geckour.q.ui.main
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -19,14 +20,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -34,7 +33,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.geckour.q.R
-import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.compose.QTheme
@@ -43,16 +41,12 @@ import com.geckour.q.util.OrientedClassType
 
 @Composable
 fun SaveQueueDialog(
+    nextId: Long,
     onCancel: () -> Unit,
     onPositive: (title: String) -> Unit,
 ) {
     var title by remember { mutableStateOf<String?>(null) }
-    val currentContext = LocalContext.current
-    val savedQueueNextId by remember(currentContext) {
-        DB.getInstance(currentContext).savedQueueDao().getNextIdAsFlow()
-    }.collectAsState(1L)
-    val defaultTitle =
-        stringResource(R.string.dialog_title_save_queue, savedQueueNextId)
+    val defaultTitle = stringResource(R.string.dialog_title_save_queue, nextId)
     Dialog(onDismissRequest = onCancel) {
         Card(
             colors = CardDefaults.cardColors()
@@ -112,84 +106,33 @@ fun SavedQueueOptionDialog(
     uiSavedQueue: UiSavedQueue,
     onDialogEvent: (event: DialogEvent) -> Unit,
 ) {
-    Dialog(onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) }) {
-        Card(
-            colors = CardDefaults.cardColors()
-                .copy(containerColor = QTheme.colors.colorBackground)
-        ) {
-            Column {
-                DialogListItem(
-                    onClick = {
-                        onDialogEvent(
-                            DialogEvent.NewQueue(
-                                uiSavedQueue.queue.map { it.track.sourcePath },
-                                InsertActionType.NEXT,
-                                OrientedClassType.TRACK,
-                                false,
-                            )
-                        )
-                        onDialogEvent(DialogEvent.Dismiss)
-                    }
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.menu_insert_next),
-                        fontSize = 14.sp,
-                        color = QTheme.colors.colorTextPrimary
-                    )
-                }
-                DialogListItem(
-                    onClick = {
-                        onDialogEvent(
-                            DialogEvent.NewQueue(
-                                uiSavedQueue.queue.map { it.track.sourcePath },
-                                InsertActionType.LAST,
-                                OrientedClassType.TRACK,
-                                false,
-                            )
-                        )
-                        onDialogEvent(DialogEvent.Dismiss)
-                    }
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.menu_insert_last),
-                        fontSize = 14.sp,
-                        color = QTheme.colors.colorTextPrimary
-                    )
-                }
-                DialogListItem(
-                    onClick = {
-                        onDialogEvent(
-                            DialogEvent.NewQueue(
-                                uiSavedQueue.queue.map { it.track.sourcePath },
-                                InsertActionType.OVERRIDE,
-                                OrientedClassType.TRACK,
-                                false,
-                            )
-                        )
-                        onDialogEvent(DialogEvent.Dismiss)
-                    }
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.menu_override),
-                        fontSize = 14.sp,
-                        color = QTheme.colors.colorTextPrimary
-                    )
-                }
-                DialogListItem(
-                    onClick = {
-                        onDialogEvent(DialogEvent.DeleteSavedQueue(uiSavedQueue.savedQueueSummary.savedQueue.id))
-                        onDialogEvent(DialogEvent.Dismiss)
-                    }
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.menu_delete_from_device),
-                        fontSize = 14.sp,
-                        color = QTheme.colors.colorTextPrimary
-                    )
-                }
-            }
-        }
+    fun option(@StringRes labelResId: Int, event: DialogEvent) = QOption(labelResId) {
+        onDialogEvent(event)
+        onDialogEvent(DialogEvent.Dismiss)
     }
+
+    fun newQueue(@StringRes labelResId: Int, actionType: InsertActionType) = option(
+        labelResId,
+        DialogEvent.NewQueue(
+            uiSavedQueue.queue.map { it.track.sourcePath },
+            actionType,
+            OrientedClassType.TRACK,
+            false,
+        )
+    )
+
+    QOptionDialog(
+        options = listOf(
+            newQueue(R.string.menu_insert_next, InsertActionType.NEXT),
+            newQueue(R.string.menu_insert_last, InsertActionType.LAST),
+            newQueue(R.string.menu_override, InsertActionType.OVERRIDE),
+            option(
+                R.string.menu_delete_from_device,
+                DialogEvent.DeleteSavedQueue(uiSavedQueue.savedQueueSummary.savedQueue.id)
+            ),
+        ),
+        onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) },
+    )
 }
 
 @Composable

@@ -8,9 +8,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
@@ -21,7 +19,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.geckour.q.R
-import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.AllArtists
@@ -32,12 +29,10 @@ import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.domain.model.UiTrack
-import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.decodeUrlSafe
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
-import kotlinx.coroutines.launch
 
 @Composable
 fun Library(
@@ -62,8 +57,12 @@ fun Library(
     onSelectGenre: (genre: Genre?) -> Unit,
     onDownload: (targetTrackPaths: List<String>) -> Unit,
     onInvalidateDownloaded: (targetTrackIds: List<String>) -> Unit,
+    onInvalidateDownloadedArtist: (artistId: Long) -> Unit,
+    onInvalidateDownloadedAlbum: (albumId: Long) -> Unit,
     onStartBilling: () -> Unit,
     onSetOptionMediaItem: (mediaItem: MediaItem?) -> Unit,
+    onSetOptionArtist: (artistId: Long) -> Unit,
+    onSetOptionAlbum: (albumId: Long) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onSearchItemClicked: (item: SearchItem) -> Unit,
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
@@ -71,8 +70,6 @@ fun Library(
     onSelectSavedQueueForModify: (uiSavedQueue: UiSavedQueue?) -> Unit,
     onDeleteSavedQueue: (savedQueueId: Long) -> Unit,
 ) {
-    val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
     val keyboardController = LocalSoftwareKeyboardController.current
     // Derived from [query]: QSearchBar re-runs the search whenever the query changes, so it is
     // repopulated on its own once the restored query is applied. Keeping it out of the saved
@@ -113,15 +110,7 @@ fun Library(
                         onSelectArtist(it)
                     },
                     onDownload = onDownload,
-                    onInvalidateDownloaded = {
-                        coroutineScope.launch {
-                            val targets =
-                                DB.getInstance(context)
-                                    .artistDao()
-                                    .getContainTrackIds(it)
-                            onInvalidateDownloaded(targets)
-                        }
-                    },
+                    onInvalidateDownloaded = onInvalidateDownloadedArtist,
                     initialScrollPosition = scrollPosition.initialPosition,
                     scrollToTop = scrollToTop,
                     onScrollPositionUpdated = scrollPosition::update,
@@ -147,11 +136,7 @@ fun Library(
                 val scrollPosition = rememberScrollPosition(backStackEntry)
                 LaunchedEffect(artistId) {
                     onSelectNav(Nav.ALBUM)
-                    launch {
-                        onSetOptionMediaItem(
-                            DB.getInstance(context).artistDao().get(artistId) ?: return@launch
-                        )
-                    }
+                    onSetOptionArtist(artistId)
                 }
 
                 Albums(
@@ -173,15 +158,7 @@ fun Library(
                     onDownload = {
                         onDownload(it)
                     },
-                    onInvalidateDownloaded = {
-                        coroutineScope.launch {
-                            val targets =
-                                DB.getInstance(context)
-                                    .albumDao()
-                                    .getContainTrackIds(it)
-                            onInvalidateDownloaded(targets)
-                        }
-                    },
+                    onInvalidateDownloaded = onInvalidateDownloadedAlbum,
                     initialScrollPosition = scrollPosition.initialPosition,
                     scrollToTop = scrollToTop,
                     onScrollPositionUpdated = scrollPosition::update,
@@ -211,12 +188,7 @@ fun Library(
                 val scrollPosition = rememberScrollPosition(backStackEntry)
                 LaunchedEffect(albumId) {
                     onSelectNav(Nav.TRACK)
-                    launch {
-                        onSetOptionMediaItem(
-                            DB.getInstance(context).albumDao().get(albumId)?.album
-                                ?: return@launch
-                        )
-                    }
+                    onSetOptionAlbum(albumId)
                 }
                 Tracks(
                     endItemMargin = endItemMargin,

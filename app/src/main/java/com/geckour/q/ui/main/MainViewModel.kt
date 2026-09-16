@@ -27,6 +27,9 @@ import com.geckour.q.data.BillingApiClient
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.JoinedTrack
+import com.geckour.q.data.db.model.Lyric
+import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.PlaybackButton
@@ -37,20 +40,24 @@ import com.geckour.q.util.DownloadState
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType
+import com.geckour.q.util.getDropboxCredential
 import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.getIsInNightMode
 import com.geckour.q.util.getShowLyric
 import com.geckour.q.util.isFavoriteToggled
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.setDropboxCredential
+import com.geckour.q.util.setHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.setIsNightMode
 import com.geckour.q.util.setShowLyric
+import com.geckour.q.util.toLrcString
 import com.geckour.q.util.toUiTrack
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -59,6 +66,9 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -112,14 +122,27 @@ class MainViewModel(private val app: App) : ViewModel() {
         )
 
     private val mutableDialogState = MutableStateFlow<DialogState?>(null)
-    internal val dialogState: StateFlow<DialogState?> = combine(
-        mutableDialogState,
-        dropboxItemList,
-        app.getHasAlreadyShownDropboxSyncAlert(),
-    ) { state, itemList, hasAlreadyShownSyncAlert ->
-        if (state is DialogState.Dropbox) {
-            state.copy(hasAlreadyShownSyncAlert = hasAlreadyShownSyncAlert, itemList = itemList)
-        } else state
+    @OptIn(ExperimentalCoroutinesApi::class)
+    internal val dialogState: StateFlow<DialogState?> = mutableDialogState.flatMapLatest { state ->
+        when (state) {
+            is DialogState.Dropbox -> combine(
+                dropboxItemList,
+                app.getHasAlreadyShownDropboxSyncAlert(),
+                app.getDropboxCredential(),
+            ) { itemList, hasAlreadyShownSyncAlert, credential ->
+                state.copy(
+                    hasAlreadyShownSyncAlert = hasAlreadyShownSyncAlert,
+                    hasCredential = credential.isNullOrBlank().not(),
+                    itemList = itemList,
+                )
+            }
+
+            is DialogState.SaveQueue -> {
+                db.savedQueueDao().getNextIdAsFlow().map { state.copy(nextId = it) }
+            }
+
+            else -> flowOf(state)
+        }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
 
     internal val topBarTitle = MutableStateFlow("")
@@ -286,6 +309,49 @@ class MainViewModel(private val app: App) : ViewModel() {
         )
     }
 
+    internal fun onNewQueueFromSource(
+        source: TrackSource,
+        favoriteOnly: Boolean,
+        actionType: InsertActionType,
+        classType: OrientedClassType,
+    ) {
+        viewModelScope.launch {
+            onNewQueue(
+                sourcePaths = source.getTracks(favoriteOnly).map { it.track.sourcePath },
+                actionType = actionType,
+                classType = classType,
+            )
+        }
+    }
+
+    internal fun deleteTracksFromSource(source: TrackSource, favoriteOnly: Boolean) {
+        viewModelScope.launch {
+            source.getTracks(favoriteOnly).forEach { deleteTrack(it.toUiTrack()) }
+        }
+    }
+
+    private suspend fun TrackSource.getTracks(favoriteOnly: Boolean): List<JoinedTrack> {
+        val trackDao = db.trackDao()
+        return when (this) {
+            is TrackSource.OfAlbum -> {
+                if (favoriteOnly) trackDao.getAllWithFavoriteByAlbum(albumId)
+                else trackDao.getAllByAlbum(albumId)
+            }
+
+            is TrackSource.OfArtist -> {
+                if (favoriteOnly) trackDao.getAllWithFavoriteByArtist(artistId)
+                else trackDao.getAllByArtist(artistId)
+            }
+
+            TrackSource.All -> {
+                if (favoriteOnly) trackDao.getAllWithFavorite()
+                else trackDao.getAll()
+            }
+
+            is TrackSource.OfGenre -> trackDao.getAllByGenreName(genreName)
+        }
+    }
+
     internal fun onGenerateQueue(
         track: UiTrack,
         actionType: InsertActionType,
@@ -397,6 +463,36 @@ class MainViewModel(private val app: App) : ViewModel() {
         mutableDialogState.value = null
     }
 
+    internal fun showInvalidateDownloadedDialogForArtist(artistId: Long) {
+        viewModelScope.launch {
+            showInvalidateDownloadedDialog(db.artistDao().getContainTrackIds(artistId))
+        }
+    }
+
+    internal fun showInvalidateDownloadedDialogForAlbum(albumId: Long) {
+        viewModelScope.launch {
+            showInvalidateDownloadedDialog(db.albumDao().getContainTrackIds(albumId))
+        }
+    }
+
+    private fun showInvalidateDownloadedDialog(targets: List<String>) {
+        if (targets.isEmpty()) return
+
+        showDialog(DialogState.ConfirmInvalidateDownloaded(targets.toImmutableList()))
+    }
+
+    internal fun setOptionArtist(artistId: Long) {
+        viewModelScope.launch {
+            appBarOptionMediaItem.value = db.artistDao().get(artistId) ?: return@launch
+        }
+    }
+
+    internal fun setOptionAlbum(albumId: Long) {
+        viewModelScope.launch {
+            appBarOptionMediaItem.value = db.albumDao().get(albumId)?.album ?: return@launch
+        }
+    }
+
     internal fun requestScrollToTop() {
         scrollToTop.value = System.currentTimeMillis()
     }
@@ -408,6 +504,34 @@ class MainViewModel(private val app: App) : ViewModel() {
     internal fun toggleNightMode() {
         viewModelScope.launch {
             app.setIsNightMode(app.getIsInNightMode().first().not())
+        }
+    }
+
+    internal fun acknowledgeDropboxSyncAlert() {
+        viewModelScope.launch {
+            app.setHasAlreadyShownDropboxSyncAlert(true)
+        }
+    }
+
+    internal suspend fun getLrcString(trackId: Long): String? =
+        db.lyricDao().getLyricByTrackId(trackId)?.toLrcString()
+
+    internal fun attachLyric(trackId: Long, lyricLines: List<LyricLine>) {
+        viewModelScope.launch {
+            val id = db.lyricDao().getLyricIdByTrackId(trackId) ?: 0
+            db.lyricDao().upsertLyric(Lyric(id = id, trackId = trackId, lines = lyricLines))
+            snackbarMessageFlow.value = app.getString(R.string.message_attach_lyric_success)
+            delay(2000.milliseconds)
+            snackbarMessageFlow.value = null
+        }
+    }
+
+    internal fun detachLyric(trackId: Long) {
+        viewModelScope.launch {
+            db.lyricDao().deleteLyricByTrackId(trackId)
+            snackbarMessageFlow.value = app.getString(R.string.message_delete_lyric_complete)
+            delay(2000.milliseconds)
+            snackbarMessageFlow.value = null
         }
     }
 
@@ -668,7 +792,10 @@ class MainViewModel(private val app: App) : ViewModel() {
                             .toImmutableList(),
                     )
                 )
-            }.onFailure(onFailure)
+            }.onFailure {
+                if (dropboxItemList.value.first.isEmpty()) dismissDialog()
+                onFailure(it)
+            }
         }
     }
 

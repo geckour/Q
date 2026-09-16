@@ -26,11 +26,19 @@ interface MainActions {
 
     fun onSetOptionMediaItem(mediaItem: MediaItem?)
 
+    fun onSetOptionArtist(artistId: Long)
+
+    fun onSetOptionAlbum(albumId: Long)
+
     fun onToggleFavorite(mediaItem: MediaItem?): MediaItem?
 
     fun onShowDialog(dialogState: DialogState?)
 
     fun onDialogEvent(event: DialogEvent)
+
+    fun onInvalidateDownloadedArtist(artistId: Long)
+
+    fun onInvalidateDownloadedAlbum(albumId: Long)
 
     fun onRetrieveMedia(onlyAdded: Boolean)
 
@@ -97,7 +105,7 @@ fun MainActions.onShowDropboxDialog() = onShowDialog(DialogState.Dropbox())
 fun MainActions.onEnablePauseOnCurrentTrackEnd() =
     onShowDialog(DialogState.EnablePauseOnCurrentTrackEnd)
 
-fun MainActions.onShowSaveQueueDialog() = onShowDialog(DialogState.SaveQueue)
+fun MainActions.onShowSaveQueueDialog() = onShowDialog(DialogState.SaveQueue())
 
 fun MainActions.onDownload(targets: List<String>) {
     if (targets.isEmpty()) return

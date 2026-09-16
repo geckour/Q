@@ -47,8 +47,6 @@ import com.dropbox.core.DbxHost
 import com.dropbox.core.android.Auth
 import com.geckour.q.BuildConfig
 import com.geckour.q.R
-import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.domain.model.LayoutType
 import com.geckour.q.domain.model.MediaItem
@@ -73,7 +71,6 @@ import com.geckour.q.util.getReadableStringWithUnit
 import com.geckour.q.util.getShowLyric
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.parseLrc
-import com.geckour.q.util.toLrcString
 import com.geckour.q.worker.KEY_PROGRESS_FINISHED
 import com.geckour.q.worker.KEY_PROGRESS_PROCESSED_FILES_SIZE
 import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_FRACTION
@@ -137,12 +134,22 @@ class MainActivity : ComponentActivity() {
             viewModel.appBarOptionMediaItem.value = mediaItem
         }
 
+        override fun onSetOptionArtist(artistId: Long) = viewModel.setOptionArtist(artistId)
+
+        override fun onSetOptionAlbum(albumId: Long) = viewModel.setOptionAlbum(albumId)
+
         override fun onToggleFavorite(mediaItem: MediaItem?): MediaItem? =
             viewModel.toggleFavorite(mediaItem)
 
         override fun onShowDialog(dialogState: DialogState?) = viewModel.showDialog(dialogState)
 
         override fun onDialogEvent(event: DialogEvent) = handleDialogEvent(event)
+
+        override fun onInvalidateDownloadedArtist(artistId: Long) =
+            viewModel.showInvalidateDownloadedDialogForArtist(artistId)
+
+        override fun onInvalidateDownloadedAlbum(albumId: Long) =
+            viewModel.showInvalidateDownloadedDialogForAlbum(albumId)
 
         override fun onRetrieveMedia(onlyAdded: Boolean) = retrieveMedia(onlyAdded)
 
@@ -728,18 +735,28 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
+            is DialogEvent.NewQueueFromSource -> {
+                viewModel.onNewQueueFromSource(
+                    source = event.source,
+                    favoriteOnly = event.favoriteOnly,
+                    actionType = event.actionType,
+                    classType = event.classType,
+                )
+            }
+
             is DialogEvent.GenerateQueue -> {
                 viewModel.onGenerateQueue(event.track, event.actionType, event.classType)
             }
 
             is DialogEvent.DeleteTrack -> viewModel.deleteTrack(event.track)
 
+            is DialogEvent.DeleteTracksFromSource -> {
+                viewModel.deleteTracksFromSource(event.source, event.favoriteOnly)
+            }
+
             is DialogEvent.ExportLyric -> {
                 lifecycleScope.launch {
-                    lrcString = DB.getInstance(this@MainActivity)
-                        .lyricDao()
-                        .getLyricByTrackId(event.track.id)
-                        ?.toLrcString() ?: return@launch
+                    lrcString = viewModel.getLrcString(event.track.id) ?: return@launch
                     putContent.launch("${event.track.title}.lrc")
                 }
             }
@@ -749,18 +766,9 @@ class MainActivity : ComponentActivity() {
                 getContent.launch("*/*")
             }
 
-            is DialogEvent.DetachLyric -> {
-                lifecycleScope.launch {
-                    DB.getInstance(this@MainActivity)
-                        .lyricDao()
-                        .deleteLyricByTrackId(event.trackId)
-                    viewModel.emitSnackbarMessage(
-                        getString(R.string.message_delete_lyric_complete)
-                    )
-                    delay(2000.milliseconds)
-                    viewModel.emitSnackbarMessage(null)
-                }
-            }
+            is DialogEvent.DetachLyric -> viewModel.detachLyric(event.trackId)
+
+            DialogEvent.AcknowledgeDropboxSyncAlert -> viewModel.acknowledgeDropboxSyncAlert()
 
             DialogEvent.StartDropboxAuth -> {
                 viewModel.isDropboxAuthOngoing = true
@@ -830,20 +838,8 @@ class MainActivity : ComponentActivity() {
 
     private fun onLrcFileLoaded(lyricLines: List<LyricLine>) {
         if (attachLyricTargetTrackId > 0) {
-            lifecycleScope.launch {
-                val db = DB.getInstance(this@MainActivity)
-                val id = db.lyricDao().getLyricIdByTrackId(attachLyricTargetTrackId) ?: 0
-                db.lyricDao()
-                    .upsertLyric(
-                        Lyric(id = id, trackId = attachLyricTargetTrackId, lines = lyricLines)
-                    )
-                viewModel.emitSnackbarMessage(
-                    getString(R.string.message_attach_lyric_success)
-                )
-                delay(2000.milliseconds)
-                viewModel.emitSnackbarMessage(null)
-                attachLyricTargetTrackId = -1
-            }
+            viewModel.attachLyric(attachLyricTargetTrackId, lyricLines)
+            attachLyricTargetTrackId = -1
         } else {
             lifecycleScope.launch {
                 viewModel.emitSnackbarMessage(

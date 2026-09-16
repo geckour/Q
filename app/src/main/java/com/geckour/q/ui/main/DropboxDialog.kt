@@ -25,14 +25,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
@@ -44,30 +43,25 @@ import androidx.compose.ui.window.Dialog
 import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.R
 import com.geckour.q.ui.compose.QTheme
-import com.geckour.q.util.getDropboxCredential
-import com.geckour.q.util.setHasAlreadyShownDropboxSyncAlert
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 
 @Composable
 fun DropboxDialog(
     state: DialogState.Dropbox,
     onDialogEvent: (event: DialogEvent) -> Unit,
 ) {
-    val context = LocalContext.current
-    val credential = runBlocking {
-        context.getDropboxCredential().firstOrNull()
-    }
     if (state.hasAlreadyShownSyncAlert) {
-        if (credential.isNullOrBlank()) {
-            onDialogEvent(DialogEvent.StartDropboxAuth)
+        if (state.hasCredential.not()) {
+            LaunchedEffect(Unit) {
+                onDialogEvent(DialogEvent.StartDropboxAuth)
+            }
         } else {
             if (state.itemList.first.isEmpty() && state.itemList.second.isEmpty()) {
-                onDialogEvent(DialogEvent.ShowDropboxFolder(null))
+                LaunchedEffect(Unit) {
+                    onDialogEvent(DialogEvent.ShowDropboxFolder(null))
+                }
                 return
             }
             var selectedHistory by remember {
@@ -269,15 +263,10 @@ fun DropboxDialog(
             }
         }
     } else {
-        val coroutineScope = rememberCoroutineScope()
         QConfirmDialog(
             title = stringResource(id = R.string.dialog_title_dropbox_sync_caution),
             message = stringResource(id = R.string.dialog_desc_dropbox_sync_caution),
-            onPositive = {
-                coroutineScope.launch {
-                    context.setHasAlreadyShownDropboxSyncAlert(true)
-                }
-            },
+            onPositive = { onDialogEvent(DialogEvent.AcknowledgeDropboxSyncAlert) },
             onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) },
         )
     }

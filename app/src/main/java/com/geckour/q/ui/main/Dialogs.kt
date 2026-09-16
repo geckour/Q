@@ -130,8 +130,9 @@ fun BoxScope.Dialogs(
             )
         }
 
-        DialogState.SaveQueue -> {
+        is DialogState.SaveQueue -> {
             SaveQueueDialog(
+                nextId = dialogState.nextId,
                 onCancel = { onDialogEvent(DialogEvent.Dismiss) },
                 onPositive = { title ->
                     onDialogEvent(DialogEvent.SaveQueue(title, currentQueue.map { it.id }))

@@ -28,6 +28,7 @@ sealed interface DialogState {
 
     data class Dropbox(
         val hasAlreadyShownSyncAlert: Boolean = false,
+        val hasCredential: Boolean = false,
         val itemList: Triple<String, ImmutableList<FolderMetadata>, ImmutableList<FileMetadata>> =
             Triple("", persistentListOf(), persistentListOf()),
     ) : DialogState
@@ -38,5 +39,5 @@ sealed interface DialogState {
 
     data object EnablePauseOnCurrentTrackEnd : DialogState
 
-    data object SaveQueue : DialogState
+    data class SaveQueue(val nextId: Long = 1L) : DialogState
 }

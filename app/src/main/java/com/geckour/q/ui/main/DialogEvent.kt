@@ -16,6 +16,13 @@ sealed interface DialogEvent {
         val needSorted: Boolean? = null,
     ) : DialogEvent
 
+    data class NewQueueFromSource(
+        val source: TrackSource,
+        val favoriteOnly: Boolean,
+        val actionType: InsertActionType,
+        val classType: OrientedClassType,
+    ) : DialogEvent
+
     data class GenerateQueue(
         val track: UiTrack,
         val actionType: InsertActionType,
@@ -24,11 +31,18 @@ sealed interface DialogEvent {
 
     data class DeleteTrack(val track: UiTrack) : DialogEvent
 
+    data class DeleteTracksFromSource(
+        val source: TrackSource,
+        val favoriteOnly: Boolean,
+    ) : DialogEvent
+
     data class ExportLyric(val track: UiTrack) : DialogEvent
 
     data class AttachLyric(val trackId: Long) : DialogEvent
 
     data class DetachLyric(val trackId: Long) : DialogEvent
+
+    data object AcknowledgeDropboxSyncAlert : DialogEvent
 
     data object StartDropboxAuth : DialogEvent
 
