@@ -964,20 +964,20 @@ class MainViewModel(private val app: App) : ViewModel() {
 
             runCatching {
                 var result = client.files().listFolder(dropboxMetadata?.pathLower.orEmpty())
-                while (true) {
-                    if (result.hasMore.not()) break
-
+                val entries = result.entries.toMutableList()
+                while (result.hasMore) {
                     result = client.files().listFolderContinue(result.cursor)
+                    entries += result.entries
                 }
                 val currentDirTitle = (dropboxMetadata?.name ?: "Root")
                 dropboxItemList.emit(
                     Triple(
                         currentDirTitle,
-                        result.entries
+                        entries
                             .filterIsInstance<FolderMetadata>()
                             .sortedBy { it.name.lowercase() }
                             .toImmutableList(),
-                        result.entries
+                        entries
                             .filterIsInstance<FileMetadata>()
                             .sortedBy { it.name.lowercase() }
                             .toImmutableList(),
