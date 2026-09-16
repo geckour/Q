@@ -40,60 +40,6 @@ import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.ShuffleActionType
-
-@Composable
-fun ShuffleResetOptionDialog(
-    hideResetShuffleDialog: () -> Unit,
-    onShuffle: (actionType: ShuffleActionType) -> Unit,
-    onResetShuffle: () -> Unit
-) {
-    Dialog(onDismissRequest = hideResetShuffleDialog) {
-        Card(
-            colors = CardDefaults.cardColors()
-                .copy(containerColor = QTheme.colors.colorBackground)
-        ) {
-            Column {
-                DialogListItem(
-                    onClick = {
-                        onResetShuffle()
-                        hideResetShuffleDialog()
-                    }
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.dialog_choice_reset_shuffle),
-                        fontSize = 14.sp,
-                        color = QTheme.colors.colorTextPrimary
-                    )
-                }
-                DialogListItem(
-                    onClick = {
-                        onShuffle(ShuffleActionType.SHUFFLE_ALBUM_ORIENTED)
-                        hideResetShuffleDialog()
-                    }
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.dialog_choice_album_oriented_shuffle),
-                        fontSize = 14.sp,
-                        color = QTheme.colors.colorTextPrimary
-                    )
-                }
-                DialogListItem(
-                    onClick = {
-                        onShuffle(ShuffleActionType.SHUFFLE_ARTIST_ORIENTED)
-                        hideResetShuffleDialog()
-                    }
-                ) {
-                    Text(
-                        text = stringResource(id = R.string.dialog_choice_artist_oriented_shuffle),
-                        fontSize = 14.sp,
-                        color = QTheme.colors.colorTextPrimary
-                    )
-                }
-            }
-        }
-    }
-}
 
 @Composable
 fun SaveQueueDialog(
@@ -164,16 +110,9 @@ fun SaveQueueDialog(
 @Composable
 fun SavedQueueOptionDialog(
     uiSavedQueue: UiSavedQueue,
-    onNewQueue: (
-        queue: List<String>,
-        actionType: InsertActionType,
-        classType: OrientedClassType,
-        needSorted: Boolean?,
-    ) -> Unit,
-    onDelete: (savedQueueId: Long) -> Unit,
-    onDismiss: () -> Unit,
+    onDialogEvent: (event: DialogEvent) -> Unit,
 ) {
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) }) {
         Card(
             colors = CardDefaults.cardColors()
                 .copy(containerColor = QTheme.colors.colorBackground)
@@ -181,13 +120,15 @@ fun SavedQueueOptionDialog(
             Column {
                 DialogListItem(
                     onClick = {
-                        onNewQueue(
-                            uiSavedQueue.queue.map { it.track.sourcePath },
-                            InsertActionType.NEXT,
-                            OrientedClassType.TRACK,
-                            false,
+                        onDialogEvent(
+                            DialogEvent.NewQueue(
+                                uiSavedQueue.queue.map { it.track.sourcePath },
+                                InsertActionType.NEXT,
+                                OrientedClassType.TRACK,
+                                false,
+                            )
                         )
-                        onDismiss()
+                        onDialogEvent(DialogEvent.Dismiss)
                     }
                 ) {
                     Text(
@@ -198,13 +139,15 @@ fun SavedQueueOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        onNewQueue(
-                            uiSavedQueue.queue.map { it.track.sourcePath },
-                            InsertActionType.LAST,
-                            OrientedClassType.TRACK,
-                            false,
+                        onDialogEvent(
+                            DialogEvent.NewQueue(
+                                uiSavedQueue.queue.map { it.track.sourcePath },
+                                InsertActionType.LAST,
+                                OrientedClassType.TRACK,
+                                false,
+                            )
                         )
-                        onDismiss()
+                        onDialogEvent(DialogEvent.Dismiss)
                     }
                 ) {
                     Text(
@@ -215,13 +158,15 @@ fun SavedQueueOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        onNewQueue(
-                            uiSavedQueue.queue.map { it.track.sourcePath },
-                            InsertActionType.OVERRIDE,
-                            OrientedClassType.TRACK,
-                            false,
+                        onDialogEvent(
+                            DialogEvent.NewQueue(
+                                uiSavedQueue.queue.map { it.track.sourcePath },
+                                InsertActionType.OVERRIDE,
+                                OrientedClassType.TRACK,
+                                false,
+                            )
                         )
-                        onDismiss()
+                        onDialogEvent(DialogEvent.Dismiss)
                     }
                 ) {
                     Text(
@@ -232,8 +177,8 @@ fun SavedQueueOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        onDelete(uiSavedQueue.savedQueueSummary.savedQueue.id)
-                        onDismiss()
+                        onDialogEvent(DialogEvent.DeleteSavedQueue(uiSavedQueue.savedQueueSummary.savedQueue.id))
+                        onDialogEvent(DialogEvent.Dismiss)
                     }
                 ) {
                     Text(
@@ -250,14 +195,13 @@ fun SavedQueueOptionDialog(
 @Composable
 fun SavedQueueModifyDialog(
     uiSavedQueue: UiSavedQueue,
-    onModify: (savedQueueId: Long, newTitle: String, newTrackIds: List<Long>) -> Unit,
     currentQueue: List<UiTrack>,
-    onDismiss: () -> Unit,
+    onDialogEvent: (event: DialogEvent) -> Unit,
 ) {
     val newTitle =
         rememberTextFieldState(initialText = uiSavedQueue.savedQueueSummary.savedQueue.title)
     var overrideWithCurrentQueue by remember { mutableStateOf(false) }
-    Dialog(onDismissRequest = onDismiss) {
+    Dialog(onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) }) {
         Card(
             colors = CardDefaults.cardColors()
                 .copy(containerColor = QTheme.colors.colorBackground)
@@ -339,7 +283,7 @@ fun SavedQueueModifyDialog(
                         .align(Alignment.End)
                         .padding(top = 8.dp),
                 ) {
-                    TextButton(onClick = onDismiss) {
+                    TextButton(onClick = { onDialogEvent(DialogEvent.Dismiss) }) {
                         Text(
                             text = stringResource(R.string.dialog_ng),
                             fontSize = 16.sp,
@@ -349,14 +293,16 @@ fun SavedQueueModifyDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(
                         onClick = {
-                            onModify(
-                                uiSavedQueue.savedQueueSummary.savedQueue.id,
-                                newTitle.text.toString()
-                                    .ifEmpty { uiSavedQueue.savedQueueSummary.savedQueue.title },
-                                if (overrideWithCurrentQueue) currentQueue.map { it.id }
-                                else uiSavedQueue.queue.map { it.track.id },
+                            onDialogEvent(
+                                DialogEvent.ModifySavedQueue(
+                                    uiSavedQueue.savedQueueSummary.savedQueue.id,
+                                    newTitle.text.toString()
+                                        .ifEmpty { uiSavedQueue.savedQueueSummary.savedQueue.title },
+                                    if (overrideWithCurrentQueue) currentQueue.map { it.id }
+                                    else uiSavedQueue.queue.map { it.track.id },
+                                )
                             )
-                            onDismiss()
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     ) {
                         Text(

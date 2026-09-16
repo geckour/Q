@@ -41,7 +41,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.dropbox.core.v2.files.FileMetadata
 import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.R
 import com.geckour.q.ui.compose.QTheme
@@ -56,29 +55,25 @@ import kotlinx.coroutines.runBlocking
 
 @Composable
 fun DropboxDialog(
-    hasAlreadyShownDropboxSyncAlert: Boolean,
-    currentDropboxItemList: Triple<String, ImmutableList<FolderMetadata>, ImmutableList<FileMetadata>>,
-    onStartAuthDropbox: () -> Unit,
-    onShowDropboxFolderChooser: (selectedFolder: FolderMetadata?) -> Unit,
-    hideDropboxDialog: () -> Unit,
-    startDropboxSync: (targetFolderPath: String?, needDownloaded: Boolean) -> Unit
+    state: DialogState.Dropbox,
+    onDialogEvent: (event: DialogEvent) -> Unit,
 ) {
     val context = LocalContext.current
     val credential = runBlocking {
         context.getDropboxCredential().firstOrNull()
     }
-    if (hasAlreadyShownDropboxSyncAlert) {
+    if (state.hasAlreadyShownSyncAlert) {
         if (credential.isNullOrBlank()) {
-            onStartAuthDropbox()
+            onDialogEvent(DialogEvent.StartDropboxAuth)
         } else {
-            if (currentDropboxItemList.first.isEmpty() && currentDropboxItemList.second.isEmpty()) {
-                onShowDropboxFolderChooser(null)
+            if (state.itemList.first.isEmpty() && state.itemList.second.isEmpty()) {
+                onDialogEvent(DialogEvent.ShowDropboxFolder(null))
                 return
             }
             var selectedHistory by remember {
                 mutableStateOf<ImmutableList<FolderMetadata>>(persistentListOf())
             }
-            Dialog(onDismissRequest = hideDropboxDialog) {
+            Dialog(onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) }) {
                 var needDownloaded by remember { mutableStateOf(false) }
                 Card(
                     colors = CardDefaults.cardColors()
@@ -122,12 +117,12 @@ fun DropboxDialog(
                                 })
                         }
                         Text(
-                            text = currentDropboxItemList.first,
+                            text = state.itemList.first,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             color = QTheme.colors.colorAccent
                         )
-                        if (currentDropboxItemList.second.isEmpty() && currentDropboxItemList.third.isEmpty()) {
+                        if (state.itemList.second.isEmpty() && state.itemList.third.isEmpty()) {
                             Text(
                                 text = stringResource(
                                     R.string.dialog_desc_dropbox_empty_folder
@@ -141,13 +136,13 @@ fun DropboxDialog(
                                     .weight(1f)
                                     .fillMaxHeight()
                             ) {
-                                items(currentDropboxItemList.second) {
+                                items(state.itemList.second) {
                                     Row(
                                         modifier = Modifier
                                             .clickable {
                                                 selectedHistory = (selectedHistory.toList() + it)
                                                     .toImmutableList()
-                                                onShowDropboxFolderChooser(it)
+                                                onDialogEvent(DialogEvent.ShowDropboxFolder(it))
                                             }
                                             .padding(
                                                 horizontal = 8.dp,
@@ -181,7 +176,7 @@ fun DropboxDialog(
                                         )
                                     }
                                 }
-                                items(currentDropboxItemList.third) {
+                                items(state.itemList.third) {
                                     Row(
                                         modifier = Modifier
                                             .padding(
@@ -224,7 +219,7 @@ fun DropboxDialog(
                             val prev = {
                                 selectedHistory =
                                     selectedHistory.dropLast(1).toImmutableList()
-                                onShowDropboxFolderChooser(selectedHistory.lastOrNull())
+                                onDialogEvent(DialogEvent.ShowDropboxFolder(selectedHistory.lastOrNull()))
                             }
                             BackHandler(selectedHistory.isNotEmpty()) {
                                 prev()
@@ -243,7 +238,7 @@ fun DropboxDialog(
                                     .weight(1f)
                                     .fillMaxWidth()
                             )
-                            TextButton(onClick = hideDropboxDialog) {
+                            TextButton(onClick = { onDialogEvent(DialogEvent.Dismiss) }) {
                                 Text(
                                     text = stringResource(R.string.dialog_ng),
                                     fontSize = 16.sp,
@@ -253,11 +248,13 @@ fun DropboxDialog(
                             Spacer(modifier = Modifier.width(8.dp))
                             TextButton(
                                 onClick = {
-                                    startDropboxSync(
-                                        selectedHistory.lastOrNull()?.pathLower,
-                                        needDownloaded
+                                    onDialogEvent(
+                                        DialogEvent.StartDropboxSync(
+                                            selectedHistory.lastOrNull()?.pathLower,
+                                            needDownloaded
+                                        )
                                     )
-                                    hideDropboxDialog()
+                                    onDialogEvent(DialogEvent.Dismiss)
                                 }
                             ) {
                                 Text(
@@ -281,7 +278,7 @@ fun DropboxDialog(
                     context.setHasAlreadyShownDropboxSyncAlert(true)
                 }
             },
-            onDismissRequest = hideDropboxDialog,
+            onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) },
         )
     }
 }

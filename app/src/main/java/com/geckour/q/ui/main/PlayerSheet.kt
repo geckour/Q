@@ -3,7 +3,6 @@ package com.geckour.q.ui.main
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -43,7 +42,6 @@ fun PlayerSheet(
     isLoading: Pair<Boolean, (() -> Unit)?>,
     routeInfo: QAudioDeviceInfo?,
     showLyric: Boolean,
-    showSaveQueueDialog: MutableState<Boolean>,
     forceScrollToCurrent: Long,
     onTogglePlayPause: () -> Unit,
     onPrev: () -> Unit,
@@ -51,6 +49,7 @@ fun PlayerSheet(
     onRewind: () -> Unit,
     onFastForward: () -> Unit,
     onEnablePauseOnCurrentTrackEnd: () -> Unit,
+    onShowSaveQueueDialog: () -> Unit,
     resetPlaybackButton: () -> Unit,
     onNewProgress: (newProgress: Long) -> Unit,
     rotateRepeatMode: () -> Unit,
@@ -104,7 +103,6 @@ fun PlayerSheet(
             isLoading = isLoading.first,
             routeInfo = routeInfo,
             showLyric = showLyric,
-            showSaveQueueDialog = showSaveQueueDialog,
             isInLyricEditMode = isInLyricEditMode,
             isLyricScrolledByUser = isLyricScrolledByUser.value,
             onTogglePlayPause = onTogglePlayPause,
@@ -113,6 +111,7 @@ fun PlayerSheet(
             onRewind = onRewind,
             onFastForward = onFastForward,
             onEnablePauseOnCurrentTrackEnd = onEnablePauseOnCurrentTrackEnd,
+            onShowSaveQueueDialog = onShowSaveQueueDialog,
             resetPlaybackButton = resetPlaybackButton,
             onNewProgress = onNewProgress,
             rotateRepeatMode = rotateRepeatMode,
@@ -254,7 +253,6 @@ private fun PlayerSheetPreview() {
         isLoading = false to {},
         routeInfo = null,
         showLyric = false,
-        showSaveQueueDialog = remember { mutableStateOf(false) },
         forceScrollToCurrent = 0L,
         onTogglePlayPause = {},
         onPrev = {},
@@ -262,6 +260,7 @@ private fun PlayerSheetPreview() {
         onRewind = {},
         onFastForward = {},
         onEnablePauseOnCurrentTrackEnd = {},
+        onShowSaveQueueDialog = {},
         resetPlaybackButton = {},
         onNewProgress = { _ -> },
         rotateRepeatMode = {},

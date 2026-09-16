@@ -25,6 +25,10 @@ import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.data.BillingApiClient
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Album
+import com.geckour.q.data.db.model.Artist
+import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.service.DropboxMediaSyncJobService
@@ -33,8 +37,14 @@ import com.geckour.q.util.DownloadState
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType
+import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
+import com.geckour.q.util.getIsInNightMode
+import com.geckour.q.util.getShowLyric
+import com.geckour.q.util.isFavoriteToggled
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.setDropboxCredential
+import com.geckour.q.util.setIsNightMode
+import com.geckour.q.util.setShowLyric
 import com.geckour.q.util.toUiTrack
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import kotlinx.collections.immutable.ImmutableList
@@ -42,12 +52,14 @@ import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -94,9 +106,27 @@ class MainViewModel(private val app: App) : ViewModel() {
     private var notifyPlaybackPositionJob: Job = Job()
     private var notifyBufferedPositionJob: Job = Job()
 
-    private val dropboxItemListChannel =
-        Channel<Triple<String, ImmutableList<FolderMetadata>, ImmutableList<FileMetadata>>>(capacity = Channel.CONFLATED)
-    internal val dropboxItemList = dropboxItemListChannel.receiveAsFlow()
+    private val dropboxItemList =
+        MutableStateFlow<Triple<String, ImmutableList<FolderMetadata>, ImmutableList<FileMetadata>>>(
+            Triple("", persistentListOf(), persistentListOf())
+        )
+
+    private val mutableDialogState = MutableStateFlow<DialogState?>(null)
+    internal val dialogState: StateFlow<DialogState?> = combine(
+        mutableDialogState,
+        dropboxItemList,
+        app.getHasAlreadyShownDropboxSyncAlert(),
+    ) { state, itemList, hasAlreadyShownSyncAlert ->
+        if (state is DialogState.Dropbox) {
+            state.copy(hasAlreadyShownSyncAlert = hasAlreadyShownSyncAlert, itemList = itemList)
+        } else state
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    internal val topBarTitle = MutableStateFlow("")
+    internal val selectedNav = MutableStateFlow<Nav?>(null)
+    internal val appBarOptionMediaItem = MutableStateFlow<MediaItem?>(null)
+    internal val scrollToTop = MutableStateFlow(0L)
+    internal val forceScrollToCurrent = MutableStateFlow(System.currentTimeMillis())
 
     internal val loading = MutableStateFlow<Pair<Boolean, (() -> Unit)?>>(false to null)
 
@@ -353,6 +383,71 @@ class MainViewModel(private val app: App) : ViewModel() {
         )
     }
 
+    internal fun showDialog(dialogState: DialogState?) {
+        if (dialogState == null) {
+            dismissDialog()
+            return
+        }
+
+        mutableDialogState.value = dialogState
+    }
+
+    internal fun dismissDialog() {
+        if (mutableDialogState.value is DialogState.Dropbox) clearDropboxItemList()
+        mutableDialogState.value = null
+    }
+
+    internal fun requestScrollToTop() {
+        scrollToTop.value = System.currentTimeMillis()
+    }
+
+    internal fun requestScrollToCurrent() {
+        forceScrollToCurrent.value = System.currentTimeMillis()
+    }
+
+    internal fun toggleNightMode() {
+        viewModelScope.launch {
+            app.setIsNightMode(app.getIsInNightMode().first().not())
+        }
+    }
+
+    internal fun toggleShowLyric() {
+        viewModelScope.launch {
+            app.setShowLyric(app.getShowLyric().first().not())
+        }
+    }
+
+    internal fun toggleFavorite(mediaItem: MediaItem?): MediaItem? {
+        val newMediaItem = mediaItem.isFavoriteToggled()
+        viewModelScope.launch {
+            when (newMediaItem) {
+                is UiTrack -> {
+                    val trackDao = db.trackDao()
+                    val newTrack = trackDao.get(newMediaItem.id)
+                        ?.track
+                        ?.copy(isFavorite = newMediaItem.isFavorite)
+                        ?: return@launch
+                    trackDao.insert(newTrack)
+                }
+
+                is Album -> {
+                    db.albumDao().insert(newMediaItem)
+                }
+
+                is Artist -> {
+                    db.artistDao().insert(newMediaItem)
+                }
+            }
+        }
+
+        return newMediaItem
+    }
+
+    internal fun onTogglePlayPause() {
+        val (playWhenReady, playbackState) = currentPlaybackInfoFlow.value
+        onPlayOrPause(playWhenReady && playbackState == Player.STATE_READY)
+    }
+
     internal fun onPlayOrPause(playing: Boolean?) {
         onNewPlaybackButton(if (playing == true) PlaybackButton.PAUSE else PlaybackButton.PLAY)
     }
@@ -560,7 +655,7 @@ class MainViewModel(private val app: App) : ViewModel() {
                     result = client.files().listFolderContinue(result.cursor)
                 }
                 val currentDirTitle = (dropboxMetadata?.name ?: "Root")
-                dropboxItemListChannel.send(
+                dropboxItemList.emit(
                     Triple(
                         currentDirTitle,
                         result.entries
@@ -577,10 +672,8 @@ class MainViewModel(private val app: App) : ViewModel() {
         }
     }
 
-    internal fun clearDropboxItemList() {
-        viewModelScope.launch {
-            dropboxItemListChannel.send(Triple("", persistentListOf(), persistentListOf()))
-        }
+    private fun clearDropboxItemList() {
+        dropboxItemList.value = Triple("", persistentListOf(), persistentListOf())
     }
 
     internal fun startBilling(activity: Activity) {

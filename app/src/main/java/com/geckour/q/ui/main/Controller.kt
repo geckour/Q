@@ -110,7 +110,6 @@ fun Controller(
     isLoading: Boolean,
     routeInfo: QAudioDeviceInfo?,
     showLyric: Boolean,
-    showSaveQueueDialog: MutableState<Boolean>,
     isInLyricEditMode: MutableState<Boolean>,
     isLyricScrolledByUser: Boolean,
     onTogglePlayPause: () -> Unit,
@@ -119,6 +118,7 @@ fun Controller(
     onRewind: () -> Unit,
     onFastForward: () -> Unit,
     onEnablePauseOnCurrentTrackEnd: () -> Unit,
+    onShowSaveQueueDialog: () -> Unit,
     resetPlaybackButton: () -> Unit,
     onNewProgress: (newProgress: Long) -> Unit,
     rotateRepeatMode: () -> Unit,
@@ -709,7 +709,7 @@ fun Controller(
                         .clickable(
                             indication = ripple(bounded = false),
                             interactionSource = remember { MutableInteractionSource() },
-                            onClick = { showSaveQueueDialog.value = true }
+                            onClick = onShowSaveQueueDialog
                         )
                         .padding(4.dp)
                         .size(20.dp)

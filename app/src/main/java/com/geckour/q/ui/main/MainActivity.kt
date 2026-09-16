@@ -23,13 +23,10 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -37,7 +34,6 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.navigation.compose.rememberNavController
 import androidx.window.layout.FoldingFeature
@@ -52,18 +48,12 @@ import com.dropbox.core.android.Auth
 import com.geckour.q.BuildConfig
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.Album
-import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
-import com.geckour.q.domain.model.AllArtists
-import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.LayoutType
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.PlaybackButton
-import com.geckour.q.domain.model.UiSavedQueue
-import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.service.DropboxMediaSyncJobService
 import com.geckour.q.ui.compose.ColorBackground
 import com.geckour.q.ui.compose.ColorBackgroundInverse
@@ -71,22 +61,18 @@ import com.geckour.q.ui.compose.ColorPrimaryDark
 import com.geckour.q.ui.compose.ColorPrimaryDarkInverse
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.ui.widget.player.PlayerSheetWidgetProvider
-import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.SyncProgressState
 import com.geckour.q.util.SyncSizeAlertState
 import com.geckour.q.util.dbxRequestConfig
 import com.geckour.q.util.getActiveQAudioDeviceInfo
 import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getExtension
-import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.getIsInNightMode
 import com.geckour.q.util.getReadableStringWithUnit
 import com.geckour.q.util.getShowLyric
 import com.geckour.q.util.getTimeString
-import com.geckour.q.util.isFavoriteToggled
 import com.geckour.q.util.parseLrc
-import com.geckour.q.util.setIsNightMode
-import com.geckour.q.util.setShowLyric
 import com.geckour.q.util.toLrcString
 import com.geckour.q.worker.KEY_PROGRESS_FINISHED
 import com.geckour.q.worker.KEY_PROGRESS_PROCESSED_FILES_SIZE
@@ -125,12 +111,84 @@ class MainActivity : ComponentActivity() {
     }
 
     private val viewModel by viewModel<MainViewModel>()
-    private var onAuthDropboxCompleted: (() -> Unit)? = null
     private var onCancelProgress: (() -> Unit)? = null
-    private var onScrollToCurrent: (() -> Unit)? = null
 
-    private var onLrcFileLoaded: ((lyricLines: List<LyricLine>) -> Unit)? = null
+    private var attachLyricTargetTrackId = -1L
     private var lrcString: String? = null
+
+    private val mainActions = object : MainActions {
+
+        override fun onSelectNav(nav: Nav?) {
+            viewModel.selectedNav.value = nav
+        }
+
+        override fun onTapBar() = viewModel.requestScrollToTop()
+
+        override fun onToggleTheme() {
+            viewModel.toggleNightMode()
+            PlayerSheetWidgetProvider.requestUpdate(this@MainActivity)
+        }
+
+        override fun onChangeTopBarTitle(title: String) {
+            viewModel.topBarTitle.value = title
+        }
+
+        override fun onSetOptionMediaItem(mediaItem: MediaItem?) {
+            viewModel.appBarOptionMediaItem.value = mediaItem
+        }
+
+        override fun onToggleFavorite(mediaItem: MediaItem?): MediaItem? =
+            viewModel.toggleFavorite(mediaItem)
+
+        override fun onShowDialog(dialogState: DialogState?) = viewModel.showDialog(dialogState)
+
+        override fun onDialogEvent(event: DialogEvent) = handleDialogEvent(event)
+
+        override fun onRetrieveMedia(onlyAdded: Boolean) = retrieveMedia(onlyAdded)
+
+        override fun onStartBilling() = viewModel.startBilling(this@MainActivity)
+
+        override fun onDeleteSavedQueue(savedQueueId: Long) =
+            viewModel.deleteSavedQueue(savedQueueId)
+
+        override fun onTogglePlayPause() = viewModel.onTogglePlayPause()
+
+        override fun onPrev() = viewModel.onPrev()
+
+        override fun onNext() = viewModel.onNext()
+
+        override fun onRewind() {
+            viewModel.onRewind()
+        }
+
+        override fun onFastForward() {
+            viewModel.onFF()
+        }
+
+        override fun resetPlaybackButton() =
+            viewModel.onNewPlaybackButton(PlaybackButton.UNDEFINED)
+
+        override fun onNewProgress(newProgress: Long) =
+            viewModel.onNewSeekBarProgress(newProgress)
+
+        override fun rotateRepeatMode() = viewModel.onClickRepeatButton()
+
+        override fun shuffleQueue(actionType: ShuffleActionType?) = viewModel.onShuffle(actionType)
+
+        override fun resetShuffleQueue() = viewModel.onResetShuffle()
+
+        override fun moveToCurrentIndex() = viewModel.requestScrollToCurrent()
+
+        override fun clearQueue() = viewModel.onClickClearQueueButton()
+
+        override fun onToggleShowLyrics() = viewModel.toggleShowLyric()
+
+        override fun onQueueMove(from: Int, to: Int) = viewModel.onQueueMove(from, to)
+
+        override fun onChangeIndexRequested(index: Int) = viewModel.onChangeIndexRequested(index)
+
+        override fun onRemoveTrackFromQueue(index: Int) = viewModel.onRemoveTrackFromQueue(index)
+    }
 
     private val requestStoragePermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
@@ -158,7 +216,7 @@ class MainActivity : ComponentActivity() {
                         val lyricText = contentResolver.openInputStream(uri)?.use {
                             it.readBytes().toString(Charset.forName("UTF-8"))
                         } ?: throw IllegalStateException("Cannot open lyric file.")
-                        onLrcFileLoaded?.invoke(
+                        onLrcFileLoaded(
                             lyricText.split('\n').map { LyricLine(0, it) }
                         )
                         return@registerForActivityResult
@@ -178,7 +236,7 @@ class MainActivity : ComponentActivity() {
                 }
                 val lyricLines = file.parseLrc()
                 if (lyricLines.isEmpty()) throw IllegalStateException("The lyric is empty.")
-                onLrcFileLoaded?.invoke(lyricLines)
+                onLrcFileLoaded(lyricLines)
                 file.delete()
             } catch (t: Throwable) {
                 Timber.e(t)
@@ -291,13 +349,12 @@ class MainActivity : ComponentActivity() {
             .stateIn(scope = lifecycleScope, started = SharingStarted.Eagerly, LayoutType.Single)
 
         setContent {
-            val coroutineScope = rememberCoroutineScope()
             val context = LocalContext.current
             val isInNightMode by context.getIsInNightMode()
                 .collectAsState(initial = isSystemInDarkTheme())
             val isLoading by viewModel.loading.collectAsState()
             val navController = rememberNavController()
-            var topBarTitle by remember { mutableStateOf("") }
+            val topBarTitle by viewModel.topBarTitle.collectAsState()
             val queue by viewModel.currentQueueFlow.collectAsState(initial = emptyList())
             val sourcePaths by viewModel.currentSourcePathsFlow.collectAsState()
             val currentIndex by viewModel.currentIndexFlow.collectAsState()
@@ -305,17 +362,9 @@ class MainActivity : ComponentActivity() {
             val currentBufferedPosition by viewModel.currentBufferedPositionFlow.collectAsState()
             val currentPlaybackInfo by viewModel.currentPlaybackInfoFlow.collectAsState()
             val currentRepeatMode by viewModel.currentRepeatModeFlow.collectAsState()
-            var forceScrollToCurrent by remember { mutableLongStateOf(System.currentTimeMillis()) }
-            var showDropboxDialog by remember { mutableStateOf(false) }
-            var showResetShuffleDialog by remember { mutableStateOf(false) }
-            var selectedTrack by remember { mutableStateOf<UiTrack?>(null) }
-            var selectedAlbum by remember { mutableStateOf<Album?>(null) }
-            var selectedArtist by remember { mutableStateOf<Artist?>(null) }
-            var selectedAllArtists by remember { mutableStateOf<AllArtists?>(null) }
-            var selectedGenre by remember { mutableStateOf<Genre?>(null) }
-            var selectedSavedQueueForOption by remember { mutableStateOf<UiSavedQueue?>(null) }
-            var selectedSavedQueueForModify by remember { mutableStateOf<UiSavedQueue?>(null) }
-            var selectedNav by remember { mutableStateOf<Nav?>(null) }
+            val forceScrollToCurrent by viewModel.forceScrollToCurrent.collectAsState()
+            val dialogState by viewModel.dialogState.collectAsState()
+            val selectedNav by viewModel.selectedNav.collectAsState()
             val workInfoList by viewModel.workInfoListFlow
                 .collectAsState(initial = emptyList())
             var progressMessage by remember { mutableStateOf<String?>(null) }
@@ -324,82 +373,16 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf<ImmutableList<String>>(persistentListOf())
             }
             var finishedWorkIdSet by remember { mutableStateOf(emptySet<UUID>()) }
-            val hasAlreadyShownDropboxSyncAlert by context.getHasAlreadyShownDropboxSyncAlert()
-                .collectAsState(initial = false)
-            var downloadTargets by remember {
-                mutableStateOf<ImmutableList<String>>(persistentListOf())
-            }
-            var invalidateDownloadedTargets by remember {
-                mutableStateOf<ImmutableList<String>>(persistentListOf())
-            }
-            var attachLyricTargetTrackId by remember { mutableLongStateOf(-1) }
             val snackbarMessage by viewModel.snackbarMessageFlow.collectAsState()
             val equalizerParams by context.getEqualizerParams().collectAsState(initial = null)
-            var scrollToTop by remember { mutableLongStateOf(0L) }
+            val scrollToTop by viewModel.scrollToTop.collectAsState()
             val showLyric by context.getShowLyric().collectAsState(initial = false)
-            val currentDropboxItemList by viewModel.dropboxItemList.collectAsState(
-                initial = Triple("", persistentListOf(), persistentListOf())
-            )
             val layoutType by layoutTypeFlow.collectAsState()
-            var appBarOptionMediaItem by remember { mutableStateOf<MediaItem?>(null) }
-            val onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem? = { mediaItem ->
-                val newMediaItem = mediaItem.isFavoriteToggled()
-                coroutineScope.launch {
-                    when (newMediaItem) {
-                        is UiTrack -> {
-                            val trackDao = DB.getInstance(context).trackDao()
-                            val newTrack = trackDao.get(newMediaItem.id)
-                                ?.track
-                                ?.copy(isFavorite = newMediaItem.isFavorite)
-                                ?: return@launch
-                            trackDao.insert(newTrack)
-                        }
-
-                        is Album -> {
-                            DB.getInstance(context).albumDao().insert(newMediaItem)
-                        }
-
-                        is Artist -> {
-                            DB.getInstance(context).artistDao().insert(newMediaItem)
-                        }
-                    }
-                }
-
-                newMediaItem
-            }
+            val appBarOptionMediaItem by viewModel.appBarOptionMediaItem.collectAsState()
             val isSearchActive = rememberSaveable { mutableStateOf(false) }
             val searchQuery = rememberSaveable { mutableStateOf("") }
             val isFavoriteOnly = rememberSaveable { mutableStateOf(false) }
             val activeQAudioDeviceInfo by getActiveQAudioDeviceInfo().collectAsState(initial = null)
-            var showEnablePauseOnCurrentTrackEndDialog by remember { mutableStateOf(false) }
-            val showSaveQueueDialog = remember { mutableStateOf(false) }
-
-            onLrcFileLoaded = {
-                if (attachLyricTargetTrackId > 0) {
-                    coroutineScope.launch {
-                        val db = DB.getInstance(context)
-                        val id = db.lyricDao().getLyricIdByTrackId(attachLyricTargetTrackId) ?: 0
-                        db.lyricDao()
-                            .upsertLyric(
-                                Lyric(id = id, trackId = attachLyricTargetTrackId, lines = it)
-                            )
-                        viewModel.emitSnackbarMessage(
-                            getString(R.string.message_attach_lyric_success)
-                        )
-                        delay(2000.milliseconds)
-                        viewModel.emitSnackbarMessage(null)
-                        attachLyricTargetTrackId = -1
-                    }
-                } else {
-                    coroutineScope.launch {
-                        viewModel.emitSnackbarMessage(
-                            getString(R.string.message_attach_lyric_failure)
-                        )
-                        delay(2000.milliseconds)
-                        viewModel.emitSnackbarMessage(null)
-                    }
-                }
-            }
 
             LaunchedEffect(isInNightMode) {
                 enableEdgeToEdge(
@@ -566,10 +549,34 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
-            SideEffect {
-                onAuthDropboxCompleted = { showDropboxDialog = true }
-                onScrollToCurrent = { forceScrollToCurrent = System.currentTimeMillis() }
-            }
+            val uiState = MainUiState(
+                player = PlayerUiState(
+                    queue = queue.toImmutableList(),
+                    sourcePaths = sourcePaths,
+                    currentIndex = currentIndex,
+                    currentPlaybackPosition = currentPlaybackPosition,
+                    currentBufferedPosition = currentBufferedPosition,
+                    currentPlaybackInfo = currentPlaybackInfo,
+                    currentRepeatMode = currentRepeatMode,
+                    isLoading = isLoading,
+                    showLyric = showLyric,
+                    forceScrollToCurrent = forceScrollToCurrent,
+                ),
+                library = LibraryUiState(
+                    topBarTitle = topBarTitle,
+                    appBarOptionMediaItem = appBarOptionMediaItem,
+                    selectedNav = selectedNav,
+                    equalizerParams = equalizerParams,
+                    snackbarMessage = progressMessage ?: snackbarMessage,
+                    snackbarPaths = progressPaths,
+                    snackbarProgress = progressFraction,
+                    onCancelProgress = onCancelProgress,
+                    scrollToTop = scrollToTop,
+                ),
+                routeInfo = activeQAudioDeviceInfo,
+                dialogState = dialogState,
+                syncSizeAlert = syncSizeAlert,
+            )
 
             QTheme(darkTheme = isInNightMode) {
                 Surface(modifier = Modifier.fillMaxSize()) {
@@ -577,434 +584,22 @@ class MainActivity : ComponentActivity() {
                         is LayoutType.Single -> {
                             SingleScreen(
                                 navController = navController,
-                                topBarTitle = topBarTitle,
-                                appBarOptionMediaItem = appBarOptionMediaItem,
-                                sourcePaths = sourcePaths,
-                                queue = queue.toImmutableList(),
-                                currentIndex = currentIndex,
-                                currentPlaybackPosition = currentPlaybackPosition,
-                                currentBufferedPosition = currentBufferedPosition,
-                                currentPlaybackInfo = currentPlaybackInfo,
-                                currentRepeatMode = currentRepeatMode,
-                                isLoading = isLoading,
-                                routeInfo = activeQAudioDeviceInfo,
-                                showLyric = showLyric,
-                                showSaveQueueDialog = showSaveQueueDialog,
-                                selectedNav = selectedNav,
-                                selectedTrack = selectedTrack,
-                                selectedAlbum = selectedAlbum,
-                                selectedArtist = selectedArtist,
-                                selectedAllArtists = selectedAllArtists,
-                                selectedGenre = selectedGenre,
-                                selectedSavedQueueForOption = selectedSavedQueueForOption,
-                                selectedSavedQueueForModify = selectedSavedQueueForModify,
-                                equalizerParams = equalizerParams,
-                                currentDropboxItemList = currentDropboxItemList,
-                                downloadTargets = downloadTargets,
-                                invalidateDownloadedTargets = invalidateDownloadedTargets,
-                                snackbarMessage = progressMessage ?: snackbarMessage,
-                                snackbarPaths = progressPaths,
-                                snackbarProgress = progressFraction,
-                                forceScrollToCurrent = forceScrollToCurrent,
-                                showDropboxDialog = showDropboxDialog,
-                                showResetShuffleDialog = showResetShuffleDialog,
-                                hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
-                                scrollToTop = scrollToTop,
-                                onSelectNav = { selectedNav = it },
-                                onTapBar = { scrollToTop = System.currentTimeMillis() },
-                                onToggleTheme = {
-                                    coroutineScope.launch {
-                                        context.setIsNightMode(isInNightMode.not())
-                                    }
-                                    PlayerSheetWidgetProvider.requestUpdate(this)
-                                },
-                                onChangeTopBarTitle = { topBarTitle = it },
-                                onSelectTrack = { selectedTrack = it },
-                                onSelectAlbum = { selectedAlbum = it },
-                                onSelectArtist = { selectedArtist = it },
-                                onSelectAllArtists = { selectedAllArtists = it },
-                                onSelectGenre = { selectedGenre = it },
-                                onSelectSavedQueueForOption = { selectedSavedQueueForOption = it },
-                                onSelectSavedQueueForModify = { selectedSavedQueueForModify = it },
-                                onTogglePlayPause = {
-                                    viewModel.onPlayOrPause(
-                                        currentPlaybackInfo.first &&
-                                                currentPlaybackInfo.second == Player.STATE_READY
-                                    )
-                                },
-                                onPrev = viewModel::onPrev,
-                                onNext = viewModel::onNext,
-                                onRewind = viewModel::onRewind,
-                                onFastForward = viewModel::onFF,
-                                onEnablePauseOnCurrentTrackEnd = {
-                                    showEnablePauseOnCurrentTrackEndDialog = true
-                                },
-                                resetPlaybackButton = { viewModel.onNewPlaybackButton(PlaybackButton.UNDEFINED) },
-                                onNewProgress = viewModel::onNewSeekBarProgress,
-                                rotateRepeatMode = viewModel::onClickRepeatButton,
-                                shuffleQueue = viewModel::onShuffle,
-                                resetShuffleQueue = viewModel::onResetShuffle,
+                                uiState = uiState,
                                 isSearchActive = isSearchActive,
                                 searchQuery = searchQuery,
                                 isFavoriteOnly = isFavoriteOnly,
-                                moveToCurrentIndex = {
-                                    forceScrollToCurrent = System.currentTimeMillis()
-                                },
-                                clearQueue = viewModel::onClickClearQueueButton,
-                                onSaveQueue = {
-                                    viewModel.saveQueue(
-                                        title = it,
-                                        trackIds = queue.map { it.id },
-                                        onComplete = {
-                                            coroutineScope.launch {
-                                                viewModel.emitSnackbarMessage(
-                                                    getString(R.string.snackbar_message_save_queue_complete)
-                                                )
-                                                delay(2000.milliseconds)
-                                                viewModel.emitSnackbarMessage(null)
-                                            }
-                                        },
-                                    )
-                                },
-                                onModifySavedQueue = { savedQueueId, title, trackIds ->
-                                    viewModel.saveQueue(
-                                        savedQueueId = savedQueueId,
-                                        title = title,
-                                        trackIds = trackIds,
-                                    )
-                                },
-                                onDeleteSavedQueue = { savedQueueId ->
-                                    viewModel.deleteSavedQueue(savedQueueId)
-                                },
-                                onToggleShowLyrics = {
-                                    coroutineScope.launch {
-                                        context.setShowLyric(showLyric.not())
-                                    }
-                                },
-                                onNewQueue = { queue, actionType, classType, needSorted ->
-                                    viewModel.onNewQueue(
-                                        sourcePaths = queue,
-                                        actionType = actionType,
-                                        classType = classType,
-                                        needSorted = needSorted,
-                                    )
-                                },
-                                onGenerateQueue = viewModel::onGenerateQueue,
-                                onQueueMove = viewModel::onQueueMove,
-                                onChangeIndexRequested = viewModel::onChangeIndexRequested,
-                                onRemoveTrackFromQueue = viewModel::onRemoveTrackFromQueue,
-                                onShowDropboxDialog = { showDropboxDialog = true },
-                                onRetrieveMedia = ::retrieveMedia,
-                                onDownload = { downloadTargets = it.toImmutableList() },
-                                onCancelDownload = { downloadTargets = persistentListOf() },
-                                onStartDownloader = {
-                                    viewModel.downloadDropboxMedia(downloadTargets)
-                                    downloadTargets = persistentListOf()
-                                },
-                                onInvalidateDownloaded = {
-                                    invalidateDownloadedTargets = it.toImmutableList()
-                                },
-                                onCancelInvalidateDownloaded = {
-                                    invalidateDownloadedTargets = persistentListOf()
-                                },
-                                onStartInvalidateDownloaded = {
-                                    viewModel.purgeDownloaded(
-                                        invalidateDownloadedTargets
-                                    )
-                                    invalidateDownloadedTargets = persistentListOf()
-                                },
-                                onDeleteTrack = viewModel::deleteTrack,
-                                onExportLyric = {
-                                    coroutineScope.launch {
-                                        lrcString = DB.getInstance(context)
-                                            .lyricDao()
-                                            .getLyricByTrackId(it.id)
-                                            ?.toLrcString() ?: return@launch
-                                        putContent.launch("${it.title}.lrc")
-                                    }
-                                },
-                                onAttachLyric = {
-                                    attachLyricTargetTrackId = it
-                                    getContent.launch("*/*")
-                                },
-                                onDetachLyric = {
-                                    coroutineScope.launch {
-                                        DB.getInstance(context)
-                                            .lyricDao()
-                                            .deleteLyricByTrackId(it)
-                                        viewModel.emitSnackbarMessage(
-                                            getString(R.string.message_delete_lyric_complete)
-                                        )
-                                        delay(2000.milliseconds)
-                                        viewModel.emitSnackbarMessage(null)
-                                    }
-                                },
-                                onStartAuthDropbox = {
-                                    viewModel.isDropboxAuthOngoing = true
-                                    Auth.startOAuth2PKCE(
-                                        context,
-                                        BuildConfig.DROPBOX_APP_KEY,
-                                        dbxRequestConfig,
-                                        DbxHost.DEFAULT
-                                    )
-                                    showDropboxDialog = false
-                                },
-                                onShowDropboxFolderChooser = {
-                                    viewModel.showDropboxFolderChooser(it) {
-                                        lifecycleScope.launch {
-                                            onDropboxSyncFailure(it)
-                                        }
-                                    }
-                                },
-                                hideDropboxDialog = {
-                                    viewModel.clearDropboxItemList()
-                                    showDropboxDialog = false
-                                },
-                                startDropboxSync = { rootFolderPath, needDownloaded ->
-                                    retrieveDropboxMedia(
-                                        rootFolderPath ?: MainViewModel.DROPBOX_PATH_ROOT,
-                                        needDownloaded
-                                    )
-                                },
-                                hideResetShuffleDialog = { showResetShuffleDialog = false },
-                                onStartBilling = { viewModel.startBilling(this@MainActivity) },
-                                onCancelProgress = onCancelProgress,
-                                onSetOptionMediaItem = { mediaItem ->
-                                    appBarOptionMediaItem = mediaItem
-                                },
-                                onToggleFavorite = onToggleFavorite,
-                                onCancelEnablePauseOnCurrentTrackEnd = {
-                                    showEnablePauseOnCurrentTrackEndDialog = false
-                                },
-                                onPositiveEnablePauseOnCurrentTrackEnd = {
-                                    viewModel.enablePauseOnCurrentTrackEnd()
-                                    showEnablePauseOnCurrentTrackEndDialog = false
-                                },
-                                showEnablePauseOnCurrentTrackEndDialog = showEnablePauseOnCurrentTrackEndDialog,
-                                syncSizeAlert = syncSizeAlert,
-                                onDeclineSyncSize = {
-                                    DropboxMediaSyncJobService.respondSizeConfirmation(false)
-                                },
-                                onApproveSyncSize = {
-                                    DropboxMediaSyncJobService.respondSizeConfirmation(true)
-                                },
-                                onDismissSyncSizeExceeded = { SyncSizeAlertState.update(null) },
+                                actions = mainActions,
                             )
                         }
 
                         is LayoutType.Twin -> {
                             TwinScreen(
                                 navController = navController,
-                                topBarTitle = topBarTitle,
-                                appBarOptionMediaItem = appBarOptionMediaItem,
-                                queue = queue.toImmutableList(),
-                                currentIndex = currentIndex,
-                                currentPlaybackPosition = currentPlaybackPosition,
-                                currentBufferedPosition = currentBufferedPosition,
-                                currentPlaybackInfo = currentPlaybackInfo,
-                                currentRepeatMode = currentRepeatMode,
-                                isLoading = isLoading,
-                                routeInfo = activeQAudioDeviceInfo,
-                                showLyric = showLyric,
-                                showSaveQueueDialog = showSaveQueueDialog,
-                                selectedNav = selectedNav,
-                                selectedTrack = selectedTrack,
-                                selectedAlbum = selectedAlbum,
-                                selectedArtist = selectedArtist,
-                                selectedAllArtists = selectedAllArtists,
-                                selectedGenre = selectedGenre,
-                                selectedSavedQueueForOption = selectedSavedQueueForOption,
-                                selectedSavedQueueForModify = selectedSavedQueueForModify,
-                                equalizerParams = equalizerParams,
-                                currentDropboxItemList = currentDropboxItemList,
-                                downloadTargets = downloadTargets,
-                                invalidateDownloadedTargets = invalidateDownloadedTargets,
+                                uiState = uiState,
                                 isSearchActive = isSearchActive,
                                 searchQuery = searchQuery,
                                 isFavoriteOnly = isFavoriteOnly,
-                                snackbarMessage = progressMessage ?: snackbarMessage,
-                                snackbarPaths = progressPaths,
-                                snackbarProgress = progressFraction,
-                                forceScrollToCurrent = forceScrollToCurrent,
-                                showDropboxDialog = showDropboxDialog,
-                                showResetShuffleDialog = showResetShuffleDialog,
-                                hasAlreadyShownDropboxSyncAlert = hasAlreadyShownDropboxSyncAlert,
-                                scrollToTop = scrollToTop,
-                                onSelectNav = { selectedNav = it },
-                                onTapBar = { scrollToTop = System.currentTimeMillis() },
-                                onToggleTheme = {
-                                    coroutineScope.launch {
-                                        context.setIsNightMode(isInNightMode.not())
-                                    }
-                                },
-                                onChangeTopBarTitle = { topBarTitle = it },
-                                onSelectTrack = { selectedTrack = it },
-                                onSelectAlbum = { selectedAlbum = it },
-                                onSelectArtist = { selectedArtist = it },
-                                onSelectAllArtists = { selectedAllArtists = it },
-                                onSelectGenre = { selectedGenre = it },
-                                onSelectSavedQueueForOption = { selectedSavedQueueForOption = it },
-                                onSelectSavedQueueForModify = { selectedSavedQueueForModify = it },
-                                onTogglePlayPause = {
-                                    viewModel.onPlayOrPause(
-                                        currentPlaybackInfo.first &&
-                                                currentPlaybackInfo.second == Player.STATE_READY
-                                    )
-                                },
-                                onPrev = viewModel::onPrev,
-                                onNext = viewModel::onNext,
-                                onRewind = viewModel::onRewind,
-                                onFastForward = viewModel::onFF,
-                                onEnablePauseOnCurrentTrackEnd = {
-                                    showEnablePauseOnCurrentTrackEndDialog = true
-                                },
-                                resetPlaybackButton = { viewModel.onNewPlaybackButton(PlaybackButton.UNDEFINED) },
-                                onNewProgress = viewModel::onNewSeekBarProgress,
-                                rotateRepeatMode = viewModel::onClickRepeatButton,
-                                shuffleQueue = viewModel::onShuffle,
-                                resetShuffleQueue = viewModel::onResetShuffle,
-                                moveToCurrentIndex = {
-                                    forceScrollToCurrent = System.currentTimeMillis()
-                                },
-                                clearQueue = viewModel::onClickClearQueueButton,
-                                onSaveQueue = {
-                                    viewModel.saveQueue(
-                                        title = it,
-                                        trackIds = queue.map { it.id },
-                                        onComplete = {
-                                            coroutineScope.launch {
-                                                viewModel.emitSnackbarMessage(
-                                                    getString(R.string.snackbar_message_save_queue_complete)
-                                                )
-                                                delay(2000.milliseconds)
-                                                viewModel.emitSnackbarMessage(null)
-                                            }
-                                        },
-                                    )
-                                },
-                                onModifySavedQueue = { savedQueueId, title, trackIds ->
-                                    viewModel.saveQueue(
-                                        savedQueueId = savedQueueId,
-                                        title = title,
-                                        trackIds = trackIds,
-                                    )
-                                },
-                                onDeleteSavedQueue= { savedQueueId ->
-                                    viewModel.deleteSavedQueue(savedQueueId)
-                                },
-                                onToggleShowLyrics = {
-                                    coroutineScope.launch {
-                                        context.setShowLyric(showLyric.not())
-                                    }
-                                },
-                                onNewQueue = { queue, actionType, classType, needSorted ->
-                                    viewModel.onNewQueue(
-                                        sourcePaths = queue,
-                                        actionType = actionType,
-                                        classType = classType,
-                                        needSorted = needSorted,
-                                    )
-                                },
-                                onGenerateQueue = viewModel::onGenerateQueue,
-                                onQueueMove = viewModel::onQueueMove,
-                                onChangeIndexRequested = viewModel::onChangeIndexRequested,
-                                onRemoveTrackFromQueue = viewModel::onRemoveTrackFromQueue,
-                                onShowDropboxDialog = { showDropboxDialog = true },
-                                onRetrieveMedia = ::retrieveMedia,
-                                onDownload = { downloadTargets = it.toImmutableList() },
-                                onCancelDownload = { downloadTargets = persistentListOf() },
-                                onStartDownloader = {
-                                    viewModel.downloadDropboxMedia(downloadTargets)
-                                    downloadTargets = persistentListOf()
-                                },
-                                onInvalidateDownloaded = {
-                                    invalidateDownloadedTargets = it.toImmutableList()
-                                },
-                                onCancelInvalidateDownloaded = {
-                                    invalidateDownloadedTargets = persistentListOf()
-                                },
-                                onStartInvalidateDownloaded = {
-                                    viewModel.purgeDownloaded(
-                                        invalidateDownloadedTargets
-                                    )
-                                    invalidateDownloadedTargets = persistentListOf()
-                                },
-                                onDeleteTrack = viewModel::deleteTrack,
-                                onExportLyric = {
-                                    coroutineScope.launch {
-                                        lrcString = DB.getInstance(context)
-                                            .lyricDao()
-                                            .getLyricByTrackId(it.id)
-                                            ?.toLrcString() ?: return@launch
-                                        putContent.launch("${it.title}.lrc")
-                                    }
-                                },
-                                onAttachLyric = {
-                                    attachLyricTargetTrackId = it
-                                    getContent.launch("*/*")
-                                },
-                                onDetachLyric = {
-                                    coroutineScope.launch {
-                                        DB.getInstance(context)
-                                            .lyricDao()
-                                            .deleteLyricByTrackId(it)
-                                        viewModel.emitSnackbarMessage(
-                                            getString(R.string.message_delete_lyric_complete)
-                                        )
-                                        delay(2000.milliseconds)
-                                        viewModel.emitSnackbarMessage(null)
-                                    }
-                                },
-                                onStartAuthDropbox = {
-                                    viewModel.isDropboxAuthOngoing = true
-                                    Auth.startOAuth2PKCE(
-                                        context,
-                                        BuildConfig.DROPBOX_APP_KEY,
-                                        dbxRequestConfig,
-                                        DbxHost.DEFAULT
-                                    )
-                                    showDropboxDialog = false
-                                },
-                                onShowDropboxFolderChooser = {
-                                    viewModel.showDropboxFolderChooser(it) {
-                                        lifecycleScope.launch {
-                                            onDropboxSyncFailure(it)
-                                        }
-                                    }
-                                },
-                                hideDropboxDialog = {
-                                    viewModel.clearDropboxItemList()
-                                    showDropboxDialog = false
-                                },
-                                startDropboxSync = { rootFolderPath, needDownloaded ->
-                                    retrieveDropboxMedia(
-                                        rootFolderPath ?: MainViewModel.DROPBOX_PATH_ROOT,
-                                        needDownloaded
-                                    )
-                                },
-                                hideResetShuffleDialog = { showResetShuffleDialog = false },
-                                onStartBilling = { viewModel.startBilling(this@MainActivity) },
-                                onCancelProgress = onCancelProgress,
-                                onSetOptionMediaItem = { mediaItem ->
-                                    appBarOptionMediaItem = mediaItem
-                                },
-                                onToggleFavorite = onToggleFavorite,
-                                onCancelEnablePauseOnCurrentTrackEnd = {
-                                    showEnablePauseOnCurrentTrackEndDialog = false
-                                },
-                                onPositiveEnablePauseOnCurrentTrackEnd = {
-                                    viewModel.enablePauseOnCurrentTrackEnd()
-                                    showEnablePauseOnCurrentTrackEndDialog = false
-                                },
-                                showEnablePauseOnCurrentTrackEndDialog = showEnablePauseOnCurrentTrackEndDialog,
-                                syncSizeAlert = syncSizeAlert,
-                                onDeclineSyncSize = {
-                                    DropboxMediaSyncJobService.respondSizeConfirmation(false)
-                                },
-                                onApproveSyncSize = {
-                                    DropboxMediaSyncJobService.respondSizeConfirmation(true)
-                                },
-                                onDismissSyncSizeExceeded = { SyncSizeAlertState.update(null) },
+                                actions = mainActions,
                             )
                         }
                     }
@@ -1051,13 +646,13 @@ class MainActivity : ComponentActivity() {
                         onDropboxSyncFailure(it)
                     }
                 }
-                onAuthDropboxCompleted?.invoke()
+                viewModel.showDialog(DialogState.Dropbox())
             }
         }
 
         viewModel.requestBillingInfoUpdate()
 
-        onScrollToCurrent?.invoke()
+        viewModel.requestScrollToCurrent()
     }
 
     override fun onStop() {
@@ -1119,6 +714,146 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun onReadMediaDenied() = Unit
+
+    private fun handleDialogEvent(event: DialogEvent) {
+        when (event) {
+            DialogEvent.Dismiss -> viewModel.dismissDialog()
+
+            is DialogEvent.NewQueue -> {
+                viewModel.onNewQueue(
+                    sourcePaths = event.sourcePaths,
+                    actionType = event.actionType,
+                    classType = event.classType,
+                    needSorted = event.needSorted,
+                )
+            }
+
+            is DialogEvent.GenerateQueue -> {
+                viewModel.onGenerateQueue(event.track, event.actionType, event.classType)
+            }
+
+            is DialogEvent.DeleteTrack -> viewModel.deleteTrack(event.track)
+
+            is DialogEvent.ExportLyric -> {
+                lifecycleScope.launch {
+                    lrcString = DB.getInstance(this@MainActivity)
+                        .lyricDao()
+                        .getLyricByTrackId(event.track.id)
+                        ?.toLrcString() ?: return@launch
+                    putContent.launch("${event.track.title}.lrc")
+                }
+            }
+
+            is DialogEvent.AttachLyric -> {
+                attachLyricTargetTrackId = event.trackId
+                getContent.launch("*/*")
+            }
+
+            is DialogEvent.DetachLyric -> {
+                lifecycleScope.launch {
+                    DB.getInstance(this@MainActivity)
+                        .lyricDao()
+                        .deleteLyricByTrackId(event.trackId)
+                    viewModel.emitSnackbarMessage(
+                        getString(R.string.message_delete_lyric_complete)
+                    )
+                    delay(2000.milliseconds)
+                    viewModel.emitSnackbarMessage(null)
+                }
+            }
+
+            DialogEvent.StartDropboxAuth -> {
+                viewModel.isDropboxAuthOngoing = true
+                Auth.startOAuth2PKCE(
+                    this,
+                    BuildConfig.DROPBOX_APP_KEY,
+                    dbxRequestConfig,
+                    DbxHost.DEFAULT
+                )
+                viewModel.dismissDialog()
+            }
+
+            is DialogEvent.ShowDropboxFolder -> {
+                viewModel.showDropboxFolderChooser(event.folder) {
+                    lifecycleScope.launch {
+                        onDropboxSyncFailure(it)
+                    }
+                }
+            }
+
+            is DialogEvent.StartDropboxSync -> {
+                retrieveDropboxMedia(
+                    event.rootFolderPath ?: MainViewModel.DROPBOX_PATH_ROOT,
+                    event.needDownloaded
+                )
+            }
+
+            is DialogEvent.StartDownload -> viewModel.downloadDropboxMedia(event.targets)
+
+            is DialogEvent.StartInvalidateDownloaded -> viewModel.purgeDownloaded(event.targets)
+
+            DialogEvent.EnablePauseOnCurrentTrackEnd -> viewModel.enablePauseOnCurrentTrackEnd()
+
+            is DialogEvent.SaveQueue -> {
+                viewModel.saveQueue(
+                    title = event.title,
+                    trackIds = event.trackIds,
+                    onComplete = {
+                        lifecycleScope.launch {
+                            viewModel.emitSnackbarMessage(
+                                getString(R.string.snackbar_message_save_queue_complete)
+                            )
+                            delay(2000.milliseconds)
+                            viewModel.emitSnackbarMessage(null)
+                        }
+                    },
+                )
+            }
+
+            is DialogEvent.ModifySavedQueue -> {
+                viewModel.saveQueue(
+                    savedQueueId = event.savedQueueId,
+                    title = event.title,
+                    trackIds = event.trackIds,
+                )
+            }
+
+            is DialogEvent.DeleteSavedQueue -> viewModel.deleteSavedQueue(event.savedQueueId)
+
+            is DialogEvent.RespondSyncSizeConfirmation -> {
+                DropboxMediaSyncJobService.respondSizeConfirmation(event.approved)
+            }
+
+            DialogEvent.DismissSyncSizeExceeded -> SyncSizeAlertState.update(null)
+        }
+    }
+
+    private fun onLrcFileLoaded(lyricLines: List<LyricLine>) {
+        if (attachLyricTargetTrackId > 0) {
+            lifecycleScope.launch {
+                val db = DB.getInstance(this@MainActivity)
+                val id = db.lyricDao().getLyricIdByTrackId(attachLyricTargetTrackId) ?: 0
+                db.lyricDao()
+                    .upsertLyric(
+                        Lyric(id = id, trackId = attachLyricTargetTrackId, lines = lyricLines)
+                    )
+                viewModel.emitSnackbarMessage(
+                    getString(R.string.message_attach_lyric_success)
+                )
+                delay(2000.milliseconds)
+                viewModel.emitSnackbarMessage(null)
+                attachLyricTargetTrackId = -1
+            }
+        } else {
+            lifecycleScope.launch {
+                viewModel.emitSnackbarMessage(
+                    getString(R.string.message_attach_lyric_failure)
+                )
+                delay(2000.milliseconds)
+                viewModel.emitSnackbarMessage(null)
+            }
+        }
+    }
 
     private suspend fun onDropboxSyncFailure(throwable: Throwable) {
         viewModel.emitSnackbarMessage(

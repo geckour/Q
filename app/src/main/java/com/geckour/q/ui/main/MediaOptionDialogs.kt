@@ -24,7 +24,6 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
-import com.geckour.q.domain.model.AllArtists
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.compose.QTheme
@@ -38,23 +37,9 @@ import kotlinx.coroutines.launch
 fun TrackOptionDialog(
     uiTrack: UiTrack,
     navController: NavHostController,
-    onSelectTrack: (track: UiTrack?) -> Unit,
-    onNewQueue: (
-        queue: List<String>,
-        actionType: InsertActionType,
-        classType: OrientedClassType
-    ) -> Unit,
-    onGenerateQueue: (
-        track: UiTrack,
-        actionType: InsertActionType,
-        classType: OrientedClassType
-    ) -> Unit,
-    onExportLyric: (uiTrack: UiTrack) -> Unit,
-    onAttachLyric: (trackId: Long) -> Unit,
-    onDetachLyric: (trackId: Long) -> Unit,
-    onDeleteTrack: (track: UiTrack) -> Unit
+    onDialogEvent: (event: DialogEvent) -> Unit,
 ) {
-    Dialog(onDismissRequest = { onSelectTrack(null) }) {
+    Dialog(onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) }) {
         Card(
             colors = CardDefaults.cardColors()
                 .copy(containerColor = QTheme.colors.colorBackground)
@@ -62,12 +47,14 @@ fun TrackOptionDialog(
             Column {
                 DialogListItem(
                     onClick = {
-                        onNewQueue(
-                            persistentListOf(uiTrack.sourcePath),
-                            InsertActionType.NEXT,
-                            OrientedClassType.TRACK
+                        onDialogEvent(
+                            DialogEvent.NewQueue(
+                                persistentListOf(uiTrack.sourcePath),
+                                InsertActionType.NEXT,
+                                OrientedClassType.TRACK
+                            )
                         )
-                        onSelectTrack(null)
+                        onDialogEvent(DialogEvent.Dismiss)
                     }
                 ) {
                     Text(
@@ -78,12 +65,14 @@ fun TrackOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        onNewQueue(
-                            persistentListOf(uiTrack.sourcePath),
-                            InsertActionType.LAST,
-                            OrientedClassType.TRACK
+                        onDialogEvent(
+                            DialogEvent.NewQueue(
+                                persistentListOf(uiTrack.sourcePath),
+                                InsertActionType.LAST,
+                                OrientedClassType.TRACK
+                            )
                         )
-                        onSelectTrack(null)
+                        onDialogEvent(DialogEvent.Dismiss)
                     }
                 ) {
                     Text(
@@ -94,12 +83,14 @@ fun TrackOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        onNewQueue(
-                            persistentListOf(uiTrack.sourcePath),
-                            InsertActionType.OVERRIDE,
-                            OrientedClassType.TRACK
+                        onDialogEvent(
+                            DialogEvent.NewQueue(
+                                persistentListOf(uiTrack.sourcePath),
+                                InsertActionType.OVERRIDE,
+                                OrientedClassType.TRACK
+                            )
                         )
-                        onSelectTrack(null)
+                        onDialogEvent(DialogEvent.Dismiss)
                     }
                 ) {
                     Text(
@@ -110,12 +101,14 @@ fun TrackOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        onGenerateQueue(
-                            uiTrack,
-                            InsertActionType.NEXT,
-                            OrientedClassType.TRACK
+                        onDialogEvent(
+                            DialogEvent.GenerateQueue(
+                                uiTrack,
+                                InsertActionType.NEXT,
+                                OrientedClassType.TRACK
+                            )
                         )
-                        onSelectTrack(null)
+                        onDialogEvent(DialogEvent.Dismiss)
                     }
                 ) {
                     Text(
@@ -126,12 +119,14 @@ fun TrackOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        onGenerateQueue(
-                            uiTrack,
-                            InsertActionType.LAST,
-                            OrientedClassType.TRACK
+                        onDialogEvent(
+                            DialogEvent.GenerateQueue(
+                                uiTrack,
+                                InsertActionType.LAST,
+                                OrientedClassType.TRACK
+                            )
                         )
-                        onSelectTrack(null)
+                        onDialogEvent(DialogEvent.Dismiss)
                     }
                 ) {
                     Text(
@@ -142,12 +137,14 @@ fun TrackOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        onGenerateQueue(
-                            uiTrack,
-                            InsertActionType.OVERRIDE,
-                            OrientedClassType.TRACK
+                        onDialogEvent(
+                            DialogEvent.GenerateQueue(
+                                uiTrack,
+                                InsertActionType.OVERRIDE,
+                                OrientedClassType.TRACK
+                            )
                         )
-                        onSelectTrack(null)
+                        onDialogEvent(DialogEvent.Dismiss)
                     }
                 ) {
                     Text(
@@ -159,7 +156,7 @@ fun TrackOptionDialog(
                 DialogListItem(
                     onClick = {
                         navController.navigate("albums?artistId=${uiTrack.albumArtist?.id ?: uiTrack.artist.id}")
-                        onSelectTrack(null)
+                        onDialogEvent(DialogEvent.Dismiss)
                     }
                 ) {
                     Text(
@@ -171,7 +168,7 @@ fun TrackOptionDialog(
                 DialogListItem(
                     onClick = {
                         navController.navigate("tracks?albumId=${uiTrack.album.id}")
-                        onSelectTrack(null)
+                        onDialogEvent(DialogEvent.Dismiss)
                     }
                 ) {
                     Text(
@@ -182,8 +179,8 @@ fun TrackOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        onExportLyric(uiTrack)
-                        onSelectTrack(null)
+                        onDialogEvent(DialogEvent.ExportLyric(uiTrack))
+                        onDialogEvent(DialogEvent.Dismiss)
                     }
                 ) {
                     Text(
@@ -194,8 +191,8 @@ fun TrackOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        onAttachLyric(uiTrack.id)
-                        onSelectTrack(null)
+                        onDialogEvent(DialogEvent.AttachLyric(uiTrack.id))
+                        onDialogEvent(DialogEvent.Dismiss)
                     }
                 ) {
                     Text(
@@ -206,8 +203,8 @@ fun TrackOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        onDetachLyric(uiTrack.id)
-                        onSelectTrack(null)
+                        onDialogEvent(DialogEvent.DetachLyric(uiTrack.id))
+                        onDialogEvent(DialogEvent.Dismiss)
                     }
                 ) {
                     Text(
@@ -218,8 +215,8 @@ fun TrackOptionDialog(
                 }
                 DialogListItem(
                     onClick = {
-                        onDeleteTrack(uiTrack)
-                        onSelectTrack(null)
+                        onDialogEvent(DialogEvent.DeleteTrack(uiTrack))
+                        onDialogEvent(DialogEvent.Dismiss)
                     }
                 ) {
                     Text(
@@ -237,18 +234,11 @@ fun TrackOptionDialog(
 fun AlbumOptionDialog(
     album: Album,
     isFavoriteOnly: MutableState<Boolean>,
-    onSelectAlbum: (album: Album?) -> Unit,
-    onNewQueue: (
-        queue: List<String>,
-        actionType: InsertActionType,
-        classType: OrientedClassType,
-        needSorted: Boolean?,
-    ) -> Unit,
-    onDeleteTrack: (track: UiTrack) -> Unit
+    onDialogEvent: (event: DialogEvent) -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    Dialog(onDismissRequest = { onSelectAlbum(null) }) {
+    Dialog(onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) }) {
         Card(
             colors = CardDefaults.cardColors()
                 .copy(containerColor = QTheme.colors.colorBackground)
@@ -278,13 +268,15 @@ fun AlbumOptionDialog(
                                         else it.getAllByAlbum(album.id)
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.NEXT,
-                                OrientedClassType.ALBUM,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.NEXT,
+                                    OrientedClassType.ALBUM,
+                                    null,
+                                )
                             )
-                            onSelectAlbum(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -304,13 +296,15 @@ fun AlbumOptionDialog(
                                         else it.getAllByAlbum(album.id)
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.LAST,
-                                OrientedClassType.ALBUM,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.LAST,
+                                    OrientedClassType.ALBUM,
+                                    null,
+                                )
                             )
-                            onSelectAlbum(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -330,13 +324,15 @@ fun AlbumOptionDialog(
                                         else it.getAllByAlbum(album.id)
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.OVERRIDE,
-                                OrientedClassType.ALBUM,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.OVERRIDE,
+                                    OrientedClassType.ALBUM,
+                                    null,
+                                )
                             )
-                            onSelectAlbum(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -356,13 +352,15 @@ fun AlbumOptionDialog(
                                         else it.getAllByAlbum(album.id)
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_SIMPLE_NEXT,
-                                OrientedClassType.ALBUM,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_SIMPLE_NEXT,
+                                    OrientedClassType.ALBUM,
+                                    null,
+                                )
                             )
-                            onSelectAlbum(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -382,13 +380,15 @@ fun AlbumOptionDialog(
                                         else it.getAllByAlbum(album.id)
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_SIMPLE_LAST,
-                                OrientedClassType.ALBUM,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_SIMPLE_LAST,
+                                    OrientedClassType.ALBUM,
+                                    null,
+                                )
                             )
-                            onSelectAlbum(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -408,13 +408,15 @@ fun AlbumOptionDialog(
                                         else it.getAllByAlbum(album.id)
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
-                                OrientedClassType.ALBUM,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
+                                    OrientedClassType.ALBUM,
+                                    null,
+                                )
                             )
-                            onSelectAlbum(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -433,8 +435,8 @@ fun AlbumOptionDialog(
                                     else it.getAllByAlbum(album.id)
                                 }
                                 .forEach {
-                                    onDeleteTrack(it.toUiTrack())
-                                    onSelectAlbum(null)
+                                    onDialogEvent(DialogEvent.DeleteTrack(it.toUiTrack()))
+                                    onDialogEvent(DialogEvent.Dismiss)
                                 }
                         }
                     }
@@ -454,18 +456,11 @@ fun AlbumOptionDialog(
 fun ArtistOptionDialog(
     artist: Artist,
     isFavoriteOnly: MutableState<Boolean>,
-    onSelectArtist: (artist: Artist?) -> Unit,
-    onNewQueue: (
-        queue: List<String>,
-        actionType: InsertActionType,
-        classType: OrientedClassType,
-        needSorted: Boolean?,
-    ) -> Unit,
-    onDeleteTrack: (track: UiTrack) -> Unit
+    onDialogEvent: (event: DialogEvent) -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    Dialog(onDismissRequest = { onSelectArtist(null) }) {
+    Dialog(onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) }) {
         Card(
             colors = CardDefaults.cardColors()
                 .copy(containerColor = QTheme.colors.colorBackground)
@@ -496,13 +491,15 @@ fun ArtistOptionDialog(
                                         } else it.getAllByArtist(artist.id)
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.NEXT,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.NEXT,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelectArtist(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -523,13 +520,15 @@ fun ArtistOptionDialog(
                                         } else it.getAllByArtist(artist.id)
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.LAST,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.LAST,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelectArtist(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -550,13 +549,15 @@ fun ArtistOptionDialog(
                                         } else it.getAllByArtist(artist.id)
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.OVERRIDE,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.OVERRIDE,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelectArtist(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -577,13 +578,15 @@ fun ArtistOptionDialog(
                                         } else it.getAllByArtist(artist.id)
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_NEXT,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_NEXT,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelectArtist(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -604,13 +607,15 @@ fun ArtistOptionDialog(
                                         } else it.getAllByArtist(artist.id)
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_LAST,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_LAST,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelectArtist(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -631,13 +636,15 @@ fun ArtistOptionDialog(
                                         } else it.getAllByArtist(artist.id)
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_OVERRIDE,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_OVERRIDE,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelectArtist(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -658,13 +665,15 @@ fun ArtistOptionDialog(
                                         } else it.getAllByArtist(artist.id)
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_SIMPLE_NEXT,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_SIMPLE_NEXT,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelectArtist(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -685,13 +694,15 @@ fun ArtistOptionDialog(
                                         } else it.getAllByArtist(artist.id)
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_SIMPLE_LAST,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_SIMPLE_LAST,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelectArtist(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -712,13 +723,15 @@ fun ArtistOptionDialog(
                                         } else it.getAllByArtist(artist.id)
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelectArtist(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -738,8 +751,8 @@ fun ArtistOptionDialog(
                                     } else it.getAllByArtist(artist.id)
                                 }
                                 .forEach {
-                                    onDeleteTrack(it.toUiTrack())
-                                    onSelectArtist(null)
+                                    onDialogEvent(DialogEvent.DeleteTrack(it.toUiTrack()))
+                                    onDialogEvent(DialogEvent.Dismiss)
                                 }
                         }
                     }
@@ -758,18 +771,11 @@ fun ArtistOptionDialog(
 @Composable
 fun AllArtistOptionDialog(
     isFavoriteOnly: MutableState<Boolean>,
-    onSelected: (allArtists: AllArtists?) -> Unit,
-    onNewQueue: (
-        queue: List<String>,
-        actionType: InsertActionType,
-        classType: OrientedClassType,
-        needSorted: Boolean?,
-    ) -> Unit,
-    onDeleteTrack: (track: UiTrack) -> Unit
+    onDialogEvent: (event: DialogEvent) -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    Dialog(onDismissRequest = { onSelected(null) }) {
+    Dialog(onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) }) {
         Card(
             colors = CardDefaults.cardColors()
                 .copy(containerColor = QTheme.colors.colorBackground)
@@ -798,13 +804,15 @@ fun AllArtistOptionDialog(
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.NEXT,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.NEXT,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelected(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -823,13 +831,15 @@ fun AllArtistOptionDialog(
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.LAST,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.LAST,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelected(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -848,13 +858,15 @@ fun AllArtistOptionDialog(
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.OVERRIDE,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.OVERRIDE,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelected(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -873,13 +885,15 @@ fun AllArtistOptionDialog(
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_NEXT,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_NEXT,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelected(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -898,13 +912,15 @@ fun AllArtistOptionDialog(
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_LAST,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_LAST,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelected(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -923,13 +939,15 @@ fun AllArtistOptionDialog(
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_OVERRIDE,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_OVERRIDE,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelected(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -948,13 +966,15 @@ fun AllArtistOptionDialog(
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_SIMPLE_NEXT,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_SIMPLE_NEXT,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelected(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -973,13 +993,15 @@ fun AllArtistOptionDialog(
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_SIMPLE_LAST,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_SIMPLE_LAST,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelected(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -998,13 +1020,15 @@ fun AllArtistOptionDialog(
                                         if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                     }
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
-                                OrientedClassType.ARTIST,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
+                                    OrientedClassType.ARTIST,
+                                    null,
+                                )
                             )
-                            onSelected(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -1022,8 +1046,8 @@ fun AllArtistOptionDialog(
                                     if (isFavoriteOnly.value) it.getAllWithFavorite() else it.getAll()
                                 }
                                 .forEach {
-                                    onDeleteTrack(it.toUiTrack())
-                                    onSelected(null)
+                                    onDialogEvent(DialogEvent.DeleteTrack(it.toUiTrack()))
+                                    onDialogEvent(DialogEvent.Dismiss)
                                 }
                         }
                     }
@@ -1042,18 +1066,11 @@ fun AllArtistOptionDialog(
 @Composable
 fun GenreOptionDialog(
     genre: Genre,
-    onSelectGenre: (genre: Genre?) -> Unit,
-    onNewQueue: (
-        queue: List<String>,
-        actionType: InsertActionType,
-        classType: OrientedClassType,
-        needSorted: Boolean?,
-    ) -> Unit,
-    onDeleteTrack: (track: UiTrack) -> Unit
+    onDialogEvent: (event: DialogEvent) -> Unit,
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    Dialog(onDismissRequest = { onSelectGenre(null) }) {
+    Dialog(onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) }) {
         Card(
             colors = CardDefaults.cardColors()
                 .copy(containerColor = QTheme.colors.colorBackground)
@@ -1066,13 +1083,15 @@ fun GenreOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByGenreName(genre.name)
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.NEXT,
-                                OrientedClassType.GENRE,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.NEXT,
+                                    OrientedClassType.GENRE,
+                                    null,
+                                )
                             )
-                            onSelectGenre(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -1089,13 +1108,15 @@ fun GenreOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByGenreName(genre.name)
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.LAST,
-                                OrientedClassType.GENRE,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.LAST,
+                                    OrientedClassType.GENRE,
+                                    null,
+                                )
                             )
-                            onSelectGenre(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -1112,13 +1133,15 @@ fun GenreOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByGenreName(genre.name)
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.OVERRIDE,
-                                OrientedClassType.GENRE,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.OVERRIDE,
+                                    OrientedClassType.GENRE,
+                                    null,
+                                )
                             )
-                            onSelectGenre(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -1135,13 +1158,15 @@ fun GenreOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByGenreName(genre.name)
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_SIMPLE_NEXT,
-                                OrientedClassType.GENRE,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_SIMPLE_NEXT,
+                                    OrientedClassType.GENRE,
+                                    null,
+                                )
                             )
-                            onSelectGenre(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -1158,13 +1183,15 @@ fun GenreOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByGenreName(genre.name)
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_SIMPLE_LAST,
-                                OrientedClassType.GENRE,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_SIMPLE_LAST,
+                                    OrientedClassType.GENRE,
+                                    null,
+                                )
                             )
-                            onSelectGenre(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -1181,13 +1208,15 @@ fun GenreOptionDialog(
                                 DB.getInstance(context).trackDao()
                                     .getAllByGenreName(genre.name)
                                     .map { it.track.sourcePath }
-                            onNewQueue(
-                                trackSourcePaths,
-                                InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
-                                OrientedClassType.GENRE,
-                                null,
+                            onDialogEvent(
+                                DialogEvent.NewQueue(
+                                    trackSourcePaths,
+                                    InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
+                                    OrientedClassType.GENRE,
+                                    null,
+                                )
                             )
-                            onSelectGenre(null)
+                            onDialogEvent(DialogEvent.Dismiss)
                         }
                     }
                 ) {
@@ -1203,8 +1232,8 @@ fun GenreOptionDialog(
                             DB.getInstance(context).trackDao()
                                 .getAllByGenreName(genre.name)
                                 .forEach {
-                                    onDeleteTrack(it.toUiTrack())
-                                    onSelectGenre(null)
+                                    onDialogEvent(DialogEvent.DeleteTrack(it.toUiTrack()))
+                                    onDialogEvent(DialogEvent.Dismiss)
                                 }
                         }
                     }
