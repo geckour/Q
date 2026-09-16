@@ -61,7 +61,7 @@ class LocalMediaRetrieveWorker(
             .query(
                 MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL),
                 projection,
-                "$SELECTION AND ${MediaStore.Audio.Media.DATE_MODIFIED} > $latestModifiedEpochTime",
+                "$SELECTION AND ${MediaStore.Audio.Media.DATE_MODIFIED} >= $latestModifiedEpochTime",
                 null,
                 ORDER
             )?.use { cursor ->

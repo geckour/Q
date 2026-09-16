@@ -175,7 +175,7 @@ interface TrackDao {
     @Query("select count(*) from track")
     fun countAsFlow(): Flow<Int>
 
-    @Query("select lastModified from track order by lastModified desc limit 1")
+    @Query("select lastModified from track where dropboxPath is null order by lastModified desc limit 1")
     suspend fun getLatestModifiedEpochTime(): Long?
 
     @Transaction
