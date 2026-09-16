@@ -179,7 +179,7 @@ fun SingleScreen(
                     isFavoriteOnly = isFavoriteOnly,
                     routeInfo = uiState.routeInfo,
                     onBackHandle = if (scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) {
-                        { coroutineScope.launch { scaffoldState.bottomSheetState.hide() } }
+                        { coroutineScope.launch { scaffoldState.bottomSheetState.partialExpand() } }
                     } else null,
                     onCancelProgress = library.onCancelProgress,
                     onSelectNav = actions::onSelectNav,
