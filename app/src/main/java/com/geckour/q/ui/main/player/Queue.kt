@@ -1,6 +1,8 @@
 package com.geckour.q.ui.main.player
 
+import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -43,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,15 +55,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
+import androidx.compose.ui.unit.offset
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.decode.SvgDecoder
@@ -85,6 +91,7 @@ import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
+import kotlin.math.roundToInt
 
 
 @Composable
@@ -121,27 +128,77 @@ fun Queue(
         val isSyncedLyric = lyricLinesForShowing.size > 1 &&
                 lyricLinesForShowing.any { it.lyricLine.timing != 0L }
         val navigationBottomInset = WindowInsets.navigationBars.getBottom(currentDensity)
-        var currentIndexLyricHeight by remember { mutableIntStateOf(0) }
+        var lyricHighlight by remember { mutableStateOf(LyricHighlight()) }
+        var lyricHighlightProgress by remember { mutableFloatStateOf(1f) }
+        val lyricPaddingOf: (index: Int) -> Dp = { index ->
+            lyricHighlight.paddingOf(index, lyricHighlightProgress)
+        }
+        val lyricPaddingPxOf: (index: Int) -> Int = { index ->
+            with(currentDensity) { lyricPaddingOf(index).roundToPx() }
+        }
+        val visibleLyricItemOf: (index: Int) -> LazyListItemInfo? = { index ->
+            lazyListState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
+        }
+        val lyricPaddingMaxPx = with(currentDensity) { LyricPaddingMax.roundToPx() }
+        val focusedLyricHeightOf: (item: LazyListItemInfo) -> Int = { item ->
+            item.size + (lyricPaddingMaxPx - lyricPaddingPxOf(item.index)) * 2
+        }
+        val centeredLyricTopOf: (itemHeight: Int) -> Int = { itemHeight ->
+            (contentHeight - navigationBottomInset - itemHeight) / 2
+        }
         val scrollToCurrent: suspend () -> Unit = {
-            if (isInLyricEditMode.not() && currentIndex > -1) {
-                lazyListState.animateScrollToItem(
-                    currentIndex,
-                    -(contentHeight - currentIndexLyricHeight - navigationBottomInset) / 2
-                )
+            val index = currentIndex
+            if (isInLyricEditMode.not() && index > -1) {
+                val estimatedHeight = (visibleLyricItemOf(index)
+                    ?: lazyListState.layoutInfo.visibleItemsInfo.firstOrNull {
+                        it.index in lyricLinesForShowing.indices
+                    })
+                    ?.let(focusedLyricHeightOf) ?: 0
+                lazyListState.animateScrollToItem(index, -centeredLyricTopOf(estimatedHeight))
+                visibleLyricItemOf(index)?.let {
+                    lazyListState.animateScrollToItem(index, -centeredLyricTopOf(focusedLyricHeightOf(it)))
+                }
             }
         }
         val isDragged by lazyListState.interactionSource.collectIsDraggedAsState()
 
         LaunchedEffect(currentPlaybackPosition) {
             currentIndex =
-                if (lyricLinesForShowing.all { it.lyricLine.timing == 0L }) -1
-                else lyricLinesForShowing.indexOfLast {
+                if (isSyncedLyric) lyricLinesForShowing.indexOfLast {
                     it.lyricLine.timing <= currentPlaybackPosition
                 }
+                else -1
         }
         LaunchedEffect(currentIndex) {
-            if (isLyricScrolledByUser.value.not()) {
-                scrollToCurrent()
+            val index = currentIndex
+            val target = visibleLyricItemOf(index)
+            val targetBaseHeight = target?.let { it.size - lyricPaddingPxOf(index) * 2 }
+            lyricHighlight = LyricHighlight(
+                growingIndex = index,
+                growFrom = lyricPaddingOf(index),
+                shrinkingIndex = lyricHighlight.growingIndex,
+                shrinkFrom = lyricPaddingOf(lyricHighlight.growingIndex),
+            )
+            lyricHighlightProgress = 0f
+            val shouldScroll = isInLyricEditMode.not() &&
+                    index > -1 &&
+                    isLyricScrolledByUser.value.not()
+            if (shouldScroll && target == null) {
+                launch { scrollToCurrent() }
+            }
+            animate(0f, 1f, animationSpec = tween(300)) { value, _ ->
+                lyricHighlightProgress = value
+                if (
+                    target != null && targetBaseHeight != null &&
+                    shouldScroll &&
+                    isLyricScrolledByUser.value.not() &&
+                    lazyListState.isScrollInProgress.not()
+                ) {
+                    val itemHeight = targetBaseHeight + lyricPaddingPxOf(index) * 2
+                    val top = target.offset +
+                            (centeredLyricTopOf(itemHeight) - target.offset) * value
+                    lazyListState.requestScrollToItem(index, -top.roundToInt())
+                }
             }
         }
         LaunchedEffect(forceScrollToCurrent) {
@@ -154,119 +211,115 @@ fun Queue(
             }
         }
         LaunchedEffect(isDragged) {
-            if (showLyric && isSyncedLyric && isInLyricEditMode.not()) {
+            if (isDragged && showLyric && isSyncedLyric && isInLyricEditMode.not()) {
                 isLyricScrolledByUser.value = true
             }
         }
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .onSizeChanged { contentHeight = it.height }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .onSizeChanged { contentHeight = it.height }
+        ) {
+            LazyColumn(
+                state = lazyListState,
+                modifier = Modifier.weight(1f),
             ) {
-                LazyColumn(
-                    state = lazyListState,
-                    modifier = Modifier.weight(1f),
-                ) {
-                    if (lyric?.lines.isNullOrEmpty()) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 24.dp, vertical = 40.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "歌詞が設定されていないか読み込めませんでした",
-                                    fontSize = 20.sp,
-                                    color = QTheme.colors.colorTextPrimary
-                                )
-                            }
-                        }
-                    }
-                    items(lyricLinesForShowing) { indexedLyricLine ->
-                        if (isInLyricEditMode) {
-                            EditableLrcItem(
-                                line = indexedLyricLine,
-                                currentPlaybackPosition = currentPlaybackPosition,
-                                onNewLine = { _, _ -> },
-                                onUpdateLine = { index, newLine ->
-                                    lyric?.let {
-                                        coroutineScope.launch {
-                                            db.lyricDao()
-                                                .upsertLyric(
-                                                    it.copy(
-                                                        lines = lyricLinesForShowing.toMutableList()
-                                                            .apply {
-                                                                set(
-                                                                    index,
-                                                                    IndexedLyricLine(index, newLine)
-                                                                )
-                                                            }
-                                                            .map { it.lyricLine }
-                                                    )
-                                                )
-                                        }
-                                    }
-                                },
-                                onDeleteLine = { index ->
-                                    lyric?.let {
-                                        coroutineScope.launch {
-                                            db.lyricDao()
-                                                .upsertLyric(
-                                                    it.copy(
-                                                        lines = lyricLinesForShowing.removedAt(index)
-                                                            .map { it.lyricLine }
-                                                    )
-                                                )
-                                        }
-                                    }
-                                },
+                if (lyric?.lines.isNullOrEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp, vertical = 40.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "歌詞が設定されていないか読み込めませんでした",
+                                fontSize = 20.sp,
+                                color = QTheme.colors.colorTextPrimary
                             )
-                        } else {
-                            LrcItem(
-                                lyric = indexedLyricLine.lyricLine.sentence,
-                                focused = indexedLyricLine.index == currentIndex,
-                                onClick = if (isSyncedLyric) {
-                                    { onNewProgress(indexedLyricLine.lyricLine.timing) }
-                                } else null,
-                                modifier = Modifier.onSizeChanged {
-                                    if (indexedLyricLine.index == currentIndex) {
-                                        currentIndexLyricHeight = it.height
-                                    }
-                                }
-                            )
-                        }
-                    }
-                    if (isInLyricEditMode.not()) {
-                        item {
-                            Spacer(modifier = Modifier.height(36.dp + endItemMargin))
                         }
                     }
                 }
-                if (isInLyricEditMode) {
-                    EditableLrcItem(
-                        line = null,
-                        currentPlaybackPosition = currentPlaybackPosition,
-                        onNewLine = { timing, sentence ->
-                            lyric?.let {
-                                coroutineScope.launch {
-                                    db.lyricDao()
-                                        .upsertLyric(
-                                            it.copy(
-                                                lines = it.lines.toMutableList().apply {
-                                                    add(LyricLine(timing, sentence))
-                                                }
+                items(lyricLinesForShowing) { indexedLyricLine ->
+                    if (isInLyricEditMode) {
+                        EditableLrcItem(
+                            line = indexedLyricLine,
+                            currentPlaybackPosition = currentPlaybackPosition,
+                            onNewLine = { _, _ -> },
+                            onUpdateLine = { index, newLine ->
+                                lyric?.let {
+                                    coroutineScope.launch {
+                                        db.lyricDao()
+                                            .upsertLyric(
+                                                it.copy(
+                                                    lines = lyricLinesForShowing.toMutableList()
+                                                        .apply {
+                                                            set(
+                                                                index,
+                                                                IndexedLyricLine(index, newLine)
+                                                            )
+                                                        }
+                                                        .map { it.lyricLine }
+                                                )
                                             )
-                                        )
+                                    }
                                 }
-                            }
-                        },
-                        onUpdateLine = { _, _ -> },
-                        onDeleteLine = { _ -> },
-                    )
-                    Spacer(modifier = Modifier.height(endItemMargin))
+                            },
+                            onDeleteLine = { index ->
+                                lyric?.let {
+                                    coroutineScope.launch {
+                                        db.lyricDao()
+                                            .upsertLyric(
+                                                it.copy(
+                                                    lines = lyricLinesForShowing.removedAt(index)
+                                                        .map { it.lyricLine }
+                                                )
+                                            )
+                                    }
+                                }
+                            },
+                        )
+                    } else {
+                        LrcItem(
+                            lyric = indexedLyricLine.lyricLine.sentence,
+                            focused = indexedLyricLine.index == currentIndex,
+                            onClick = if (isSyncedLyric) {
+                                { onNewProgress(indexedLyricLine.lyricLine.timing) }
+                            } else null,
+                            verticalPadding = { lyricPaddingOf(indexedLyricLine.index) },
+                        )
+                    }
+                }
+                if (isInLyricEditMode.not()) {
+                    item {
+                        Spacer(modifier = Modifier.height(36.dp + endItemMargin))
+                    }
                 }
             }
+            if (isInLyricEditMode) {
+                EditableLrcItem(
+                    line = null,
+                    currentPlaybackPosition = currentPlaybackPosition,
+                    onNewLine = { timing, sentence ->
+                        lyric?.let {
+                            coroutineScope.launch {
+                                db.lyricDao()
+                                    .upsertLyric(
+                                        it.copy(
+                                            lines = it.lines.toMutableList().apply {
+                                                add(LyricLine(timing, sentence))
+                                            }
+                                        )
+                                    )
+                            }
+                        }
+                    },
+                    onUpdateLine = { _, _ -> },
+                    onDeleteLine = { _ -> },
+                )
+                Spacer(modifier = Modifier.height(endItemMargin))
+            }
+        }
     } else {
         var items by remember { mutableStateOf(uiTracks) }
         val lazyListState = rememberLazyListState()
@@ -551,6 +604,7 @@ fun LrcItem(
     modifier: Modifier = Modifier,
     lyric: String,
     focused: Boolean,
+    verticalPadding: () -> Dp = { if (focused) LyricPaddingMax else LyricPaddingMin },
     onClick: (() -> Unit)? = null,
 ) {
     Row(
@@ -560,7 +614,16 @@ fun LrcItem(
                 if (onClick == null) Modifier
                 else Modifier.clickable(onClick = onClick)
             )
-            .padding(horizontal = 24.dp, vertical = 12.dp)
+            .layout { measurable, constraints ->
+                val verticalPaddingPx = verticalPadding().roundToPx()
+                val placeable = measurable.measure(
+                    constraints.offset(vertical = -verticalPaddingPx * 2)
+                )
+                layout(placeable.width, placeable.height + verticalPaddingPx * 2) {
+                    placeable.placeRelative(0, verticalPaddingPx)
+                }
+            }
+            .padding(horizontal = 24.dp)
     ) {
         Text(
             text = lyric,
@@ -575,6 +638,23 @@ data class IndexedLyricLine(
     val index: Int,
     val lyricLine: LyricLine,
 )
+
+private val LyricPaddingMin = 8.dp
+private val LyricPaddingMax = 36.dp
+
+private data class LyricHighlight(
+    val growingIndex: Int = -1,
+    val growFrom: Dp = LyricPaddingMin,
+    val shrinkingIndex: Int = -1,
+    val shrinkFrom: Dp = LyricPaddingMax,
+) {
+
+    fun paddingOf(index: Int, progress: Float): Dp = when (index) {
+        growingIndex -> lerp(growFrom, LyricPaddingMax, progress)
+        shrinkingIndex -> lerp(shrinkFrom, LyricPaddingMin, progress)
+        else -> LyricPaddingMin
+    }
+}
 
 val Lyric?.lyricLinesForShowing
     get() = this?.lines.orEmpty()
