@@ -63,14 +63,13 @@ import com.geckour.q.util.setShowLyric
 import com.geckour.q.util.toLrcString
 import com.geckour.q.util.toUiTrack
 import com.geckour.q.worker.KEY_PROGRESS_FINISHED
-import com.geckour.q.worker.KEY_PROGRESS_PROCESSED_FILES_SIZE
 import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_FRACTION
 import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_PATHS
 import com.geckour.q.worker.KEY_PROGRESS_REMAINING_DURATION
 import com.geckour.q.worker.KEY_PROGRESS_REMAINING_FILES
 import com.geckour.q.worker.KEY_PROGRESS_SKIPPED_FILES
 import com.geckour.q.worker.KEY_PROGRESS_TITLE
-import com.geckour.q.worker.KEY_PROGRESS_TOTAL_FILES_SIZE
+import com.geckour.q.worker.KEY_PROGRESS_TOTAL_FILES
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -559,16 +558,15 @@ class MainViewModel(private val app: App) : ViewModel() {
             if (fraction < 0) return@forEach
 
             val remainingFilesCount = progress.getInt(KEY_PROGRESS_REMAINING_FILES, -1)
-            val totalFilesSize = progress.getLong(KEY_PROGRESS_TOTAL_FILES_SIZE, 1)
-            val processedFilesSize = progress.getLong(KEY_PROGRESS_PROCESSED_FILES_SIZE, 0)
+            val totalFilesCount = progress.getInt(KEY_PROGRESS_TOTAL_FILES, -1)
             val skippedFilesCount = progress.getInt(KEY_PROGRESS_SKIPPED_FILES, 0)
             val remainingText =
-                if (remainingFilesCount < 0) ""
+                if (remainingFilesCount < 0 || totalFilesCount < 0) ""
                 else app.getString(
-                    R.string.remaining,
+                    R.string.remaining_files,
                     remainingFilesCount,
-                    "${processedFilesSize.toFloat().getReadableStringWithUnit()}B",
-                    "${totalFilesSize.toFloat().getReadableStringWithUnit()}B",
+                    totalFilesCount - remainingFilesCount,
+                    totalFilesCount,
                     skippedFilesCount,
                 )
             val remainingDuration = progress.getLong(KEY_PROGRESS_REMAINING_DURATION, -1)

@@ -23,8 +23,7 @@ internal const val KEY_PROGRESS_TITLE = "key_progress_title"
 internal const val KEY_PROGRESS_PROGRESS_FRACTION = "key_progress_progress_fraction"
 internal const val KEY_PROGRESS_REMAINING_FILES = "key_progress_remaining_files"
 internal const val KEY_PROGRESS_SKIPPED_FILES = "key_progress_skipped_files"
-internal const val KEY_PROGRESS_TOTAL_FILES_SIZE = "key_progress_total_files_size"
-internal const val KEY_PROGRESS_PROCESSED_FILES_SIZE = "key_progress_processed_files_size"
+internal const val KEY_PROGRESS_TOTAL_FILES = "key_progress_total_files"
 internal const val KEY_PROGRESS_REMAINING_DURATION = "key_progress_processed_remaining_duration"
 internal const val KEY_PROGRESS_PROGRESS_PATHS = "key_progress_progress_paths"
 internal const val KEY_PROGRESS_FINISHED = "key_progress_finished"
@@ -34,8 +33,7 @@ internal fun createProgressData(
     progressFraction: Float = -1f,
     remainingFiles: Int = -1,
     skippedFiles: Int = 0,
-    totalFilesSize: Long = 1,
-    processedFileSize: Long = 0,
+    totalFiles: Int = -1,
     remainingDuration: Long = -1,
     paths: List<String> = emptyList(),
 ): Data =
@@ -44,8 +42,7 @@ internal fun createProgressData(
         .putFloat(KEY_PROGRESS_PROGRESS_FRACTION, progressFraction)
         .putInt(KEY_PROGRESS_REMAINING_FILES, remainingFiles)
         .putInt(KEY_PROGRESS_SKIPPED_FILES, skippedFiles)
-        .putLong(KEY_PROGRESS_TOTAL_FILES_SIZE, totalFilesSize)
-        .putLong(KEY_PROGRESS_PROCESSED_FILES_SIZE, processedFileSize)
+        .putInt(KEY_PROGRESS_TOTAL_FILES, totalFiles)
         .putLong(KEY_PROGRESS_REMAINING_DURATION, remainingDuration)
         .putStringArray(KEY_PROGRESS_PROGRESS_PATHS, paths.toTypedArray())
         .build()

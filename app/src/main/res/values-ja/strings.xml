@@ -39,6 +39,7 @@
     <string name="progress_title_download_dropbox">ダウンロード中…</string>
     <string name="loading">アイテムを読み込み中…</string>
     <string name="remaining">残り: %1$d (%2$s/%3$s 処理済み)、スキップ: %4$d</string>
+    <string name="remaining_files">残り: %1$d (%2$d/%3$d ファイル処理済み)、スキップ: %4$d</string>
     <string name="remaining_duration">あと %s</string>
     <string name="button_apply">適用</string>
     <string name="button_cancel">キャンセル</string>

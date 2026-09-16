@@ -131,6 +131,7 @@ class LocalMediaRetrieveWorker(
                 title = applicationContext.getString(R.string.progress_title_retrieve_media),
                 progressFraction = currentIndex.toFloat() / totalFilesCount,
                 remainingFiles = totalFilesCount - currentIndex,
+                totalFiles = totalFilesCount,
                 skippedFiles = skippedFilesCount,
                 remainingDuration = remainingDuration,
                 paths = listOfNotNull(currentPath?.substringAfterLast('/'))
