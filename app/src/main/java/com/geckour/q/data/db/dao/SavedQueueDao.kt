@@ -52,14 +52,13 @@ interface SavedQueueDao {
                 "inner join track on track.id = savedQueueTrack.trackId " +
                 "left join album on album.id = track.albumId " +
                 "where savedQueueTrack.savedQueueId = :savedQueueId " +
-                "and coalesce(track.artworkUriString, album.artworkUriString) is not null " +
                 "order by savedQueueTrack.sortIndex " +
                 "limit :limit"
     )
     suspend fun getArtworkUriStrings(
         savedQueueId: Long,
         limit: Int = -1,
-    ): List<String>
+    ): List<String?>
 
     @Transaction
     @Query(

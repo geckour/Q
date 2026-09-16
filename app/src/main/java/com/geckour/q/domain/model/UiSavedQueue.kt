@@ -5,6 +5,6 @@ import com.geckour.q.data.db.model.SavedQueueSummary
 
 data class UiSavedQueue(
     val savedQueueSummary: SavedQueueSummary,
-    val artworkUrlStrings: List<String>,
+    val artworkUrlStrings: List<String?>,
     val queue: List<JoinedTrack>,
 )

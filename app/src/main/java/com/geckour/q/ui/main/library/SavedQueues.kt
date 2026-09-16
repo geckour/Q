@@ -236,7 +236,7 @@ fun SavedQueues(
 }
 
 @Composable
-private fun Artworks(artworkUrlStrings: List<String>, modifier: Modifier = Modifier) {
+private fun Artworks(artworkUrlStrings: List<String?>, modifier: Modifier = Modifier) {
     val fadeWidth = 20.dp
     val fadeColor = QTheme.colors.colorBackground
     Box(
@@ -264,7 +264,7 @@ private fun Artworks(artworkUrlStrings: List<String>, modifier: Modifier = Modif
         Row(modifier = Modifier.wrapContentWidth(align = Alignment.Start, unbounded = true)) {
             artworkUrlStrings.forEach {
                 AsyncImage(
-                    it,
+                    it ?: R.drawable.ic_empty,
                     contentDescription = null,
                     modifier = Modifier
                         .size(20.dp)
