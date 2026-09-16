@@ -19,29 +19,18 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Surface
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
-import androidx.navigation.compose.rememberNavController
 import androidx.window.layout.FoldingFeature
 import androidx.window.layout.WindowInfoTracker
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.dropbox.core.DbxHost
 import com.dropbox.core.android.Auth
@@ -57,34 +46,13 @@ import com.geckour.q.ui.compose.ColorBackground
 import com.geckour.q.ui.compose.ColorBackgroundInverse
 import com.geckour.q.ui.compose.ColorPrimaryDark
 import com.geckour.q.ui.compose.ColorPrimaryDarkInverse
-import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.ui.widget.player.PlayerSheetWidgetProvider
 import com.geckour.q.util.ShuffleActionType
-import com.geckour.q.util.SyncProgressState
-import com.geckour.q.util.SyncSizeAlertState
 import com.geckour.q.util.dbxRequestConfig
-import com.geckour.q.util.getActiveQAudioDeviceInfo
-import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getExtension
-import com.geckour.q.util.getIsInNightMode
-import com.geckour.q.util.getReadableStringWithUnit
-import com.geckour.q.util.getShowLyric
-import com.geckour.q.util.getTimeString
 import com.geckour.q.util.parseLrc
-import com.geckour.q.worker.KEY_PROGRESS_FINISHED
-import com.geckour.q.worker.KEY_PROGRESS_PROCESSED_FILES_SIZE
-import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_FRACTION
-import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_PATHS
-import com.geckour.q.worker.KEY_PROGRESS_REMAINING_DURATION
-import com.geckour.q.worker.KEY_PROGRESS_REMAINING_FILES
-import com.geckour.q.worker.KEY_PROGRESS_SKIPPED_FILES
-import com.geckour.q.worker.KEY_PROGRESS_TITLE
-import com.geckour.q.worker.KEY_PROGRESS_TOTAL_FILES_SIZE
 import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
-import kotlinx.collections.immutable.ImmutableList
-import kotlinx.collections.immutable.persistentListOf
-import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -96,7 +64,6 @@ import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.charset.Charset
-import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 
 @UnstableApi
@@ -108,7 +75,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private val viewModel by viewModel<MainViewModel>()
-    private var onCancelProgress: (() -> Unit)? = null
 
     private var attachLyricTargetTrackId = -1L
     private var lrcString: String? = null
@@ -356,262 +322,13 @@ class MainActivity : ComponentActivity() {
             .stateIn(scope = lifecycleScope, started = SharingStarted.Eagerly, LayoutType.Single)
 
         setContent {
-            val context = LocalContext.current
-            val isInNightMode by context.getIsInNightMode()
-                .collectAsState(initial = isSystemInDarkTheme())
-            val isLoading by viewModel.loading.collectAsState()
-            val navController = rememberNavController()
-            val topBarTitle by viewModel.topBarTitle.collectAsState()
-            val queue by viewModel.currentQueueFlow.collectAsState(initial = emptyList())
-            val sourcePaths by viewModel.currentSourcePathsFlow.collectAsState()
-            val currentIndex by viewModel.currentIndexFlow.collectAsState()
-            val currentPlaybackPosition by viewModel.currentPlaybackPositionFlow.collectAsState()
-            val currentBufferedPosition by viewModel.currentBufferedPositionFlow.collectAsState()
-            val currentPlaybackInfo by viewModel.currentPlaybackInfoFlow.collectAsState()
-            val currentRepeatMode by viewModel.currentRepeatModeFlow.collectAsState()
-            val forceScrollToCurrent by viewModel.forceScrollToCurrent.collectAsState()
-            val dialogState by viewModel.dialogState.collectAsState()
-            val selectedNav by viewModel.selectedNav.collectAsState()
-            val workInfoList by viewModel.workInfoListFlow
-                .collectAsState(initial = emptyList())
-            var progressMessage by remember { mutableStateOf<String?>(null) }
-            var progressFraction by remember { mutableStateOf<Float?>(null) }
-            var progressPaths by remember {
-                mutableStateOf<ImmutableList<String>>(persistentListOf())
-            }
-            var finishedWorkIdSet by remember { mutableStateOf(emptySet<UUID>()) }
-            val snackbarMessage by viewModel.snackbarMessageFlow.collectAsState()
-            val equalizerParams by context.getEqualizerParams().collectAsState(initial = null)
-            val scrollToTop by viewModel.scrollToTop.collectAsState()
-            val showLyric by context.getShowLyric().collectAsState(initial = false)
             val layoutType by layoutTypeFlow.collectAsState()
-            val appBarOptionMediaItem by viewModel.appBarOptionMediaItem.collectAsState()
-            val isSearchActive = rememberSaveable { mutableStateOf(false) }
-            val searchQuery = rememberSaveable { mutableStateOf("") }
-            val isFavoriteOnly = rememberSaveable { mutableStateOf(false) }
-            val activeQAudioDeviceInfo by getActiveQAudioDeviceInfo().collectAsState(initial = null)
-
-            LaunchedEffect(isInNightMode) {
-                enableEdgeToEdge(
-                    statusBarStyle = SystemBarStyle.auto(
-                        lightScrim = ColorPrimaryDark.toArgb(),
-                        darkScrim = ColorPrimaryDarkInverse.toArgb(),
-                        detectDarkMode = { isInNightMode }
-                    ),
-                    navigationBarStyle = SystemBarStyle.auto(
-                        lightScrim = ColorBackground.toArgb(),
-                        darkScrim = ColorBackgroundInverse.toArgb(),
-                        detectDarkMode = { isInNightMode }
-                    )
-                )
-            }
-
-            val syncProgress by SyncProgressState.progress.collectAsState()
-            val syncSizeAlert by SyncSizeAlertState.alert.collectAsState()
-
-            LaunchedEffect(syncProgress) {
-                val progress = syncProgress
-                if (progress == null) {
-                    if (workInfoList.none { it.state == WorkInfo.State.RUNNING }) {
-                        progressMessage = null
-                        progressPaths = persistentListOf()
-                        progressFraction = null
-                        onCancelProgress = null
-                    }
-                    return@LaunchedEffect
-                }
-
-                val remainingText = getString(
-                    R.string.remaining,
-                    progress.remainingFiles,
-                    "${progress.processedFilesSize.toFloat().getReadableStringWithUnit()}B",
-                    "${progress.totalFilesSize.toFloat().getReadableStringWithUnit()}B",
-                    progress.skippedFiles,
-                )
-                val remainingDurationText =
-                    if (progress.remainingDuration < 0) ""
-                    else getString(
-                        R.string.remaining_duration,
-                        progress.remainingDuration.getTimeString(),
-                    )
-
-                progressMessage = listOf(progress.title, remainingText, remainingDurationText)
-                    .filter { it.isNotEmpty() }
-                    .joinToString("\n")
-                progressPaths = progress.paths.toImmutableList()
-                progressFraction = progress.progressFraction
-                onCancelProgress = { DropboxMediaSyncJobService.cancel(context) }
-            }
-
-            LaunchedEffect(
-                workInfoList.map { it.progress },
-                workInfoList.map { it.state }
-            ) {
-                launch(Dispatchers.IO) {
-                    if (SyncProgressState.progress.value != null) return@launch
-
-                    if (workInfoList.none { it.state == WorkInfo.State.RUNNING }) {
-                        workInfoList.firstOrNull {
-                            it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED
-                        }?.let {
-                            progressMessage = getString(R.string.starting)
-                            onCancelProgress = {
-                                val workManager = WorkManager.getInstance(context)
-                                it.tags.forEach {
-                                    workManager.cancelAllWorkByTag(it)
-                                }
-                            }
-                        } ?: run {
-                            progressMessage = null
-                            progressPaths = persistentListOf()
-                            progressFraction = null
-                            onCancelProgress = null
-                        }
-                        return@launch
-                    }
-
-                    workInfoList.forEach { workInfo ->
-                        workInfo.progress.also { progress ->
-                            val fraction = progress.getFloat(KEY_PROGRESS_PROGRESS_FRACTION, -1f)
-                            if (fraction < 0) return@forEach
-
-                            val title = progress.getString(KEY_PROGRESS_TITLE).orEmpty()
-
-                            val paths = progress.getStringArray(KEY_PROGRESS_PROGRESS_PATHS)
-                                ?.toList()
-                                .orEmpty()
-                                .toImmutableList()
-                            val remainingFilesCount = progress.getInt(
-                                KEY_PROGRESS_REMAINING_FILES,
-                                -1
-                            )
-                            val totalFilesSize = progress.getLong(
-                                KEY_PROGRESS_TOTAL_FILES_SIZE,
-                                1
-                            )
-                            val processedFilesSize = progress.getLong(
-                                KEY_PROGRESS_PROCESSED_FILES_SIZE,
-                                0
-                            )
-                            val skippedFilesCount = progress.getInt(
-                                KEY_PROGRESS_SKIPPED_FILES,
-                                0
-                            )
-                            val remainingText =
-                                if (remainingFilesCount < 0) ""
-                                else getString(
-                                    R.string.remaining,
-                                    remainingFilesCount,
-                                    "${processedFilesSize.toFloat().getReadableStringWithUnit()}B",
-                                    "${totalFilesSize.toFloat().getReadableStringWithUnit()}B",
-                                    skippedFilesCount,
-                                )
-                            val remainingDuration = progress.getLong(
-                                KEY_PROGRESS_REMAINING_DURATION,
-                                -1
-                            )
-                            val remainingDurationText =
-                                if (remainingDuration < 0) ""
-                                else getString(
-                                    R.string.remaining_duration,
-                                    remainingDuration.getTimeString(),
-                                )
-
-                            listOf(
-                                title,
-                                remainingText,
-                                remainingDurationText
-                            )
-                                .filter { it.isNotEmpty() }
-                                .joinToString("\n")
-                                .let { message ->
-                                    if (message.isEmpty()) return@let
-
-                                    progressMessage = message
-                                    progressPaths = paths
-                                    progressFraction = fraction
-                                    onCancelProgress = {
-                                        val workManager = WorkManager.getInstance(context)
-                                        workInfo.tags.forEach {
-                                            workManager.cancelAllWorkByTag(it)
-                                        }
-                                    }
-                                }
-                        }
-                        if (finishedWorkIdSet.contains(workInfo.id).not()
-                            && (workInfo.outputData.getBoolean(KEY_PROGRESS_FINISHED, false) ||
-                                    workInfo.state in listOf(
-                                WorkInfo.State.SUCCEEDED,
-                                WorkInfo.State.CANCELLED,
-                                WorkInfo.State.FAILED
-                            ))
-                        ) {
-                            finishedWorkIdSet += workInfo.id
-                            if (workInfoList.all { it.state.isFinished }) {
-                                progressMessage = null
-                                progressPaths = persistentListOf()
-                            }
-                        }
-                    }
-                }
-            }
-
-            val uiState = MainUiState(
-                player = PlayerUiState(
-                    queue = queue.toImmutableList(),
-                    sourcePaths = sourcePaths,
-                    currentIndex = currentIndex,
-                    currentPlaybackPosition = currentPlaybackPosition,
-                    currentBufferedPosition = currentBufferedPosition,
-                    currentPlaybackInfo = currentPlaybackInfo,
-                    currentRepeatMode = currentRepeatMode,
-                    isLoading = isLoading,
-                    showLyric = showLyric,
-                    forceScrollToCurrent = forceScrollToCurrent,
-                ),
-                library = LibraryUiState(
-                    topBarTitle = topBarTitle,
-                    appBarOptionMediaItem = appBarOptionMediaItem,
-                    selectedNav = selectedNav,
-                    equalizerParams = equalizerParams,
-                    snackbarMessage = progressMessage ?: snackbarMessage,
-                    snackbarPaths = progressPaths,
-                    snackbarProgress = progressFraction,
-                    onCancelProgress = onCancelProgress,
-                    scrollToTop = scrollToTop,
-                ),
-                routeInfo = activeQAudioDeviceInfo,
-                dialogState = dialogState,
-                syncSizeAlert = syncSizeAlert,
+            MainScreen(
+                viewModel = viewModel,
+                layoutType = layoutType,
+                actions = mainActions,
+                onChangeNightMode = ::applySystemBarStyle,
             )
-
-            QTheme(darkTheme = isInNightMode) {
-                Surface(modifier = Modifier.fillMaxSize()) {
-                    when (layoutType) {
-                        is LayoutType.Single -> {
-                            SingleScreen(
-                                navController = navController,
-                                uiState = uiState,
-                                isSearchActive = isSearchActive,
-                                searchQuery = searchQuery,
-                                isFavoriteOnly = isFavoriteOnly,
-                                actions = mainActions,
-                            )
-                        }
-
-                        is LayoutType.Twin -> {
-                            TwinScreen(
-                                navController = navController,
-                                uiState = uiState,
-                                isSearchActive = isSearchActive,
-                                searchQuery = searchQuery,
-                                isFavoriteOnly = isFavoriteOnly,
-                                actions = mainActions,
-                            )
-                        }
-                    }
-                }
-            }
         }
 
         if (savedInstanceState == null) {
@@ -722,6 +439,21 @@ class MainActivity : ComponentActivity() {
 
     private fun onReadMediaDenied() = Unit
 
+    private fun applySystemBarStyle(isInNightMode: Boolean) {
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.auto(
+                lightScrim = ColorPrimaryDark.toArgb(),
+                darkScrim = ColorPrimaryDarkInverse.toArgb(),
+                detectDarkMode = { isInNightMode }
+            ),
+            navigationBarStyle = SystemBarStyle.auto(
+                lightScrim = ColorBackground.toArgb(),
+                darkScrim = ColorBackgroundInverse.toArgb(),
+                detectDarkMode = { isInNightMode }
+            )
+        )
+    }
+
     private fun handleDialogEvent(event: DialogEvent) {
         when (event) {
             DialogEvent.Dismiss -> viewModel.dismissDialog()
@@ -829,10 +561,10 @@ class MainActivity : ComponentActivity() {
             is DialogEvent.DeleteSavedQueue -> viewModel.deleteSavedQueue(event.savedQueueId)
 
             is DialogEvent.RespondSyncSizeConfirmation -> {
-                DropboxMediaSyncJobService.respondSizeConfirmation(event.approved)
+                viewModel.respondSyncSizeConfirmation(event.approved)
             }
 
-            DialogEvent.DismissSyncSizeExceeded -> SyncSizeAlertState.update(null)
+            DialogEvent.DismissSyncSizeExceeded -> viewModel.dismissSyncSizeExceeded()
         }
     }
 

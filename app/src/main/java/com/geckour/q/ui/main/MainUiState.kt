@@ -7,6 +7,7 @@ import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SyncSizeAlert
 import com.geckour.q.domain.model.UiTrack
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 
 data class MainUiState(
     val player: PlayerUiState,
@@ -39,4 +40,11 @@ data class LibraryUiState(
     val snackbarProgress: Float?,
     val onCancelProgress: (() -> Unit)?,
     val scrollToTop: Long,
+)
+
+data class ProgressUiState(
+    val message: String? = null,
+    val paths: ImmutableList<String> = persistentListOf(),
+    val fraction: Float? = null,
+    val cancelable: Boolean = false,
 )

@@ -16,6 +16,7 @@ import androidx.media3.common.Tracks
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.dropbox.core.android.Auth
 import com.dropbox.core.v2.files.FileMetadata
@@ -33,6 +34,7 @@ import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.PlaybackButton
+import com.geckour.q.domain.model.SyncProgress
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.service.DropboxMediaSyncJobService
 import com.geckour.q.service.PlayerService
@@ -40,10 +42,16 @@ import com.geckour.q.util.DownloadState
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType
+import com.geckour.q.util.SyncProgressState
+import com.geckour.q.util.SyncSizeAlertState
+import com.geckour.q.util.getActiveQAudioDeviceInfo
 import com.geckour.q.util.getDropboxCredential
+import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.getIsInNightMode
+import com.geckour.q.util.getReadableStringWithUnit
 import com.geckour.q.util.getShowLyric
+import com.geckour.q.util.getTimeString
 import com.geckour.q.util.isFavoriteToggled
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.setDropboxCredential
@@ -52,6 +60,15 @@ import com.geckour.q.util.setIsNightMode
 import com.geckour.q.util.setShowLyric
 import com.geckour.q.util.toLrcString
 import com.geckour.q.util.toUiTrack
+import com.geckour.q.worker.KEY_PROGRESS_FINISHED
+import com.geckour.q.worker.KEY_PROGRESS_PROCESSED_FILES_SIZE
+import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_FRACTION
+import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_PATHS
+import com.geckour.q.worker.KEY_PROGRESS_REMAINING_DURATION
+import com.geckour.q.worker.KEY_PROGRESS_REMAINING_FILES
+import com.geckour.q.worker.KEY_PROGRESS_SKIPPED_FILES
+import com.geckour.q.worker.KEY_PROGRESS_TITLE
+import com.geckour.q.worker.KEY_PROGRESS_TOTAL_FILES_SIZE
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -70,9 +87,11 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.UUID
 import kotlin.time.Duration.Companion.milliseconds
 
 class MainViewModel(private val app: App) : ViewModel() {
@@ -144,6 +163,19 @@ class MainViewModel(private val app: App) : ViewModel() {
             else -> flowOf(state)
         }
     }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
+    internal val isInNightMode = app.getIsInNightMode()
+    internal val showLyric = app.getShowLyric()
+    internal val equalizerParams = app.getEqualizerParams()
+    internal val activeQAudioDeviceInfo = app.getActiveQAudioDeviceInfo()
+
+    internal val syncSizeAlert = SyncSizeAlertState.alert
+
+    private val mutableProgressState = MutableStateFlow(ProgressUiState())
+    internal val progressState: StateFlow<ProgressUiState> = mutableProgressState
+    private var cancelProgressAction: (() -> Unit)? = null
+    private var latestWorkInfoList: List<WorkInfo> = emptyList()
+    private val finishedWorkIds = mutableSetOf<UUID>()
 
     internal val topBarTitle = MutableStateFlow("")
     internal val selectedNav = MutableStateFlow<Nav?>(null)
@@ -245,6 +277,15 @@ class MainViewModel(private val app: App) : ViewModel() {
             }
         }
     })
+
+    init {
+        viewModelScope.launch {
+            SyncProgressState.progress.collect { onSyncProgressChanged(it) }
+        }
+        viewModelScope.launch {
+            workInfoListFlow.collect { onWorkInfoListChanged(it) }
+        }
+    }
 
     internal fun initializeMediaController(context: Context) {
         viewModelScope.launch {
@@ -447,6 +488,153 @@ class MainViewModel(private val app: App) : ViewModel() {
                 PlayerService.ACTION_COMMAND_RESET_QUEUE_ORDER, Bundle.EMPTY
             ), Bundle.EMPTY
         )
+    }
+
+    internal fun respondSyncSizeConfirmation(approved: Boolean) {
+        DropboxMediaSyncJobService.respondSizeConfirmation(approved)
+    }
+
+    internal fun dismissSyncSizeExceeded() {
+        SyncSizeAlertState.update(null)
+    }
+
+    internal fun cancelProgress() {
+        cancelProgressAction?.invoke()
+    }
+
+    private fun onSyncProgressChanged(progress: SyncProgress?) {
+        if (progress == null) {
+            if (latestWorkInfoList.none { it.state == WorkInfo.State.RUNNING }) clearProgress()
+            return
+        }
+
+        val remainingText = app.getString(
+            R.string.remaining,
+            progress.remainingFiles,
+            "${progress.processedFilesSize.toFloat().getReadableStringWithUnit()}B",
+            "${progress.totalFilesSize.toFloat().getReadableStringWithUnit()}B",
+            progress.skippedFiles,
+        )
+        val remainingDurationText =
+            if (progress.remainingDuration < 0) ""
+            else app.getString(
+                R.string.remaining_duration,
+                progress.remainingDuration.getTimeString(),
+            )
+
+        setProgress(
+            message = listOf(progress.title, remainingText, remainingDurationText)
+                .filter { it.isNotEmpty() }
+                .joinToString("\n"),
+            paths = progress.paths.toImmutableList(),
+            fraction = progress.progressFraction,
+            cancelAction = { DropboxMediaSyncJobService.cancel(app) },
+        )
+    }
+
+    private fun onWorkInfoListChanged(workInfoList: List<WorkInfo>) {
+        latestWorkInfoList = workInfoList
+        if (SyncProgressState.progress.value != null) return
+
+        if (workInfoList.none { it.state == WorkInfo.State.RUNNING }) {
+            val pendingWorkInfo = workInfoList.firstOrNull {
+                it.state == WorkInfo.State.ENQUEUED || it.state == WorkInfo.State.BLOCKED
+            }
+            if (pendingWorkInfo == null) {
+                clearProgress()
+            } else {
+                cancelProgressAction = { pendingWorkInfo.cancel() }
+                mutableProgressState.update {
+                    it.copy(message = app.getString(R.string.starting), cancelable = true)
+                }
+            }
+            return
+        }
+
+        workInfoList.forEach { workInfo ->
+            val progress = workInfo.progress
+            val fraction = progress.getFloat(KEY_PROGRESS_PROGRESS_FRACTION, -1f)
+            if (fraction < 0) return@forEach
+
+            val remainingFilesCount = progress.getInt(KEY_PROGRESS_REMAINING_FILES, -1)
+            val totalFilesSize = progress.getLong(KEY_PROGRESS_TOTAL_FILES_SIZE, 1)
+            val processedFilesSize = progress.getLong(KEY_PROGRESS_PROCESSED_FILES_SIZE, 0)
+            val skippedFilesCount = progress.getInt(KEY_PROGRESS_SKIPPED_FILES, 0)
+            val remainingText =
+                if (remainingFilesCount < 0) ""
+                else app.getString(
+                    R.string.remaining,
+                    remainingFilesCount,
+                    "${processedFilesSize.toFloat().getReadableStringWithUnit()}B",
+                    "${totalFilesSize.toFloat().getReadableStringWithUnit()}B",
+                    skippedFilesCount,
+                )
+            val remainingDuration = progress.getLong(KEY_PROGRESS_REMAINING_DURATION, -1)
+            val remainingDurationText =
+                if (remainingDuration < 0) ""
+                else app.getString(
+                    R.string.remaining_duration,
+                    remainingDuration.getTimeString(),
+                )
+            val message = listOf(
+                progress.getString(KEY_PROGRESS_TITLE).orEmpty(),
+                remainingText,
+                remainingDurationText,
+            )
+                .filter { it.isNotEmpty() }
+                .joinToString("\n")
+            if (message.isNotEmpty()) {
+                setProgress(
+                    message = message,
+                    paths = progress.getStringArray(KEY_PROGRESS_PROGRESS_PATHS)
+                        ?.toList()
+                        .orEmpty()
+                        .toImmutableList(),
+                    fraction = fraction,
+                    cancelAction = { workInfo.cancel() },
+                )
+            }
+
+            if (finishedWorkIds.contains(workInfo.id).not() &&
+                (workInfo.outputData.getBoolean(KEY_PROGRESS_FINISHED, false) ||
+                        workInfo.state in listOf(
+                    WorkInfo.State.SUCCEEDED,
+                    WorkInfo.State.CANCELLED,
+                    WorkInfo.State.FAILED
+                ))
+            ) {
+                finishedWorkIds += workInfo.id
+                if (workInfoList.all { it.state.isFinished }) {
+                    mutableProgressState.update {
+                        it.copy(message = null, paths = persistentListOf())
+                    }
+                }
+            }
+        }
+    }
+
+    private fun WorkInfo.cancel() {
+        tags.forEach { workManager.cancelAllWorkByTag(it) }
+    }
+
+    private fun setProgress(
+        message: String,
+        paths: ImmutableList<String>,
+        fraction: Float,
+        cancelAction: () -> Unit,
+    ) {
+        cancelProgressAction = cancelAction
+        mutableProgressState.value = ProgressUiState(
+            message = message,
+            paths = paths,
+            fraction = fraction,
+            cancelable = true,
+        )
+    }
+
+    private fun clearProgress() {
+        cancelProgressAction = null
+        mutableProgressState.value = ProgressUiState()
     }
 
     internal fun showDialog(dialogState: DialogState?) {
