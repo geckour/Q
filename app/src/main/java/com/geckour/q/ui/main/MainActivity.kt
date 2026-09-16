@@ -46,6 +46,8 @@ import com.geckour.q.ui.compose.ColorBackground
 import com.geckour.q.ui.compose.ColorBackgroundInverse
 import com.geckour.q.ui.compose.ColorPrimaryDark
 import com.geckour.q.ui.compose.ColorPrimaryDarkInverse
+import com.geckour.q.ui.main.dialog.DialogEvent
+import com.geckour.q.ui.main.dialog.DialogState
 import com.geckour.q.ui.widget.player.PlayerSheetWidgetProvider
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.dbxRequestConfig

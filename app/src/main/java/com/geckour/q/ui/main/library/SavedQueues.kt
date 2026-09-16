@@ -1,4 +1,4 @@
-package com.geckour.q.ui.main
+package com.geckour.q.ui.main.library
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable

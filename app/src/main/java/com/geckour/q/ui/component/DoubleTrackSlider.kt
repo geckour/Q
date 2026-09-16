@@ -1,4 +1,4 @@
-package com.geckour.q.ui
+package com.geckour.q.ui.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures

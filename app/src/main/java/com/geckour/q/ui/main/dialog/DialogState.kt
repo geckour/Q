@@ -1,4 +1,4 @@
-package com.geckour.q.ui.main
+package com.geckour.q.ui.main.dialog
 
 import com.dropbox.core.v2.files.FileMetadata
 import com.dropbox.core.v2.files.FolderMetadata

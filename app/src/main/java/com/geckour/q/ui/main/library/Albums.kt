@@ -1,4 +1,4 @@
-package com.geckour.q.ui.main
+package com.geckour.q.ui.main.library
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -52,6 +52,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.SearchItem
+import com.geckour.q.ui.component.QSwitch
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.DownloadState

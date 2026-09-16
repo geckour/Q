@@ -1,4 +1,4 @@
-package com.geckour.q.ui.main
+package com.geckour.q.ui.main.library
 
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable

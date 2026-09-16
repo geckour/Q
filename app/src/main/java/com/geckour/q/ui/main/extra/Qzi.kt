@@ -1,4 +1,4 @@
-package com.geckour.q.ui.main
+package com.geckour.q.ui.main.extra
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.infiniteRepeatable

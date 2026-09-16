@@ -1,4 +1,4 @@
-package com.geckour.q.ui.main
+package com.geckour.q.ui.main.dialog
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
@@ -35,6 +35,8 @@ import androidx.compose.ui.window.Dialog
 import com.geckour.q.R
 import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.ui.component.QOption
+import com.geckour.q.ui.component.QOptionDialog
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType

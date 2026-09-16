@@ -38,6 +38,10 @@ import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SyncSizeAlert
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.compose.QTheme
+import com.geckour.q.ui.main.dialog.DialogState
+import com.geckour.q.ui.main.dialog.Dialogs
+import com.geckour.q.ui.main.library.Library
+import com.geckour.q.ui.main.player.PlayerSheet
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.coroutines.launch
 

@@ -1,4 +1,4 @@
-package com.geckour.q.ui.main
+package com.geckour.q.ui.main.library
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
@@ -29,6 +29,10 @@ import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.ui.component.QSnackbar
+import com.geckour.q.ui.main.extra.Equalizer
+import com.geckour.q.ui.main.extra.Pay
+import com.geckour.q.ui.main.extra.Qzi
 import com.geckour.q.util.decodeUrlSafe
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList

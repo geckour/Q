@@ -1,4 +1,4 @@
-package com.geckour.q.ui.main
+package com.geckour.q.ui.main.dialog
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
@@ -42,6 +42,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.R
+import com.geckour.q.ui.component.QConfirmDialog
+import com.geckour.q.ui.component.QSwitch
 import com.geckour.q.ui.compose.QTheme
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf

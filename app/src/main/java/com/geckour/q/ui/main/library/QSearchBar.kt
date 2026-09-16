@@ -1,4 +1,4 @@
-package com.geckour.q.ui.main
+package com.geckour.q.ui.main.library
 
 import android.content.Context
 import androidx.activity.compose.BackHandler

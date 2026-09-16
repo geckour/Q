@@ -1,4 +1,4 @@
-package com.geckour.q.ui.main
+package com.geckour.q.ui.main.dialog
 
 sealed interface TrackSource {
 

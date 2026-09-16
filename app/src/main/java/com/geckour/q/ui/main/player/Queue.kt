@@ -1,4 +1,4 @@
-package com.geckour.q.ui.main
+package com.geckour.q.ui.main.player
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.clickable

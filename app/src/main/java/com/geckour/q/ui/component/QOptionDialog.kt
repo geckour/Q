@@ -1,4 +1,4 @@
-package com.geckour.q.ui.main
+package com.geckour.q.ui.component
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement

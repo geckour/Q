@@ -1,4 +1,4 @@
-package com.geckour.q.ui.main
+package com.geckour.q.ui.main.dialog
 
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
@@ -9,6 +9,8 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.ui.component.QOption
+import com.geckour.q.ui.component.QOptionDialog
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import kotlinx.collections.immutable.persistentListOf

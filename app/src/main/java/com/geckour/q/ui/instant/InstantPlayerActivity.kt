@@ -40,7 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.geckour.q.R
 import com.geckour.q.domain.model.PlaybackButton
-import com.geckour.q.ui.DoubleTrackSlider
+import com.geckour.q.ui.component.DoubleTrackSlider
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getIsInNightMode
 import com.geckour.q.util.getTimeString

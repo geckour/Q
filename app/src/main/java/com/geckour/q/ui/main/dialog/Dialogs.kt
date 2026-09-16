@@ -1,4 +1,4 @@
-package com.geckour.q.ui.main
+package com.geckour.q.ui.main.dialog
 
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
@@ -11,6 +11,7 @@ import androidx.navigation.NavHostController
 import com.geckour.q.R
 import com.geckour.q.domain.model.SyncSizeAlert
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.ui.component.QConfirmDialog
 import com.geckour.q.util.getReadableStringWithUnit
 import kotlinx.collections.immutable.ImmutableList
 

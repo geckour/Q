@@ -1,4 +1,4 @@
-package com.geckour.q.ui.main
+package com.geckour.q.ui.main.extra
 
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -76,7 +76,8 @@ import com.geckour.q.data.db.model.EqualizerLevelRatio
 import com.geckour.q.data.db.model.EqualizerPreset
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.QAudioDeviceInfo
-import com.geckour.q.ui.DoubleTrackSlider
+import com.geckour.q.ui.component.DoubleTrackSlider
+import com.geckour.q.ui.component.QSwitch
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getEqualizerEnabled
 import com.geckour.q.util.getEqualizerParams

@@ -1,4 +1,4 @@
-package com.geckour.q.ui.main
+package com.geckour.q.ui.main.player
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.heightIn

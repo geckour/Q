@@ -1,4 +1,4 @@
-package com.geckour.q.ui.main
+package com.geckour.q.ui.main.player
 
 import androidx.compose.animation.core.EaseInExpo
 import androidx.compose.animation.core.EaseInOutSine
@@ -84,7 +84,7 @@ import com.geckour.q.R
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.UiTrack
-import com.geckour.q.ui.DoubleTrackSlider
+import com.geckour.q.ui.component.DoubleTrackSlider
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.getShouldShowCurrentRemain

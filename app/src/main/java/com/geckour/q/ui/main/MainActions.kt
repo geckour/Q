@@ -10,6 +10,8 @@ import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.ui.main.dialog.DialogEvent
+import com.geckour.q.ui.main.dialog.DialogState
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.encodeUrlSafe
 import kotlinx.collections.immutable.toImmutableList

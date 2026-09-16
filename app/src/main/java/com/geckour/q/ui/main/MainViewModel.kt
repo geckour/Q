@@ -38,6 +38,8 @@ import com.geckour.q.domain.model.SyncProgress
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.service.DropboxMediaSyncJobService
 import com.geckour.q.service.PlayerService
+import com.geckour.q.ui.main.dialog.DialogState
+import com.geckour.q.ui.main.dialog.TrackSource
 import com.geckour.q.util.DownloadState
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
