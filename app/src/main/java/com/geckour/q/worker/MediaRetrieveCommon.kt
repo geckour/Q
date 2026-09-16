@@ -68,7 +68,6 @@ internal suspend fun File.storeMediaInfo(
     val header = audioFile.audioHeader
 
     val duration = header.trackLength.toLong() * 1000
-    val durationToAdd = duration - (existingTrack?.duration ?: 0)
     val codec = header.encodingType
     val bitrate = audioFile.file.length() * 8 / (header.trackLength * 1000L)
     val sampleRate = header.sampleRateAsNumber
@@ -131,7 +130,7 @@ internal suspend fun File.storeMediaInfo(
         totalDuration = 0,
         artworkUriString = artworkUriString ?: existingArtist?.artworkUriString
     )
-    val artistId = db.artistDao().upsert(db, artist, durationToAdd)
+    val artistId = db.artistDao().upsert(db, artist)
     val albumArtistId =
         if (albumArtistTitle != null && albumArtistTitleSort != null) {
             val albumArtist = Artist(
@@ -142,7 +141,7 @@ internal suspend fun File.storeMediaInfo(
                 totalDuration = 0,
                 artworkUriString = artworkUriString ?: existingAlbumArtist?.artworkUriString
             )
-            db.artistDao().upsert(db, albumArtist, durationToAdd)
+            db.artistDao().upsert(db, albumArtist)
         } else null
 
     val album = Album(
@@ -155,7 +154,7 @@ internal suspend fun File.storeMediaInfo(
         playbackCount = 0,
         totalDuration = 0
     )
-    val albumId = db.albumDao().upsert(db, album, durationToAdd)
+    val albumId = db.albumDao().upsert(db, album)
 
     val track = Track(
         id = trackId ?: 0,
@@ -187,5 +186,11 @@ internal suspend fun File.storeMediaInfo(
         isFavorite = existingTrack?.isFavorite ?: false,
     )
 
-    return@withContext db.trackDao().insert(track)
+    val newTrackId = db.trackDao().insert(track)
+    db.albumDao().refreshTotalDurationsIncludingArtists(
+        db,
+        listOfNotNull(albumId, existingTrack?.albumId).distinct()
+    )
+
+    return@withContext newTrackId
 }

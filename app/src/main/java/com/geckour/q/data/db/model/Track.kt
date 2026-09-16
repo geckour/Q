@@ -7,7 +7,7 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
 
-@Entity(indices = [Index("dropboxPath"), Index("mediaId")])
+@Entity(indices = [Index("dropboxPath"), Index("mediaId"), Index("albumId")])
 data class Track(
     @PrimaryKey(autoGenerate = true) val id: Long,
     val mediaId: Long,

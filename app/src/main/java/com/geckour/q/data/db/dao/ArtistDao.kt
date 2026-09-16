@@ -62,8 +62,14 @@ interface ArtistDao {
     @Query("update artist set playbackCount = (select playbackCount from artist where id = :artistId) + 1, artworkUriString = (select artworkUriString from album where artistId = :artistId order by playbackCount desc limit 1) where id = :artistId")
     suspend fun increasePlaybackCount(artistId: Long)
 
-    @Query("update artist set totalDuration = 0")
-    suspend fun resetTotalDurations()
+    @Query(
+        "update artist set totalDuration = " +
+                "(select coalesce(sum(track.duration), 0) from track " +
+                "inner join album on track.albumId = album.id " +
+                "where album.artistId = artist.id) " +
+                "where id in (:artistIds)"
+    )
+    suspend fun refreshTotalDurations(artistIds: List<Long>)
 
     @Transaction
     suspend fun deleteRecursively(artistId: Long) {
@@ -76,7 +82,7 @@ interface ArtistDao {
     suspend fun getContainTrackIds(artistId: Long): List<String>
 
     @Transaction
-    suspend fun upsert(db: DB, newArtist: Artist, durationToAdd: Long = 0): Long {
+    suspend fun upsert(db: DB, newArtist: Artist): Long {
         val existingArtist = getByTitle(newArtist.title)
         val id = existingArtist?.let { existing ->
             val artworkUriString = db.albumDao()
@@ -88,22 +94,14 @@ interface ArtistDao {
             val target = newArtist.copy(
                 id = existing.id,
                 playbackCount = existing.playbackCount,
-                totalDuration = existing.totalDuration + durationToAdd,
+                totalDuration = existing.totalDuration,
                 artworkUriString = artworkUriString
             )
             update(target)
             existing.id
-        } ?: insert(newArtist.copy(totalDuration = durationToAdd))
+        } ?: insert(newArtist.copy(totalDuration = 0))
 
         return id
-    }
-
-    @Transaction
-    suspend fun refreshTotalDurations(db: DB) {
-        resetTotalDurations()
-        db.trackDao().getAll().forEach {
-            upsert(db, it.artist, it.track.duration)
-        }
     }
 
     @Query("select id from artist")

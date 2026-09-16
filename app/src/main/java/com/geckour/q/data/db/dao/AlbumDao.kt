@@ -83,14 +83,23 @@ interface AlbumDao {
             if (getAllByArtistId(it.album.artistId).isEmpty()) {
                 db.artistDao().delete(it.album.artistId)
             } else {
-                db.artistDao()
-                    .update(
-                        it.artist.copy(
-                            totalDuration = it.artist.totalDuration - it.album.totalDuration
-                        )
-                    )
+                db.artistDao().refreshTotalDurations(listOf(it.album.artistId))
             }
         }
+    }
+
+    @Query(
+        "update album set totalDuration = " +
+                "(select coalesce(sum(track.duration), 0) from track " +
+                "where track.albumId = album.id) " +
+                "where id in (:albumIds)"
+    )
+    suspend fun refreshTotalDurations(albumIds: List<Long>)
+
+    @Transaction
+    suspend fun refreshTotalDurationsIncludingArtists(db: DB, albumIds: List<Long>) {
+        refreshTotalDurations(albumIds)
+        db.artistDao().refreshTotalDurations(getAllByIds(albumIds).map { it.album.artistId })
     }
 
     @Query("select sourcePath from track where albumId = :albumId")
@@ -103,20 +112,20 @@ interface AlbumDao {
     }
 
     @Transaction
-    suspend fun upsert(db: DB, newAlbum: Album, durationToAdd: Long = 0): Long {
+    suspend fun upsert(db: DB, newAlbum: Album): Long {
         val existingAlbums = getAllByTitleAndArtistId(newAlbum.title, newAlbum.artistId)
         existingAlbums.forEach {
             val target = newAlbum.copy(
                 id = it.album.id,
                 playbackCount = it.album.playbackCount,
-                totalDuration = it.album.totalDuration + durationToAdd,
+                totalDuration = it.album.totalDuration,
                 artworkUriString = newAlbum.artworkUriString ?: it.album.artworkUriString
             )
             update(target)
         }
 
         return if (existingAlbums.isEmpty()) {
-            insert(newAlbum.copy(totalDuration = durationToAdd))
+            insert(newAlbum.copy(totalDuration = 0))
         } else existingAlbums.first().album.id
     }
 }

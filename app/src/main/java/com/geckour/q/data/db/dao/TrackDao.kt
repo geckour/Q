@@ -189,18 +189,7 @@ interface TrackDao {
             if (getAllByAlbum(it.track.albumId, Bool.UNDEFINED).isEmpty()) {
                 db.albumDao().deleteIncludingRootIfEmpty(db, it.track.albumId)
             } else {
-                db.albumDao()
-                    .update(
-                        it.album.copy(
-                            totalDuration = it.album.totalDuration - it.track.duration
-                        )
-                    )
-                db.artistDao()
-                    .update(
-                        it.artist.copy(
-                            totalDuration = it.artist.totalDuration - it.track.duration
-                        )
-                    )
+                db.albumDao().refreshTotalDurationsIncludingArtists(db, listOf(it.track.albumId))
             }
         }
     }

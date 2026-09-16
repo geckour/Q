@@ -51,7 +51,7 @@ import kotlinx.serialization.json.Json
         SavedQueue::class,
         SavedQueueTrack::class,
     ],
-    version = 17,
+    version = 18,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -121,6 +121,26 @@ abstract class DB : RoomDatabase() {
             }
         }
 
+        private val migrationFrom17To18 = object : Migration(17, 18) {
+
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "create index if not exists index_Track_albumId on Track (albumId)"
+                )
+                db.execSQL(
+                    "update album set totalDuration = " +
+                            "(select coalesce(sum(track.duration), 0) from track " +
+                            "where track.albumId = album.id)"
+                )
+                db.execSQL(
+                    "update artist set totalDuration = " +
+                            "(select coalesce(sum(track.duration), 0) from track " +
+                            "inner join album on track.albumId = album.id " +
+                            "where album.artistId = artist.id)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): DB =
             instance ?: synchronized(this) {
                 Room.databaseBuilder(context, DB::class.java, DB_NAME)
@@ -128,7 +148,8 @@ abstract class DB : RoomDatabase() {
                         migrationFrom11To12(context),
                         migrationFrom13To14,
                         migrationFrom14To15,
-                        migrationFrom15To16
+                        migrationFrom15To16,
+                        migrationFrom17To18
                     )
                     .build()
                     .apply { instance = this }

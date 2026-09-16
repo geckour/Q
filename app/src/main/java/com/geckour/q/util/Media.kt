@@ -515,6 +515,8 @@ suspend fun JoinedTrack.updateFileMetadata(
                         )
                     )
                 }
+                db.albumDao()
+                    .refreshTotalDurationsIncludingArtists(db, listOf(album.id, albumId).distinct())
             }
 
             newAlbumName.isNullOrBlank().not()
@@ -560,6 +562,8 @@ suspend fun JoinedTrack.updateFileMetadata(
                         )
                     )
                 }
+                db.albumDao()
+                    .refreshTotalDurationsIncludingArtists(db, listOf(album.id, albumId).distinct())
             }
 
             newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not() -> {
