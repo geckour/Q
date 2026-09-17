@@ -231,6 +231,9 @@
     <string name="equalizer_preset_label_edit">編集</string>
     <string name="equalizer_preset_label_confirm">決定</string>
 
+    <!-- Queue -->
+    <string name="queue_lyric_shift_timing_label">シフト: %s 秒</string>
+
     <!-- Saved Queue -->
     <string name="saved_queue_item_metadata">%1$d曲・計%2$s</string>
 

@@ -246,6 +246,9 @@
     <string name="equalizer_preset_label_edit">Edit</string>
     <string name="equalizer_preset_label_confirm">Confirm</string>
 
+    <!-- Queue -->
+    <string name="queue_lyric_shift_timing_label">Shift: %s seconds</string>
+
     <!-- Saved Queue -->
     <string name="saved_queue_item_metadata">%1$d tracks・total %2$s</string>
 

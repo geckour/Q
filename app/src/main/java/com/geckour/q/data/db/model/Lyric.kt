@@ -19,6 +19,12 @@ data class LyricLine(
     val sentence: String
 )
 
+fun List<LyricLine>.shiftedBy(delta: Long): List<LyricLine> =
+    sortedBy { it.timing }.map {
+        if (it.timing == 0L) it
+        else it.copy(timing = (it.timing + delta).coerceAtLeast(1))
+    }
+
 enum class LyricSource {
     LOCAL,
     LRCLIB

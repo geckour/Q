@@ -47,6 +47,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 import kotlin.random.Random
 
 
@@ -333,13 +334,15 @@ fun Long.getDateTimeString(): String =
     SimpleDateFormat("yyyy-MM-dd hh:mm:ss", Locale.JAPAN).format(Date(this))
 
 fun Long.getTimeString(withMillis: Boolean = false): String {
-    val hour = this / 3600000
-    val minute = (this % 3600000) / 60000
-    val second = (this % 60000) / 1000
-    val secondWithMillis = (this % 60000) / 1000.0
-    return (if (hour > 0) String.format("%d:", hour) else "") +
-            if (withMillis) String.format("%02d:%05.2f", minute, secondWithMillis)
-            else String.format("%02d:%02d", minute, second)
+    val absoluteValue = abs(this)
+    val hour = absoluteValue / 3600000
+    val minute = (absoluteValue % 3600000) / 60000
+    val second = (absoluteValue % 60000) / 1000
+    val secondWithMillis = (absoluteValue % 60000) / 1000.0
+    return (if (this < 0) "-" else "") +
+            (if (hour > 0) String.format("%d:", hour) else "") +
+            (if (withMillis) String.format("%02d:%05.2f", minute, secondWithMillis)
+            else String.format("%02d:%02d", minute, second))
 }
 
 fun DbxClientV2.saveTempAudioFile(
