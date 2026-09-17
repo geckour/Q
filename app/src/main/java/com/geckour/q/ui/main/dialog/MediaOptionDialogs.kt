@@ -3,6 +3,7 @@ package com.geckour.q.ui.main.dialog
 import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import com.geckour.q.R
 import com.geckour.q.data.db.model.Album
@@ -13,6 +14,8 @@ import com.geckour.q.ui.component.QOption
 import com.geckour.q.ui.component.QOptionDialog
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.isSpotify
+import com.geckour.q.util.isSpotifyInstalled
 import kotlinx.collections.immutable.persistentListOf
 
 @Composable
@@ -38,11 +41,28 @@ fun TrackOptionDialog(
         DialogEvent.GenerateQueue(uiTrack, actionType, OrientedClassType.TRACK)
     )
 
+    val queueOptions = listOf(
+        option(R.string.menu_insert_next) { newQueue(InsertActionType.NEXT) },
+        option(R.string.menu_insert_last) { newQueue(InsertActionType.LAST) },
+        option(R.string.menu_override) { newQueue(InsertActionType.OVERRIDE) },
+    )
+    if (uiTrack.isSpotify) {
+        val isSpotifyInstalled = isSpotifyInstalled(LocalContext.current)
+        QOptionDialog(
+            options = queueOptions + QOption(
+                if (isSpotifyInstalled) R.string.spotify_menu_open
+                else R.string.spotify_menu_get_free
+            ) {
+                onDialogEvent(DialogEvent.OpenInSpotify(uiTrack.sourcePath))
+                onDialogEvent(DialogEvent.Dismiss)
+            },
+            onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) },
+        )
+        return
+    }
+
     QOptionDialog(
-        options = listOf(
-            option(R.string.menu_insert_next) { newQueue(InsertActionType.NEXT) },
-            option(R.string.menu_insert_last) { newQueue(InsertActionType.LAST) },
-            option(R.string.menu_override) { newQueue(InsertActionType.OVERRIDE) },
+        options = queueOptions + listOf(
             option(R.string.menu_insert_generated_queue_next) {
                 generateQueue(InsertActionType.NEXT)
             },

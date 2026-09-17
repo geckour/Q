@@ -3,11 +3,13 @@ package com.geckour.q.ui.main
 import androidx.navigation.NavHostController
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.domain.model.AllArtists
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.SearchItem
+import com.geckour.q.domain.model.SpotifyContainer
 import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.main.dialog.DialogEvent
@@ -21,6 +23,10 @@ interface MainActions {
     fun onSelectNav(nav: Nav?)
 
     fun onTapBar()
+
+    fun onTapTopBarTitle()
+
+    suspend fun onSearchSpotify(query: String): List<SearchItem>
 
     fun onToggleTheme()
 
@@ -93,6 +99,9 @@ fun MainActions.onSelectArtist(artist: Artist?) =
 fun MainActions.onSelectAllArtists(allArtists: AllArtists?) =
     onShowDialog(allArtists?.let { DialogState.AllArtistsOption })
 
+fun MainActions.onSelectSpotifyContainer(container: SpotifyContainer) =
+    onShowDialog(DialogState.SpotifyContainerOption(container))
+
 fun MainActions.onSelectGenre(genre: Genre?) =
     onShowDialog(genre?.let { DialogState.GenreOption(it) })
 
@@ -103,6 +112,8 @@ fun MainActions.onSelectSavedQueueForModify(savedQueue: UiSavedQueue?) =
     onShowDialog(savedQueue?.let { DialogState.SavedQueueModify(it) })
 
 fun MainActions.onShowDropboxDialog() = onShowDialog(DialogState.Dropbox())
+
+fun MainActions.onConfirmSpotifySignOut() = onShowDialog(DialogState.ConfirmSpotifySignOut)
 
 fun MainActions.onEnablePauseOnCurrentTrackEnd() =
     onShowDialog(DialogState.EnablePauseOnCurrentTrackEnd)
@@ -139,6 +150,14 @@ fun MainActions.onSearchItemClicked(item: SearchItem, navController: NavHostCont
             navController.navigate("tracks?genreName=${(item.data as Genre).name.encodeUrlSafe()}")
         }
 
+        SearchItem.SearchItemType.SPOTIFY_TRACK -> {
+            onShowDialog(DialogState.SpotifyTrackOption(item.data as SpotifyTrack))
+        }
+
+        SearchItem.SearchItemType.SPOTIFY_ALBUM, SearchItem.SearchItemType.SPOTIFY_ARTIST -> {
+            onShowDialog(DialogState.SpotifyContainerOption(item.data as SpotifyContainer))
+        }
+
         else -> Unit
     }
 }
@@ -159,6 +178,14 @@ fun MainActions.onSearchItemLongClicked(item: SearchItem) {
 
         SearchItem.SearchItemType.GENRE -> {
             onSelectGenre(item.data as Genre)
+        }
+
+        SearchItem.SearchItemType.SPOTIFY_TRACK -> {
+            onShowDialog(DialogState.SpotifyTrackOption(item.data as SpotifyTrack))
+        }
+
+        SearchItem.SearchItemType.SPOTIFY_ALBUM, SearchItem.SearchItemType.SPOTIFY_ARTIST -> {
+            onShowDialog(DialogState.SpotifyContainerOption(item.data as SpotifyContainer))
         }
 
         else -> Unit

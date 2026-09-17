@@ -1,5 +1,6 @@
 package com.geckour.q.ui.main
 
+import android.widget.Toast
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
@@ -10,6 +11,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.rememberNavController
 import com.geckour.q.domain.model.LayoutType
 import com.geckour.q.ui.compose.QTheme
@@ -42,6 +44,9 @@ fun MainScreen(
     val equalizerParams by viewModel.equalizerParams.collectAsState(initial = null)
     val scrollToTop by viewModel.scrollToTop.collectAsState()
     val showLyric by viewModel.showLyric.collectAsState(initial = false)
+    val isSpotifyUnlocked by viewModel.isSpotifyUnlocked.collectAsState(initial = false)
+    val spotifyBrowse by viewModel.spotifyBrowse.collectAsState()
+    val hasSpotifyCredential by viewModel.hasSpotifyCredential.collectAsState(initial = false)
     val appBarOptionMediaItem by viewModel.appBarOptionMediaItem.collectAsState()
     val routeInfo by viewModel.activeQAudioDeviceInfo.collectAsState(initial = null)
     val isSearchActive = rememberSaveable { mutableStateOf(false) }
@@ -50,6 +55,13 @@ fun MainScreen(
 
     LaunchedEffect(isInNightMode) {
         onChangeNightMode(isInNightMode)
+    }
+
+    val context = LocalContext.current
+    LaunchedEffect(Unit) {
+        viewModel.toastMessage.collect {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+        }
     }
 
     val uiState = MainUiState(
@@ -71,6 +83,9 @@ fun MainScreen(
             selectedNav = selectedNav,
             equalizerParams = equalizerParams,
             snackbarMessage = progress.message ?: snackbarMessage,
+            isSpotifyUnlocked = isSpotifyUnlocked,
+            spotifyBrowse = spotifyBrowse,
+            hasSpotifyCredential = hasSpotifyCredential,
             snackbarPaths = progress.paths,
             snackbarProgress = progress.fraction,
             onCancelProgress = if (progress.cancelable) viewModel::cancelProgress else null,

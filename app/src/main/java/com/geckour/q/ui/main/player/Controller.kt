@@ -85,12 +85,14 @@ import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.component.DoubleTrackSlider
+import com.geckour.q.ui.component.SpotifyAttribution
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.getShouldShowCurrentRemain
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.DownloadState
 import com.geckour.q.util.isDownloaded
+import com.geckour.q.util.isSpotify
 import com.geckour.q.util.nonUpScaleSp
 import com.geckour.q.util.setShouldShowCurrentRemain
 import kotlinx.coroutines.launch
@@ -339,7 +341,7 @@ fun Controller(
                         currentTrack?.sourcePath,
                         downloadChangedCount
                     ) { currentTrack?.isDownloaded == true }
-                    currentTrack?.isFavorite?.let {
+                    currentTrack?.takeIf { it.isSpotify.not() }?.isFavorite?.let {
                         Icon(
                             imageVector = if (it) Icons.Default.Star else Icons.Default.StarBorder,
                             contentDescription = null,
@@ -554,7 +556,10 @@ fun Controller(
                         primaryProgressFraction = currentTrack?.duration
                             ?.let { progress.toFloat() / it }
                             ?: 0f,
-                        secondaryProgressFraction = currentTrack?.duration?.let { bufferProgress.toFloat() / it },
+                        secondaryProgressFraction = currentTrack
+                            ?.takeIf { it.isSpotify.not() }
+                            ?.duration
+                            ?.let { bufferProgress.toFloat() / it },
                         thumbColor = QTheme.colors.colorButtonNormal,
                         primaryTrackColor = QTheme.colors.colorButtonNormal,
                         onSeek = { newProgressFraction ->
@@ -582,7 +587,10 @@ fun Controller(
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
-                Row(modifier = Modifier.padding(bottom = 2.dp, start = 16.dp, end = 16.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(bottom = 2.dp, start = 16.dp, end = 16.dp)
+                ) {
                     Text(
                         text = routeInfo?.audioDeviceName
                             ?: stringResource(id = R.string.default_device_name),
@@ -591,19 +599,23 @@ fun Controller(
                         color = QTheme.colors.colorTextPrimary,
                         modifier = Modifier.weight(1f)
                     )
-                    Text(
-                        text = currentTrack?.let {
-                            stringResource(
-                                id = R.string.track_file_info,
-                                it.codec,
-                                it.bitrate,
-                                it.sampleRate
-                            )
-                        }.orEmpty(),
-                        fontSize = 10.nonUpScaleSp,
-                        lineHeight = 15.nonUpScaleSp,
-                        color = QTheme.colors.colorTextPrimary
-                    )
+                    if (currentTrack?.isSpotify == true) {
+                        SpotifyAttribution()
+                    } else {
+                        Text(
+                            text = currentTrack?.let {
+                                stringResource(
+                                    id = R.string.track_file_info,
+                                    it.codec,
+                                    it.bitrate,
+                                    it.sampleRate
+                                )
+                            }.orEmpty(),
+                            fontSize = 10.nonUpScaleSp,
+                            lineHeight = 15.nonUpScaleSp,
+                            color = QTheme.colors.colorTextPrimary
+                        )
+                    }
                 }
             }
         }

@@ -8,6 +8,7 @@ enum class Nav {
     HISTORY,
     SAVED_QUEUE,
     DROPBOX_SYNC,
+    SPOTIFY,
     SYNC,
     PAY,
     EQUALIZER

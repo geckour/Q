@@ -86,8 +86,10 @@ import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.ui.component.SpotifyAttribution
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
+import com.geckour.q.util.isSpotify
 import com.geckour.q.util.moved
 import com.geckour.q.util.nonUpScaleSp
 import com.geckour.q.util.removedAt
@@ -120,9 +122,12 @@ fun Queue(
     val coroutineScope = rememberCoroutineScope()
     val db = DB.getInstance(currentContext)
     val currentDensity = LocalDensity.current
-    val nowPlayingTrackId = uiTracks.firstOrNull { it.nowPlaying }?.id ?: -1
-    val lyric by remember(nowPlayingTrackId) {
-        db.lyricDao().getLyricFlowByTrackId(nowPlayingTrackId)
+    val nowPlayingTrack = uiTracks.firstOrNull { it.nowPlaying }
+    val nowPlayingTrackId = nowPlayingTrack?.id ?: -1
+    val nowPlayingSpotifyUri = nowPlayingTrack?.takeIf { it.isSpotify }?.sourcePath
+    val lyric by remember(nowPlayingTrackId, nowPlayingSpotifyUri) {
+        if (nowPlayingSpotifyUri == null) db.lyricDao().getLyricFlowByTrackId(nowPlayingTrackId)
+        else db.lyricDao().getLyricFlowBySpotifyUri(nowPlayingSpotifyUri)
     }.collectAsState(initial = null)
     var contentHeight by remember { mutableIntStateOf(0) }
 
@@ -334,10 +339,17 @@ fun Queue(
                     currentShiftDelta = currentShiftDelta,
                     onShiftDelta = { delta ->
                         coroutineScope.launch {
-                            db.lyricDao().shiftTimingsByTrackId(
-                                trackId = nowPlayingTrackId,
-                                delta = delta,
-                            )
+                            if (nowPlayingSpotifyUri == null) {
+                                db.lyricDao().shiftTimingsByTrackId(
+                                    trackId = nowPlayingTrackId,
+                                    delta = delta,
+                                )
+                            } else {
+                                db.lyricDao().shiftTimingsBySpotifyUri(
+                                    spotifyUri = nowPlayingSpotifyUri,
+                                    delta = delta,
+                                )
+                            }
                             currentShiftDelta += delta
                         }
                     },
@@ -489,18 +501,20 @@ fun QueueItem(
                             lineHeight = 18.nonUpScaleSp
                         )
                     }
-                    Icon(
-                        imageVector = if (uiTrack.isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
-                        contentDescription = null,
-                        tint = QTheme.colors.colorTextPrimary,
-                        modifier = Modifier
-                            .clickable(
-                                indication = ripple(bounded = false),
-                                interactionSource = remember { MutableInteractionSource() }
-                            ) { onToggleFavorite(uiTrack) }
-                            .padding(8.dp)
-                            .size(20.dp)
-                    )
+                    if (uiTrack.isSpotify.not()) {
+                        Icon(
+                            imageVector = if (uiTrack.isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = null,
+                            tint = QTheme.colors.colorTextPrimary,
+                            modifier = Modifier
+                                .clickable(
+                                    indication = ripple(bounded = false),
+                                    interactionSource = remember { MutableInteractionSource() }
+                                ) { onToggleFavorite(uiTrack) }
+                                .padding(8.dp)
+                                .size(20.dp)
+                        )
+                    }
                     Icon(
                         imageVector = Icons.Default.RemoveCircleOutline,
                         contentDescription = null,
@@ -527,14 +541,18 @@ fun QueueItem(
                         textAlign = TextAlign.Center,
                         modifier = Modifier.width(48.dp)
                     )
-                    Text(
-                        text = "${uiTrack.codec}・${uiTrack.bitrate}kbps・${uiTrack.sampleRate}kHz",
-                        color = if (uiTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
-                        fontSize = 10.nonUpScaleSp,
-                        lineHeight = 25.nonUpScaleSp,
-                        textAlign = TextAlign.End,
-                        modifier = Modifier.weight(1f)
-                    )
+                    if (uiTrack.isSpotify) {
+                        SpotifyAttribution(modifier = Modifier.weight(1f))
+                    } else {
+                        Text(
+                            text = "${uiTrack.codec}・${uiTrack.bitrate}kbps・${uiTrack.sampleRate}kHz",
+                            color = if (uiTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
+                            fontSize = 10.nonUpScaleSp,
+                            lineHeight = 25.nonUpScaleSp,
+                            textAlign = TextAlign.End,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                     Text(
                         text = uiTrack.durationString,
                         color = QTheme.colors.colorTextPrimary,

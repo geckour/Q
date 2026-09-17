@@ -13,6 +13,7 @@ import com.geckour.q.domain.model.SyncSizeAlert
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.component.QConfirmDialog
 import com.geckour.q.util.getReadableStringWithUnit
+import com.geckour.q.util.isSpotify
 import kotlinx.collections.immutable.ImmutableList
 
 @Composable
@@ -96,6 +97,32 @@ fun BoxScope.Dialogs(
             )
         }
 
+        is DialogState.SpotifyTrackOption -> {
+            SpotifyTrackOptionDialog(
+                track = dialogState.track,
+                onDialogEvent = onDialogEvent,
+            )
+        }
+
+        is DialogState.SpotifyContainerOption -> {
+            SpotifyContainerOptionDialog(
+                container = dialogState.container,
+                onDialogEvent = onDialogEvent,
+            )
+        }
+
+        DialogState.ConfirmSpotifySignOut -> {
+            QConfirmDialog(
+                title = stringResource(id = R.string.spotify_title),
+                message = stringResource(id = R.string.spotify_message_sign_out),
+                onPositive = {
+                    onDialogEvent(DialogEvent.SignOutSpotify)
+                    onDialogEvent(DialogEvent.Dismiss)
+                },
+                onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) },
+            )
+        }
+
         is DialogState.ConfirmDownload -> {
             QConfirmDialog(
                 title = stringResource(id = R.string.dialog_title_dropbox_download),
@@ -136,7 +163,12 @@ fun BoxScope.Dialogs(
                 nextId = dialogState.nextId,
                 onCancel = { onDialogEvent(DialogEvent.Dismiss) },
                 onPositive = { title ->
-                    onDialogEvent(DialogEvent.SaveQueue(title, currentQueue.map { it.id }))
+                    onDialogEvent(
+                        DialogEvent.SaveQueue(
+                            title,
+                            currentQueue.filterNot { it.isSpotify }.map { it.id },
+                        )
+                    )
                     onDialogEvent(DialogEvent.Dismiss)
                 },
             )

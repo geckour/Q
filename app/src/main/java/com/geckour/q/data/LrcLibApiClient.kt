@@ -2,7 +2,6 @@ package com.geckour.q.data
 
 import android.os.SystemClock
 import com.geckour.q.BuildConfig
-import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.util.parseLrc
 import kotlinx.coroutines.Dispatchers
@@ -77,29 +76,46 @@ class LrcLibApiClient {
      *
      * Throws when the request itself failed, so that the caller can retry it later.
      */
-    suspend fun getLyricLines(track: JoinedTrack): List<LyricLine>? = withContext(Dispatchers.IO) {
-        (getExactly(track) ?: searchLoosely(track))?.toLyricLines()
+    suspend fun getLyricLines(
+        title: String,
+        artistName: String,
+        albumName: String,
+        durationMillis: Long,
+    ): List<LyricLine>? = withContext(Dispatchers.IO) {
+        val durationSeconds = durationMillis / 1000.0
+
+        (getExactly(title, artistName, albumName, durationSeconds)
+            ?: searchLoosely(title, artistName, durationSeconds))?.toLyricLines()
     }
 
-    private suspend fun getExactly(track: JoinedTrack): LrcLibLyric? =
+    private suspend fun getExactly(
+        title: String,
+        artistName: String,
+        albumName: String,
+        durationSeconds: Double,
+    ): LrcLibLyric? =
         request(
             "get",
-            "track_name" to track.track.title,
-            "artist_name" to track.artist.title,
-            "album_name" to track.album.title,
-            "duration" to track.durationSeconds.toInt().toString(),
+            "track_name" to title,
+            "artist_name" to artistName,
+            "album_name" to albumName,
+            "duration" to durationSeconds.toInt().toString(),
         )?.let { json.decodeFromString<LrcLibLyric>(it) }
 
-    private suspend fun searchLoosely(track: JoinedTrack): LrcLibLyric? =
+    private suspend fun searchLoosely(
+        title: String,
+        artistName: String,
+        durationSeconds: Double,
+    ): LrcLibLyric? =
         request(
             "search",
-            "track_name" to track.track.title,
-            "artist_name" to track.artist.title,
+            "track_name" to title,
+            "artist_name" to artistName,
         )?.let { json.decodeFromString<List<LrcLibLyric>>(it) }
             .orEmpty()
             .filter {
                 it.duration == null ||
-                        abs(it.duration - track.durationSeconds) <= DURATION_TOLERANCE_SECONDS
+                        abs(it.duration - durationSeconds) <= DURATION_TOLERANCE_SECONDS
             }
             .let { candidates ->
                 candidates.firstOrNull { it.syncedLyrics.isNullOrBlank().not() }
@@ -197,8 +213,6 @@ class LrcLibApiClient {
 
         return seconds.coerceAtLeast(0) * 1000
     }
-
-    private val JoinedTrack.durationSeconds: Double get() = track.duration / 1000.0
 
     private fun LrcLibLyric.toLyricLines(): List<LyricLine>? {
         syncedLyrics?.parseLrc()?.let { if (it.isNotEmpty()) return it }

@@ -2,6 +2,7 @@ package com.geckour.q.ui.main
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
@@ -17,6 +18,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,6 +29,7 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.AllArtists
 import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.domain.model.SpotifyContainer
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.compose.QTheme
 import kotlinx.coroutines.launch
@@ -39,6 +42,7 @@ fun QTopBar(
     drawerState: DrawerState,
     isSearchActive: Boolean,
     onTapBar: () -> Unit,
+    onTapTitle: () -> Unit,
     onToggleTheme: () -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onSetOptionMediaItem: (mediaItem: MediaItem?) -> Unit,
@@ -46,6 +50,7 @@ fun QTopBar(
     onSelectAlbum: (album: Album?) -> Unit,
     onSelectArtist: (artist: Artist?) -> Unit,
     onSelectAllArtists: (allArtists: AllArtists?) -> Unit,
+    onSelectSpotifyContainer: (container: SpotifyContainer) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -66,7 +71,18 @@ fun QTopBar(
             },
             title = {
                 AnimatedVisibility(visible = isSearchActive.not()) {
-                    Text(text = title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(
+                        text = title,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) {
+                            onTapTitle()
+                            onTapBar()
+                        }
+                    )
                 }
             },
             actions = {
@@ -113,6 +129,10 @@ fun QTopBar(
 
                                 is UiTrack -> {
                                     onSelectTrack(appBarOptionMediaItem)
+                                }
+
+                                is SpotifyContainer -> {
+                                    onSelectSpotifyContainer(appBarOptionMediaItem)
                                 }
 
                                 else -> Unit

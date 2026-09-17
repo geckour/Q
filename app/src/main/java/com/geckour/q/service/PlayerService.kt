@@ -28,7 +28,9 @@ import androidx.media3.datasource.HttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
+import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.LibraryResult
@@ -48,6 +50,7 @@ import com.geckour.q.data.db.model.EqualizerLevelRatio
 import com.geckour.q.data.db.model.EqualizerPreset
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricSource
+import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.data.db.model.TrackHistory
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.PlayerState
@@ -64,7 +67,10 @@ import com.geckour.q.util.currentSourcePaths
 import com.geckour.q.util.getEqualizerEnabled
 import com.geckour.q.util.getEqualizerParams
 import com.geckour.q.util.getMediaItem
+import com.geckour.q.util.getMediaItemOrNull
 import com.geckour.q.util.getSelectedEqualizerPresetId
+import com.geckour.q.util.isSpotify
+import com.geckour.q.util.isSpotifySourcePath
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.orderModified
 import com.geckour.q.util.removedAt
@@ -105,6 +111,8 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         const val ACTION_EXTRA_SUBMIT_QUEUE_CLASS_TYPE = "action_extra_submit_queue_class_type"
         const val ACTION_EXTRA_SUBMIT_QUEUE_QUEUE = "action_extra_submit_queue_queue"
         const val ACTION_EXTRA_SUBMIT_QUEUE_NEED_SORTED = "action_extra_submit_queue_need_sorted"
+        const val ACTION_EXTRA_SUBMIT_QUEUE_SPOTIFY_TRACKS =
+            "action_extra_submit_queue_spotify_tracks"
 
         const val ACTION_COMMAND_CANCEL_SUBMIT = "action_command_cancel_submit"
 
@@ -150,6 +158,14 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
         private const val PLAYBACK_POSITION_SAVE_INTERVAL = 100
         private const val QUEUE_HISTORY_SAVE_DEBOUNCE = 200
+        private const val SPOTIFY_TRACK_PRUNE_DEBOUNCE = 1000
+
+        private const val SPOTIFY_LYRIC_TRACK_ID = -1L
+
+        private val audioAttributes = AudioAttributes.Builder()
+            .setUsage(C.USAGE_MEDIA)
+            .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
+            .build()
     }
 
     private val dispatcher = ServiceLifecycleDispatcher(this)
@@ -195,6 +211,9 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
             if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED && player.playWhenReady) {
                 saveQueueHistory()
+            }
+            if (reason == Player.TIMELINE_CHANGE_REASON_PLAYLIST_CHANGED) {
+                pruneSpotifyTracks()
             }
 
             fetchLyricIfNeeded()
@@ -364,7 +383,18 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
                             ?: return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_INVALID_STATE))
                         val needSorted =
                             args.getBoolean(ACTION_EXTRA_SUBMIT_QUEUE_NEED_SORTED, true)
+                        val spotifyTracks = args
+                            .getString(ACTION_EXTRA_SUBMIT_QUEUE_SPOTIFY_TRACKS)
+                            ?.let { catchAsNull { Json.decodeFromString<List<SpotifyTrack>>(it) } }
+                            .orEmpty()
                         lifecycleScope.launch {
+                            if (spotifyTracks.isNotEmpty() ||
+                                sourcePaths.any { it.isSpotifySourcePath }
+                            ) {
+                                submitSpotifyQueue(actionType, sourcePaths, spotifyTracks)
+                                return@launch
+                            }
+
                             val trackDao = db.trackDao()
                             val newQueue = sourcePaths.mapNotNull {
                                 trackDao.getBySourcePath(it)
@@ -736,6 +766,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
     private lateinit var player: ExoPlayer
     private lateinit var forwardingPlayer: Player
+    private lateinit var spotifyPlaybackSync: SpotifyPlaybackSync
 
     private lateinit var mediaSession: MediaLibrarySession
     private var equalizer: Equalizer? = null
@@ -751,6 +782,8 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
     private var seekJob: Job = Job()
     private var saveQueueHistoryJob: Job = Job()
+    private var pruneSpotifyTracksJob: Job = Job()
+    private val pendingSpotifyUris = mutableSetOf<String>()
 
     private val sharedPreferences by inject<SharedPreferences>()
 
@@ -828,21 +861,34 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         val renderersFactory = DefaultRenderersFactory(this)
             .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
         player = ExoPlayer.Builder(this, renderersFactory)
+            .setMediaSourceFactory(
+                SpotifyAwareMediaSourceFactory(
+                    DefaultMediaSourceFactory(this, DefaultExtractorsFactory())
+                )
+            )
             .setTrackSelector(trackSelector)
             .setHandleAudioBecomingNoisy(true)
             .build()
             .apply {
                 addListener(playerListener)
-                setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(C.USAGE_MEDIA)
-                        .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
-                        .build(),
-                    true
-                )
+                setAudioAttributes(audioAttributes, true)
                 addAnalyticsListener(playerAnalyticsListener)
             }
+        spotifyPlaybackSync = SpotifyPlaybackSync(
+            context = this,
+            player = player,
+            scope = lifecycleScope,
+            onSpotifyActiveChanged = { active ->
+                player.setAudioAttributes(audioAttributes, active.not())
+            },
+        ).apply { start() }
         forwardingPlayer = object : ForwardingPlayer(player) {
+
+            override fun getDuration(): Long =
+                currentSpotifyDuration() ?: super.getDuration()
+
+            override fun getContentDuration(): Long =
+                currentSpotifyDuration() ?: super.getContentDuration()
 
             override fun play() {
                 Timber.d("qgeck play forwarded")
@@ -883,10 +929,8 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
                 Timber.d("qgeck addMediaItems forwarded")
 
                 lifecycleScope.launch {
-                    val trackDao = db.trackDao()
                     val fullMediaItems = mediaItems.mapNotNull {
-                        trackDao.getBySourcePath(it.mediaId)
-                            ?.getMediaItem()
+                        it.mediaId.getMediaItemOrNull(this@PlayerService)
                     }
                     player.addMediaItems(index, fullMediaItems)
 
@@ -985,6 +1029,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         player.removeAnalyticsListener(playerAnalyticsListener)
         mediaSession.release()
         stop()
+        spotifyPlaybackSync.release()
         player.stop()
         player.release()
         mediaRouter.removeCallback(mediaRouterCallback)
@@ -1021,6 +1066,26 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         }
     }
 
+    private fun currentSpotifyDuration(): Long? =
+        player.currentMediaItem
+            ?.takeIf { it.mediaId.isSpotifySourcePath }
+            ?.mediaMetadata
+            ?.durationMs
+
+    private fun pruneSpotifyTracks() {
+        if (inPurge || inRestore) return
+
+        pruneSpotifyTracksJob.cancel()
+        pruneSpotifyTracksJob = lifecycleScope.launch {
+            delay(SPOTIFY_TRACK_PRUNE_DEBOUNCE.milliseconds)
+
+            val urisToKeep = player.currentSourcePaths.filter { it.isSpotifySourcePath } +
+                    pendingSpotifyUris
+            db.spotifyTrackDao().deleteUnused(urisToKeep = urisToKeep)
+            db.lyricDao().deleteUnusedSpotifyLyrics(urisToKeep = urisToKeep)
+        }
+    }
+
     private fun onStateChanged(isFavorite: Boolean? = null) {
         if (inPurge) return
 
@@ -1042,15 +1107,15 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
             }
             val track = db.trackDao().getBySourcePath(sourcePath)?.track
 
-            if (shouldStoreTrackHistory &&
-                track != null &&
-                db.trackHistoryDao().getLatest()?.trackId != track.id
-            ) {
-                if (shouldPauseOnCurrentTrackEnd) {
-                    shouldPauseOnCurrentTrackEnd = false
-                    pause()
-                }
-
+            val isNewTrackStarted = shouldStoreTrackHistory && (
+                    if (track == null) sourcePath.isSpotifySourcePath
+                    else db.trackHistoryDao().getLatest()?.trackId != track.id
+                    )
+            if (isNewTrackStarted && shouldPauseOnCurrentTrackEnd) {
+                shouldPauseOnCurrentTrackEnd = false
+                pause()
+            }
+            if (isNewTrackStarted && track != null) {
                 db.trackHistoryDao().upsert(
                     TrackHistory(
                         id = 0,
@@ -1180,7 +1245,49 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
                     .sourcePath
                     .getMediaItem(this)
             }
-        when (queueInfo.metadata.actionType) {
+        submitMediaItems(queueInfo.metadata.actionType, newQueue, positionToKeep)
+    }
+
+    private suspend fun submitSpotifyQueue(
+        actionType: InsertActionType,
+        sourcePaths: List<String>,
+        spotifyTracks: List<SpotifyTrack>,
+    ) {
+        val uris = spotifyTracks.map { it.uri }
+        pendingSpotifyUris += uris
+        try {
+            val spotifyTrackDao = db.spotifyTrackDao()
+            spotifyTracks.forEach {
+                spotifyTrackDao.upsert(it.copy(createdAt = System.currentTimeMillis()))
+            }
+            submitSourcePaths(actionType, sourcePaths)
+        } finally {
+            pendingSpotifyUris -= uris.toSet()
+        }
+    }
+
+    private suspend fun submitSourcePaths(
+        actionType: InsertActionType,
+        sourcePaths: List<String>,
+        positionToKeep: Int? = null,
+    ) {
+        aliveSubmitQueueTask = true
+
+        val newQueue = sourcePaths.mapNotNull { sourcePath ->
+            if (aliveSubmitQueueTask.not()) {
+                return
+            }
+            sourcePath.getMediaItemOrNull(this)
+        }
+        submitMediaItems(actionType, newQueue, positionToKeep)
+    }
+
+    private fun submitMediaItems(
+        actionType: InsertActionType,
+        newQueue: List<MediaItem>,
+        positionToKeep: Int?,
+    ) {
+        when (actionType) {
             InsertActionType.OVERRIDE,
             InsertActionType.SHUFFLE_OVERRIDE,
             InsertActionType.SHUFFLE_SIMPLE_OVERRIDE -> {
@@ -1190,7 +1297,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
             else -> Unit
         }
-        when (queueInfo.metadata.actionType) {
+        when (actionType) {
             InsertActionType.NEXT,
             InsertActionType.OVERRIDE,
             InsertActionType.SHUFFLE_NEXT,
@@ -1265,7 +1372,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
                     ShuffleActionType.SHUFFLE_ALBUM_ORIENTED -> {
                         currentQueue.toDomainTracks(db)
-                            .groupBy { it.album.id }
+                            .groupBy { if (it.isSpotify) it.album.title else it.album.id }
                             .map { it.value }
                             .shuffled()
                             .flatten()
@@ -1274,7 +1381,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
                     ShuffleActionType.SHUFFLE_ARTIST_ORIENTED -> {
                         currentQueue.toDomainTracks(db)
-                            .groupBy { it.artist.id }
+                            .groupBy { if (it.isSpotify) it.artist.title else it.artist.id }
                             .map { it.value }
                             .shuffled()
                             .flatten()
@@ -1308,16 +1415,10 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
             val targetIndex = newSourcePaths.indexOfFirst {
                 it == player.currentSourcePaths.getOrNull(currentIndex)
             }.coerceAtLeast(0)
-            submitQueue(
-                queueInfo = QueueInfo(
-                    QueueMetadata(
-                        InsertActionType.OVERRIDE,
-                        OrientedClassType.TRACK
-                    ),
-                    db.trackDao().getAllBySourcePaths(newSourcePaths.removedAt(targetIndex))
-                ),
+            submitSourcePaths(
+                actionType = InsertActionType.OVERRIDE,
+                sourcePaths = newSourcePaths.removedAt(targetIndex),
                 positionToKeep = currentIndex,
-                needSorted = false
             )
             moveQueuePosition(currentIndex, targetIndex)
         }
@@ -1351,28 +1452,35 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
             if (lyricRequestedSourcePaths.add(sourcePath).not()) return@forEach
 
             lifecycleScope.launch {
-                val track = db.trackDao().getBySourcePath(sourcePath)
-                if (track == null) {
+                val request = lyricRequestOf(sourcePath)
+                if (request == null) {
                     lyricRequestedSourcePaths.remove(sourcePath)
                     return@launch
                 }
 
-                val trackId = track.track.id
-                if (db.lyricDao().getLyricIdByTrackId(trackId) != null) return@launch
+                if (storedLyricIdOf(request) != null) return@launch
 
-                runCatching { lrcLibApiClient.getLyricLines(track) }
+                runCatching {
+                    lrcLibApiClient.getLyricLines(
+                        title = request.title,
+                        artistName = request.artistName,
+                        albumName = request.albumName,
+                        durationMillis = request.durationMillis,
+                    )
+                }
                     .onFailure {
                         Timber.e(it)
                         lyricRequestedSourcePaths.remove(sourcePath)
                     }
                     .getOrNull()
                     ?.let { lines ->
-                        if (db.lyricDao().getLyricIdByTrackId(trackId) != null) return@let
+                        if (storedLyricIdOf(request) != null) return@let
 
                         db.lyricDao().upsertLyric(
                             Lyric(
                                 id = 0,
-                                trackId = trackId,
+                                trackId = request.trackId,
+                                spotifyUri = request.spotifyUri,
                                 lines = lines,
                                 source = LyricSource.LRCLIB
                             )
@@ -1382,8 +1490,47 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         }
     }
 
+    private suspend fun lyricRequestOf(sourcePath: String): LyricRequest? =
+        if (sourcePath.isSpotifySourcePath) {
+            db.spotifyTrackDao().get(sourcePath)?.let {
+                LyricRequest(
+                    title = it.title,
+                    artistName = it.artistName,
+                    albumName = it.albumName,
+                    durationMillis = it.duration,
+                    trackId = SPOTIFY_LYRIC_TRACK_ID,
+                    spotifyUri = sourcePath,
+                )
+            }
+        } else {
+            db.trackDao().getBySourcePath(sourcePath)?.let {
+                LyricRequest(
+                    title = it.track.title,
+                    artistName = it.artist.title,
+                    albumName = it.album.title,
+                    durationMillis = it.track.duration,
+                    trackId = it.track.id,
+                    spotifyUri = null,
+                )
+            }
+        }
+
+    private suspend fun storedLyricIdOf(request: LyricRequest): Long? =
+        if (request.spotifyUri == null) db.lyricDao().getLyricIdByTrackId(request.trackId)
+        else db.lyricDao().getLyricIdBySpotifyUri(request.spotifyUri)
+
+    private data class LyricRequest(
+        val title: String,
+        val artistName: String,
+        val albumName: String,
+        val durationMillis: Long,
+        val trackId: Long,
+        val spotifyUri: String?,
+    )
+
     private fun increasePlaybackCount() = lifecycleScope.launch {
         player.currentMediaItem?.toUiTrack(db)
+            ?.takeIf { it.isSpotify.not() }
             ?.let { track ->
                 db.trackDao().increasePlaybackCount(track.id)
                 db.albumDao().increasePlaybackCount(track.album.id)

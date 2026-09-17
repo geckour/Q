@@ -23,6 +23,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.toArgb
+import androidx.core.net.toUri
 import androidx.lifecycle.flowWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.util.UnstableApi
@@ -40,6 +41,7 @@ import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.domain.model.LayoutType
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
+import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.service.DropboxMediaSyncJobService
 import com.geckour.q.ui.compose.ColorBackground
@@ -50,11 +52,17 @@ import com.geckour.q.ui.main.dialog.DialogEvent
 import com.geckour.q.ui.main.dialog.DialogState
 import com.geckour.q.ui.widget.player.PlayerSheetWidgetProvider
 import com.geckour.q.util.ShuffleActionType
+import com.geckour.q.util.authorizeSpotifyAppRemote
+import com.geckour.q.util.createSpotifyAuthorizationRequest
 import com.geckour.q.util.dbxRequestConfig
+import com.geckour.q.util.isSpotifyInstalled
+import com.geckour.q.util.spotifyWebUrl
 import com.geckour.q.util.getExtension
 import com.geckour.q.util.parseLrc
 import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
+import com.spotify.sdk.android.auth.AuthorizationClient
+import com.spotify.sdk.android.auth.AuthorizationResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.SharingStarted
@@ -66,6 +74,7 @@ import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
 import java.nio.charset.Charset
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.milliseconds
 
 @UnstableApi
@@ -88,6 +97,11 @@ class MainActivity : ComponentActivity() {
         }
 
         override fun onTapBar() = viewModel.requestScrollToTop()
+
+        override fun onTapTopBarTitle() = viewModel.onTapTopBarTitle()
+
+        override suspend fun onSearchSpotify(query: String): List<SearchItem> =
+            viewModel.searchSpotifyItems(query)
 
         override fun onToggleTheme() {
             viewModel.toggleNightMode()
@@ -253,6 +267,29 @@ class MainActivity : ComponentActivity() {
                     delay(2000.milliseconds)
                     viewModel.emitSnackbarMessage(null)
                 }
+            }
+        }
+
+    private val spotifyAuth =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val response = AuthorizationClient.getResponse(result.resultCode, result.data)
+            when (response.type) {
+                AuthorizationResponse.Type.TOKEN -> onSpotifyAuthorized(response)
+
+                AuthorizationResponse.Type.ERROR -> {
+                    lifecycleScope.launch {
+                        viewModel.emitSnackbarMessage(
+                            getString(
+                                R.string.spotify_message_auth_failure,
+                                response.error,
+                            )
+                        )
+                        delay(2000.milliseconds)
+                        viewModel.emitSnackbarMessage(null)
+                    }
+                }
+
+                else -> Unit
             }
         }
 
@@ -530,6 +567,47 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
+            DialogEvent.StartSpotifyAuth -> {
+                spotifyAuth.launch(
+                    AuthorizationClient.createLoginActivityIntent(
+                        this,
+                        createSpotifyAuthorizationRequest(),
+                    )
+                )
+                viewModel.dismissDialog()
+            }
+
+            DialogEvent.SignOutSpotify -> viewModel.signOutSpotify()
+
+            is DialogEvent.ChangeSpotifySource -> viewModel.changeSpotifySource(event.source)
+
+            DialogEvent.LoadMoreSpotifyItems -> viewModel.loadMoreSpotifyItems()
+
+            is DialogEvent.OpenSpotifyContainer -> {
+                viewModel.openSpotifyContainer(event.container)
+            }
+
+            DialogEvent.CloseSpotifyContainer -> viewModel.closeSpotifyContainer()
+
+
+            is DialogEvent.ShowSpotifyTrackOption -> {
+                viewModel.showDialog(DialogState.SpotifyTrackOption(event.track))
+            }
+
+            is DialogEvent.ShowSpotifyContainerOption -> {
+                viewModel.showDialog(DialogState.SpotifyContainerOption(event.container))
+            }
+
+            is DialogEvent.OpenInSpotify -> openInSpotify(event.uri)
+
+            is DialogEvent.AddSpotifyContainer -> {
+                viewModel.addSpotifyContainer(event.container, event.actionType)
+            }
+
+            is DialogEvent.AddSpotifyTrack -> {
+                viewModel.addSpotifyTrack(event.track, event.actionType)
+            }
+
             is DialogEvent.StartDownload -> viewModel.downloadDropboxMedia(event.targets)
 
             is DialogEvent.StartInvalidateDownloaded -> viewModel.purgeDownloaded(event.targets)
@@ -581,6 +659,40 @@ class MainActivity : ComponentActivity() {
                 )
                 delay(2000.milliseconds)
                 viewModel.emitSnackbarMessage(null)
+            }
+        }
+    }
+
+    private fun openInSpotify(uri: String) {
+        if (isSpotifyInstalled(this).not()) {
+            AuthorizationClient.openDownloadSpotifyActivity(this)
+            return
+        }
+
+        runCatching { startActivity(Intent(Intent.ACTION_VIEW, uri.toUri())) }
+            .onFailure {
+                runCatching {
+                    startActivity(Intent(Intent.ACTION_VIEW, uri.spotifyWebUrl.toUri()))
+                }.onFailure { throwable -> Timber.e(throwable) }
+            }
+    }
+
+    private fun onSpotifyAuthorized(response: AuthorizationResponse) {
+        val accessToken = response.accessToken ?: return
+
+        lifecycleScope.launch {
+            viewModel.storeSpotifyCredential(
+                accessToken = accessToken,
+                refreshToken = response.refreshToken,
+                expiresInSeconds = response.expiresIn,
+            )
+            try {
+                authorizeSpotifyAppRemote(this@MainActivity)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                Timber.e(t)
+                viewModel.showSpotifyError(t)
             }
         }
     }

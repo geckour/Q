@@ -4,6 +4,8 @@ import com.dropbox.core.v2.files.FileMetadata
 import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.SpotifyTrack
+import com.geckour.q.domain.model.SpotifyContainer
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.domain.model.UiTrack
@@ -32,6 +34,12 @@ sealed interface DialogState {
         val itemList: Triple<String, ImmutableList<FolderMetadata>, ImmutableList<FileMetadata>> =
             Triple("", persistentListOf(), persistentListOf()),
     ) : DialogState
+
+    data class SpotifyTrackOption(val track: SpotifyTrack) : DialogState
+
+    data class SpotifyContainerOption(val container: SpotifyContainer) : DialogState
+
+    data object ConfirmSpotifySignOut : DialogState
 
     data class ConfirmDownload(val targets: ImmutableList<String>) : DialogState
 

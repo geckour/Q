@@ -67,6 +67,7 @@
     <string name="nav_setting">Settings</string>
     <string name="nav_equalizer">Equalizer</string>
     <string name="nav_dropbox_sync">Sync with Dropbox</string>
+    <string name="nav_spotify">Spotify</string>
     <string name="nav_sync">Sync library</string>
     <string name="nav_pay">Donate</string>
     <string name="nav_fortune">Fortune</string>
@@ -122,6 +123,7 @@
     <string name="dialog_ok">OK</string>
     <string name="dialog_ng">Cancel</string>
     <string name="dialog_prev">Prev</string>
+    <string name="dialog_close">Close</string>
 
     <string name="dialog_title_choose_app_theme">Select theme</string>
     <string name="dialog_desc_choose_app_theme">Select app color theme</string>
@@ -173,6 +175,38 @@
     <!-- Snackbar -->
     <string name="snackbar_message_dropbox_sync_failure">Failed to sync with Dropbox: %s</string>
     <string name="snackbar_message_save_queue_complete">Completed saving queue</string>
+
+    <!-- Spotify -->
+    <string name="spotify_title" translatable="false">Spotify</string>
+    <string name="spotify_title_with_section" translatable="false">Spotify - %s</string>
+    <string name="spotify_attribution" translatable="false">Spotify</string>
+    <string name="spotify_tab_saved">Liked Songs</string>
+    <string name="spotify_tab_playlists">Playlists</string>
+    <string name="spotify_item_album">Album</string>
+    <string name="spotify_item_artist">Artist</string>
+    <string name="spotify_item_playlist">Playlist</string>
+    <string name="spotify_item_track_count">%d tracks</string>
+    <string name="spotify_menu_open" translatable="false">OPEN SPOTIFY</string>
+    <string name="spotify_menu_get_free" translatable="false">GET SPOTIFY FREE</string>
+    <string name="spotify_message_not_configured">Spotify client ID is not configured.\nSet SPOTIFY_CLIENT_ID in secret.properties and build the app again.</string>
+    <string name="spotify_message_auth">Link your Spotify account to add Spotify tracks to the queue.\nPlaying them requires the Spotify app and a Premium subscription.\nContinue?</string>
+    <string name="spotify_message_sign_out">Unlink your Spotify account?\nYou need to link it again to play Spotify tracks.</string>
+    <string name="spotify_message_empty">No tracks found</string>
+    <string name="spotify_message_added">Added \"%s\" to the queue</string>
+    <string name="spotify_message_menu_enabled">Spotify menu enabled</string>
+    <string name="spotify_message_auth_failure">Failed to link with Spotify: %s</string>
+    <string name="spotify_message_app_not_installed">The Spotify app is required to play Spotify tracks</string>
+    <string name="spotify_message_not_logged_in">Log in to the Spotify app</string>
+    <string name="spotify_message_not_authorized">Spotify has not allowed this app to control playback. Link with Spotify again from the drawer</string>
+    <string name="spotify_message_offline">The Spotify app is in offline mode</string>
+    <string name="spotify_message_auth_required">The link with Spotify has expired. Link again</string>
+    <string name="spotify_message_premium_required">Playing Spotify tracks requires a Spotify Premium subscription</string>
+    <string name="spotify_message_start_timeout">Spotify did not start playing the track</string>
+    <string name="spotify_message_playback_failure">Failed to play on Spotify: %s</string>
+    <string name="spotify_message_forbidden">Spotify refused the request (403). Check that this account is registered as a user of the app, and link with Spotify again if the required permissions changed</string>
+    <string name="spotify_message_rate_limited">Too many requests to Spotify. Try again later</string>
+    <string name="spotify_message_request_failure">Failed to load from Spotify (%d)</string>
+    <string name="spotify_message_network_failure">Could not connect to Spotify</string>
 
     <!-- Track -->
     <string name="track_item_artist_and_album" translatable="false">%1$s - %2$s</string>

@@ -12,5 +12,8 @@ data class SearchItem(
         TRACK,
         GENRE,
         LYRIC,
+        SPOTIFY_TRACK,
+        SPOTIFY_ALBUM,
+        SPOTIFY_ARTIST,
     }
 }

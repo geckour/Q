@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 data class Lyric(
     @PrimaryKey(autoGenerate = true) val id: Long,
     val trackId: Long,
+    val spotifyUri: String? = null,
     val lines: List<LyricLine>,
     @ColumnInfo(defaultValue = "LOCAL") val source: LyricSource = LyricSource.LOCAL
 )
