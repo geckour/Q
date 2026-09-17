@@ -75,7 +75,7 @@ internal suspend fun File.storeMediaInfo(
         ?: title)?.hiraganized
 
     val albumTitle = tag.getAll(FieldKey.ALBUM).lastOrNull { it.isNotBlank() }
-    val existingAlbum = albumTitle?.let { db.albumDao().findAllByTitle(it).firstOrNull() }
+    val existingAlbum = albumTitle?.let { db.albumDao().getAllByTitle(it).firstOrNull() }
     val albumTitleSort =
         (tag.getAll(FieldKey.ALBUM_SORT).lastOrNull { it.isNotBlank() }
             ?: existingAlbum?.album?.titleSort

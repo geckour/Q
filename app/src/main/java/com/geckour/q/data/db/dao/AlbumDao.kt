@@ -44,10 +44,6 @@ interface AlbumDao {
     suspend fun getAllByIds(ids: List<Long>): List<JoinedAlbum>
 
     @Transaction
-    @Query("select * from album where title like :title")
-    suspend fun findByTitle(title: String): JoinedAlbum?
-
-    @Transaction
     @Query("select * from album order by titleSort collate nocase")
     fun getAllAsPagingSource(): PagingSource<Int, JoinedAlbum>
 
@@ -62,6 +58,10 @@ interface AlbumDao {
     @Transaction
     @Query("select * from album where album.artistId = :artistId order by titleSort collate nocase")
     fun getAllByArtistIdAsPagingSource(artistId: Long): PagingSource<Int, JoinedAlbum>
+
+    @Transaction
+    @Query("select * from album where title = :title")
+    suspend fun getAllByTitle(title: String): List<JoinedAlbum>
 
     @Transaction
     @Query("select * from album where title = :title and artistId = :artistId")

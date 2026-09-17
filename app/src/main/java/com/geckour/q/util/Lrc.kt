@@ -8,8 +8,16 @@ fun File.parseLrc(): List<LyricLine> =
     if (extension != "lrc") emptyList()
     else readText().parseLrc()
 
-fun String.parseLrc(): List<LyricLine> =
-    lines()
+fun String.parseLrc(): List<LyricLine> {
+    val offset = lines().firstNotNullOfOrNull { line ->
+        Regex("^\\[offset:\\s*([+-]?\\d+)\\s*]$", RegexOption.IGNORE_CASE)
+            .find(line.trim())
+            ?.groupValues
+            ?.get(1)
+            ?.toLongOrNull()
+    } ?: 0
+
+    return lines()
         .map { line ->
             if (line.matches(Regex("^(\\[\\d+?:\\d+?(\\.\\d+?)?])+.*$"))
                     .not()
@@ -19,14 +27,14 @@ fun String.parseLrc(): List<LyricLine> =
                 ?.groupValues
                 ?.getOrNull(1)
                 ?.let { timingStrings ->
-                    Regex("\\[\\d+?:\\d+?\\.\\d+?]").findAll(timingStrings)
+                    Regex("\\[\\d+?:\\d+?(\\.\\d+?)?]").findAll(timingStrings)
                         .map { timingString ->
                             timingString.value
                                 .split("[", ":", ".", "]")
                                 .let {
                                     (it[1].toLongOrNull() ?: 0) * 60000 +
                                             (it[2].toLongOrNull() ?: 0) * 1000 +
-                                            (it[3].toLongOrNull() ?: 0) * 10
+                                            (it[3].padEnd(3, '0').take(3).toLongOrNull() ?: 0)
                                 }
                         }
                 }
@@ -37,7 +45,12 @@ fun String.parseLrc(): List<LyricLine> =
                 .trim()
             timings.map { LyricLine(it, sentence) }
         }.flatten()
+        .map {
+            if (it.timing == 0L) it
+            else it.copy(timing = (it.timing - offset).coerceAtLeast(1))
+        }
         .sortedBy { it.timing }
+}
 
 fun Lyric.toLrcString(): String = lines.joinToString("\n") {
     "[%s.%02d]%s".format(it.timing.getTimeString(), it.timing % 1000 / 10, it.sentence)
