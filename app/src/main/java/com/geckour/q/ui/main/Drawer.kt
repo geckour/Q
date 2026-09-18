@@ -8,13 +8,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
@@ -26,7 +36,6 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.Queue
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.HorizontalDivider
@@ -57,6 +66,7 @@ import androidx.navigation.compose.rememberNavController
 import com.geckour.q.R
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.Nav
+import com.geckour.q.ui.component.SpotifyLogo
 import com.geckour.q.ui.compose.ColorShadowTextDrawerHeader
 import com.geckour.q.ui.compose.ColorStrong
 import com.geckour.q.ui.compose.QTheme
@@ -160,6 +170,27 @@ fun DrawerItem(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+fun SpotifyDrawerItem(
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
+            .background(
+                color = if (isSelected) QTheme.colors.colorBackgroundSelected
+                else QTheme.colors.colorBackground
+            )
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp)
+    ) {
+        SpotifyLogo(width = 88.dp)
+    }
+}
+
 @Composable
 fun DrawerSectionHeader(title: String) {
     Text(
@@ -178,155 +209,184 @@ fun Drawer(
     equalizerParams: EqualizerParams?,
     onSelectNav: (nav: Nav?) -> Unit,
     onShowDropboxDialog: () -> Unit,
+    onConfirmSpotifySignOut: () -> Unit,
+    isSpotifyUnlocked: Boolean,
     onRetrieveMedia: (onlyAdded: Boolean) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
-    LazyColumn(
+    Column(
         modifier = Modifier
             .background(color = QTheme.colors.colorBackground)
+            .windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Start))
             .fillMaxSize()
     ) {
-        item {
-            BackHandler(drawerState.isOpen) {
-                coroutineScope.launch { drawerState.close() }
-            }
-        }
-
-        item {
-            DrawerHeader(
-                openQzi = {
-                    navController.navigate("qzi")
-                    coroutineScope.launch { drawerState.close() }
-                }
-            )
-        }
-        item {
-            DrawerSectionHeader(title = stringResource(id = R.string.nav_category_library))
-        }
-        item {
-            DrawerItem(
-                imageVector = Icons.Default.Face,
-                title = stringResource(id = R.string.nav_artist),
-                isSelected = selectedNav == Nav.ARTIST,
-                onClick = {
-                    navController.navigate("artists")
-                    onSelectNav(Nav.ARTIST)
-                    coroutineScope.launch { drawerState.close() }
-                }
-            )
-        }
-        item {
-            DrawerItem(
-                imageVector = Icons.Default.Album,
-                title = stringResource(id = R.string.nav_album),
-                isSelected = selectedNav == Nav.ALBUM,
-                onClick = {
-                    navController.navigate("albums")
-                    onSelectNav(Nav.ALBUM)
-                    coroutineScope.launch { drawerState.close() }
-                }
-            )
-        }
-        item {
-            DrawerItem(
-                imageVector = Icons.Default.MusicNote,
-                title = stringResource(id = R.string.nav_track),
-                isSelected = selectedNav == Nav.TRACK,
-                onClick = {
-                    navController.navigate("tracks")
-                    onSelectNav(Nav.TRACK)
-                    coroutineScope.launch { drawerState.close() }
-                }
-            )
-        }
-        item {
-            DrawerItem(
-                imageVector = Icons.Default.Category,
-                title = stringResource(id = R.string.nav_genre),
-                isSelected = selectedNav == Nav.GENRE,
-                onClick = {
-                    navController.navigate("genres")
-                    onSelectNav(Nav.GENRE)
-                    coroutineScope.launch { drawerState.close() }
-                }
-            )
-        }
-        item {
-            HorizontalDivider(color = QTheme.colors.colorDivider)
-        }
-        item {
-            DrawerSectionHeader(title = stringResource(id = R.string.nav_category_others))
-        }
-        item {
-            DrawerItem(
-                imageVector = Icons.Default.Queue,
-                title = stringResource(id = R.string.nav_saved_queue),
-                isSelected = selectedNav == Nav.SAVED_QUEUE,
-                onClick = {
-                    navController.navigate("saved_queue")
-                    onSelectNav(Nav.SAVED_QUEUE)
-                    coroutineScope.launch { drawerState.close() }
-                }
-            )
-        }
-        item {
-            DrawerItem(
-                imageVector = Icons.Default.History,
-                title = stringResource(id = R.string.nav_history),
-                isSelected = selectedNav == Nav.HISTORY,
-                onClick = {
-                    navController.navigate("history")
-                    onSelectNav(Nav.HISTORY)
-                    coroutineScope.launch { drawerState.close() }
-                }
-            )
-        }
-        item {
-            DrawerItem(
-                iconResId = R.drawable.ic_dropbox,
-                title = stringResource(id = R.string.nav_dropbox_sync),
-                isSelected = selectedNav == Nav.DROPBOX_SYNC,
-                onClick = {
-                    onShowDropboxDialog()
-                    coroutineScope.launch { drawerState.close() }
-                }
-            )
-        }
-        item {
-            DrawerItem(
-                imageVector = Icons.Default.Sync,
-                title = stringResource(id = R.string.nav_sync),
-                isSelected = selectedNav == Nav.SYNC,
-                onClick = {
-                    onRetrieveMedia(false)
-                    coroutineScope.launch { drawerState.close() }
-                }
-            )
-        }
-        item {
-            DrawerItem(
-                imageVector = Icons.Default.Highlight,
-                title = stringResource(id = R.string.nav_pay),
-                isSelected = selectedNav == Nav.PAY,
-                onClick = {
-                    navController.navigate("pay")
-                    onSelectNav(Nav.PAY)
-                    coroutineScope.launch { drawerState.close() }
-                }
-            )
-        }
-        if (equalizerParams != null) {
+        Spacer(
+            modifier = Modifier
+                .background(color = ColorStrong)
+                .fillMaxWidth()
+                .windowInsetsTopHeight(WindowInsets.statusBars)
+        )
+        LazyColumn(
+            contentPadding = WindowInsets.navigationBars.asPaddingValues()
+        ) {
             item {
-                DrawerItem(
-                    imageVector = Icons.Default.Equalizer,
-                    title = stringResource(id = R.string.nav_equalizer),
-                    isSelected = selectedNav == Nav.EQUALIZER,
-                    onClick = {
-                        navController.navigate("equalizer")
-                        onSelectNav(Nav.EQUALIZER)
+                BackHandler(drawerState.isOpen) {
+                    coroutineScope.launch { drawerState.close() }
+                }
+            }
+
+            item {
+                DrawerHeader(
+                    openQzi = {
+                        navController.navigate("qzi")
                         coroutineScope.launch { drawerState.close() }
                     }
                 )
+            }
+            item {
+                DrawerSectionHeader(title = stringResource(id = R.string.nav_category_library))
+            }
+            item {
+                DrawerItem(
+                    imageVector = Icons.Default.Face,
+                    title = stringResource(id = R.string.nav_artist),
+                    isSelected = selectedNav == Nav.ARTIST,
+                    onClick = {
+                        navController.navigate("artists")
+                        onSelectNav(Nav.ARTIST)
+                        coroutineScope.launch { drawerState.close() }
+                    }
+                )
+            }
+            item {
+                DrawerItem(
+                    imageVector = Icons.Default.Album,
+                    title = stringResource(id = R.string.nav_album),
+                    isSelected = selectedNav == Nav.ALBUM,
+                    onClick = {
+                        navController.navigate("albums")
+                        onSelectNav(Nav.ALBUM)
+                        coroutineScope.launch { drawerState.close() }
+                    }
+                )
+            }
+            item {
+                DrawerItem(
+                    imageVector = Icons.Default.MusicNote,
+                    title = stringResource(id = R.string.nav_track),
+                    isSelected = selectedNav == Nav.TRACK,
+                    onClick = {
+                        navController.navigate("tracks")
+                        onSelectNav(Nav.TRACK)
+                        coroutineScope.launch { drawerState.close() }
+                    }
+                )
+            }
+            item {
+                DrawerItem(
+                    imageVector = Icons.Default.Category,
+                    title = stringResource(id = R.string.nav_genre),
+                    isSelected = selectedNav == Nav.GENRE,
+                    onClick = {
+                        navController.navigate("genres")
+                        onSelectNav(Nav.GENRE)
+                        coroutineScope.launch { drawerState.close() }
+                    }
+                )
+            }
+            if (isSpotifyUnlocked) {
+                item {
+                    SpotifyDrawerItem(
+                        isSelected = selectedNav == Nav.SPOTIFY,
+                        onClick = {
+                            navController.navigate("spotify")
+                            onSelectNav(Nav.SPOTIFY)
+                            coroutineScope.launch { drawerState.close() }
+                        },
+                        onLongClick = {
+                            onConfirmSpotifySignOut()
+                            coroutineScope.launch { drawerState.close() }
+                        }
+                    )
+                }
+            }
+            item {
+                HorizontalDivider(color = QTheme.colors.colorDivider)
+            }
+            item {
+                DrawerSectionHeader(title = stringResource(id = R.string.nav_category_others))
+            }
+            item {
+                DrawerItem(
+                    imageVector = Icons.Default.Queue,
+                    title = stringResource(id = R.string.nav_saved_queue),
+                    isSelected = selectedNav == Nav.SAVED_QUEUE,
+                    onClick = {
+                        navController.navigate("saved_queue")
+                        onSelectNav(Nav.SAVED_QUEUE)
+                        coroutineScope.launch { drawerState.close() }
+                    }
+                )
+            }
+            item {
+                DrawerItem(
+                    imageVector = Icons.Default.History,
+                    title = stringResource(id = R.string.nav_history),
+                    isSelected = selectedNav == Nav.HISTORY,
+                    onClick = {
+                        navController.navigate("history")
+                        onSelectNav(Nav.HISTORY)
+                        coroutineScope.launch { drawerState.close() }
+                    }
+                )
+            }
+            item {
+                DrawerItem(
+                    iconResId = R.drawable.ic_dropbox,
+                    title = stringResource(id = R.string.nav_dropbox_sync),
+                    isSelected = selectedNav == Nav.DROPBOX_SYNC,
+                    onClick = {
+                        onShowDropboxDialog()
+                        coroutineScope.launch { drawerState.close() }
+                    }
+                )
+            }
+            item {
+                DrawerItem(
+                    imageVector = Icons.Default.Sync,
+                    title = stringResource(id = R.string.nav_sync),
+                    isSelected = selectedNav == Nav.SYNC,
+                    onClick = {
+                        onRetrieveMedia(false)
+                        coroutineScope.launch { drawerState.close() }
+                    }
+                )
+            }
+            item {
+                DrawerItem(
+                    imageVector = Icons.Default.Highlight,
+                    title = stringResource(id = R.string.nav_pay),
+                    isSelected = selectedNav == Nav.PAY,
+                    onClick = {
+                        navController.navigate("pay")
+                        onSelectNav(Nav.PAY)
+                        coroutineScope.launch { drawerState.close() }
+                    }
+                )
+            }
+            if (equalizerParams != null) {
+                item {
+                    DrawerItem(
+                        imageVector = Icons.Default.Equalizer,
+                        title = stringResource(id = R.string.nav_equalizer),
+                        isSelected = selectedNav == Nav.EQUALIZER,
+                        onClick = {
+                            navController.navigate("equalizer")
+                            onSelectNav(Nav.EQUALIZER)
+                            coroutineScope.launch { drawerState.close() }
+                        }
+                    )
+                }
             }
         }
     }
@@ -342,6 +402,8 @@ fun DrawerPreview() {
         equalizerParams = null,
         onSelectNav = {},
         onShowDropboxDialog = {},
+        onConfirmSpotifySignOut = {},
+        isSpotifyUnlocked = true,
         onRetrieveMedia = {},
     )
 }

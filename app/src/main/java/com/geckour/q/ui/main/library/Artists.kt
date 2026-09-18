@@ -19,7 +19,7 @@ import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.DownloadForOffline
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.StarBorder
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
@@ -80,6 +80,7 @@ fun Artists(
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onSearchItemClicked: (item: SearchItem) -> Unit,
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
+    searchSpotify: suspend (query: String) -> List<SearchItem>,
 ) {
     val coroutineScope = rememberCoroutineScope()
     val db = DB.getInstance(LocalContext.current)
@@ -119,7 +120,8 @@ fun Artists(
                 result = result,
                 keyboardController = keyboardController,
                 onSearchItemClicked = onSearchItemClicked,
-                onSearchItemLongClicked = onSearchItemLongClicked
+                onSearchItemLongClicked = onSearchItemLongClicked,
+                searchSpotify = searchSpotify,
             )
         }
         item {
@@ -225,10 +227,11 @@ fun Artists(
         }
         if (lazyPagingItems.loadState.append == LoadState.Loading) {
             item {
-                CircularProgressIndicator(
+                CircularWavyProgressIndicator(
                     modifier = Modifier
                         .fillMaxWidth()
                         .wrapContentWidth(Alignment.CenterHorizontally)
+                        .size(40.dp)
                 )
             }
         }

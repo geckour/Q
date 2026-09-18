@@ -12,6 +12,7 @@ android {
 
     def keyNameDropBoxAppKey = "DROPBOX_APP_KEY"
     def keyNameDropBoxAppSecret = "DROPBOX_APP_SECRET"
+    def keyNameSpotifyClientId = "SPOTIFY_CLIENT_ID"
 
     buildFeatures.buildConfig true
 
@@ -20,19 +21,16 @@ android {
         applicationId "com.geckour.q"
         minSdk 34
         targetSdk 37
-        versionCode 49
-        versionName "3.0.1"
+        versionCode 50
+        versionName "3.1.0"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
 
         buildConfigField "String", keyNameDropBoxAppKey, getQuotedKey(keyNameDropBoxAppKey, project.rootDir)
         buildConfigField "String", keyNameDropBoxAppSecret, getQuotedKey(keyNameDropBoxAppSecret, project.rootDir)
-
-        def filesAuthorityValue = applicationId + ".files"
-        buildConfigField "String", "FILES_AUTHORITY", "\"${filesAuthorityValue}\""
+        buildConfigField "String", keyNameSpotifyClientId, quoted(getKey(keyNameSpotifyClientId, project.rootDir) ?: "")
 
         manifestPlaceholders = [
-                dropboxAppKey : "db-" + getKey(keyNameDropBoxAppKey, project.rootDir),
-                filesAuthority: filesAuthorityValue
+                dropboxAppKey: "db-" + getKey(keyNameDropBoxAppKey, project.rootDir)
         ]
 
         externalNativeBuild {
@@ -174,7 +172,7 @@ dependencies {
 
     // Compose
     implementation "androidx.compose.ui:ui:1.12.0"
-    implementation "androidx.compose.material3:material3:1.4.0"
+    implementation "androidx.compose.material3:material3:1.5.0-alpha22"
     implementation "androidx.compose.material:material-icons-extended:1.7.8"
     debugImplementation "androidx.compose.ui:ui-tooling:1.12.0"
     implementation "androidx.compose.ui:ui-tooling-preview:1.12.0"
@@ -196,6 +194,11 @@ dependencies {
     // Dropbox
     implementation 'com.dropbox.core:dropbox-core-sdk:8.0.2'
     implementation 'com.dropbox.core:dropbox-android-sdk:8.0.2'
+
+    // Spotify
+    implementation "com.spotify.android:auth:5.0.0"
+    implementation files('libs/spotify-app-remote-release-0.8.0.aar')
+    implementation "com.google.code.gson:gson:2.13.1"
 
     // Audio Metadata
     implementation "net.jthink:jaudiotagger:3.0.1"

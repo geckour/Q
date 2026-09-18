@@ -33,6 +33,7 @@ import com.geckour.q.ui.component.QSnackbar
 import com.geckour.q.ui.main.extra.Equalizer
 import com.geckour.q.ui.main.extra.Pay
 import com.geckour.q.ui.main.extra.Qzi
+import com.geckour.q.ui.main.dialog.DialogEvent
 import com.geckour.q.util.decodeUrlSafe
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
@@ -70,9 +71,14 @@ fun Library(
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onSearchItemClicked: (item: SearchItem) -> Unit,
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
+    searchSpotify: suspend (query: String) -> List<SearchItem>,
     onSelectSavedQueueForOption: (uiSavedQueue: UiSavedQueue?) -> Unit,
     onSelectSavedQueueForModify: (uiSavedQueue: UiSavedQueue?) -> Unit,
     onDeleteSavedQueue: (savedQueueId: Long) -> Unit,
+    spotifyBrowse: SpotifyBrowseState,
+    isSpotifyConfigured: Boolean,
+    hasSpotifyCredential: Boolean,
+    onDialogEvent: (event: DialogEvent) -> Unit,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     // Derived from [query]: QSearchBar re-runs the search whenever the query changes, so it is
@@ -121,6 +127,7 @@ fun Library(
                     onToggleFavorite = onToggleFavorite,
                     onSearchItemClicked = onSearchItemClicked,
                     onSearchItemLongClicked = onSearchItemLongClicked,
+                    searchSpotify = searchSpotify,
                 )
             }
             composable(
@@ -169,6 +176,7 @@ fun Library(
                     onToggleFavorite = onToggleFavorite,
                     onSearchItemClicked = onSearchItemClicked,
                     onSearchItemLongClicked = onSearchItemLongClicked,
+                    searchSpotify = searchSpotify,
                 )
             }
             composable(
@@ -221,6 +229,7 @@ fun Library(
                     onToggleFavorite = onToggleFavorite,
                     onSearchItemClicked = onSearchItemClicked,
                     onSearchItemLongClicked = onSearchItemLongClicked,
+                    searchSpotify = searchSpotify,
                 )
             }
             composable("genres") { backStackEntry ->
@@ -247,6 +256,7 @@ fun Library(
                     onScrollPositionUpdated = scrollPosition::update,
                     onSearchItemClicked = onSearchItemClicked,
                     onSearchItemLongClicked = onSearchItemLongClicked,
+                    searchSpotify = searchSpotify,
                 )
             }
             composable("saved_queue") { backStackEntry ->
@@ -291,6 +301,36 @@ fun Library(
                     scrollToTop = scrollToTop,
                     onScrollPositionUpdated = scrollPosition::update,
                 )
+            }
+            composable("spotify") {
+                BackHandler(enabled = onBackHandle != null) {
+                    onBackHandle?.invoke()
+                }
+                val topBarTitle = spotifyTopBarTitle(spotifyBrowse)
+                val optionContainer = spotifyOptionTarget(spotifyBrowse)
+                LaunchedEffect(navController.currentDestination, topBarTitle, optionContainer) {
+                    onSelectNav(Nav.SPOTIFY)
+                    onChangeTopBarTitle(topBarTitle)
+                    onSetOptionMediaItem(optionContainer)
+                }
+                Column(modifier = Modifier.fillMaxSize()) {
+                    QSearchBar(
+                        isSearchActive = isSearchActive,
+                        query = query,
+                        result = result,
+                        keyboardController = keyboardController,
+                        onSearchItemClicked = onSearchItemClicked,
+                        onSearchItemLongClicked = onSearchItemLongClicked,
+                        searchSpotify = searchSpotify,
+                    )
+                    Spotify(
+                        browse = spotifyBrowse,
+                        isConfigured = isSpotifyConfigured,
+                        hasCredential = hasSpotifyCredential,
+                        endItemMargin = endItemMargin,
+                        onDialogEvent = onDialogEvent,
+                    )
+                }
             }
             composable("qzi") {
                 BackHandler(enabled = onBackHandle != null) {

@@ -25,6 +25,7 @@ import com.geckour.q.data.db.dao.ArtistDao
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.JoinedTrack
+import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.domain.model.UiTrack
 import kotlinx.coroutines.Dispatchers
@@ -47,6 +48,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.TimeUnit
+import kotlin.math.abs
 import kotlin.random.Random
 
 
@@ -152,9 +154,67 @@ fun JoinedTrack.toUiTrack(
     )
 }
 
+fun SpotifyTrack.toUiTrack(nowPlaying: Boolean = false): UiTrack {
+    val (year, month, day) = releaseDate.releaseDates
+    val album = Album(
+        id = 0,
+        artistId = 0,
+        title = albumName,
+        titleSort = albumName,
+        artworkUriString = artworkUrl,
+        hasAlbumArtist = albumArtistName != null,
+        playbackCount = 0,
+        totalDuration = 0,
+    )
+    return UiTrack(
+        key = "${random.nextLong()}-$uri",
+        id = 0,
+        mediaId = -1,
+        codec = "Spotify",
+        bitrate = 0,
+        sampleRate = 0f,
+        album = album,
+        title = title,
+        titleSort = title,
+        artist = spotifyArtist(artistName),
+        albumArtist = albumArtistName?.let { spotifyArtist(it) },
+        composer = null,
+        composerSort = null,
+        thumbUriString = artworkUrl,
+        duration = duration,
+        trackNum = trackNum,
+        trackTotal = trackTotal,
+        discNum = discNum,
+        discTotal = null,
+        releaseYear = year,
+        releaseMonth = month,
+        releaseDay = day,
+        genreName = null,
+        sourcePath = uri,
+        dropboxPath = null,
+        dropboxExpiredAt = null,
+        artworkUriString = artworkUrl,
+        ignored = false,
+        nowPlaying = nowPlaying,
+    )
+}
+
+private fun SpotifyTrack.spotifyArtist(name: String): Artist =
+    Artist(
+        id = 0,
+        title = name,
+        titleSort = name,
+        playbackCount = 0,
+        totalDuration = 0,
+        artworkUriString = artworkUrl,
+    )
+
 val JoinedTrack.dates: Triple<Int?, Int?, Int?>
+    get() = track.releaseDate.releaseDates
+
+private val String?.releaseDates: Triple<Int?, Int?, Int?>
     get() {
-        val releaseDateString = track.releaseDate ?: return Triple(null, null, null)
+        val releaseDateString = this ?: return Triple(null, null, null)
 
         runCatching {
             val calendar = Calendar.getInstance().apply {
@@ -244,11 +304,13 @@ suspend fun List<String?>.getThumb(context: Context): Bitmap? {
 }
 
 suspend fun String.getMediaItem(context: Context): MediaItem =
-    DB.getInstance(context)
-        .trackDao()
-        .getBySourcePath(this)
-        ?.getMediaItem()
-        ?: this.getMediaItem()
+    getMediaItemOrNull(context) ?: this.getMediaItem()
+
+suspend fun String.getMediaItemOrNull(context: Context): MediaItem? {
+    val db = DB.getInstance(context)
+    return if (isSpotifySourcePath) db.spotifyTrackDao().get(this)?.getMediaItem()
+    else db.trackDao().getBySourcePath(this)?.getMediaItem()
+}
 
 private fun String.getMediaItem(): MediaItem = MediaItem.Builder()
     .setMediaId(this)
@@ -261,6 +323,39 @@ fun JoinedTrack.getMediaItem(): MediaItem =
         .setUri(track.sourcePath.toUri())
         .setMediaMetadata(getMediaMetadata())
         .build()
+
+fun SpotifyTrack.getMediaItem(): MediaItem {
+    val (year, month, day) = releaseDate.releaseDates
+
+    return MediaItem.Builder()
+        .setMediaId(uri)
+        .setUri(uri.toUri())
+        .setMediaMetadata(
+            MediaMetadata.Builder()
+                .setTitle(title)
+                .setDisplayTitle(title)
+                .setSubtitle(artistName)
+                .setDescription(albumName)
+                .setArtist(artistName)
+                .setAlbumArtist(albumArtistName)
+                .setAlbumTitle(albumName)
+                .setReleaseYear(year)
+                .setReleaseMonth(month)
+                .setReleaseDay(day)
+                .setArtworkUri(artworkUrl?.toUri())
+                .setDurationMs(duration)
+                .setIsBrowsable(false)
+                .setIsPlayable(true)
+                .setMediaType(MediaMetadata.MEDIA_TYPE_MUSIC)
+                .apply {
+                    trackNum?.let { setTrackNumber(it) }
+                    trackTotal?.let { setTotalTrackCount(it) }
+                    discNum?.let { setDiscNumber(it) }
+                }
+                .build()
+        )
+        .build()
+}
 
 fun List<JoinedTrack>.orderModified(
     classType: OrientedClassType,
@@ -333,13 +428,15 @@ fun Long.getDateTimeString(): String =
     SimpleDateFormat("yyyy-MM-dd hh:mm:ss", Locale.JAPAN).format(Date(this))
 
 fun Long.getTimeString(withMillis: Boolean = false): String {
-    val hour = this / 3600000
-    val minute = (this % 3600000) / 60000
-    val second = (this % 60000) / 1000
-    val secondWithMillis = (this % 60000) / 1000.0
-    return (if (hour > 0) String.format("%d:", hour) else "") +
-            if (withMillis) String.format("%02d:%05.2f", minute, secondWithMillis)
-            else String.format("%02d:%02d", minute, second)
+    val absoluteValue = abs(this)
+    val hour = absoluteValue / 3600000
+    val minute = (absoluteValue % 3600000) / 60000
+    val second = (absoluteValue % 60000) / 1000
+    val secondWithMillis = (absoluteValue % 60000) / 1000.0
+    return (if (this < 0) "-" else "") +
+            (if (hour > 0) String.format("%d:", hour) else "") +
+            (if (withMillis) String.format("%02d:%05.2f", minute, secondWithMillis)
+            else String.format("%02d:%02d", minute, second))
 }
 
 fun DbxClientV2.saveTempAudioFile(
@@ -603,10 +700,14 @@ suspend fun MediaItem.toUiTrack(db: DB): UiTrack? =
     (localConfiguration?.uri ?: mediaId).toString().toUiTrack(db)
 
 suspend fun String.toUiTrack(db: DB): UiTrack? =
-    db.trackDao().getBySourcePath(this)?.toUiTrack()
+    if (isSpotifySourcePath) db.spotifyTrackDao().get(this)?.toUiTrack()
+    else db.trackDao().getBySourcePath(this)?.toUiTrack()
 
-suspend fun List<String>.toDomainTracks(db: DB): List<UiTrack> =
-    db.trackDao().getAllBySourcePaths(this).map { it.toUiTrack() }
+suspend fun List<String>.toDomainTracks(db: DB): List<UiTrack> {
+    val (spotifyUris, sourcePaths) = partition { it.isSpotifySourcePath }
+    return db.trackDao().getAllBySourcePaths(sourcePaths).map { it.toUiTrack() } +
+            db.spotifyTrackDao().getAllByUris(spotifyUris).map { it.toUiTrack() }
+}
 
 fun com.geckour.q.domain.model.MediaItem?.isFavoriteToggled(): com.geckour.q.domain.model.MediaItem? =
     when (this) {

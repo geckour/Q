@@ -35,6 +35,7 @@ import com.geckour.q.ui.main.dialog.DialogState
 import com.geckour.q.ui.main.dialog.Dialogs
 import com.geckour.q.ui.main.library.Library
 import com.geckour.q.ui.main.player.PlayerSheet
+import com.geckour.q.util.isSpotifyConfigured
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.sin
@@ -80,7 +81,7 @@ fun SingleScreen(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
+            ModalDrawerSheet(windowInsets = WindowInsets()) {
                 Drawer(
                     drawerState = drawerState,
                     navController = navController,
@@ -88,6 +89,8 @@ fun SingleScreen(
                     equalizerParams = library.equalizerParams,
                     onSelectNav = actions::onSelectNav,
                     onShowDropboxDialog = actions::onShowDropboxDialog,
+                    onConfirmSpotifySignOut = actions::onConfirmSpotifySignOut,
+                    isSpotifyUnlocked = library.isSpotifyUnlocked,
                     onRetrieveMedia = actions::onRetrieveMedia
                 )
             }
@@ -102,10 +105,12 @@ fun SingleScreen(
                     drawerState = drawerState,
                     isSearchActive = isSearchActive.value,
                     onTapBar = actions::onTapBar,
+                    onTapTitle = actions::onTapTopBarTitle,
                     onToggleTheme = actions::onToggleTheme,
                     onToggleFavorite = actions::onToggleFavorite,
                     onSetOptionMediaItem = actions::onSetOptionMediaItem,
                     onSelectAllArtists = actions::onSelectAllArtists,
+                    onSelectSpotifyContainer = actions::onSelectSpotifyContainer,
                     onSelectArtist = actions::onSelectArtist,
                     onSelectAlbum = actions::onSelectAlbum,
                     onSelectTrack = actions::onSelectTrack,
@@ -199,9 +204,14 @@ fun SingleScreen(
                     onToggleFavorite = actions::onToggleFavorite,
                     onSearchItemClicked = { actions.onSearchItemClicked(it, navController) },
                     onSearchItemLongClicked = actions::onSearchItemLongClicked,
+                    searchSpotify = actions::onSearchSpotify,
                     onSelectSavedQueueForOption = actions::onSelectSavedQueueForOption,
                     onSelectSavedQueueForModify = actions::onSelectSavedQueueForModify,
                     onDeleteSavedQueue = actions::onDeleteSavedQueue,
+                    spotifyBrowse = library.spotifyBrowse,
+                    isSpotifyConfigured = isSpotifyConfigured,
+                    hasSpotifyCredential = library.hasSpotifyCredential,
+                    onDialogEvent = actions::onDialogEvent,
                 )
                 Dialogs(
                     dialogState = uiState.dialogState,

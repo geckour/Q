@@ -7,6 +7,7 @@ import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SyncSizeAlert
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.main.dialog.DialogState
+import com.geckour.q.ui.main.library.SpotifyBrowseState
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
@@ -37,6 +38,9 @@ data class LibraryUiState(
     val selectedNav: Nav?,
     val equalizerParams: EqualizerParams?,
     val snackbarMessage: String?,
+    val isSpotifyUnlocked: Boolean,
+    val spotifyBrowse: SpotifyBrowseState,
+    val hasSpotifyCredential: Boolean,
     val snackbarPaths: ImmutableList<String>,
     val snackbarProgress: Float?,
     val onCancelProgress: (() -> Unit)?,

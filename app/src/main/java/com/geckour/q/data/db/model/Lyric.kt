@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 data class Lyric(
     @PrimaryKey(autoGenerate = true) val id: Long,
     val trackId: Long,
+    val spotifyUri: String? = null,
     val lines: List<LyricLine>,
     @ColumnInfo(defaultValue = "LOCAL") val source: LyricSource = LyricSource.LOCAL
 )
@@ -18,6 +19,12 @@ data class LyricLine(
     val timing: Long,
     val sentence: String
 )
+
+fun List<LyricLine>.shiftedBy(delta: Long): List<LyricLine> =
+    sortedBy { it.timing }.map {
+        if (it.timing == 0L) it
+        else it.copy(timing = (it.timing + delta).coerceAtLeast(1))
+    }
 
 enum class LyricSource {
     LOCAL,

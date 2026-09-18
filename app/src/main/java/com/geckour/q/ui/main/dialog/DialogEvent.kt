@@ -1,7 +1,10 @@
 package com.geckour.q.ui.main.dialog
 
 import com.dropbox.core.v2.files.FolderMetadata
+import com.geckour.q.data.db.model.SpotifyTrack
+import com.geckour.q.domain.model.SpotifyContainer
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.ui.main.library.SpotifyBrowseSource
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 
@@ -51,6 +54,35 @@ sealed interface DialogEvent {
     data class StartDropboxSync(
         val rootFolderPath: String?,
         val needDownloaded: Boolean,
+    ) : DialogEvent
+
+    data object StartSpotifyAuth : DialogEvent
+
+    data object SignOutSpotify : DialogEvent
+
+    data class ChangeSpotifySource(val source: SpotifyBrowseSource?) : DialogEvent
+
+    data object LoadMoreSpotifyItems : DialogEvent
+
+    data class OpenSpotifyContainer(val container: SpotifyContainer) : DialogEvent
+
+    data object CloseSpotifyContainer : DialogEvent
+
+
+    data class ShowSpotifyTrackOption(val track: SpotifyTrack) : DialogEvent
+
+    data class ShowSpotifyContainerOption(val container: SpotifyContainer) : DialogEvent
+
+    data class OpenInSpotify(val uri: String) : DialogEvent
+
+    data class AddSpotifyTrack(
+        val track: SpotifyTrack,
+        val actionType: InsertActionType,
+    ) : DialogEvent
+
+    data class AddSpotifyContainer(
+        val container: SpotifyContainer,
+        val actionType: InsertActionType,
     ) : DialogEvent
 
     data class StartDownload(val targets: List<String>) : DialogEvent

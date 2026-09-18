@@ -17,4 +17,8 @@ val dataModule = module {
     single {
         LrcLibApiClient()
     }
+
+    single {
+        SpotifyApiClient(androidApplication())
+    }
 }

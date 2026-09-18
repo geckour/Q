@@ -16,6 +16,7 @@ import com.geckour.q.data.db.dao.EqualizerPresetDao
 import com.geckour.q.data.db.dao.LyricDao
 import com.geckour.q.data.db.dao.QueueHistoryDao
 import com.geckour.q.data.db.dao.SavedQueueDao
+import com.geckour.q.data.db.dao.SpotifyTrackDao
 import com.geckour.q.data.db.dao.TrackDao
 import com.geckour.q.data.db.dao.TrackHistoryDao
 import com.geckour.q.data.db.model.Album
@@ -30,6 +31,7 @@ import com.geckour.q.data.db.model.QueueHistory
 import com.geckour.q.data.db.model.QueueHistoryTrack
 import com.geckour.q.data.db.model.SavedQueue
 import com.geckour.q.data.db.model.SavedQueueTrack
+import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.data.db.model.TrackHistory
 import kotlinx.serialization.decodeFromString
@@ -50,8 +52,9 @@ import kotlinx.serialization.json.Json
         QueueHistoryTrack::class,
         SavedQueue::class,
         SavedQueueTrack::class,
+        SpotifyTrack::class,
     ],
-    version = 18,
+    version = 20,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -65,6 +68,8 @@ import kotlinx.serialization.json.Json
         AutoMigration(from = 10, to = 11),
         AutoMigration(from = 12, to = 13),
         AutoMigration(from = 16, to = 17),
+        AutoMigration(from = 18, to = 19),
+        AutoMigration(from = 19, to = 20),
     ]
 )
 @TypeConverters(BoolConverter::class, LyricLineConverter::class)
@@ -163,6 +168,7 @@ abstract class DB : RoomDatabase() {
     abstract fun trackHistoryDao(): TrackHistoryDao
     abstract fun queueHistoryDao(): QueueHistoryDao
     abstract fun savedQueueDao(): SavedQueueDao
+    abstract fun spotifyTrackDao(): SpotifyTrackDao
     abstract fun equalizerPresetDao(): EqualizerPresetDao
     abstract fun audioDeviceEqualizerInfoDao(): AudioDeviceEqualizerInfoDao
 }

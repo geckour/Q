@@ -62,6 +62,7 @@
     <string name="nav_setting">設定</string>
     <string name="nav_equalizer">イコライザ</string>
     <string name="nav_dropbox_sync">Dropboxと同期</string>
+    <string name="nav_spotify">Spotify</string>
     <string name="nav_sync">ライブラリを同期</string>
     <string name="nav_pay">投げ銭</string>
     <string name="nav_fortune">おみQじ</string>
@@ -117,6 +118,7 @@
     <string name="dialog_ok">決定</string>
     <string name="dialog_ng">キャンセル</string>
     <string name="dialog_prev">戻る</string>
+    <string name="dialog_close">閉じる</string>
 
     <string name="dialog_title_choose_app_theme">テーマを選択</string>
     <string name="dialog_desc_choose_app_theme">アプリのカラーテーマを選択</string>
@@ -168,6 +170,33 @@
     <!-- Snackbar -->
     <string name="snackbar_message_dropbox_sync_failure">Dropbox との同期に失敗しました: %s</string>
     <string name="snackbar_message_save_queue_complete">キューを保存しました</string>
+
+    <!-- Spotify -->
+    <string name="spotify_tab_saved">お気に入りの曲</string>
+    <string name="spotify_tab_playlists">プレイリスト</string>
+    <string name="spotify_item_album">アルバム</string>
+    <string name="spotify_item_artist">アーティスト</string>
+    <string name="spotify_item_playlist">プレイリスト</string>
+    <string name="spotify_item_track_count">%d曲</string>
+    <string name="spotify_message_not_configured">Spotify のクライアント ID が設定されていません。\nsecret.properties に SPOTIFY_CLIENT_ID を設定してビルドし直してください。</string>
+    <string name="spotify_message_auth">Spotify アカウントと連携すると、Spotify の曲をキューに追加できます。\n再生には Spotify アプリと Premium プランが必要です。\n連携しますか？</string>
+    <string name="spotify_message_sign_out">Spotify との連携を解除しますか？\nSpotify の曲を再生するには、連携し直す必要があります。</string>
+    <string name="spotify_message_empty">曲が見つかりませんでした</string>
+    <string name="spotify_message_added">「%s」をキューに追加しました</string>
+    <string name="spotify_message_menu_enabled">Spotify のメニューを表示します</string>
+    <string name="spotify_message_auth_failure">Spotify との連携に失敗しました: %s</string>
+    <string name="spotify_message_app_not_installed">Spotify の曲の再生には Spotify アプリが必要です</string>
+    <string name="spotify_message_not_logged_in">Spotify アプリにログインしてください</string>
+    <string name="spotify_message_not_authorized">Spotify での再生操作が許可されていません。ドロワーの「Spotifyから再生」から連携し直してください</string>
+    <string name="spotify_message_offline">Spotify アプリがオフラインモードです</string>
+    <string name="spotify_message_auth_required">Spotify との連携が切れました。もう一度連携してください</string>
+    <string name="spotify_message_premium_required">Spotify の曲の再生には Spotify Premium プランが必要です</string>
+    <string name="spotify_message_start_timeout">Spotify で曲の再生を開始できませんでした</string>
+    <string name="spotify_message_playback_failure">Spotify での再生に失敗しました: %s</string>
+    <string name="spotify_message_forbidden">Spotify にリクエストを拒否されました (403)。アカウントがアプリのユーザーに登録されているか確認し、必要な権限が変わっている場合は連携し直してください</string>
+    <string name="spotify_message_rate_limited">Spotify へのリクエストが多すぎます。しばらくしてから再度お試しください</string>
+    <string name="spotify_message_request_failure">Spotify からの読み込みに失敗しました (%d)</string>
+    <string name="spotify_message_network_failure">Spotify に接続できませんでした</string>
 
     <!-- Payment -->
     <string name="payment_desc">投げ銭を受け付けています</string>
@@ -230,6 +259,9 @@
     <string name="equalizer_clear_default_for_the_device">%s\nのデフォルトを解除する</string>
     <string name="equalizer_preset_label_edit">編集</string>
     <string name="equalizer_preset_label_confirm">決定</string>
+
+    <!-- Queue -->
+    <string name="queue_lyric_shift_timing_label">シフト: %s 秒</string>
 
     <!-- Saved Queue -->
     <string name="saved_queue_item_metadata">%1$d曲・計%2$s</string>

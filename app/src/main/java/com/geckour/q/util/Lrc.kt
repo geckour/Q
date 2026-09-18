@@ -2,6 +2,7 @@ package com.geckour.q.util
 
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
+import com.geckour.q.data.db.model.shiftedBy
 import java.io.File
 
 fun File.parseLrc(): List<LyricLine> =
@@ -45,11 +46,7 @@ fun String.parseLrc(): List<LyricLine> {
                 .trim()
             timings.map { LyricLine(it, sentence) }
         }.flatten()
-        .map {
-            if (it.timing == 0L) it
-            else it.copy(timing = (it.timing - offset).coerceAtLeast(1))
-        }
-        .sortedBy { it.timing }
+        .shiftedBy(-offset)
 }
 
 fun Lyric.toLrcString(): String = lines.joinToString("\n") {

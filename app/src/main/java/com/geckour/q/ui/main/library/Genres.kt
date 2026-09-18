@@ -68,6 +68,7 @@ fun Genres(
     onScrollPositionUpdated: (newIndex: Int, newOffset: Int) -> Unit,
     onSearchItemClicked: (item: SearchItem) -> Unit,
     onSearchItemLongClicked: (item: SearchItem) -> Unit,
+    searchSpotify: suspend (query: String) -> List<SearchItem>,
 ) {
     val context = LocalContext.current
     val db = DB.getInstance(context)
@@ -111,7 +112,8 @@ fun Genres(
                 result = result,
                 keyboardController = keyboardController,
                 onSearchItemClicked = onSearchItemClicked,
-                onSearchItemLongClicked = onSearchItemLongClicked
+                onSearchItemLongClicked = onSearchItemLongClicked,
+                searchSpotify = searchSpotify,
             )
         }
         items(

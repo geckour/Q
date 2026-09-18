@@ -14,8 +14,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.last
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.take
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
@@ -24,12 +22,14 @@ private val shouldShowCurrentRemainKey = booleanPreferencesKey("key_show_current
 private val hasAlreadyShownDropboxSyncAlertKey =
     booleanPreferencesKey("key_has_already_shown_dropbox_sync_alert")
 private val dropboxCredentialKey = stringPreferencesKey("key_dropbox_credential")
+private val spotifyCredentialKey = stringPreferencesKey("key_spotify_credential")
 private val equalizerEnabledKey = booleanPreferencesKey("key_equalizer_enabled")
 private val equalizerParamsKey = stringPreferencesKey("key_equalizer_params")
 private val selectedEqualizerPresetIdKey = longPreferencesKey("key_selected_equalizer_preset_id")
 private val selectedQAudioDeviceInfoKey = stringPreferencesKey("key_selected_q_audio_device_info")
 private val alreadyRunHiraganizedKey = booleanPreferencesKey("key_already_run_hiraganized")
 private val showLyricKey = booleanPreferencesKey("key_show_lyric")
+private val isSpotifyUnlockedKey = booleanPreferencesKey("key_spotify_unlocked")
 
 fun Context.getIsInNightMode(): Flow<Boolean> = dataStore.data.map {
     it[isNightModeKey] ?: false
@@ -61,6 +61,17 @@ fun Context.getDropboxCredential(): Flow<String?> = dataStore.data.map {
 
 suspend fun Context.setDropboxCredential(newCredential: String) {
     dataStore.edit { it[dropboxCredentialKey] = newCredential }
+}
+
+fun Context.getSpotifyCredential(): Flow<SpotifyCredential?> = dataStore.data.map { preferences ->
+    preferences[spotifyCredentialKey]?.let { catchAsNull { Json.decodeFromString(it) } }
+}
+
+suspend fun Context.setSpotifyCredential(credential: SpotifyCredential?) {
+    dataStore.edit { preferences ->
+        if (credential == null) preferences.remove(spotifyCredentialKey)
+        else preferences[spotifyCredentialKey] = Json.encodeToString(credential)
+    }
 }
 
 fun Context.getEqualizerEnabled(): Flow<Boolean> = dataStore.data.map {
@@ -116,4 +127,12 @@ fun Context.getShowLyric(): Flow<Boolean> = dataStore.data.map {
 
 suspend fun Context.setShowLyric(showLyric: Boolean) {
     dataStore.edit { it[showLyricKey] = showLyric }
+}
+
+fun Context.getIsSpotifyUnlocked(): Flow<Boolean> = dataStore.data.map {
+    it[isSpotifyUnlockedKey] ?: false
+}
+
+suspend fun Context.setIsSpotifyUnlocked(unlocked: Boolean) {
+    dataStore.edit { it[isSpotifyUnlockedKey] = unlocked }
 }

@@ -31,15 +31,18 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.RemoveCircleOutline
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -48,6 +51,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -59,6 +63,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -81,8 +86,10 @@ import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.ui.component.SpotifyAttribution
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
+import com.geckour.q.util.isSpotify
 import com.geckour.q.util.moved
 import com.geckour.q.util.nonUpScaleSp
 import com.geckour.q.util.removedAt
@@ -115,9 +122,12 @@ fun Queue(
     val coroutineScope = rememberCoroutineScope()
     val db = DB.getInstance(currentContext)
     val currentDensity = LocalDensity.current
-    val nowPlayingTrackId = uiTracks.firstOrNull { it.nowPlaying }?.id ?: -1
-    val lyric by remember(nowPlayingTrackId) {
-        db.lyricDao().getLyricFlowByTrackId(nowPlayingTrackId)
+    val nowPlayingTrack = uiTracks.firstOrNull { it.nowPlaying }
+    val nowPlayingTrackId = nowPlayingTrack?.id ?: -1
+    val nowPlayingSpotifyUri = nowPlayingTrack?.takeIf { it.isSpotify }?.sourcePath
+    val lyric by remember(nowPlayingTrackId, nowPlayingSpotifyUri) {
+        if (nowPlayingSpotifyUri == null) db.lyricDao().getLyricFlowByTrackId(nowPlayingTrackId)
+        else db.lyricDao().getLyricFlowBySpotifyUri(nowPlayingSpotifyUri)
     }.collectAsState(initial = null)
     var contentHeight by remember { mutableIntStateOf(0) }
 
@@ -156,7 +166,10 @@ fun Queue(
                     ?.let(focusedLyricHeightOf) ?: 0
                 lazyListState.animateScrollToItem(index, -centeredLyricTopOf(estimatedHeight))
                 visibleLyricItemOf(index)?.let {
-                    lazyListState.animateScrollToItem(index, -centeredLyricTopOf(focusedLyricHeightOf(it)))
+                    lazyListState.animateScrollToItem(
+                        index,
+                        -centeredLyricTopOf(focusedLyricHeightOf(it))
+                    )
                 }
             }
         }
@@ -244,6 +257,7 @@ fun Queue(
                     if (isInLyricEditMode) {
                         EditableLrcItem(
                             line = indexedLyricLine,
+                            focused = indexedLyricLine.index == currentIndex,
                             currentPlaybackPosition = currentPlaybackPosition,
                             onNewLine = { _, _ -> },
                             onUpdateLine = { index, newLine ->
@@ -297,8 +311,12 @@ fun Queue(
                 }
             }
             if (isInLyricEditMode) {
+                val lyricCache by remember { mutableStateOf(lyric?.copy()) }
+                var currentShiftDelta by remember { mutableLongStateOf(0L) }
+
                 EditableLrcItem(
                     line = null,
+                    focused = false,
                     currentPlaybackPosition = currentPlaybackPosition,
                     onNewLine = { timing, sentence ->
                         lyric?.let {
@@ -316,6 +334,31 @@ fun Queue(
                     },
                     onUpdateLine = { _, _ -> },
                     onDeleteLine = { _ -> },
+                )
+                LyricTimingShiftController(
+                    currentShiftDelta = currentShiftDelta,
+                    onShiftDelta = { delta ->
+                        coroutineScope.launch {
+                            if (nowPlayingSpotifyUri == null) {
+                                db.lyricDao().shiftTimingsByTrackId(
+                                    trackId = nowPlayingTrackId,
+                                    delta = delta,
+                                )
+                            } else {
+                                db.lyricDao().shiftTimingsBySpotifyUri(
+                                    spotifyUri = nowPlayingSpotifyUri,
+                                    delta = delta,
+                                )
+                            }
+                            currentShiftDelta += delta
+                        }
+                    },
+                    onResetShift = {
+                        lyricCache?.let {
+                            coroutineScope.launch { db.lyricDao().upsertLyric(it) }
+                            currentShiftDelta = 0L
+                        }
+                    },
                 )
                 Spacer(modifier = Modifier.height(endItemMargin))
             }
@@ -458,18 +501,20 @@ fun QueueItem(
                             lineHeight = 18.nonUpScaleSp
                         )
                     }
-                    Icon(
-                        imageVector = if (uiTrack.isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
-                        contentDescription = null,
-                        tint = QTheme.colors.colorTextPrimary,
-                        modifier = Modifier
-                            .clickable(
-                                indication = ripple(bounded = false),
-                                interactionSource = remember { MutableInteractionSource() }
-                            ) { onToggleFavorite(uiTrack) }
-                            .padding(8.dp)
-                            .size(20.dp)
-                    )
+                    if (uiTrack.isSpotify.not()) {
+                        Icon(
+                            imageVector = if (uiTrack.isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = null,
+                            tint = QTheme.colors.colorTextPrimary,
+                            modifier = Modifier
+                                .clickable(
+                                    indication = ripple(bounded = false),
+                                    interactionSource = remember { MutableInteractionSource() }
+                                ) { onToggleFavorite(uiTrack) }
+                                .padding(8.dp)
+                                .size(20.dp)
+                        )
+                    }
                     Icon(
                         imageVector = Icons.Default.RemoveCircleOutline,
                         contentDescription = null,
@@ -496,14 +541,18 @@ fun QueueItem(
                         textAlign = TextAlign.Center,
                         modifier = Modifier.width(48.dp)
                     )
-                    Text(
-                        text = "${uiTrack.codec}・${uiTrack.bitrate}kbps・${uiTrack.sampleRate}kHz",
-                        color = if (uiTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
-                        fontSize = 10.nonUpScaleSp,
-                        lineHeight = 25.nonUpScaleSp,
-                        textAlign = TextAlign.End,
-                        modifier = Modifier.weight(1f)
-                    )
+                    if (uiTrack.isSpotify) {
+                        SpotifyAttribution(modifier = Modifier.weight(1f))
+                    } else {
+                        Text(
+                            text = "${uiTrack.codec}・${uiTrack.bitrate}kbps・${uiTrack.sampleRate}kHz",
+                            color = if (uiTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
+                            fontSize = 10.nonUpScaleSp,
+                            lineHeight = 25.nonUpScaleSp,
+                            textAlign = TextAlign.End,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                     Text(
                         text = uiTrack.durationString,
                         color = QTheme.colors.colorTextPrimary,
@@ -518,8 +567,65 @@ fun QueueItem(
 }
 
 @Composable
+fun LyricTimingShiftController(
+    currentShiftDelta: Long,
+    onShiftDelta: (delta: Long) -> Unit,
+    onResetShift: () -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        TextButton(
+            onClick = onResetShift,
+            modifier = Modifier.align(Alignment.CenterStart),
+        ) {
+            Text(
+                text = stringResource(R.string.text_edit_reset),
+                color = QTheme.colors.colorButtonNormal,
+                fontSize = 14.sp,
+            )
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.align(Alignment.Center),
+        ) {
+            Icon(
+                imageVector = Icons.Default.Remove,
+                contentDescription = null,
+                tint = QTheme.colors.colorButtonNormal,
+                modifier = Modifier
+                    .clickable(onClick = { onShiftDelta(-100) })
+                    .size(20.dp)
+                    .padding(2.dp),
+            )
+            Text(
+                stringResource(
+                    R.string.queue_lyric_shift_timing_label,
+                    currentShiftDelta.getTimeString(withMillis = true),
+                ),
+                color = QTheme.colors.colorTextPrimary,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+            Icon(
+                imageVector = Icons.Default.Add,
+                contentDescription = null,
+                tint = QTheme.colors.colorButtonNormal,
+                modifier = Modifier
+                    .clickable(onClick = { onShiftDelta(100) })
+                    .size(20.dp)
+                    .padding(2.dp),
+            )
+        }
+    }
+}
+
+@Composable
 fun EditableLrcItem(
     line: IndexedLyricLine?,
+    focused: Boolean,
     currentPlaybackPosition: Long,
     onNewLine: (timing: Long, sentence: String) -> Unit,
     onUpdateLine: (index: Int, newLine: LyricLine) -> Unit,
@@ -545,7 +651,13 @@ fun EditableLrcItem(
                 }
             },
             enabled = line != null,
-            contentPadding = PaddingValues(horizontal = 8.dp)
+            contentPadding = PaddingValues(horizontal = 8.dp),
+            colors = ButtonDefaults.buttonColors()
+                .copy(
+                    containerColor =
+                        if (focused) QTheme.colors.colorButtonNormal
+                        else QTheme.colors.colorPrimaryDark
+                )
         ) {
             Text(
                 text = (line?.lyricLine?.timing
@@ -592,7 +704,7 @@ fun EditableLrcItem(
         ) {
             Icon(
                 imageVector = if (line == null) Icons.Default.Add else Icons.Default.Delete,
-                contentDescription = "削除",
+                contentDescription = null,
                 tint = QTheme.colors.colorButtonNormal
             )
         }

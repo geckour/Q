@@ -23,6 +23,7 @@ import coil.size.Scale
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.JoinedTrack
+import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.service.PlayerService
 import com.geckour.q.ui.compose.ColorBackgroundBottomSheet
 import com.geckour.q.ui.compose.ColorBackgroundBottomSheetInverse
@@ -36,6 +37,7 @@ import com.geckour.q.ui.compose.ColorTextSecondary
 import com.geckour.q.ui.compose.ColorTextSecondaryInverse
 import com.geckour.q.ui.compose.ColorWeakAccent
 import com.geckour.q.ui.compose.ColorWeakAccentInverse
+import com.geckour.q.util.isSpotifySourcePath
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -276,19 +278,28 @@ internal suspend fun loadPlayerWidgetState(
     if (playback.sourcePaths.isEmpty()) return PlayerWidgetState.Empty
 
     return withContext(Dispatchers.IO) {
+        val db = DB.getInstance(context)
+        val (spotifyUris, localSourcePaths) =
+            playback.sourcePaths.partition { it.isSpotifySourcePath }
         val joinedTracks = runCatching {
-            DB.getInstance(context).trackDao().getAllBySourcePaths(playback.sourcePaths)
+            db.trackDao().getAllBySourcePaths(localSourcePaths)
         }.getOrDefault(emptyList()).associateBy { it.track.sourcePath }
+        val spotifyTracks = runCatching {
+            db.spotifyTrackDao().getAllByUris(spotifyUris)
+        }.getOrDefault(emptyList()).associateBy { it.uri }
         // Kept index aligned with the session's queue: tapping a row asks the session to play
         // that very index, so a track the database no longer knows about must not shift the ones
         // after it.
         val queue = playback.sourcePaths
-            .map { sourcePath -> joinedTracks[sourcePath].toPlayerWidgetTrack(sourcePath) }
+            .map { sourcePath ->
+                spotifyTracks[sourcePath]?.toPlayerWidgetTrack()
+                    ?: joinedTracks[sourcePath].toPlayerWidgetTrack(sourcePath)
+            }
             .toImmutableList()
-        val currentJoinedTrack = playback.sourcePaths
-            .getOrNull(playback.currentIndex)
-            ?.let { joinedTracks[it] }
-        val artwork = (currentJoinedTrack?.track?.artworkUriString
+        val currentSourcePath = playback.sourcePaths.getOrNull(playback.currentIndex)
+        val currentJoinedTrack = currentSourcePath?.let { joinedTracks[it] }
+        val artwork = (currentSourcePath?.let { spotifyTracks[it]?.artworkUrl }
+            ?: currentJoinedTrack?.track?.artworkUriString
             ?: currentJoinedTrack?.album?.artworkUriString)
             ?.let { context.loadArtwork(it, artworkSizePx) }
 
@@ -328,6 +339,14 @@ private fun JoinedTrack?.toPlayerWidgetTrack(sourcePath: String): PlayerWidgetTr
             duration = track.duration,
         )
     }
+
+private fun SpotifyTrack.toPlayerWidgetTrack(): PlayerWidgetTrack =
+    PlayerWidgetTrack(
+        title = title,
+        artist = artistName,
+        album = albumName,
+        duration = duration,
+    )
 
 private fun Context.loadArtwork(uriString: String, sizePx: Int): ImageBitmap? = runCatching {
     imageLoader.executeBlocking(
