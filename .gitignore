@@ -196,3 +196,5 @@ kotlinc.xml
 secret.properties
 github.properties
 */release/*
+
+!gradle/wrapper/gradle-wrapper.jar
