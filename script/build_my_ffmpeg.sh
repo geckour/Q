@@ -4,10 +4,10 @@ NDK_PATH="/Users/geckour/develop/android/sdk/ndk/29.0.14206865"
 HOST_PLATFORM="darwin-x86_64"
 ANDROID_ABI=24
 
-ENABLED_DECODERS=(vorbis opus flac alac pcm_mulaw pcm_alaw mp3 amrnb amrwb aac ac3 eac3 dca mlp truehd)
+ENABLED_DECODERS=(vorbis opus flac alac pcm_mulaw pcm_alaw mp3 amrnb amrwb aac)
 
 cd "${FFMPEG_MODULE_PATH}/jni" && \
-ln -s "$FFMPEG_PATH" ffmpeg
+ln -sfn "$FFMPEG_PATH" ffmpeg
 
 cd "${FFMPEG_MODULE_PATH}/jni" && \
 ./build_ffmpeg.sh \
