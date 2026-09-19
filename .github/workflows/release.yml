@@ -78,6 +78,24 @@ jobs:
             exit 1
           fi
 
+      - name: Compose the release notes
+        env:
+          RELEASE_BODY: ${{ github.event.release.body }}
+        run: |
+          mkdir -p dist
+          printf '%s' "$RELEASE_BODY" > release-body.md
+          python3 script/split_release_notes.py release-body.md dist
+
+      - name: Ensure the Play release notes exist
+        if: steps.channel.outputs.name == 'play'
+        run: |
+          for locale in ja-JP en-US; do
+            if [[ ! -s "dist/whatsnew/whatsnew-${locale}" ]]; then
+              echo "::error::The release notes have no ${locale} section."
+              exit 1
+            fi
+          done
+
       - name: Set up JDK
         uses: actions/setup-java@v6
         with:
@@ -171,12 +189,6 @@ jobs:
           name: ${{ env.ARTIFACT_NAME }}
           path: dist
 
-      - name: Write the release notes
-        if: needs.build.outputs.channel == 'firebase'
-        env:
-          RELEASE_BODY: ${{ github.event.release.body }}
-        run: printf '%s' "$RELEASE_BODY" > release-notes.txt
-
       - name: Upload to Firebase App Distribution
         if: needs.build.outputs.channel == 'firebase'
         uses: wzieba/Firebase-Distribution-Github-Action@v1
@@ -186,7 +198,7 @@ jobs:
           groups: ${{ vars.FIREBASE_TESTER_GROUPS }}
           testers: ${{ vars.FIREBASE_TESTERS }}
           file: ${{ env.APK_PATH }}
-          releaseNotesFile: release-notes.txt
+          releaseNotesFile: dist/release-notes.txt
 
       - name: Upload to Play Store
         if: needs.build.outputs.channel == 'play'
@@ -196,6 +208,7 @@ jobs:
           packageName: ${{ env.PACKAGE_NAME }}
           releaseFiles: ${{ env.BUNDLE_PATH }}
           mappingFile: ${{ env.MAPPING_PATH }}
+          whatsNewDirectory: dist/whatsnew
           tracks: ${{ vars.PLAY_TRACK || 'internal' }}
           status: ${{ vars.PLAY_RELEASE_STATUS || 'completed' }}
           userFraction: ${{ vars.PLAY_USER_FRACTION }}
