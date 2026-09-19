@@ -8,7 +8,7 @@ sealed interface LayoutType {
     data object Single: LayoutType
 
     data class Twin(
-        val hingePosition: Rect,
-        val orientation: FoldingFeature.Orientation
+        val hingePosition: Rect? = null,
+        val orientation: FoldingFeature.Orientation = FoldingFeature.Orientation.VERTICAL,
     ): LayoutType
 }

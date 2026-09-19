@@ -112,6 +112,7 @@ fun MainScreen(
 
                 is LayoutType.Twin -> {
                     TwinScreen(
+                        layoutType = layoutType,
                         navController = navController,
                         uiState = uiState,
                         isSearchActive = isSearchActive,

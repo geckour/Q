@@ -2,8 +2,7 @@ package com.geckour.q.ui.main
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
@@ -28,12 +27,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import androidx.window.layout.FoldingFeature
+import com.geckour.q.domain.model.LayoutType
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SyncSizeAlert
 import com.geckour.q.domain.model.UiTrack
@@ -48,6 +53,7 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun TwinScreen(
+    layoutType: LayoutType.Twin,
     navController: NavHostController,
     uiState: MainUiState,
     isSearchActive: MutableState<Boolean>,
@@ -55,36 +61,66 @@ fun TwinScreen(
     isFavoriteOnly: MutableState<Boolean>,
     actions: MainActions,
 ) {
-    val endItemMargin = with(LocalDensity.current) {
+    val isSideBySide = layoutType.orientation == FoldingFeature.Orientation.VERTICAL
+    val navigationBarHeight = with(LocalDensity.current) {
         WindowInsets.navigationBars.getBottom(this).toDp()
     }
-    Row {
-        TwinStartPage(
-            modifier = Modifier.weight(1f),
-            endItemMargin = endItemMargin,
-            navController = navController,
-            library = uiState.library,
-            queue = uiState.player.queue,
-            routeInfo = uiState.routeInfo,
-            dialogState = uiState.dialogState,
-            syncSizeAlert = uiState.syncSizeAlert,
-            isSearchActive = isSearchActive,
-            searchQuery = searchQuery,
-            isFavoriteOnly = isFavoriteOnly,
-            actions = actions,
-        )
-        TwinEndPage(
-            modifier = Modifier.weight(1f),
-            endItemMargin = endItemMargin,
-            player = uiState.player,
-            routeInfo = uiState.routeInfo,
-            actions = actions,
-        )
+    Layout(
+        modifier = Modifier.fillMaxSize(),
+        content = {
+            TwinStartPage(
+                endItemMargin = if (isSideBySide) navigationBarHeight else 0.dp,
+                navController = navController,
+                library = uiState.library,
+                queue = uiState.player.queue,
+                routeInfo = uiState.routeInfo,
+                dialogState = uiState.dialogState,
+                syncSizeAlert = uiState.syncSizeAlert,
+                isSearchActive = isSearchActive,
+                searchQuery = searchQuery,
+                isFavoriteOnly = isFavoriteOnly,
+                actions = actions,
+            )
+            TwinEndPage(
+                isSideBySide = isSideBySide,
+                endItemMargin = navigationBarHeight,
+                player = uiState.player,
+                routeInfo = uiState.routeInfo,
+                actions = actions,
+            )
+        },
+    ) { measurables, constraints ->
+        val (startMeasurable, endMeasurable) = measurables
+        val width = constraints.maxWidth
+        val height = constraints.maxHeight
+        val hinge = layoutType.hingePosition?.let {
+            IntRect(
+                left = it.left.coerceIn(0, width),
+                top = it.top.coerceIn(0, height),
+                right = it.right.coerceIn(0, width),
+                bottom = it.bottom.coerceIn(0, height),
+            )
+        } ?: IntRect(width / 2, height / 2, width / 2, height / 2)
+        val (startBounds, endBounds) = if (isSideBySide) {
+            val left = IntRect(0, 0, hinge.left, height)
+            val right = IntRect(hinge.right, 0, width, height)
+            if (layoutDirection == LayoutDirection.Rtl) right to left else left to right
+        } else {
+            IntRect(0, 0, width, hinge.top) to IntRect(0, hinge.bottom, width, height)
+        }
+        val startPlaceable =
+            startMeasurable.measure(Constraints.fixed(startBounds.width, startBounds.height))
+        val endPlaceable =
+            endMeasurable.measure(Constraints.fixed(endBounds.width, endBounds.height))
+        layout(width, height) {
+            startPlaceable.place(startBounds.topLeft)
+            endPlaceable.place(endBounds.topLeft)
+        }
     }
 }
 
 @Composable
-fun RowScope.TwinStartPage(
+fun TwinStartPage(
     modifier: Modifier = Modifier,
     endItemMargin: Dp,
     navController: NavHostController,
@@ -119,9 +155,7 @@ fun RowScope.TwinStartPage(
         }
     ) {
         Scaffold(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxSize(),
+            modifier = Modifier.fillMaxSize(),
             topBar = {
                 QTopBar(
                     title = library.topBarTitle,
@@ -211,8 +245,9 @@ fun RowScope.TwinStartPage(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RowScope.TwinEndPage(
+fun TwinEndPage(
     modifier: Modifier = Modifier,
+    isSideBySide: Boolean,
     endItemMargin: Dp,
     player: PlayerUiState,
     routeInfo: QAudioDeviceInfo?,
@@ -222,20 +257,29 @@ fun RowScope.TwinEndPage(
     Box(
         modifier = modifier
             .background(color = QTheme.colors.colorBackground)
-            .weight(1f)
             .fillMaxSize()
             .padding(
-                start = 8.dp,
-                top = with(LocalDensity.current) {
-                    (WindowInsets.statusBars.getTop(this)).toDp()
-                },
+                if (isSideBySide) {
+                    PaddingValues(
+                        start = 8.dp,
+                        top = with(LocalDensity.current) {
+                            (WindowInsets.statusBars.getTop(this)).toDp()
+                        },
+                    )
+                } else {
+                    PaddingValues(top = 8.dp)
+                }
             )
             .onSizeChanged { isPortrait = it.height > it.width }
     ) {
         Card(
             colors = CardDefaults.cardColors()
                 .copy(containerColor = QTheme.colors.colorBackgroundBottomSheet),
-            shape = RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
+            shape = if (isSideBySide) {
+                RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
+            } else {
+                RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+            }
         ) {
             PlayerSheet(
                 isPortrait = isPortrait,

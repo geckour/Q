@@ -318,45 +318,13 @@ class MainActivity : ComponentActivity() {
         val layoutTypeFlow = WindowInfoTracker.getOrCreate(this)
             .windowLayoutInfo(this)
             .flowWithLifecycle(this.lifecycle)
-            .map {
-                val bounds = windowManager.currentWindowMetrics.bounds
-                val (windowHeight, windowWidth) = bounds.height().toFloat() to bounds.width()
-                    .toFloat()
-                val isSquareIshScreen = (windowHeight / windowWidth) in 0.75..1.33
-                val isHorizontal =
-                    resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-                val existSpaceToSplit = windowWidth > 1500
-
-                val foldingFeature = it.displayFeatures
+            .map { windowLayoutInfo ->
+                val windowBounds = windowManager.currentWindowMetrics.bounds
+                windowLayoutInfo.displayFeatures
                     .filterIsInstance<FoldingFeature>()
                     .firstOrNull()
-
-                when {
-                    foldingFeature == null -> {
-                        if (existSpaceToSplit && (isSquareIshScreen || isHorizontal)) {
-                            LayoutType.Twin(
-                                hingePosition = Rect(0, 0, 0, 0),
-                                orientation = FoldingFeature.Orientation.VERTICAL
-                            )
-                        } else {
-                            LayoutType.Single
-                        }
-                    }
-
-                    // Book style
-                    (foldingFeature.state == FoldingFeature.State.HALF_OPENED &&
-                            foldingFeature.orientation == FoldingFeature.Orientation.VERTICAL) ||
-                            // Separated and portraits style
-                            (foldingFeature.state == FoldingFeature.State.FLAT &&
-                                    (foldingFeature.isSeparating &&
-                                            foldingFeature.orientation == FoldingFeature.Orientation.VERTICAL)) ||
-                            // Not separated and square-ish screen
-                            (foldingFeature.state == FoldingFeature.State.FLAT && isSquareIshScreen) -> {
-                        LayoutType.Twin(foldingFeature.bounds, foldingFeature.orientation)
-                    }
-
-                    else -> LayoutType.Single
-                }
+                    ?.let { getFoldAlignedLayoutType(it, windowBounds) }
+                    ?: getSizeBasedLayoutType(windowBounds)
             }
             .stateIn(scope = lifecycleScope, started = SharingStarted.Eagerly, LayoutType.Single)
 
@@ -428,6 +396,41 @@ class MainActivity : ComponentActivity() {
         contentResolver.unregisterContentObserver(generalContentObserver)
 
         super.onDestroy()
+    }
+
+    private fun getFoldAlignedLayoutType(
+        foldingFeature: FoldingFeature,
+        windowBounds: Rect,
+    ): LayoutType.Twin? {
+        if (foldingFeature.state != FoldingFeature.State.HALF_OPENED) return null
+
+        val hingeBounds = foldingFeature.bounds
+        val isVertical = foldingFeature.orientation == FoldingFeature.Orientation.VERTICAL
+        val startSize = if (isVertical) hingeBounds.left else hingeBounds.top
+        val endSize =
+            if (isVertical) windowBounds.width() - hingeBounds.right
+            else windowBounds.height() - hingeBounds.bottom
+        if (startSize <= 0 || endSize <= 0) return null
+
+        return LayoutType.Twin(
+            hingePosition = hingeBounds,
+            orientation = foldingFeature.orientation,
+        )
+    }
+
+    private fun getSizeBasedLayoutType(windowBounds: Rect): LayoutType {
+        val windowWidth = windowBounds.width().toFloat()
+        val windowHeight = windowBounds.height().toFloat()
+        val isSquareIshScreen = (windowHeight / windowWidth) in 0.75..1.33
+        val isHorizontal =
+            resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val existSpaceToSplit = windowWidth > 1500
+
+        return if (existSpaceToSplit && (isSquareIshScreen || isHorizontal)) {
+            LayoutType.Twin()
+        } else {
+            LayoutType.Single
+        }
     }
 
     private fun retrieveMedia(onlyAdded: Boolean) {
