@@ -163,10 +163,11 @@ dependencies {
     implementation "io.coil-kt:coil-svg:2.7.0"
 
     // Player
-    implementation 'androidx.media3:media3-session'
-    implementation 'androidx.media3:media3-exoplayer'
-    implementation 'androidx.media3:media3-decoder-ffmpeg'
-    implementation 'androidx.media3:media3-ui'
+    def media3_ver = "1.11.0"
+    implementation "androidx.media3:media3-session:$media3_ver"
+    implementation "androidx.media3:media3-exoplayer:$media3_ver"
+    implementation "androidx.media3:media3-decoder-ffmpeg:$media3_ver"
+    implementation "androidx.media3:media3-ui:$media3_ver"
     compileOnly 'org.checkerframework:checker-qual:4.2.2'
     compileOnly 'org.checkerframework:checker-compat-qual:2.5.6'
 

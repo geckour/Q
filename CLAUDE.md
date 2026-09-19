@@ -1,5 +1,25 @@
 # Q
 
+## Media3
+
+media3-session / media3-exoplayer / media3-ui は Google 公式の 1.11.0 を使う。公式が配布していない media3-decoder-ffmpeg だけ、ローカルでビルドしたものを GitHub Packages (https://maven.pkg.github.com/geckour/Q) に置いて参照している。認証は `secret.properties` の `gpr.usr` / `gpr.key`、CI では同名のキーを Secrets の `GPR_USER` / `GPR_TOKEN` から生成する。
+
+FFmpeg のデコーダ構成は `script/build_my_ffmpeg.sh` にあり、特許ライセンスの都合で ac3 / eac3 / dca / mlp / truehd は外してある。
+
+Media3 を更新するときの手順。
+
+1. `/Users/geckour/develop/android/git/media` を新しいタグへ更新する
+2. `script/build_my_ffmpeg.sh` で FFmpeg を 4 ABI 分ビルドする
+3. media 側で publish する
+   ```sh
+   GPR_USER=... GPR_TOKEN=... ./gradlew :lib-decoder-ffmpeg:publish \
+     -PmavenRepo=https://maven.pkg.github.com/geckour/Q
+   ```
+4. `app/build.gradle` の `media3_ver` を上げる
+5. FFmpeg のバージョンやデコーダ構成を変えた場合は、`license_text_ffmpeg` の記載（バージョン、デコーダ一覧）も更新する。LGPL の表示義務があるため必須
+
+ビルドには JDK 21 以上が必要（AGP の lint が JDK 21 の API を使うため、17 では `lintVitalAnalyzeRelease` が落ちる）。CI は 25 を使う。
+
 ## 配信
 
 配信は GitHub Release をトリガーに `.github/workflows/release.yml` が行う。ローカルからのビルドやアップロードはしない。

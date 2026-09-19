@@ -1,13 +1,8 @@
 pluginManagement {
-    includeBuild("/Users/geckour/develop/android/git/media/build-logic-settings")
     repositories {
         google()
         mavenCentral()
     }
-}
-
-plugins {
-    id("gradlebuild.media3-settings-logic")
 }
 
 dependencyResolutionManagement {
@@ -18,11 +13,15 @@ dependencyResolutionManagement {
         maven { url "https://jitpack.io" }
         maven {
             name = "GitHubPackages"
-            url = uri("https://maven.pkg.github.com/geckour/NowPlayingSubjectBuilder")
+            url = uri("https://maven.pkg.github.com/geckour/Q")
 
             credentials {
-                username = getKey('gpr.usr', settingsDir)
-                password = getKey('gpr.key', settingsDir)
+                username = getKey('gpr.usr', settingsDir) ?: System.getenv('GPR_USER')
+                password = getKey('gpr.key', settingsDir) ?: System.getenv('GPR_TOKEN')
+            }
+
+            content {
+                includeModule('androidx.media3', 'media3-decoder-ffmpeg')
             }
         }
     }
@@ -35,4 +34,3 @@ static def getKey(keyName, File settingsDir) {
 }
 
 include ':app'
-includeMedia3.execute(file('/Users/geckour/develop/android/git/media'))
