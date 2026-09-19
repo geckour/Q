@@ -1,0 +1,163 @@
+name: Release
+
+on:
+  release:
+    types: [prereleased, released]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.release.tag_name }}
+  cancel-in-progress: false
+
+env:
+  JAVA_VERSION: '17'
+  TAG_NAME: ${{ github.event.release.tag_name }}
+  PACKAGE_NAME: com.geckour.q
+  APK_PATH: app/build/outputs/apk/release/app-release.apk
+  BUNDLE_PATH: app/build/outputs/bundle/release/app-release.aab
+  MAPPING_PATH: app/build/outputs/mapping/release/mapping.txt
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          fetch-depth: 0
+
+      - name: Ensure the tag points at a commit on master
+        run: |
+          git fetch --no-tags origin master
+          if ! git merge-base --is-ancestor HEAD origin/master; then
+            echo "::error::$TAG_NAME does not point at a commit on master."
+            exit 1
+          fi
+
+      - name: Resolve the distribution channel
+        id: channel
+        env:
+          IS_PRERELEASE: ${{ github.event.release.prerelease }}
+          PLAY_RELEASE_STATUS: ${{ vars.PLAY_RELEASE_STATUS }}
+          PLAY_USER_FRACTION: ${{ vars.PLAY_USER_FRACTION }}
+        run: |
+          if [[ ! "$TAG_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::$TAG_NAME is not a semantic version tag such as v3.1.0 or v3.1.0-rc1."
+            exit 1
+          fi
+          version="${TAG_NAME#v}"
+          echo "version=${version%%-*}" >> "$GITHUB_OUTPUT"
+          if [[ "$IS_PRERELEASE" == 'true' ]]; then
+            echo "name=firebase" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "name=play" >> "$GITHUB_OUTPUT"
+          if [[ "$PLAY_RELEASE_STATUS" == 'inProgress' && -z "$PLAY_USER_FRACTION" ]]; then
+            echo "::error::PLAY_RELEASE_STATUS=inProgress needs PLAY_USER_FRACTION between 0.0 and 1.0."
+            exit 1
+          fi
+          if [[ -n "$PLAY_USER_FRACTION" && "$PLAY_RELEASE_STATUS" != 'inProgress' ]]; then
+            echo "::warning::PLAY_USER_FRACTION is ignored unless PLAY_RELEASE_STATUS is inProgress."
+          fi
+
+      - name: Ensure versionName matches the tag
+        env:
+          TAG_VERSION: ${{ steps.channel.outputs.version }}
+        run: |
+          version_name=$(sed -n 's/^ *versionName *"\(.*\)"$/\1/p' app/build.gradle)
+          if [[ "$version_name" != "$TAG_VERSION" ]]; then
+            echo "::error::versionName ($version_name) does not match the tag ($TAG_VERSION)."
+            exit 1
+          fi
+
+      - name: Set up JDK
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Write secret.properties
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+        run: |
+          {
+            echo "DROPBOX_APP_KEY=${DROPBOX_APP_KEY}"
+            echo "DROPBOX_APP_SECRET=${DROPBOX_APP_SECRET}"
+            echo "SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}"
+          } > secret.properties
+
+      - name: Restore the release signing config
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p app/signing
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > app/signing/release.jks
+          cat > app/signing/release.gradle <<'SIGNING_EOF'
+          signingConfigs {
+              release {
+                  storeFile file("./release.jks")
+                  storePassword System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                  keyAlias System.getenv("RELEASE_KEY_ALIAS")
+                  keyPassword System.getenv("RELEASE_KEY_PASSWORD")
+              }
+          }
+          SIGNING_EOF
+
+      - name: Build the release APK
+        if: steps.channel.outputs.name == 'firebase'
+        env:
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon :app:assembleRelease
+
+      - name: Build the release bundle
+        if: steps.channel.outputs.name == 'play'
+        env:
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon :app:bundleRelease
+
+      - name: Upload to Firebase App Distribution
+        if: steps.channel.outputs.name == 'firebase'
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ vars.FIREBASE_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          groups: ${{ vars.FIREBASE_TESTER_GROUPS }}
+          testers: ${{ vars.FIREBASE_TESTERS }}
+          file: ${{ env.APK_PATH }}
+          releaseNotes: ${{ github.event.release.body }}
+
+      - name: Upload to Play Store
+        if: steps.channel.outputs.name == 'play'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ env.PACKAGE_NAME }}
+          releaseFiles: ${{ env.BUNDLE_PATH }}
+          mappingFile: ${{ env.MAPPING_PATH }}
+          track: ${{ vars.PLAY_TRACK || 'internal' }}
+          status: ${{ vars.PLAY_RELEASE_STATUS || 'completed' }}
+          userFraction: ${{ vars.PLAY_USER_FRACTION }}
+
+      - name: Keep the built artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ github.event.release.tag_name }}
+          path: |
+            ${{ env.APK_PATH }}
+            ${{ env.BUNDLE_PATH }}
+            ${{ env.MAPPING_PATH }}
+          if-no-files-found: ignore
+          retention-days: 30
