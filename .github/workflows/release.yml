@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  JAVA_VERSION: '17'
+  JAVA_VERSION: '25'
   TAG_NAME: ${{ github.event.release.tag_name }}
   PACKAGE_NAME: com.geckour.q
   APK_PATH: app/build/outputs/apk/release/app-release.apk
@@ -88,11 +88,15 @@ jobs:
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
           SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          GPR_USER: ${{ secrets.GPR_USER }}
+          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
         run: |
           {
             echo "DROPBOX_APP_KEY=${DROPBOX_APP_KEY}"
             echo "DROPBOX_APP_SECRET=${DROPBOX_APP_SECRET}"
             echo "SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}"
+            echo "gpr.usr=${GPR_USER}"
+            echo "gpr.key=${GPR_TOKEN}"
           } > secret.properties
 
       - name: Restore the release signing config
