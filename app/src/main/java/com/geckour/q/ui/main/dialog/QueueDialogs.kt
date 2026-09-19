@@ -114,21 +114,77 @@ fun SavedQueueOptionDialog(
         onDialogEvent(DialogEvent.Dismiss)
     }
 
-    fun newQueue(@StringRes labelResId: Int, actionType: InsertActionType) = option(
+    fun newQueue(
+        @StringRes labelResId: Int,
+        actionType: InsertActionType,
+        classType: OrientedClassType = OrientedClassType.TRACK,
+        needSorted: Boolean = false,
+    ) = option(
         labelResId,
         DialogEvent.NewQueue(
             uiSavedQueue.queue.map { it.track.sourcePath },
             actionType,
-            OrientedClassType.TRACK,
-            false,
+            classType,
+            needSorted,
         )
     )
+
+    fun shuffledQueue(
+        @StringRes labelResId: Int,
+        actionType: InsertActionType,
+        classType: OrientedClassType,
+    ) = newQueue(labelResId, actionType, classType, needSorted = true)
 
     QOptionDialog(
         options = listOf(
             newQueue(R.string.menu_insert_next, InsertActionType.NEXT),
             newQueue(R.string.menu_insert_last, InsertActionType.LAST),
             newQueue(R.string.menu_override, InsertActionType.OVERRIDE),
+            shuffledQueue(
+                R.string.menu_albums_insert_all_shuffle_next,
+                InsertActionType.SHUFFLE_NEXT,
+                OrientedClassType.ALBUM,
+            ),
+            shuffledQueue(
+                R.string.menu_albums_insert_all_shuffle_last,
+                InsertActionType.SHUFFLE_LAST,
+                OrientedClassType.ALBUM,
+            ),
+            shuffledQueue(
+                R.string.menu_albums_override_all_shuffle,
+                InsertActionType.SHUFFLE_OVERRIDE,
+                OrientedClassType.ALBUM,
+            ),
+            shuffledQueue(
+                R.string.menu_artists_insert_all_shuffle_next,
+                InsertActionType.SHUFFLE_NEXT,
+                OrientedClassType.ARTIST,
+            ),
+            shuffledQueue(
+                R.string.menu_artists_insert_all_shuffle_last,
+                InsertActionType.SHUFFLE_LAST,
+                OrientedClassType.ARTIST,
+            ),
+            shuffledQueue(
+                R.string.menu_artists_override_all_shuffle,
+                InsertActionType.SHUFFLE_OVERRIDE,
+                OrientedClassType.ARTIST,
+            ),
+            shuffledQueue(
+                R.string.menu_insert_all_simple_shuffle_next,
+                InsertActionType.SHUFFLE_SIMPLE_NEXT,
+                OrientedClassType.TRACK,
+            ),
+            shuffledQueue(
+                R.string.menu_insert_all_simple_shuffle_last,
+                InsertActionType.SHUFFLE_SIMPLE_LAST,
+                OrientedClassType.TRACK,
+            ),
+            shuffledQueue(
+                R.string.menu_override_all_simple_shuffle,
+                InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
+                OrientedClassType.TRACK,
+            ),
             option(
                 R.string.menu_delete_from_device,
                 DialogEvent.DeleteSavedQueue(uiSavedQueue.savedQueueSummary.savedQueue.id)

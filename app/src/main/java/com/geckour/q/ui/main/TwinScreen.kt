@@ -101,6 +101,7 @@ fun RowScope.TwinStartPage(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     ModalNavigationDrawer(
         modifier = modifier,
+        drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(windowInsets = WindowInsets()) {
                 Drawer(

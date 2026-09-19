@@ -83,6 +83,7 @@ sealed interface DialogEvent {
     data class AddSpotifyContainer(
         val container: SpotifyContainer,
         val actionType: InsertActionType,
+        val classType: OrientedClassType,
     ) : DialogEvent
 
     data class StartDownload(val targets: List<String>) : DialogEvent

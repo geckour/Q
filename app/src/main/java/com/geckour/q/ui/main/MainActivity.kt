@@ -601,7 +601,7 @@ class MainActivity : ComponentActivity() {
             is DialogEvent.OpenInSpotify -> openInSpotify(event.uri)
 
             is DialogEvent.AddSpotifyContainer -> {
-                viewModel.addSpotifyContainer(event.container, event.actionType)
+                viewModel.addSpotifyContainer(event.container, event.actionType, event.classType)
             }
 
             is DialogEvent.AddSpotifyTrack -> {

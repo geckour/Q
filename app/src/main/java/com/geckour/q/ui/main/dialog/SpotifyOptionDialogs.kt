@@ -9,6 +9,7 @@ import com.geckour.q.domain.model.SpotifyContainer
 import com.geckour.q.ui.component.QOption
 import com.geckour.q.ui.component.QOptionDialog
 import com.geckour.q.util.InsertActionType
+import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.isSpotifyInstalled
 
 @Composable
@@ -33,15 +34,19 @@ fun SpotifyContainerOptionDialog(
     container: SpotifyContainer,
     onDialogEvent: (event: DialogEvent) -> Unit,
 ) {
-    val onSelect: (actionType: InsertActionType) -> Unit = { actionType ->
-        onDialogEvent(DialogEvent.AddSpotifyContainer(container, actionType))
-        onDialogEvent(DialogEvent.Dismiss)
+    val onSelect: (actionType: InsertActionType, classType: OrientedClassType) -> Unit =
+        { actionType, classType ->
+            onDialogEvent(DialogEvent.AddSpotifyContainer(container, actionType, classType))
+            onDialogEvent(DialogEvent.Dismiss)
+        }
+    val onSelectTrackOriented: (actionType: InsertActionType) -> Unit = { actionType ->
+        onSelect(actionType, OrientedClassType.TRACK)
     }
 
     QOptionDialog(
-        options = insertOptions(InsertLabelResIds.All, onSelect) +
+        options = insertOptions(InsertLabelResIds.All, onSelectTrackOriented) +
                 orientedShuffleOptions(container.kind, onSelect) +
-                simpleShuffleOptions(onSelect) +
+                simpleShuffleOptions(onSelectTrackOriented) +
                 spotifyLinkOption(container.uri, onDialogEvent),
         onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) },
     )
@@ -80,21 +85,36 @@ private fun insertOptions(
 
 private fun orientedShuffleOptions(
     kind: SpotifyContainer.Kind,
-    onSelect: (actionType: InsertActionType) -> Unit,
+    onSelect: (actionType: InsertActionType, classType: OrientedClassType) -> Unit,
 ): List<QOption> {
-    if (kind != SpotifyContainer.Kind.ARTIST) return emptyList()
-
-    return listOf(
+    val albumOriented = listOf(
         QOption(R.string.menu_albums_insert_all_shuffle_next) {
-            onSelect(InsertActionType.SHUFFLE_NEXT)
+            onSelect(InsertActionType.SHUFFLE_NEXT, OrientedClassType.ALBUM)
         },
         QOption(R.string.menu_albums_insert_all_shuffle_last) {
-            onSelect(InsertActionType.SHUFFLE_LAST)
+            onSelect(InsertActionType.SHUFFLE_LAST, OrientedClassType.ALBUM)
         },
         QOption(R.string.menu_albums_override_all_shuffle) {
-            onSelect(InsertActionType.SHUFFLE_OVERRIDE)
+            onSelect(InsertActionType.SHUFFLE_OVERRIDE, OrientedClassType.ALBUM)
         },
     )
+    val artistOriented = listOf(
+        QOption(R.string.menu_artists_insert_all_shuffle_next) {
+            onSelect(InsertActionType.SHUFFLE_NEXT, OrientedClassType.ARTIST)
+        },
+        QOption(R.string.menu_artists_insert_all_shuffle_last) {
+            onSelect(InsertActionType.SHUFFLE_LAST, OrientedClassType.ARTIST)
+        },
+        QOption(R.string.menu_artists_override_all_shuffle) {
+            onSelect(InsertActionType.SHUFFLE_OVERRIDE, OrientedClassType.ARTIST)
+        },
+    )
+
+    return when (kind) {
+        SpotifyContainer.Kind.ALBUM -> emptyList()
+        SpotifyContainer.Kind.ARTIST -> albumOriented
+        SpotifyContainer.Kind.PLAYLIST, SpotifyContainer.Kind.SAVED -> albumOriented + artistOriented
+    }
 }
 
 private fun simpleShuffleOptions(

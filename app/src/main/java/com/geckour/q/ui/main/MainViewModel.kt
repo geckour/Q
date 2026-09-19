@@ -1265,6 +1265,7 @@ class MainViewModel(
     internal fun addSpotifyContainer(
         container: SpotifyContainer,
         actionType: InsertActionType,
+        classType: OrientedClassType,
     ) {
         Timber.d("qgeck spotify add container: ${container.kind} ${container.name}")
 
@@ -1288,7 +1289,8 @@ class MainViewModel(
                 }
 
                 submitSpotifyTracks(
-                    tracks = tracks.take(MAX_SPOTIFY_CONTAINER_TRACKS).ordered(actionType),
+                    tracks = tracks.take(MAX_SPOTIFY_CONTAINER_TRACKS)
+                        .ordered(actionType, classType),
                     actionType = actionType,
                     addedTitle = container.name,
                 )
@@ -1309,7 +1311,10 @@ class MainViewModel(
         }
     }
 
-    private fun List<SpotifyTrack>.ordered(actionType: InsertActionType): List<SpotifyTrack> =
+    private fun List<SpotifyTrack>.ordered(
+        actionType: InsertActionType,
+        classType: OrientedClassType,
+    ): List<SpotifyTrack> =
         when (actionType) {
             InsertActionType.SHUFFLE_SIMPLE_NEXT,
             InsertActionType.SHUFFLE_SIMPLE_LAST,
@@ -1318,7 +1323,13 @@ class MainViewModel(
             InsertActionType.SHUFFLE_NEXT,
             InsertActionType.SHUFFLE_LAST,
             InsertActionType.SHUFFLE_OVERRIDE -> {
-                groupBy { it.albumName }.values.shuffled().flatten()
+                when (classType) {
+                    OrientedClassType.ARTIST -> groupBy { it.artistName }
+                    else -> groupBy { it.albumName }
+                }
+                    .values
+                    .shuffled()
+                    .flatten()
             }
 
             else -> this
