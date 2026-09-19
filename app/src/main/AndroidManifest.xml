@@ -64,7 +64,6 @@
             </intent-filter>
         </activity>
 
-        <activity android:name=".ui.license.LicenseActivity" />
 
         <activity
             android:name="com.dropbox.core.android.AuthActivity"

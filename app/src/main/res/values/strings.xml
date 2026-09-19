@@ -71,6 +71,7 @@
     <string name="nav_sync">Sync library</string>
     <string name="nav_pay">Donate</string>
     <string name="nav_fortune">Fortune</string>
+    <string name="nav_license">OSS Licenses</string>
 
     <!-- Menu -->
     <string name="menu_search">Search</string>
@@ -337,6 +338,9 @@
 
     <string name="license_name_codec" translatable="false">Apache Commons Codec</string>
     <string name="license_text_codec" translatable="false">Licensed to the Apache Software Foundation (ASF) under one or more\ncontributor license agreements.  See the NOTICE file distributed with\nthis work for additional information regarding copyright ownership.\nThe ASF licenses this file to You under the Apache License, Version 2.0\n(the "License"); you may not use this file except in compliance with\nthe License.  You may obtain a copy of the License at\n     http://www.apache.org/licenses/LICENSE-2.0\nUnless required by applicable law or agreed to in writing, software\ndistributed under the License is distributed on an "AS IS" BASIS,\nWITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.\nSee the License for the specific language governing permissions and\nlimitations under the License.</string>
+
+    <string name="license_name_ffmpeg" translatable="false">FFmpeg</string>
+    <string name="license_text_ffmpeg" translatable="false">This application includes libraries from the FFmpeg project (https://ffmpeg.org), statically linked into libffmpegJNI.so and licensed under the GNU Lesser General Public License version 2.1 or later.\n\nFFmpeg version: n6.0.1-133-gba69be84a1\nEnabled decoders: vorbis, opus, flac, alac, pcm_mulaw, pcm_alaw, mp3, amrnb, amrwb, aac\n\nThe FFmpeg source code is not modified. The corresponding source, the build script and the exact configure options used to produce the binaries are available at https://github.com/geckour/Q (script/build_my_ffmpeg.sh) and https://github.com/FFmpeg/FFmpeg, so that the libraries can be rebuilt and relinked.\n\nThe full text of the GNU Lesser General Public License version 2.1 follows.</string>
 
     <!-- Widget -->
     <string name="widget_player_sheet_label">Player</string>

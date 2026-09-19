@@ -11,5 +11,6 @@ enum class Nav {
     SPOTIFY,
     SYNC,
     PAY,
-    EQUALIZER
+    EQUALIZER,
+    LICENSE
 }

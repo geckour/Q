@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Equalizer
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Highlight
@@ -383,6 +384,18 @@ fun Drawer(
                         onClick = {
                             navController.navigate("equalizer")
                             onSelectNav(Nav.EQUALIZER)
+                            coroutineScope.launch { drawerState.close() }
+                        }
+                    )
+                }
+                item {
+                    DrawerItem(
+                        imageVector = Icons.Default.Description,
+                        title = stringResource(id = R.string.nav_license),
+                        isSelected = selectedNav == Nav.LICENSE,
+                        onClick = {
+                            navController.navigate("license")
+                            onSelectNav(Nav.LICENSE)
                             coroutineScope.launch { drawerState.close() }
                         }
                     )

@@ -25,6 +25,7 @@ import com.geckour.q.domain.model.AllArtists
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
+import com.geckour.q.ui.license.Licenses
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.UiSavedQueue
@@ -369,6 +370,18 @@ fun Library(
                     onSetOptionMediaItem(null)
                 }
                 Equalizer(routeInfo = routeInfo)
+            }
+            composable("license") {
+                BackHandler(enabled = onBackHandle != null) {
+                    onBackHandle?.invoke()
+                }
+                val topBarTitle = stringResource(id = R.string.nav_license)
+                LaunchedEffect(navController.currentDestination) {
+                    onSelectNav(Nav.LICENSE)
+                    onChangeTopBarTitle(topBarTitle)
+                    onSetOptionMediaItem(null)
+                }
+                Licenses(endItemMargin = endItemMargin)
             }
         }
         QSnackbar(

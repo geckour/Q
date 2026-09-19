@@ -66,6 +66,7 @@
     <string name="nav_sync">ライブラリを同期</string>
     <string name="nav_pay">投げ銭</string>
     <string name="nav_fortune">おみQじ</string>
+    <string name="nav_license">OSS ライセンス</string>
 
     <!-- Menu -->
     <string name="menu_search">検索</string>
