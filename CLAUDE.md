@@ -37,7 +37,7 @@ Media3 を更新するときの手順。
 - 同名のタグ・リリースが存在しないこと
 - `versionCode` が前回の Play リリースから上がっていること（Play は同じ `versionCode` を受け付けない）
 
-リリースノートは GitHub Release の本文が唯一の原本で、ロケール別の見出しで区切って書く。Play の「新機能」は本文から `script/split_release_notes.py` が生成する（1 ロケール 500 文字以内、超えるとワークフローが失敗する）。Firebase のリリースノートには ja-JP の節を使う。
+リリースノートは GitHub Release の本文が唯一の原本で、ロケール別の見出しで区切って書く。プレリリースも ja-JP と en-US の両方を書く（後のリリースがそのまま土台にするため）。Play の「新機能」は本文から `script/split_release_notes.py` が生成する（1 ロケール 500 文字以内、超えるとワークフローが失敗する。この検査はプレリリースでも走る）。Firebase のリリースノートには ja-JP の節を使う。
 
 ```markdown
 ## ja-JP
@@ -47,7 +47,7 @@ Media3 を更新するときの手順。
 - What changed
 ```
 
-既存のノートを土台にして作る。未公開のリリース（GitHub Release はあるが Play Store に出ていないもの、プレリリースを含む）がある場合は、そのノートの項目をすべて引き継いだうえで、新しい項目を追記する。前回の公開以降に入った変更がユーザーから見て漏れないようにするため。
+前回のリリースが Play Store に公開されていない場合（審査中のものやプレリリースを含む）は、最新の既存リリースのノートを土台にし、その項目を引き継いだうえで新しい項目を追記する。毎回これを守れば、最新のノートに前回の公開以降の変更がすべて入っている状態が保たれる。公開済みかどうかはワークフローの成否ではなく、公開ストアページの更新日と「新機能」で確かめる。
 
 リリースはまず下書きで作り、本文を確認してもらってから公開する。下書きの間はタグが作られず、ワークフローも走らない。
 
@@ -66,8 +66,8 @@ gh release edit v3.2.0 --draft=false
 タグ名は `versionName` が `3.1.0` のとき、プレリリースが `v3.1.0-rc1`（末尾は未使用の番号）、リリースが `v3.1.0`。
 
 ```sh
-gh release create v3.1.0-rc1 --prerelease --target master --title v3.1.0-rc1 --generate-notes
-gh release create v3.1.0 --target master --title v3.1.0 --generate-notes
+gh release create v3.1.0-rc1 --draft --prerelease --target master --title v3.1.0-rc1 --notes-file <(...)
+gh release create v3.1.0 --draft --target master --title v3.1.0 --notes-file <(...)
 ```
 
 プレリリースを後から正式リリースへ昇格させる場合は次のようにする。`released` イベントが飛び、Play Store へのアップロードが走る。

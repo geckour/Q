@@ -86,8 +86,7 @@ jobs:
           printf '%s' "$RELEASE_BODY" > release-body.md
           python3 script/split_release_notes.py release-body.md dist
 
-      - name: Ensure the Play release notes exist
-        if: steps.channel.outputs.name == 'play'
+      - name: Ensure the release notes exist
         run: |
           for locale in ja-JP en-US; do
             if [[ ! -s "dist/whatsnew/whatsnew-${locale}" ]]; then
