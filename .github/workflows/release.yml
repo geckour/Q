@@ -137,6 +137,12 @@ jobs:
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: ./gradlew --no-daemon :app:bundleRelease
 
+      - name: Write the release notes
+        if: steps.channel.outputs.name == 'firebase'
+        env:
+          RELEASE_BODY: ${{ github.event.release.body }}
+        run: printf '%s' "$RELEASE_BODY" > release-notes.txt
+
       - name: Upload to Firebase App Distribution
         if: steps.channel.outputs.name == 'firebase'
         uses: wzieba/Firebase-Distribution-Github-Action@v1
@@ -146,7 +152,7 @@ jobs:
           groups: ${{ vars.FIREBASE_TESTER_GROUPS }}
           testers: ${{ vars.FIREBASE_TESTERS }}
           file: ${{ env.APK_PATH }}
-          releaseNotes: ${{ github.event.release.body }}
+          releaseNotesFile: release-notes.txt
 
       - name: Upload to Play Store
         if: steps.channel.outputs.name == 'play'
