@@ -15,13 +15,17 @@ env:
   JAVA_VERSION: '25'
   TAG_NAME: ${{ github.event.release.tag_name }}
   PACKAGE_NAME: com.geckour.q
-  APK_PATH: app/build/outputs/apk/release/app-release.apk
-  BUNDLE_PATH: app/build/outputs/bundle/release/app-release.aab
-  MAPPING_PATH: app/build/outputs/mapping/release/mapping.txt
+  ARTIFACT_NAME: release-artifacts
+  APK_PATH: dist/app-release.apk
+  BUNDLE_PATH: dist/app-release.aab
+  MAPPING_PATH: dist/mapping.txt
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
+
+    outputs:
+      channel: ${{ steps.channel.outputs.name }}
 
     steps:
       - name: Check out the tag
@@ -137,14 +141,44 @@ jobs:
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: ./gradlew --no-daemon :app:bundleRelease
 
+      - name: Collect the built files
+        run: |
+          mkdir -p dist
+          for built in \
+            app/build/outputs/apk/release/app-release.apk \
+            app/build/outputs/bundle/release/app-release.aab \
+            app/build/outputs/mapping/release/mapping.txt
+          do
+            if [[ -f "$built" ]]; then cp "$built" dist/; fi
+          done
+          ls -l dist
+
+      - name: Upload the built files
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist
+          retention-days: 30
+
+  distribute:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download the built files
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist
+
       - name: Write the release notes
-        if: steps.channel.outputs.name == 'firebase'
+        if: needs.build.outputs.channel == 'firebase'
         env:
           RELEASE_BODY: ${{ github.event.release.body }}
         run: printf '%s' "$RELEASE_BODY" > release-notes.txt
 
       - name: Upload to Firebase App Distribution
-        if: steps.channel.outputs.name == 'firebase'
+        if: needs.build.outputs.channel == 'firebase'
         uses: wzieba/Firebase-Distribution-Github-Action@v1
         with:
           appId: ${{ vars.FIREBASE_APP_ID }}
@@ -155,24 +189,13 @@ jobs:
           releaseNotesFile: release-notes.txt
 
       - name: Upload to Play Store
-        if: steps.channel.outputs.name == 'play'
+        if: needs.build.outputs.channel == 'play'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
           packageName: ${{ env.PACKAGE_NAME }}
           releaseFiles: ${{ env.BUNDLE_PATH }}
           mappingFile: ${{ env.MAPPING_PATH }}
-          track: ${{ vars.PLAY_TRACK || 'internal' }}
+          tracks: ${{ vars.PLAY_TRACK || 'internal' }}
           status: ${{ vars.PLAY_RELEASE_STATUS || 'completed' }}
           userFraction: ${{ vars.PLAY_USER_FRACTION }}
-
-      - name: Keep the built artifact
-        uses: actions/upload-artifact@v7
-        with:
-          name: ${{ github.event.release.tag_name }}
-          path: |
-            ${{ env.APK_PATH }}
-            ${{ env.BUNDLE_PATH }}
-            ${{ env.MAPPING_PATH }}
-          if-no-files-found: ignore
-          retention-days: 30
