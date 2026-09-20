@@ -35,7 +35,9 @@ Media3 を更新するときの手順。
 - 対象コミットが `origin/master` の履歴に含まれること（ワークフロー側でも検査するが、先に弾く）
 - `app/build.gradle` の `versionName` とタグのバージョン部分が一致すること
 - 同名のタグ・リリースが存在しないこと
-- `versionCode` が前回の Play リリースから上がっていること（Play は同じ `versionCode` を受け付けない）
+- `versionCode` が前回の Play リリースから上がっていること（Play リリースのみ。Play は同じ `versionCode` を受け付けない）
+
+`app/build.gradle` の `versionCode` / `versionName` を上げるのは Play Store へ出すためであって、プレリリースのために上げない。プレリリースはそのときの `versionName` のままタグを付ける（`versionName` が `3.3.0` なら `v3.3.0-rc1`）。Firebase は同じ `versionCode` を受け付けるので、同じバージョンで何度でも作れる。
 
 リリースノートを書くのは Play Store へ公開するリリースだけ。GitHub Release の本文が唯一の原本で、ロケール別の見出しで区切って書く。Play の「新機能」は本文から `script/split_release_notes.py` が生成する（1 ロケール 500 文字以内、超えるとワークフローが失敗する）。プレリリースは配信先が自分たちなのでノートを書かず、本文は空でよい。Firebase のリリースノートにはタグ名が入る。
 
@@ -70,7 +72,7 @@ gh release create v3.1.0-rc1 --prerelease --target master --title v3.1.0-rc1 --n
 gh release create v3.1.0 --draft --target master --title v3.1.0 --notes-file <(...)
 ```
 
-プレリリースを後から正式リリースへ昇格させる場合は、先に本文へリリースノートを書いてから次のようにする。`released` イベントが飛び、Play Store へのアップロードが走る。ノートがないままだとワークフローが落ちる。
+プレリリースを後から正式リリースへ昇格させる場合は、先に本文へリリースノートを書いてから次のようにする。`released` イベントが飛び、Play Store へのアップロードが走る。ノートがないままだとワークフローが落ちる。昇格できるのはそのプレリリースの `versionCode` がまだ Play へ送られていない場合だけで、送信済みのままだと Play が拒む。
 
 ```sh
 gh release edit v3.1.0-rc1 --prerelease=false
