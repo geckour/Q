@@ -370,7 +370,7 @@ fun Queue(
         var to by remember { mutableIntStateOf(-1) }
         val reorderableState = rememberReorderableLazyListState(lazyListState) { f, t ->
             items = items.moved(f.index, t.index).toImmutableList()
-            from = f.index
+            if (from < 0) from = f.index
             to = t.index
         }
         val lottieComposition by rememberLottieComposition(
@@ -402,7 +402,9 @@ fun Queue(
                     QueueItem(
                         modifier = Modifier.longPressDraggableHandle(
                             onDragStopped = {
-                                onQueueMove(from, to)
+                                if (from >= 0 && to >= 0) onQueueMove(from, to)
+                                from = -1
+                                to = -1
                             }
                         ),
                         isPlaying = isPlaying,
