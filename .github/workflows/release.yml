@@ -79,6 +79,7 @@ jobs:
           fi
 
       - name: Compose the release notes
+        if: steps.channel.outputs.name == 'play'
         env:
           RELEASE_BODY: ${{ github.event.release.body }}
         run: |
@@ -87,6 +88,7 @@ jobs:
           python3 script/split_release_notes.py release-body.md dist
 
       - name: Ensure the release notes exist
+        if: steps.channel.outputs.name == 'play'
         run: |
           for locale in ja-JP en-US; do
             if [[ ! -s "dist/whatsnew/whatsnew-${locale}" ]]; then
@@ -94,6 +96,12 @@ jobs:
               exit 1
             fi
           done
+
+      - name: Name the build for Firebase
+        if: steps.channel.outputs.name == 'firebase'
+        run: |
+          mkdir -p dist
+          printf '%s\n' "$TAG_NAME" > dist/release-notes.txt
 
       - name: Set up JDK
         uses: actions/setup-java@v6
