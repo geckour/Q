@@ -2,7 +2,9 @@ package com.geckour.q.ui.main.library
 
 import androidx.activity.compose.BackHandler
 import androidx.annotation.StringRes
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -187,6 +189,11 @@ private fun SpotifyBrowser(
                                         DialogEvent.OpenSpotifyContainer(item.container)
                                     )
                                 },
+                                onLongClick = {
+                                    onDialogEvent(
+                                        DialogEvent.ShowSpotifyContainerOption(item.container)
+                                    )
+                                },
                             )
                         }
                     }
@@ -322,6 +329,7 @@ private fun SpotifyTrackItem(
 private fun SpotifyContainerItem(
     container: SpotifyContainer,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
 ) {
     val kindLabel = when (container.kind) {
         SpotifyContainer.Kind.ALBUM -> stringResource(id = R.string.spotify_item_album)
@@ -338,9 +346,11 @@ private fun SpotifyContainerItem(
             stringResource(id = R.string.spotify_item_track_count, it)
         },
         onClick = onClick,
+        onLongClick = onLongClick,
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SpotifyItemRow(
     artworkUrl: String?,
@@ -348,11 +358,12 @@ private fun SpotifyItemRow(
     subtitle: String,
     trailing: String?,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp)
     ) {
