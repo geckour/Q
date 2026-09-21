@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Description
@@ -35,6 +36,7 @@ import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Highlight
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Queue
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.DrawerState
@@ -188,7 +190,13 @@ fun SpotifyDrawerItem(
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        SpotifyLogo(width = 88.dp)
+        SpotifyLogo(width = 76.dp)
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = stringResource(R.string.nav_spotify),
+            fontSize = 16.sp,
+            color = if (isSelected) QTheme.colors.colorAccent else QTheme.colors.colorTextPrimary
+        )
     }
 }
 
