@@ -138,11 +138,8 @@ private fun SpotifyBrowser(
     val source = browse.source
 
     BackHandler(container != null || source != null) {
-        when {
-            container != null -> onDialogEvent(DialogEvent.CloseSpotifyContainer)
-            browse.isFlattened -> onDialogEvent(DialogEvent.ChangeSpotifyFlatten(false))
-            else -> onDialogEvent(DialogEvent.ChangeSpotifySource(null))
-        }
+        if (container != null) onDialogEvent(DialogEvent.CloseSpotifyContainer)
+        else onDialogEvent(DialogEvent.ChangeSpotifySource(null))
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
