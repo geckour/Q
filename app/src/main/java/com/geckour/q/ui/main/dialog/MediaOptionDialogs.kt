@@ -48,8 +48,20 @@ fun TrackOptionDialog(
     )
     if (uiTrack.isSpotify) {
         val isSpotifyInstalled = isSpotifyInstalled(LocalContext.current)
+        val radioOptions = if (isSpotifyInstalled) {
+            listOf(
+                QOption(
+                    labelResId = R.string.spotify_menu_track_radio,
+                    showsSpotifyLogo = true,
+                    openInNew = true,
+                ) {
+                    onDialogEvent(DialogEvent.StartSpotifyTrackRadio(uiTrack.sourcePath))
+                    onDialogEvent(DialogEvent.Dismiss)
+                }
+            )
+        } else emptyList()
         QOptionDialog(
-            options = queueOptions + QOption(
+            options = queueOptions + radioOptions + QOption(
                 if (isSpotifyInstalled) R.string.spotify_menu_open
                 else R.string.spotify_menu_get_free
             ) {

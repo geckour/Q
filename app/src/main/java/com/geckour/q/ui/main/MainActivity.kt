@@ -48,6 +48,8 @@ import com.geckour.q.ui.compose.ColorBackground
 import com.geckour.q.ui.compose.ColorBackgroundInverse
 import com.geckour.q.ui.compose.ColorPrimaryDark
 import com.geckour.q.ui.compose.ColorPrimaryDarkInverse
+import com.geckour.q.domain.model.SpotifyContainer
+import com.geckour.q.ui.main.library.SpotifyBrowseSource
 import com.geckour.q.ui.main.dialog.DialogEvent
 import com.geckour.q.ui.main.dialog.DialogState
 import com.geckour.q.ui.widget.player.PlayerSheetWidgetProvider
@@ -56,6 +58,8 @@ import com.geckour.q.util.authorizeSpotifyAppRemote
 import com.geckour.q.util.createSpotifyAuthorizationRequest
 import com.geckour.q.util.dbxRequestConfig
 import com.geckour.q.util.isSpotifyInstalled
+import com.geckour.q.util.playOnSpotify
+import com.geckour.q.util.spotifyTrackRadioUri
 import com.geckour.q.util.spotifyWebUrl
 import com.geckour.q.util.getExtension
 import com.geckour.q.util.parseLrc
@@ -171,6 +175,17 @@ class MainActivity : ComponentActivity() {
         override fun clearQueue() = viewModel.onClickClearQueueButton()
 
         override fun onToggleShowLyrics() = viewModel.toggleShowLyric()
+
+        override fun loadSpotifySource(source: SpotifyBrowseSource, reset: Boolean) =
+            viewModel.loadSpotifySource(source, reset)
+
+        override fun loadSpotifyContainer(container: SpotifyContainer, reset: Boolean) =
+            viewModel.loadSpotifyContainer(container, reset)
+
+        override suspend fun resolveSpotifyContainer(
+            uri: String,
+            kind: SpotifyContainer.Kind,
+        ): SpotifyContainer? = viewModel.resolveSpotifyContainer(uri, kind)
 
         override fun onQueueMove(from: Int, to: Int) = viewModel.onQueueMove(from, to)
 
@@ -570,6 +585,18 @@ class MainActivity : ComponentActivity() {
                 )
             }
 
+            DialogEvent.NotifySpotifyNotConfigured -> {
+                viewModel.showSnackbar(getString(R.string.spotify_message_not_configured))
+            }
+
+            DialogEvent.NotifySpotifyEmpty -> {
+                viewModel.showSnackbar(getString(R.string.spotify_message_empty))
+            }
+
+            DialogEvent.RequestSpotifyAuth -> {
+                viewModel.showDialog(DialogState.ConfirmSpotifyAuth)
+            }
+
             DialogEvent.StartSpotifyAuth -> {
                 spotifyAuth.launch(
                     AuthorizationClient.createLoginActivityIntent(
@@ -581,16 +608,6 @@ class MainActivity : ComponentActivity() {
             }
 
             DialogEvent.SignOutSpotify -> viewModel.signOutSpotify()
-
-            is DialogEvent.ChangeSpotifySource -> viewModel.changeSpotifySource(event.source)
-
-            DialogEvent.LoadMoreSpotifyItems -> viewModel.loadMoreSpotifyItems()
-
-            is DialogEvent.OpenSpotifyContainer -> {
-                viewModel.openSpotifyContainer(event.container)
-            }
-
-            DialogEvent.CloseSpotifyContainer -> viewModel.closeSpotifyContainer()
 
             is DialogEvent.ChangeSpotifyFlatten -> {
                 viewModel.changeSpotifyFlatten(event.flatten)
@@ -606,6 +623,10 @@ class MainActivity : ComponentActivity() {
             }
 
             is DialogEvent.OpenInSpotify -> openInSpotify(event.uri)
+
+            is DialogEvent.StartSpotifyTrackRadio -> {
+                startSpotifyTrackRadio(event.trackUri)
+            }
 
             is DialogEvent.AddSpotifyContainer -> {
                 viewModel.addSpotifyContainer(event.container, event.actionType, event.classType)
@@ -668,6 +689,15 @@ class MainActivity : ComponentActivity() {
                 viewModel.emitSnackbarMessage(null)
             }
         }
+    }
+
+    private fun startSpotifyTrackRadio(trackUri: String) {
+        val radioUri = trackUri.spotifyTrackRadioUri
+        lifecycleScope.launch {
+            runCatching { playOnSpotify(this@MainActivity, radioUri) }
+                .onFailure { viewModel.showSpotifyError(it) }
+        }
+        openInSpotify(radioUri)
     }
 
     private fun openInSpotify(uri: String) {

@@ -53,7 +53,9 @@ import com.geckour.q.ui.main.dialog.DialogState
 import com.geckour.q.ui.main.library.SpotifyBrowseItem
 import com.geckour.q.ui.main.library.SpotifyBrowseSource
 import com.geckour.q.ui.main.library.SpotifyBrowseState
-import com.geckour.q.ui.main.library.container
+import com.geckour.q.ui.main.library.SpotifyLevel
+import com.geckour.q.ui.main.library.level
+import com.geckour.q.ui.main.library.levelKey
 import com.geckour.q.ui.main.library.key
 import com.geckour.q.ui.main.dialog.TrackSource
 import com.geckour.q.util.DownloadState
@@ -106,6 +108,7 @@ import com.spotify.android.appremote.api.error.OfflineModeException
 import com.spotify.android.appremote.api.error.UserNotAuthorizedException
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.toPersistentMap
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -129,6 +132,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -223,8 +228,11 @@ class MainViewModel(
     internal val hasSpotifyCredential = app.getSpotifyCredential().map { it != null }
 
     private val spotifyBrowseState = MutableStateFlow(SpotifyBrowseState())
-    private var spotifyLoadJob: Job? = null
     private var spotifyContentSyncJob: Job? = null
+
+    private val spotifyContainers = mutableMapOf<String, SpotifyContainer>()
+
+    private val spotifyContentMutex = Mutex()
 
     private val mutableDialogState = MutableStateFlow<DialogState?>(null)
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -253,6 +261,8 @@ class MainViewModel(
     internal val isInNightMode = app.getIsInNightMode()
     internal val showLyric = app.getShowLyric()
     internal val isSpotifyUnlocked = app.getIsSpotifyUnlocked()
+
+    internal val isSpotifyFlattened = app.getIsSpotifyFlattened()
     internal val equalizerParams = app.getEqualizerParams()
     internal val activeQAudioDeviceInfo = app.getActiveQAudioDeviceInfo()
 
@@ -804,6 +814,9 @@ class MainViewModel(
 
             app.setIsSpotifyUnlocked(true)
             mutableToastMessage.tryEmit(app.getString(R.string.spotify_message_menu_enabled))
+            if (app.getSpotifyCredential().first() == null) {
+                showDialog(DialogState.ConfirmSpotifyAuth)
+            }
         }
     }
 
@@ -1124,11 +1137,9 @@ class MainViewModel(
         expiresInSeconds: Int,
     ) {
         spotifyApiClient.storeCredential(accessToken, refreshToken, expiresInSeconds)
-        loadSpotifyItems(reset = true)
     }
 
     internal fun signOutSpotify() {
-        spotifyLoadJob?.cancel()
         spotifyContentClient.release()
         viewModelScope.launch {
             spotifyApiClient.clearCredential()
@@ -1136,103 +1147,139 @@ class MainViewModel(
         }
     }
 
-    internal fun changeSpotifySource(source: SpotifyBrowseSource?) {
-        if (spotifyBrowseState.value.source == source) return
+    internal fun loadSpotifySource(source: SpotifyBrowseSource, reset: Boolean) {
+        val level = spotifyBrowseState.value.level(source.levelKey)
+        if (reset.not() && level.isLoading) return
+        val offset = if (reset) 0 else level.nextOffset ?: return
 
-        spotifyLoadJob?.cancel()
-        spotifyBrowseState.update {
-            it.copy(
-                source = source,
-                items = persistentListOf(),
-                nextOffset = null,
-                containerStack = persistentListOf(),
-                containerItems = persistentListOf(),
-                containerNextOffset = null,
-                isFlattened = false,
-                isLoading = false,
-                errorMessage = null,
-                lastAddedTitle = null,
-            )
+        loadSpotifyLevel(source.levelKey, reset) {
+            when (source) {
+                SpotifyBrowseSource.SAVED -> {
+                    val page = spotifyApiClient.getSavedTracks(offset)
+                    page.items.map { SpotifyBrowseItem.Track(it) } to page.nextOffset
+                }
+
+                SpotifyBrowseSource.PLAYLISTS -> {
+                    val page = spotifyApiClient.getMyPlaylists(offset)
+                    page.items.map { SpotifyBrowseItem.Container(it) } to page.nextOffset
+                }
+
+                SpotifyBrowseSource.RECOMMENDED -> {
+                    loadSpotifyRecommendedItems(app.getIsSpotifyFlattened().first()) to null
+                }
+            }
         }
-        if (source != null) loadSpotifyItems(reset = true)
         if (source == SpotifyBrowseSource.RECOMMENDED) syncSpotifyContentInBackground()
     }
 
-    internal fun loadMoreSpotifyItems() {
-        if (spotifyLoadJob?.isActive == true) return
+    internal fun loadSpotifyContainer(container: SpotifyContainer, reset: Boolean) {
+        val level = spotifyBrowseState.value.level(container.levelKey)
+        if (reset.not() && level.isLoading) return
+        val offset = if (reset) 0 else level.nextOffset ?: return
 
-        loadSpotifyItems(reset = false)
+        loadSpotifyLevel(container.levelKey, reset) {
+            if (container.kind == SpotifyContainer.Kind.CONTENT) {
+                val page = spotifyContentClient.getChildren(container, offset)
+                page.items.toBrowseItems() to page.nextOffset
+            } else {
+                val page = spotifyApiClient.getContainerTracks(container, offset)
+                page.items.map { SpotifyBrowseItem.Track(it) } to page.nextOffset
+            }
+        }
     }
 
-    internal fun openSpotifyContainer(container: SpotifyContainer) {
-        spotifyLoadJob?.cancel()
-        spotifyBrowseState.update {
-            it.copy(
-                containerStack = (it.containerStack + container).toImmutableList(),
-                containerItems = persistentListOf(),
-                containerNextOffset = null,
-                errorMessage = null,
-                lastAddedTitle = null,
-            )
+    internal suspend fun resolveSpotifyContainer(
+        uri: String,
+        kind: SpotifyContainer.Kind,
+    ): SpotifyContainer? {
+        spotifyContainers[uri]?.let { return it }
+
+        if (kind == SpotifyContainer.Kind.CONTENT) {
+            db.spotifyContentEntryDao().find(uri)?.let { entry ->
+                return entry.toContentItem().toContainer().also { spotifyContainers[uri] = it }
+            }
         }
-        loadSpotifyItems(reset = true)
+
+        return try {
+            spotifyApiClient.getContainer(uri, kind)?.also { spotifyContainers[uri] = it }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            Timber.e(t)
+            null
+        }
     }
 
-    internal fun closeSpotifyContainer() {
-        spotifyLoadJob?.cancel()
-        spotifyBrowseState.update {
+    private fun loadSpotifyLevel(
+        key: String,
+        reset: Boolean,
+        load: suspend () -> Pair<List<SpotifyBrowseItem>, Int?>,
+    ) {
+        updateSpotifyLevel(key) {
             it.copy(
-                containerStack = it.containerStack.dropLast(1).toImmutableList(),
-                containerItems = persistentListOf(),
-                containerNextOffset = null,
-                isLoading = false,
-                errorMessage = null,
+                items = if (reset) persistentListOf() else it.items,
+                nextOffset = if (reset) null else it.nextOffset,
+                isLoading = true,
+                hasLoaded = if (reset) false else it.hasLoaded,
+                hasFailed = false,
             )
         }
-        if (spotifyBrowseState.value.container != null ||
-            spotifyBrowseState.value.items.isEmpty()
-        ) {
-            loadSpotifyItems(reset = true)
+        viewModelScope.launch {
+            try {
+                val (items, nextOffset) = load()
+                items.filterIsInstance<SpotifyBrowseItem.Container>()
+                    .forEach { spotifyContainers[it.container.uri] = it.container }
+                updateSpotifyLevel(key) { current ->
+                    current.copy(
+                        items = (current.items + items).distinctBy { it.key }.toImmutableList(),
+                        nextOffset = nextOffset,
+                        isLoading = false,
+                        hasLoaded = true,
+                    )
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                Timber.e(t)
+                updateSpotifyLevel(key) { it.copy(isLoading = false, hasFailed = true) }
+                showSpotifyError(t)
+            }
+        }
+    }
+
+    private fun updateSpotifyLevel(key: String, update: (level: SpotifyLevel) -> SpotifyLevel) {
+        spotifyBrowseState.update { state ->
+            state.copy(levels = state.levels.toPersistentMap().put(key, update(state.level(key))))
         }
     }
 
     internal fun changeSpotifyFlatten(flatten: Boolean) {
-        if (spotifyBrowseState.value.isFlattened == flatten) return
+        viewModelScope.launch {
+            if (app.getIsSpotifyFlattened().first() == flatten) return@launch
 
-        spotifyLoadJob?.cancel()
-        spotifyBrowseState.update { it.copy(isLoading = true, errorMessage = null) }
-        spotifyLoadJob = viewModelScope.launch {
-            loadingSpotify {
-                val items = loadSpotifyRecommendedItems(flatten)
-                app.setIsSpotifyFlattened(flatten)
-                spotifyBrowseState.update {
-                    it.copy(
-                        items = items.toImmutableList(),
-                        nextOffset = null,
-                        isFlattened = flatten,
-                        isLoading = false,
-                    )
-                }
-            }
+            app.setIsSpotifyFlattened(flatten)
+            loadSpotifySource(SpotifyBrowseSource.RECOMMENDED, reset = true)
         }
     }
 
     private suspend fun loadSpotifyRecommendedItems(
         flatten: Boolean,
     ): List<SpotifyBrowseItem> {
-        val dao = db.spotifyContentEntryDao()
-        if (dao.latestUpdatedAt() == null) syncSpotifyContent()
+        val contents = spotifyContentMutex.withLock {
+            val dao = db.spotifyContentEntryDao()
+            if (dao.latestUpdatedAt() == null) syncSpotifyContent()
 
-        val sections = dao.getChildren(ROOT_PARENT_URI).map { it.toContentItem() }
-        if (flatten.not()) {
-            return sections.map { SpotifyBrowseItem.Container(it.toContainer()) }
+            val sections = dao.getChildren(ROOT_PARENT_URI).map { it.toContentItem() }
+            if (flatten.not()) return@withLock sections
+
+            sections.flatMap { dao.getChildren(it.uri) }
+                .map { it.toContentItem() }
+                .distinctBy { it.uri }
+                .sortedBy { it.title.lowercase() }
         }
 
-        return sections.flatMap { dao.getChildren(it.uri) }
-            .map { it.toContentItem() }
-            .distinctBy { it.uri }
-            .sortedBy { it.title.lowercase() }
-            .toBrowseItems()
+        return if (flatten) contents.toBrowseItems()
+        else contents.map { SpotifyBrowseItem.Container(it.toContainer()) }
     }
 
     internal fun syncSpotifyContentInBackground() {
@@ -1240,32 +1287,34 @@ class MainViewModel(
         if (spotifyContentSyncJob?.isActive == true) return
 
         spotifyContentSyncJob = viewModelScope.launch {
-            spotifyLoadJob?.join()
-
-            val dao = db.spotifyContentEntryDao()
-            val latestUpdatedAt = dao.latestUpdatedAt()
-            if (latestUpdatedAt != null &&
-                System.currentTimeMillis() - latestUpdatedAt < SPOTIFY_CONTENT_SYNC_INTERVAL_MILLIS
-            ) {
-                return@launch
-            }
-
-            try {
-                syncSpotifyContent()
+            val synced = try {
+                syncSpotifyContentIfStale()
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {
                 Timber.e(t)
                 return@launch
             }
+            if (synced.not()) return@launch
 
-            val state = spotifyBrowseState.value
-            if (state.source != SpotifyBrowseSource.RECOMMENDED) return@launch
-            if (state.container != null) return@launch
+            val key = SpotifyBrowseSource.RECOMMENDED.levelKey
+            if (spotifyBrowseState.value.level(key).items.isEmpty()) return@launch
 
-            val items = loadSpotifyRecommendedItems(state.isFlattened)
-            spotifyBrowseState.update { it.copy(items = items.toImmutableList()) }
+            val items = loadSpotifyRecommendedItems(app.getIsSpotifyFlattened().first())
+            updateSpotifyLevel(key) { it.copy(items = items.toImmutableList()) }
         }
+    }
+
+    private suspend fun syncSpotifyContentIfStale(): Boolean = spotifyContentMutex.withLock {
+        val latestUpdatedAt = db.spotifyContentEntryDao().latestUpdatedAt()
+        if (latestUpdatedAt != null &&
+            System.currentTimeMillis() - latestUpdatedAt < SPOTIFY_CONTENT_SYNC_INTERVAL_MILLIS
+        ) {
+            return@withLock false
+        }
+
+        syncSpotifyContent()
+        true
     }
 
     private suspend fun syncSpotifyContent() {
@@ -1278,6 +1327,49 @@ class MainViewModel(
             dao.replaceChildren(section.uri, children.toEntries(section.uri, syncedAt))
         }
         dao.deleteStalerThan(syncedAt)
+    }
+
+    private fun SpotifyContentItem.toContainer(): SpotifyContainer = SpotifyContainer(
+        kind = SpotifyContainer.Kind.CONTENT,
+        id = id,
+        uri = uri,
+        name = title,
+        creatorName = subtitle,
+        artworkUrl = artworkUrl,
+        releaseDate = null,
+        totalTracks = null,
+    )
+
+    private suspend fun List<SpotifyContentItem>.toBrowseItems(): List<SpotifyBrowseItem> {
+        val tracks = toSpotifyTracks().associateBy { it.uri }
+
+        return mapNotNull { item ->
+            if (item.uri.isSpotifyTrackUri) {
+                tracks[item.uri]?.let { SpotifyBrowseItem.Track(it) }
+            } else {
+                SpotifyBrowseItem.Container(item.toContainer())
+            }
+        }
+    }
+
+    private suspend fun List<SpotifyContentItem>.toSpotifyTracks(): List<SpotifyTrack> {
+        val uris = filter { it.uri.isSpotifyTrackUri }.map { it.uri }
+        if (uris.isEmpty()) return emptyList()
+
+        val cached = db.spotifyTrackDao().getAllByUris(uris).associateBy { it.uri }
+        val fetched = coroutineScope {
+            uris.filterNot { cached.containsKey(it) }
+                .chunked(SPOTIFY_TRACK_DETAIL_CONCURRENCY)
+                .flatMap { chunk ->
+                    chunk.map { uri -> async { spotifyApiClient.getTrack(uri) } }.awaitAll()
+                }
+                .filterNotNull()
+        }
+        fetched.forEach { db.spotifyTrackDao().upsert(it) }
+
+        val details = cached + fetched.associateBy { it.uri }
+
+        return uris.mapNotNull { details[it] }
     }
 
     private fun List<SpotifyContentItem>.toEntries(
@@ -1338,153 +1430,8 @@ class MainViewModel(
         return items
     }
 
-    private fun loadSpotifyItems(reset: Boolean) {
-        val state = spotifyBrowseState.value
-        val container = state.container
-        if (container != null) {
-            loadSpotifyContainerItems(container, reset)
-            return
-        }
-
-        val source = state.source ?: return
-        val offset = if (reset) 0 else state.nextOffset ?: return
-
-        spotifyLoadJob?.cancel()
-        spotifyBrowseState.update {
-            it.copy(
-                items = if (reset) persistentListOf() else it.items,
-                nextOffset = if (reset) null else it.nextOffset,
-                isLoading = true,
-                errorMessage = null,
-            )
-        }
-        spotifyLoadJob = viewModelScope.launch {
-            loadingSpotify {
-                var flatten = false
-                val (items, nextOffset) = when (source) {
-                    SpotifyBrowseSource.SAVED -> {
-                        val page = spotifyApiClient.getSavedTracks(offset)
-                        page.items.map { SpotifyBrowseItem.Track(it) } to page.nextOffset
-                    }
-
-                    SpotifyBrowseSource.PLAYLISTS -> {
-                        val page = spotifyApiClient.getMyPlaylists(offset)
-                        page.items.map { SpotifyBrowseItem.Container(it) } to page.nextOffset
-                    }
-
-                    SpotifyBrowseSource.RECOMMENDED -> {
-                        flatten = app.getIsSpotifyFlattened().first()
-                        loadSpotifyRecommendedItems(flatten) to null
-                    }
-                }
-                spotifyBrowseState.update { current ->
-                    current.copy(
-                        items = (current.items + items).distinctBy { it.key }.toImmutableList(),
-                        nextOffset = nextOffset,
-                        isFlattened = flatten,
-                        isLoading = false,
-                    )
-                }
-            }
-        }
-    }
-
-    private fun loadSpotifyContainerItems(container: SpotifyContainer, reset: Boolean) {
-        val offset =
-            if (reset) 0 else spotifyBrowseState.value.containerNextOffset ?: return
-
-        spotifyLoadJob?.cancel()
-        spotifyBrowseState.update {
-            it.copy(
-                containerItems = if (reset) persistentListOf() else it.containerItems,
-                containerNextOffset = if (reset) null else it.containerNextOffset,
-                isLoading = true,
-                errorMessage = null,
-            )
-        }
-        spotifyLoadJob = viewModelScope.launch {
-            loadingSpotify {
-                val (items, nextOffset) = if (container.kind == SpotifyContainer.Kind.CONTENT) {
-                    val page = spotifyContentClient.getChildren(container, offset)
-                    page.items.toBrowseItems() to page.nextOffset
-                } else {
-                    val page = spotifyApiClient.getContainerTracks(container, offset)
-                    page.items.map { SpotifyBrowseItem.Track(it) } to page.nextOffset
-                }
-                spotifyBrowseState.update { current ->
-                    if (current.container?.uri != container.uri) return@update current
-
-                    current.copy(
-                        containerItems = (current.containerItems + items)
-                            .distinctBy { it.key }
-                            .toImmutableList(),
-                        containerNextOffset = nextOffset,
-                        isLoading = false,
-                    )
-                }
-            }
-        }
-    }
-
-    private fun SpotifyContentItem.toContainer(): SpotifyContainer = SpotifyContainer(
-        kind = SpotifyContainer.Kind.CONTENT,
-        id = id,
-        uri = uri,
-        name = title,
-        creatorName = subtitle,
-        artworkUrl = artworkUrl,
-        releaseDate = null,
-        totalTracks = null,
-    )
-
-    private suspend fun List<SpotifyContentItem>.toBrowseItems(): List<SpotifyBrowseItem> {
-        val tracks = toSpotifyTracks().associateBy { it.uri }
-
-        return mapNotNull { item ->
-            if (item.uri.isSpotifyTrackUri) {
-                tracks[item.uri]?.let { SpotifyBrowseItem.Track(it) }
-            } else {
-                SpotifyBrowseItem.Container(item.toContainer())
-            }
-        }
-    }
-
-    private suspend fun List<SpotifyContentItem>.toSpotifyTracks(): List<SpotifyTrack> {
-        val uris = filter { it.uri.isSpotifyTrackUri }.map { it.uri }
-        if (uris.isEmpty()) return emptyList()
-
-        val cached = db.spotifyTrackDao().getAllByUris(uris).associateBy { it.uri }
-        val fetched = coroutineScope {
-            uris.filterNot { cached.containsKey(it) }
-                .chunked(SPOTIFY_TRACK_DETAIL_CONCURRENCY)
-                .flatMap { chunk ->
-                    chunk.map { uri -> async { spotifyApiClient.getTrack(uri) } }.awaitAll()
-                }
-                .filterNotNull()
-        }
-        fetched.forEach { db.spotifyTrackDao().upsert(it) }
-
-        val details = cached + fetched.associateBy { it.uri }
-
-        return uris.mapNotNull { details[it] }
-    }
-
-    private suspend fun loadingSpotify(load: suspend () -> Unit) {
-        try {
-            load()
-        } catch (e: CancellationException) {
-            throw e
-        } catch (t: Throwable) {
-            Timber.e(t)
-            spotifyBrowseState.update {
-                it.copy(isLoading = false, errorMessage = t.toSpotifyErrorMessage())
-            }
-            showSpotifyError(t)
-        }
-    }
-
     internal fun addSpotifyTrack(track: SpotifyTrack, actionType: InsertActionType) {
-        submitSpotifyTracks(listOf(track), actionType, track.title)
+        submitSpotifyTracks(listOf(track), actionType)
     }
 
     internal fun addSpotifyContainer(
@@ -1514,9 +1461,7 @@ class MainViewModel(
 
                 if (tracks.isEmpty()) {
                     loading.value = false to null
-                    spotifyBrowseState.update {
-                        it.copy(errorMessage = app.getString(R.string.spotify_message_empty))
-                    }
+                    showSnackbar(app.getString(R.string.spotify_message_empty))
                     return@launch
                 }
 
@@ -1524,16 +1469,12 @@ class MainViewModel(
                     tracks = tracks.take(MAX_SPOTIFY_CONTAINER_TRACKS)
                         .ordered(actionType, classType),
                     actionType = actionType,
-                    addedTitle = container.name,
                 )
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {
                 Timber.e(t)
                 loading.value = false to null
-                spotifyBrowseState.update {
-                    it.copy(isLoading = false, errorMessage = t.toSpotifyErrorMessage())
-                }
                 showSpotifyError(t)
             }
         }
@@ -1612,7 +1553,6 @@ class MainViewModel(
     private fun submitSpotifyTracks(
         tracks: List<SpotifyTrack>,
         actionType: InsertActionType,
-        addedTitle: String,
     ) {
         if (tracks.isEmpty()) return
 
@@ -1623,7 +1563,6 @@ class MainViewModel(
             needSorted = false,
             spotifyTracks = tracks,
         )
-        spotifyBrowseState.update { it.copy(lastAddedTitle = addedTitle) }
     }
 
     override fun onCleared() {
@@ -1632,8 +1571,12 @@ class MainViewModel(
     }
 
     internal fun showSpotifyError(throwable: Throwable) {
+        showSnackbar(throwable.toSpotifyErrorMessage())
+    }
+
+    internal fun showSnackbar(message: String) {
         viewModelScope.launch {
-            snackbarMessageFlow.value = throwable.toSpotifyErrorMessage()
+            snackbarMessageFlow.value = message
             delay(3000.milliseconds)
             snackbarMessageFlow.value = null
         }

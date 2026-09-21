@@ -46,6 +46,7 @@ fun MainScreen(
     val showLyric by viewModel.showLyric.collectAsState(initial = false)
     val isSpotifyUnlocked by viewModel.isSpotifyUnlocked.collectAsState(initial = false)
     val spotifyBrowse by viewModel.spotifyBrowse.collectAsState()
+    val isSpotifyFlattened by viewModel.isSpotifyFlattened.collectAsState(initial = false)
     val hasSpotifyCredential by viewModel.hasSpotifyCredential.collectAsState(initial = false)
     val appBarOptionMediaItem by viewModel.appBarOptionMediaItem.collectAsState()
     val routeInfo by viewModel.activeQAudioDeviceInfo.collectAsState(initial = null)
@@ -89,6 +90,7 @@ fun MainScreen(
             snackbarMessage = progress.message ?: snackbarMessage,
             isSpotifyUnlocked = isSpotifyUnlocked,
             spotifyBrowse = spotifyBrowse,
+            isSpotifyFlattened = isSpotifyFlattened,
             hasSpotifyCredential = hasSpotifyCredential,
             snackbarPaths = progress.paths,
             snackbarProgress = progress.fraction,

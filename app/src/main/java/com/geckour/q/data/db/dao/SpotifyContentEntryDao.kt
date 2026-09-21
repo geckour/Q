@@ -15,6 +15,9 @@ interface SpotifyContentEntryDao {
     @Query("select * from spotifycontententry where parentUri = :parentUri order by position")
     suspend fun getChildren(parentUri: String): List<SpotifyContentEntry>
 
+    @Query("select * from spotifycontententry where uri = :uri limit 1")
+    suspend fun find(uri: String): SpotifyContentEntry?
+
     @Query("delete from spotifycontententry where parentUri = :parentUri")
     suspend fun deleteChildren(parentUri: String)
 

@@ -4,7 +4,6 @@ import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.domain.model.SpotifyContainer
 import com.geckour.q.domain.model.UiTrack
-import com.geckour.q.ui.main.library.SpotifyBrowseSource
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 
@@ -56,17 +55,15 @@ sealed interface DialogEvent {
         val needDownloaded: Boolean,
     ) : DialogEvent
 
+    data object NotifySpotifyNotConfigured : DialogEvent
+
+    data object NotifySpotifyEmpty : DialogEvent
+
+    data object RequestSpotifyAuth : DialogEvent
+
     data object StartSpotifyAuth : DialogEvent
 
     data object SignOutSpotify : DialogEvent
-
-    data class ChangeSpotifySource(val source: SpotifyBrowseSource?) : DialogEvent
-
-    data object LoadMoreSpotifyItems : DialogEvent
-
-    data class OpenSpotifyContainer(val container: SpotifyContainer) : DialogEvent
-
-    data object CloseSpotifyContainer : DialogEvent
 
     data class ChangeSpotifyFlatten(val flatten: Boolean) : DialogEvent
 
@@ -76,6 +73,8 @@ sealed interface DialogEvent {
     data class ShowSpotifyContainerOption(val container: SpotifyContainer) : DialogEvent
 
     data class OpenInSpotify(val uri: String) : DialogEvent
+
+    data class StartSpotifyTrackRadio(val trackUri: String) : DialogEvent
 
     data class AddSpotifyTrack(
         val track: SpotifyTrack,

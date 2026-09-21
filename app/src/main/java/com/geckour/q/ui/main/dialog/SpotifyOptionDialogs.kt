@@ -24,8 +24,27 @@ fun SpotifyTrackOptionDialog(
                 onDialogEvent(DialogEvent.AddSpotifyTrack(track, actionType))
                 onDialogEvent(DialogEvent.Dismiss)
             },
-        ) + spotifyLinkOption(track.uri, onDialogEvent),
+        ) + trackRadioOption(track.uri, onDialogEvent) + spotifyLinkOption(track.uri, onDialogEvent),
         onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) },
+    )
+}
+
+@Composable
+private fun trackRadioOption(
+    trackUri: String,
+    onDialogEvent: (event: DialogEvent) -> Unit,
+): List<QOption> {
+    if (isSpotifyInstalled(LocalContext.current).not()) return emptyList()
+
+    return listOf(
+        QOption(
+            labelResId = R.string.spotify_menu_track_radio,
+            showsSpotifyLogo = true,
+            openInNew = true,
+        ) {
+            onDialogEvent(DialogEvent.StartSpotifyTrackRadio(trackUri))
+            onDialogEvent(DialogEvent.Dismiss)
+        }
     )
 }
 

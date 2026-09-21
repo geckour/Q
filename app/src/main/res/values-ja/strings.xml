@@ -175,7 +175,8 @@
     <!-- Spotify -->
     <string name="spotify_tab_saved">お気に入りの曲</string>
     <string name="spotify_tab_playlists">プレイリスト</string>
-    <string name="spotify_tab_recommended">おすすめ</string>
+    <string name="spotify_tab_recommended">Spotify からのおすすめ</string>
+    <string name="spotify_menu_track_radio">ソングラジオに移動</string>
     <string name="spotify_menu_flatten">フラット表示</string>
     <string name="spotify_menu_sectioned">セクション表示</string>
     <string name="spotify_item_album">アルバム</string>

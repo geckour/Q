@@ -183,13 +183,14 @@
     <string name="spotify_attribution" translatable="false">Spotify</string>
     <string name="spotify_tab_saved">Liked Songs</string>
     <string name="spotify_tab_playlists">Playlists</string>
-    <string name="spotify_tab_recommended">Recommended</string>
+    <string name="spotify_tab_recommended">Recommended by Spotify</string>
     <string name="spotify_menu_flatten">Flat view</string>
     <string name="spotify_menu_sectioned">Section view</string>
     <string name="spotify_item_album">Album</string>
     <string name="spotify_item_artist">Artist</string>
     <string name="spotify_item_playlist">Playlist</string>
     <string name="spotify_item_track_count">%d tracks</string>
+    <string name="spotify_menu_track_radio">Go to song radio</string>
     <string name="spotify_menu_open" translatable="false">OPEN SPOTIFY</string>
     <string name="spotify_menu_get_free" translatable="false">GET SPOTIFY FREE</string>
     <string name="spotify_message_not_configured">Spotify client ID is not configured.\nSet SPOTIFY_CLIENT_ID in secret.properties and build the app again.</string>

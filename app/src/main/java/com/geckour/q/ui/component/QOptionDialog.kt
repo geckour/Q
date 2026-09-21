@@ -6,9 +6,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
@@ -23,6 +27,8 @@ import com.geckour.q.ui.compose.QTheme
 
 data class QOption(
     @StringRes val labelResId: Int,
+    val showsSpotifyLogo: Boolean = false,
+    val openInNew: Boolean = false,
     val onClick: () -> Unit,
 )
 
@@ -56,11 +62,27 @@ fun QOptionDialog(
                 }
                 options.forEach { option ->
                     DialogListItem(onClick = option.onClick) {
-                        Text(
-                            text = stringResource(id = option.labelResId),
-                            fontSize = 14.sp,
-                            color = QTheme.colors.colorTextPrimary
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = stringResource(id = option.labelResId),
+                                fontSize = 14.sp,
+                                color = QTheme.colors.colorTextPrimary,
+                                modifier = Modifier.weight(1f)
+                            )
+                            if (option.showsSpotifyLogo) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                SpotifyLogo(width = 64.dp)
+                            }
+                            if (option.openInNew) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.OpenInNew,
+                                    contentDescription = null,
+                                    tint = QTheme.colors.colorTextSecondary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }

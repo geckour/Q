@@ -3,7 +3,9 @@ package com.geckour.q.ui.main.library
 import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.domain.model.SpotifyContainer
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf
+import kotlinx.collections.immutable.persistentMapOf
 
 enum class SpotifyBrowseSource {
     SAVED,
@@ -18,20 +20,23 @@ sealed interface SpotifyBrowseItem {
     data class Container(val container: SpotifyContainer) : SpotifyBrowseItem
 }
 
-data class SpotifyBrowseState(
-    val source: SpotifyBrowseSource? = null,
+data class SpotifyLevel(
     val items: ImmutableList<SpotifyBrowseItem> = persistentListOf(),
     val nextOffset: Int? = null,
-    val containerStack: ImmutableList<SpotifyContainer> = persistentListOf(),
-    val containerItems: ImmutableList<SpotifyBrowseItem> = persistentListOf(),
-    val containerNextOffset: Int? = null,
-    val isFlattened: Boolean = false,
     val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-    val lastAddedTitle: String? = null,
+    val hasLoaded: Boolean = false,
+    val hasFailed: Boolean = false,
 )
 
-val SpotifyBrowseState.container: SpotifyContainer? get() = containerStack.lastOrNull()
+data class SpotifyBrowseState(
+    val levels: ImmutableMap<String, SpotifyLevel> = persistentMapOf(),
+)
+
+fun SpotifyBrowseState.level(key: String): SpotifyLevel = levels[key] ?: SpotifyLevel()
+
+val SpotifyBrowseSource.levelKey: String get() = name
+
+val SpotifyContainer.levelKey: String get() = uri
 
 val SpotifyBrowseItem.artworkUrl: String?
     get() = when (this) {

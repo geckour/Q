@@ -10,6 +10,7 @@ import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.SpotifyContainer
+import com.geckour.q.ui.main.library.SpotifyBrowseSource
 import com.geckour.q.domain.model.SpotifyRecommendedRoot
 import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.domain.model.UiTrack
@@ -80,6 +81,15 @@ interface MainActions {
     fun clearQueue()
 
     fun onToggleShowLyrics()
+
+    fun loadSpotifySource(source: SpotifyBrowseSource, reset: Boolean)
+
+    fun loadSpotifyContainer(container: SpotifyContainer, reset: Boolean)
+
+    suspend fun resolveSpotifyContainer(
+        uri: String,
+        kind: SpotifyContainer.Kind,
+    ): SpotifyContainer?
 
     fun onQueueMove(from: Int, to: Int)
 

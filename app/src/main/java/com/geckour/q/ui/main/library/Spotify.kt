@@ -1,11 +1,8 @@
 package com.geckour.q.ui.main.library
 
-import androidx.activity.compose.BackHandler
-import androidx.annotation.StringRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -17,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -28,13 +26,10 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -65,185 +60,93 @@ private const val SAVED_TRACKS_URI = "spotify:collection:tracks"
 private const val SECTION_URI_PREFIX = "spotify:section:"
 
 @Composable
-fun Spotify(
-    browse: SpotifyBrowseState,
-    isConfigured: Boolean,
-    hasCredential: Boolean,
+fun SpotifySourceMenu(
     endItemMargin: Dp = 0.dp,
-    onDialogEvent: (event: DialogEvent) -> Unit,
+    onSelectSource: (source: SpotifyBrowseSource) -> Unit,
 ) {
-    when {
-        isConfigured.not() -> {
-            SpotifyMessage(
-                message = stringResource(id = R.string.spotify_message_not_configured),
-            )
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        items(SpotifyBrowseSource.entries, key = { it.name }) { source ->
+            SpotifySourceItem(source = source, onClick = { onSelectSource(source) })
         }
-
-        hasCredential.not() -> {
-            SpotifyMessage(
-                message = stringResource(id = R.string.spotify_message_auth),
-                actionLabelResId = R.string.dialog_ok,
-                onAction = { onDialogEvent(DialogEvent.StartSpotifyAuth) },
-            )
-        }
-
-        else -> {
-            SpotifyBrowser(
-                browse = browse,
-                endItemMargin = endItemMargin,
-                onDialogEvent = onDialogEvent,
-            )
+        item {
+            Spacer(modifier = Modifier.height(endItemMargin))
         }
     }
 }
 
 @Composable
-private fun SpotifyMessage(
-    message: String,
-    @StringRes actionLabelResId: Int? = null,
-    onAction: () -> Unit = {},
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            text = message,
-            fontSize = 16.sp,
-            color = QTheme.colors.colorTextPrimary,
-        )
-        if (actionLabelResId != null) {
-            Spacer(modifier = Modifier.height(8.dp))
-            TextButton(onClick = onAction) {
-                Text(
-                    text = stringResource(id = actionLabelResId),
-                    fontSize = 16.sp,
-                    color = QTheme.colors.colorAccent,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SpotifyBrowser(
-    browse: SpotifyBrowseState,
-    endItemMargin: Dp,
+fun SpotifyLevel(
+    level: SpotifyLevel,
+    listState: LazyListState,
+    endItemMargin: Dp = 0.dp,
+    onOpenContainer: (container: SpotifyContainer) -> Unit,
+    onLoadMore: () -> Unit,
     onDialogEvent: (event: DialogEvent) -> Unit,
 ) {
-    val container = browse.container
-    val source = browse.source
+    Box(modifier = Modifier.fillMaxSize()) {
+        val items = level.items
+        val showsArtwork = items.any { it.artworkUrl != null }
 
-    BackHandler(container != null || source != null) {
-        if (container != null) onDialogEvent(DialogEvent.CloseSpotifyContainer)
-        else onDialogEvent(DialogEvent.ChangeSpotifySource(null))
-    }
-
-    Column(modifier = Modifier.fillMaxSize()) {
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-        ) {
-            val items = if (container == null) browse.items else browse.containerItems
-            val showsArtwork = items.any { it.artworkUrl != null }
-            val showsSourceMenu = source == null
-            val hasMore =
-                if (container == null) browse.nextOffset != null
-                else browse.containerNextOffset != null
-
-            LazyColumn(modifier = Modifier.fillMaxSize()) {
-                if (showsSourceMenu) {
-                    items(SpotifyBrowseSource.entries, key = { it.name }) { menuSource ->
-                        SpotifySourceItem(
-                            source = menuSource,
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize()) {
+            items(items, key = { it.key }) { item ->
+                when (item) {
+                    is SpotifyBrowseItem.Track -> {
+                        SpotifyTrackItem(
+                            track = item.track,
+                            showsArtwork = showsArtwork,
                             onClick = {
-                                onDialogEvent(DialogEvent.ChangeSpotifySource(menuSource))
+                                onDialogEvent(DialogEvent.ShowSpotifyTrackOption(item.track))
+                            },
+                        )
+                    }
+
+                    is SpotifyBrowseItem.Container -> {
+                        SpotifyContainerItem(
+                            container = item.container,
+                            showsArtwork = showsArtwork,
+                            onClick = { onOpenContainer(item.container) },
+                            onLongClick = {
+                                onDialogEvent(
+                                    DialogEvent.ShowSpotifyContainerOption(item.container)
+                                )
                             },
                         )
                     }
                 }
-                items(items, key = { it.key }) { item ->
-                    when (item) {
-                        is SpotifyBrowseItem.Track -> {
-                            SpotifyTrackItem(
-                                track = item.track,
-                                showsArtwork = showsArtwork,
-                                onClick = {
-                                    onDialogEvent(
-                                        DialogEvent.ShowSpotifyTrackOption(item.track)
-                                    )
-                                },
-                            )
-                        }
-
-                        is SpotifyBrowseItem.Container -> {
-                            SpotifyContainerItem(
-                                container = item.container,
-                                showsArtwork = showsArtwork,
-                                onClick = {
-                                    onDialogEvent(
-                                        DialogEvent.OpenSpotifyContainer(item.container)
-                                    )
-                                },
-                                onLongClick = {
-                                    onDialogEvent(
-                                        DialogEvent.ShowSpotifyContainerOption(item.container)
-                                    )
-                                },
-                            )
-                        }
+            }
+            if (level.nextOffset != null) {
+                item(key = "load_more") {
+                    LaunchedEffect(level.nextOffset) { onLoadMore() }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularWavyProgressIndicator(
+                            color = QTheme.colors.colorAccent,
+                            modifier = Modifier.size(24.dp)
+                        )
                     }
-                }
-                if (hasMore) {
-                    item(key = "load_more") {
-                        LaunchedEffect(browse.nextOffset, browse.containerNextOffset) {
-                            onDialogEvent(DialogEvent.LoadMoreSpotifyItems)
-                        }
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularWavyProgressIndicator(
-                                color = QTheme.colors.colorAccent,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-                }
-                item {
-                    Spacer(modifier = Modifier.height(endItemMargin))
                 }
             }
-            when {
-                items.isNotEmpty() || showsSourceMenu -> Unit
-
-                browse.isLoading -> {
-                    CircularWavyProgressIndicator(
-                        color = QTheme.colors.colorAccent,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-
-                browse.errorMessage == null -> {
-                    Text(
-                        text = stringResource(id = R.string.spotify_message_empty),
-                        fontSize = 16.sp,
-                        color = QTheme.colors.colorTextSecondary,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(16.dp)
-                    )
-                }
+            item {
+                Spacer(modifier = Modifier.height(endItemMargin))
             }
         }
-    }
 
+        if (items.isEmpty() && level.hasLoaded.not() && level.hasFailed.not()) {
+            CircularWavyProgressIndicator(
+                color = QTheme.colors.colorAccent,
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
+
+        val isEmpty = items.isEmpty() && level.hasLoaded && level.hasFailed.not()
+        LaunchedEffect(isEmpty) {
+            if (isEmpty) onDialogEvent(DialogEvent.NotifySpotifyEmpty)
+        }
+    }
 }
 
 @Composable
@@ -273,15 +176,17 @@ private fun SpotifySourceItem(
     }
 }
 
-@Composable
-fun spotifyOptionTarget(browse: SpotifyBrowseState): MediaItem? {
-    browse.container?.let { return it.takeIf { container -> container.holdsTracks } }
-    if (browse.source == SpotifyBrowseSource.RECOMMENDED) {
-        return SpotifyRecommendedRoot(browse.isFlattened)
-    }
-    if (browse.source != SpotifyBrowseSource.SAVED) return null
+fun spotifyContainerOptionTarget(container: SpotifyContainer): SpotifyContainer? =
+    container.takeIf { it.holdsTracks }
 
-    return SpotifyContainer(
+@Composable
+fun spotifySourceOptionTarget(
+    source: SpotifyBrowseSource,
+    isFlattened: Boolean,
+): MediaItem? = when (source) {
+    SpotifyBrowseSource.RECOMMENDED -> SpotifyRecommendedRoot(isFlattened)
+
+    SpotifyBrowseSource.SAVED -> SpotifyContainer(
         kind = SpotifyContainer.Kind.SAVED,
         id = SAVED_TRACKS_ID,
         uri = SAVED_TRACKS_URI,
@@ -291,16 +196,20 @@ fun spotifyOptionTarget(browse: SpotifyBrowseState): MediaItem? {
         releaseDate = null,
         totalTracks = null,
     )
+
+    SpotifyBrowseSource.PLAYLISTS -> null
 }
 
 @Composable
-fun spotifyTopBarTitle(browse: SpotifyBrowseState): String {
-    val section = browse.container?.name
-        ?: browse.source?.let { stringResource(id = it.labelResId) }
-        ?: return stringResource(id = R.string.spotify_title)
+fun spotifyTopBarTitle(section: String?): String {
+    section ?: return stringResource(id = R.string.spotify_title)
 
     return stringResource(id = R.string.spotify_title_with_section, section)
 }
+
+@Composable
+fun spotifySourceLabel(source: SpotifyBrowseSource): String =
+    stringResource(id = source.labelResId)
 
 private val SpotifyContainer.holdsTracks: Boolean
     get() = uri.startsWith(SECTION_URI_PREFIX).not()

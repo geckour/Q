@@ -40,6 +40,7 @@ data class LibraryUiState(
     val snackbarMessage: String?,
     val isSpotifyUnlocked: Boolean,
     val spotifyBrowse: SpotifyBrowseState,
+    val isSpotifyFlattened: Boolean,
     val hasSpotifyCredential: Boolean,
     val snackbarPaths: ImmutableList<String>,
     val snackbarProgress: Float?,

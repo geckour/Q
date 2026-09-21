@@ -155,6 +155,26 @@ class SpotifyApiClient(private val context: Context) {
         }
     }
 
+    suspend fun getContainer(uri: String, kind: SpotifyContainer.Kind): SpotifyContainer? {
+        val id = uri.substringAfterLast(':')
+
+        return when (kind) {
+            SpotifyContainer.Kind.PLAYLIST -> {
+                json.decodeFromString<ApiPlaylist>(get("playlists/$id")).toContainer()
+            }
+
+            SpotifyContainer.Kind.ALBUM -> {
+                json.decodeFromString<ApiAlbum>(get("albums/$id")).toContainer()
+            }
+
+            SpotifyContainer.Kind.ARTIST -> {
+                json.decodeFromString<ApiArtist>(get("artists/$id")).toContainer()
+            }
+
+            SpotifyContainer.Kind.SAVED, SpotifyContainer.Kind.CONTENT -> null
+        }
+    }
+
     suspend fun getTrack(uri: String): SpotifyTrack? {
         if (uri.startsWith(TRACK_URI_PREFIX).not()) return null
 

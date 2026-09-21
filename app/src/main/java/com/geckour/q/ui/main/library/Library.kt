@@ -8,9 +8,16 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.navigation.NavBackStackEntry
+import com.geckour.q.domain.model.SpotifyContainer
+import com.geckour.q.util.encodeUrlSafe
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -78,6 +85,10 @@ fun Library(
     onSelectSavedQueueForModify: (uiSavedQueue: UiSavedQueue?) -> Unit,
     onDeleteSavedQueue: (savedQueueId: Long) -> Unit,
     spotifyBrowse: SpotifyBrowseState,
+    isSpotifyFlattened: Boolean,
+    loadSpotifySource: (source: SpotifyBrowseSource, reset: Boolean) -> Unit,
+    loadSpotifyContainer: (container: SpotifyContainer, reset: Boolean) -> Unit,
+    resolveSpotifyContainer: suspend (uri: String, kind: SpotifyContainer.Kind) -> SpotifyContainer?,
     isSpotifyConfigured: Boolean,
     hasSpotifyCredential: Boolean,
     onDialogEvent: (event: DialogEvent) -> Unit,
@@ -304,35 +315,132 @@ fun Library(
                     onScrollPositionUpdated = scrollPosition::update,
                 )
             }
-            composable("spotify") {
+            composable("spotify") { backStackEntry ->
                 BackHandler(enabled = onBackHandle != null) {
                     onBackHandle?.invoke()
                 }
-                val topBarTitle = spotifyTopBarTitle(spotifyBrowse)
-                val optionContainer = spotifyOptionTarget(spotifyBrowse)
-                LaunchedEffect(navController.currentDestination, topBarTitle, optionContainer) {
+                val topBarTitle = spotifyTopBarTitle(section = null)
+                LaunchedEffect(navController.currentDestination, topBarTitle) {
                     onSelectNav(Nav.SPOTIFY)
                     onChangeTopBarTitle(topBarTitle)
-                    onSetOptionMediaItem(optionContainer)
+                    onSetOptionMediaItem(null)
                 }
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+                LaunchedEffect(isSpotifyConfigured, hasSpotifyCredential) {
+                    when {
+                        isSpotifyConfigured.not() -> {
+                            onDialogEvent(DialogEvent.NotifySpotifyNotConfigured)
+                        }
+
+                        hasSpotifyCredential.not() -> {
+                            onDialogEvent(DialogEvent.RequestSpotifyAuth)
+                        }
+                    }
+                }
+                SpotifyScreen(
+                    isSearchActive = isSearchActive,
+                    query = query,
+                    result = result,
+                    keyboardController = keyboardController,
+                    onSearchItemClicked = onSearchItemClicked,
+                    onSearchItemLongClicked = onSearchItemLongClicked,
+                    searchSpotify = searchSpotify,
                 ) {
-                    QSearchBar(
-                        isSearchActive = isSearchActive,
-                        query = query,
-                        result = result,
-                        keyboardController = keyboardController,
-                        onSearchItemClicked = onSearchItemClicked,
-                        onSearchItemLongClicked = onSearchItemLongClicked,
-                        searchSpotify = searchSpotify,
-                    )
-                    Spotify(
-                        browse = spotifyBrowse,
-                        isConfigured = isSpotifyConfigured,
-                        hasCredential = hasSpotifyCredential,
+                    if (isSpotifyConfigured.not() || hasSpotifyCredential.not()) return@SpotifyScreen
+
+                    SpotifySourceMenu(endItemMargin = endItemMargin) { source ->
+                        navController.navigate("spotify/source?type=${source.name}")
+                    }
+                }
+            }
+            composable(
+                "spotify/source?type={type}",
+                arguments = listOf(navArgument("type") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                BackHandler(enabled = onBackHandle != null) {
+                    onBackHandle?.invoke()
+                }
+                val source = SpotifyBrowseSource.valueOf(
+                    backStackEntry.arguments?.getString("type").orEmpty()
+                )
+                val level = spotifyBrowse.level(source.levelKey)
+                val topBarTitle = spotifyTopBarTitle(spotifySourceLabel(source))
+                val optionMediaItem =
+                    spotifySourceOptionTarget(source, isSpotifyFlattened)
+                LaunchedEffect(navController.currentDestination, topBarTitle, optionMediaItem) {
+                    onSelectNav(Nav.SPOTIFY)
+                    onChangeTopBarTitle(topBarTitle)
+                    onSetOptionMediaItem(optionMediaItem)
+                }
+                LaunchedEffect(source) {
+                    if (level.items.isEmpty()) loadSpotifySource(source, true)
+                }
+                SpotifyScreen(
+                    isSearchActive = isSearchActive,
+                    query = query,
+                    result = result,
+                    keyboardController = keyboardController,
+                    onSearchItemClicked = onSearchItemClicked,
+                    onSearchItemLongClicked = onSearchItemLongClicked,
+                    searchSpotify = searchSpotify,
+                ) {
+                    SpotifyLevelList(
+                        level = level,
+                        backStackEntry = backStackEntry,
                         endItemMargin = endItemMargin,
+                        onOpenContainer = { navController.navigateToSpotifyContainer(it) },
+                        onLoadMore = { loadSpotifySource(source, false) },
+                        onDialogEvent = onDialogEvent,
+                    )
+                }
+            }
+            composable(
+                "spotify/container?uri={uri}&kind={kind}",
+                arguments = listOf(
+                    navArgument("uri") { type = NavType.StringType },
+                    navArgument("kind") { type = NavType.StringType },
+                ),
+            ) { backStackEntry ->
+                BackHandler(enabled = onBackHandle != null) {
+                    onBackHandle?.invoke()
+                }
+                val uri = backStackEntry.arguments?.getString("uri").orEmpty().decodeUrlSafe()
+                val kind = SpotifyContainer.Kind.valueOf(
+                    backStackEntry.arguments?.getString("kind").orEmpty()
+                )
+                var container by remember { mutableStateOf<SpotifyContainer?>(null) }
+                LaunchedEffect(uri, kind) {
+                    container = resolveSpotifyContainer(uri, kind)
+                    if (container == null) navController.popBackStack()
+                }
+
+                val resolved = container
+                val level = spotifyBrowse.level(uri)
+                val topBarTitle = spotifyTopBarTitle(resolved?.name)
+                val optionMediaItem = resolved?.let { spotifyContainerOptionTarget(it) }
+                LaunchedEffect(navController.currentDestination, topBarTitle, optionMediaItem) {
+                    onSelectNav(Nav.SPOTIFY)
+                    onChangeTopBarTitle(topBarTitle)
+                    onSetOptionMediaItem(optionMediaItem)
+                }
+                LaunchedEffect(resolved) {
+                    val target = resolved ?: return@LaunchedEffect
+                    if (level.items.isEmpty()) loadSpotifyContainer(target, true)
+                }
+                SpotifyScreen(
+                    isSearchActive = isSearchActive,
+                    query = query,
+                    result = result,
+                    keyboardController = keyboardController,
+                    onSearchItemClicked = onSearchItemClicked,
+                    onSearchItemLongClicked = onSearchItemLongClicked,
+                    searchSpotify = searchSpotify,
+                ) {
+                    SpotifyLevelList(
+                        level = level,
+                        backStackEntry = backStackEntry,
+                        endItemMargin = endItemMargin,
+                        onOpenContainer = { navController.navigateToSpotifyContainer(it) },
+                        onLoadMore = { resolved?.let { loadSpotifyContainer(it, false) } },
                         onDialogEvent = onDialogEvent,
                     )
                 }
@@ -395,4 +503,66 @@ fun Library(
             onCancelProgress = onCancelProgress
         )
     }
+}
+
+@Composable
+private fun SpotifyScreen(
+    isSearchActive: MutableState<Boolean>,
+    query: MutableState<String>,
+    result: MutableState<ImmutableList<SearchItem>>,
+    keyboardController: SoftwareKeyboardController?,
+    onSearchItemClicked: (item: SearchItem) -> Unit,
+    onSearchItemLongClicked: (item: SearchItem) -> Unit,
+    searchSpotify: suspend (query: String) -> List<SearchItem>,
+    content: @Composable () -> Unit,
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        QSearchBar(
+            isSearchActive = isSearchActive,
+            query = query,
+            result = result,
+            keyboardController = keyboardController,
+            onSearchItemClicked = onSearchItemClicked,
+            onSearchItemLongClicked = onSearchItemLongClicked,
+            searchSpotify = searchSpotify,
+        )
+        content()
+    }
+}
+
+@Composable
+private fun SpotifyLevelList(
+    level: SpotifyLevel,
+    backStackEntry: NavBackStackEntry,
+    endItemMargin: Dp,
+    onOpenContainer: (container: SpotifyContainer) -> Unit,
+    onLoadMore: () -> Unit,
+    onDialogEvent: (event: DialogEvent) -> Unit,
+) {
+    val listState = rememberLazyListState()
+    val scrollPosition = rememberScrollPosition(backStackEntry)
+    ScrollPositionEffect(
+        listState = listState,
+        initialScrollPosition = scrollPosition.initialPosition,
+        headerItemCount = 0,
+        isItemLoaded = { it < level.items.size },
+        onScrollPositionUpdated = scrollPosition::update,
+    )
+    SpotifyLevel(
+        level = level,
+        listState = listState,
+        endItemMargin = endItemMargin,
+        onOpenContainer = onOpenContainer,
+        onLoadMore = onLoadMore,
+        onDialogEvent = onDialogEvent,
+    )
+}
+
+private fun NavHostController.navigateToSpotifyContainer(container: SpotifyContainer) {
+    navigate(
+        "spotify/container?uri=${container.uri.encodeUrlSafe()}&kind=${container.kind.name}"
+    )
 }
