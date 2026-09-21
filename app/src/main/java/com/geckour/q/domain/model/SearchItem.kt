@@ -15,5 +15,6 @@ data class SearchItem(
         SPOTIFY_TRACK,
         SPOTIFY_ALBUM,
         SPOTIFY_ARTIST,
+        SPOTIFY_PLAYLIST,
     }
 }

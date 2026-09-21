@@ -592,6 +592,10 @@ class MainActivity : ComponentActivity() {
 
             DialogEvent.CloseSpotifyContainer -> viewModel.closeSpotifyContainer()
 
+            is DialogEvent.ChangeSpotifyFlatten -> {
+                viewModel.changeSpotifyFlatten(event.flatten)
+            }
+
 
             is DialogEvent.ShowSpotifyTrackOption -> {
                 viewModel.showDialog(DialogState.SpotifyTrackOption(event.track))

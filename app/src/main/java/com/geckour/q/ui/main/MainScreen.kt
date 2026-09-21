@@ -57,6 +57,10 @@ fun MainScreen(
         onChangeNightMode(isInNightMode)
     }
 
+    LaunchedEffect(isSearchActive.value) {
+        if (isSearchActive.value) viewModel.syncSpotifyContentInBackground()
+    }
+
     val context = LocalContext.current
     LaunchedEffect(Unit) {
         viewModel.toastMessage.collect {

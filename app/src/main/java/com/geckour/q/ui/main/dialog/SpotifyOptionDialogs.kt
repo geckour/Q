@@ -113,7 +113,9 @@ private fun orientedShuffleOptions(
     return when (kind) {
         SpotifyContainer.Kind.ALBUM -> emptyList()
         SpotifyContainer.Kind.ARTIST -> albumOriented
-        SpotifyContainer.Kind.PLAYLIST, SpotifyContainer.Kind.SAVED -> albumOriented + artistOriented
+        SpotifyContainer.Kind.PLAYLIST,
+        SpotifyContainer.Kind.SAVED,
+        SpotifyContainer.Kind.CONTENT -> albumOriented + artistOriented
     }
 }
 

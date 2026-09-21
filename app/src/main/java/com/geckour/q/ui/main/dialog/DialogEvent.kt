@@ -68,6 +68,8 @@ sealed interface DialogEvent {
 
     data object CloseSpotifyContainer : DialogEvent
 
+    data class ChangeSpotifyFlatten(val flatten: Boolean) : DialogEvent
+
 
     data class ShowSpotifyTrackOption(val track: SpotifyTrack) : DialogEvent
 

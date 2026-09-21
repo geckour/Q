@@ -22,6 +22,8 @@ val SPOTIFY_REDIRECT_URI = "${BuildConfig.APPLICATION_ID}://spotify-auth"
 
 private const val SPOTIFY_SOURCE_PATH_PREFIX = "spotify:"
 
+private const val SPOTIFY_TRACK_URI_PREFIX = "spotify:track:"
+
 const val SPOTIFY_TRAILING_SILENCE_MILLIS = 1_500L
 
 private const val SPOTIFY_CAPABILITIES_TIMEOUT_SECONDS = 5
@@ -36,6 +38,8 @@ private val spotifyScopes = arrayOf(
 val isSpotifyConfigured: Boolean get() = BuildConfig.SPOTIFY_CLIENT_ID.isNotBlank()
 
 val String.isSpotifySourcePath: Boolean get() = startsWith(SPOTIFY_SOURCE_PATH_PREFIX)
+
+val String.isSpotifyTrackUri: Boolean get() = startsWith(SPOTIFY_TRACK_URI_PREFIX)
 
 val String.spotifyWebUrl: String
     get() = split(':')

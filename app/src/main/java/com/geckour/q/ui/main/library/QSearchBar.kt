@@ -18,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.MusicNote
+import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material3.CircularWavyProgressIndicator
@@ -240,6 +241,7 @@ private val SearchItem.spotifyTypeIcon: ImageVector?
         SearchItem.SearchItemType.SPOTIFY_TRACK -> Icons.Default.MusicNote
         SearchItem.SearchItemType.SPOTIFY_ALBUM -> Icons.Default.Album
         SearchItem.SearchItemType.SPOTIFY_ARTIST -> Icons.Default.Face
+        SearchItem.SearchItemType.SPOTIFY_PLAYLIST -> Icons.Default.QueueMusic
         else -> null
     }
 

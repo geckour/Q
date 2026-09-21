@@ -10,6 +10,7 @@ import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.SpotifyContainer
+import com.geckour.q.domain.model.SpotifyRecommendedRoot
 import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.main.dialog.DialogEvent
@@ -102,6 +103,9 @@ fun MainActions.onSelectAllArtists(allArtists: AllArtists?) =
 fun MainActions.onSelectSpotifyContainer(container: SpotifyContainer) =
     onShowDialog(DialogState.SpotifyContainerOption(container))
 
+fun MainActions.onSelectSpotifyRecommendedRoot(root: SpotifyRecommendedRoot) =
+    onShowDialog(DialogState.SpotifyRecommendedOption(root.isFlattened))
+
 fun MainActions.onSelectGenre(genre: Genre?) =
     onShowDialog(genre?.let { DialogState.GenreOption(it) })
 
@@ -154,7 +158,9 @@ fun MainActions.onSearchItemClicked(item: SearchItem, navController: NavHostCont
             onShowDialog(DialogState.SpotifyTrackOption(item.data as SpotifyTrack))
         }
 
-        SearchItem.SearchItemType.SPOTIFY_ALBUM, SearchItem.SearchItemType.SPOTIFY_ARTIST -> {
+        SearchItem.SearchItemType.SPOTIFY_ALBUM,
+        SearchItem.SearchItemType.SPOTIFY_ARTIST,
+        SearchItem.SearchItemType.SPOTIFY_PLAYLIST -> {
             onShowDialog(DialogState.SpotifyContainerOption(item.data as SpotifyContainer))
         }
 
@@ -184,7 +190,9 @@ fun MainActions.onSearchItemLongClicked(item: SearchItem) {
             onShowDialog(DialogState.SpotifyTrackOption(item.data as SpotifyTrack))
         }
 
-        SearchItem.SearchItemType.SPOTIFY_ALBUM, SearchItem.SearchItemType.SPOTIFY_ARTIST -> {
+        SearchItem.SearchItemType.SPOTIFY_ALBUM,
+        SearchItem.SearchItemType.SPOTIFY_ARTIST,
+        SearchItem.SearchItemType.SPOTIFY_PLAYLIST -> {
             onShowDialog(DialogState.SpotifyContainerOption(item.data as SpotifyContainer))
         }
 

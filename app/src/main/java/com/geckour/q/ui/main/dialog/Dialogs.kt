@@ -12,6 +12,8 @@ import com.geckour.q.R
 import com.geckour.q.domain.model.SyncSizeAlert
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.component.QConfirmDialog
+import com.geckour.q.ui.component.QOption
+import com.geckour.q.ui.component.QOptionDialog
 import com.geckour.q.util.getReadableStringWithUnit
 import com.geckour.q.util.isSpotify
 import kotlinx.collections.immutable.ImmutableList
@@ -108,6 +110,23 @@ fun BoxScope.Dialogs(
             SpotifyContainerOptionDialog(
                 container = dialogState.container,
                 onDialogEvent = onDialogEvent,
+            )
+        }
+
+        is DialogState.SpotifyRecommendedOption -> {
+            QOptionDialog(
+                options = listOf(
+                    QOption(
+                        if (dialogState.isFlattened) R.string.spotify_menu_sectioned
+                        else R.string.spotify_menu_flatten
+                    ) {
+                        onDialogEvent(
+                            DialogEvent.ChangeSpotifyFlatten(dialogState.isFlattened.not())
+                        )
+                        onDialogEvent(DialogEvent.Dismiss)
+                    }
+                ),
+                onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) },
             )
         }
 

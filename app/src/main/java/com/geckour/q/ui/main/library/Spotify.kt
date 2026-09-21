@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -48,7 +49,9 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.data.db.model.SpotifyTrack
+import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.SpotifyContainer
+import com.geckour.q.domain.model.SpotifyRecommendedRoot
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.ui.main.dialog.DialogEvent
 import com.geckour.q.util.getTimeString
@@ -58,6 +61,8 @@ import kotlin.time.Duration.Companion.milliseconds
 private const val SAVED_TRACKS_ID = "tracks"
 
 private const val SAVED_TRACKS_URI = "spotify:collection:tracks"
+
+private const val SECTION_URI_PREFIX = "spotify:section:"
 
 @Composable
 fun Spotify(
@@ -133,25 +138,21 @@ private fun SpotifyBrowser(
     val source = browse.source
 
     BackHandler(container != null || source != null) {
-        if (container != null) onDialogEvent(DialogEvent.CloseSpotifyContainer)
-        else onDialogEvent(DialogEvent.ChangeSpotifySource(null))
+        when {
+            container != null -> onDialogEvent(DialogEvent.CloseSpotifyContainer)
+            browse.isFlattened -> onDialogEvent(DialogEvent.ChangeSpotifyFlatten(false))
+            else -> onDialogEvent(DialogEvent.ChangeSpotifySource(null))
+        }
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        browse.errorMessage?.let {
-            Text(
-                text = it,
-                fontSize = 14.sp,
-                color = QTheme.colors.colorAccent,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-            )
-        }
         Box(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
         ) {
             val items = if (container == null) browse.items else browse.containerItems
+            val showsArtwork = items.any { it.artworkUrl != null }
             val showsSourceMenu = source == null
             val hasMore =
                 if (container == null) browse.nextOffset != null
@@ -173,6 +174,7 @@ private fun SpotifyBrowser(
                         is SpotifyBrowseItem.Track -> {
                             SpotifyTrackItem(
                                 track = item.track,
+                                showsArtwork = showsArtwork,
                                 onClick = {
                                     onDialogEvent(
                                         DialogEvent.ShowSpotifyTrackOption(item.track)
@@ -184,6 +186,7 @@ private fun SpotifyBrowser(
                         is SpotifyBrowseItem.Container -> {
                             SpotifyContainerItem(
                                 container = item.container,
+                                showsArtwork = showsArtwork,
                                 onClick = {
                                     onDialogEvent(
                                         DialogEvent.OpenSpotifyContainer(item.container)
@@ -274,8 +277,11 @@ private fun SpotifySourceItem(
 }
 
 @Composable
-fun spotifyOptionTarget(browse: SpotifyBrowseState): SpotifyContainer? {
-    browse.container?.let { return it }
+fun spotifyOptionTarget(browse: SpotifyBrowseState): MediaItem? {
+    browse.container?.let { return it.takeIf { container -> container.holdsTracks } }
+    if (browse.source == SpotifyBrowseSource.RECOMMENDED) {
+        return SpotifyRecommendedRoot(browse.isFlattened)
+    }
     if (browse.source != SpotifyBrowseSource.SAVED) return null
 
     return SpotifyContainer(
@@ -299,25 +305,32 @@ fun spotifyTopBarTitle(browse: SpotifyBrowseState): String {
     return stringResource(id = R.string.spotify_title_with_section, section)
 }
 
+private val SpotifyContainer.holdsTracks: Boolean
+    get() = uri.startsWith(SECTION_URI_PREFIX).not()
+
 private val SpotifyBrowseSource.labelResId: Int
     get() = when (this) {
         SpotifyBrowseSource.SAVED -> R.string.spotify_tab_saved
         SpotifyBrowseSource.PLAYLISTS -> R.string.spotify_tab_playlists
+        SpotifyBrowseSource.RECOMMENDED -> R.string.spotify_tab_recommended
     }
 
 private val SpotifyBrowseSource.icon: ImageVector
     get() = when (this) {
         SpotifyBrowseSource.SAVED -> Icons.Default.Star
         SpotifyBrowseSource.PLAYLISTS -> Icons.Default.QueueMusic
+        SpotifyBrowseSource.RECOMMENDED -> Icons.Default.AutoAwesome
     }
 
 @Composable
 private fun SpotifyTrackItem(
     track: SpotifyTrack,
+    showsArtwork: Boolean,
     onClick: () -> Unit,
 ) {
     SpotifyItemRow(
         artworkUrl = track.artworkUrl,
+        showsArtwork = showsArtwork,
         title = track.title,
         subtitle = "${track.artistName} - ${track.albumName}",
         trailing = track.duration.getTimeString(),
@@ -328,6 +341,7 @@ private fun SpotifyTrackItem(
 @Composable
 private fun SpotifyContainerItem(
     container: SpotifyContainer,
+    showsArtwork: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
 ) {
@@ -335,11 +349,12 @@ private fun SpotifyContainerItem(
         SpotifyContainer.Kind.ALBUM -> stringResource(id = R.string.spotify_item_album)
         SpotifyContainer.Kind.ARTIST -> stringResource(id = R.string.spotify_item_artist)
         SpotifyContainer.Kind.PLAYLIST -> stringResource(id = R.string.spotify_item_playlist)
-        SpotifyContainer.Kind.SAVED -> null
+        SpotifyContainer.Kind.SAVED, SpotifyContainer.Kind.CONTENT -> null
     }
 
     SpotifyItemRow(
         artworkUrl = container.artworkUrl,
+        showsArtwork = showsArtwork,
         title = container.name,
         subtitle = listOfNotNull(kindLabel, container.creatorName).joinToString(" - "),
         trailing = container.totalTracks?.let {
@@ -354,40 +369,50 @@ private fun SpotifyContainerItem(
 @Composable
 private fun SpotifyItemRow(
     artworkUrl: String?,
+    showsArtwork: Boolean,
     title: String,
     subtitle: String,
     trailing: String?,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
 ) {
+    val isSingleLine = subtitle.isBlank()
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .padding(
+                horizontal = if (isSingleLine) 16.dp else 12.dp,
+                vertical = if (isSingleLine) 12.dp else 8.dp,
+            )
     ) {
-        AsyncImage(
-            model = artworkUrl ?: R.drawable.ic_empty,
-            contentDescription = null,
-            modifier = Modifier.size(48.dp)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
+        if (showsArtwork) {
+            AsyncImage(
+                model = artworkUrl ?: R.drawable.ic_empty,
+                contentDescription = null,
+                modifier = Modifier.size(48.dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+        }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
-                fontSize = 16.sp,
+                fontSize = if (isSingleLine) 18.sp else 16.sp,
                 color = QTheme.colors.colorTextPrimary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            Text(
-                text = subtitle,
-                fontSize = 12.sp,
-                color = QTheme.colors.colorTextSecondary,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+            if (isSingleLine.not()) {
+                Text(
+                    text = subtitle,
+                    fontSize = 12.sp,
+                    color = QTheme.colors.colorTextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
         trailing?.let {
             Spacer(modifier = Modifier.width(8.dp))

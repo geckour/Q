@@ -12,6 +12,7 @@ val viewModelModule = module {
         MainViewModel(
             app = androidApplication() as App,
             spotifyApiClient = get(),
+            spotifyContentClient = get(),
         )
     }
     viewModel {

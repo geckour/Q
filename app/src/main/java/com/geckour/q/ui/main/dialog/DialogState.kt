@@ -39,6 +39,8 @@ sealed interface DialogState {
 
     data class SpotifyContainerOption(val container: SpotifyContainer) : DialogState
 
+    data class SpotifyRecommendedOption(val isFlattened: Boolean) : DialogState
+
     data object ConfirmSpotifySignOut : DialogState
 
     data class ConfirmDownload(val targets: ImmutableList<String>) : DialogState

@@ -150,6 +150,16 @@ class SpotifyApiClient(private val context: Context) {
         SpotifyContainer.Kind.PLAYLIST -> getPlaylistTracks(container.id, offset)
         SpotifyContainer.Kind.SAVED -> getSavedTracks(offset)
         SpotifyContainer.Kind.ARTIST -> getArtistTracks(container, offset)
+        SpotifyContainer.Kind.CONTENT -> {
+            error("Content items are read through SpotifyContentClient")
+        }
+    }
+
+    suspend fun getTrack(uri: String): SpotifyTrack? {
+        if (uri.startsWith(TRACK_URI_PREFIX).not()) return null
+
+        return json.decodeFromString<ApiTrack>(get("tracks/${uri.removePrefix(TRACK_URI_PREFIX)}"))
+            .toSpotifyTrack()
     }
 
     private suspend fun getArtistTracks(

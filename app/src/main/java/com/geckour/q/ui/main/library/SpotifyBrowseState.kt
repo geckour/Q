@@ -8,6 +8,7 @@ import kotlinx.collections.immutable.persistentListOf
 enum class SpotifyBrowseSource {
     SAVED,
     PLAYLISTS,
+    RECOMMENDED,
 }
 
 sealed interface SpotifyBrowseItem {
@@ -24,12 +25,19 @@ data class SpotifyBrowseState(
     val containerStack: ImmutableList<SpotifyContainer> = persistentListOf(),
     val containerItems: ImmutableList<SpotifyBrowseItem> = persistentListOf(),
     val containerNextOffset: Int? = null,
+    val isFlattened: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val lastAddedTitle: String? = null,
 )
 
 val SpotifyBrowseState.container: SpotifyContainer? get() = containerStack.lastOrNull()
+
+val SpotifyBrowseItem.artworkUrl: String?
+    get() = when (this) {
+        is SpotifyBrowseItem.Track -> track.artworkUrl
+        is SpotifyBrowseItem.Container -> container.artworkUrl
+    }
 
 val SpotifyBrowseItem.key: String
     get() = when (this) {

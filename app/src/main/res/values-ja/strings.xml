@@ -175,6 +175,9 @@
     <!-- Spotify -->
     <string name="spotify_tab_saved">お気に入りの曲</string>
     <string name="spotify_tab_playlists">プレイリスト</string>
+    <string name="spotify_tab_recommended">おすすめ</string>
+    <string name="spotify_menu_flatten">フラット表示</string>
+    <string name="spotify_menu_sectioned">セクション表示</string>
     <string name="spotify_item_album">アルバム</string>
     <string name="spotify_item_artist">アーティスト</string>
     <string name="spotify_item_playlist">プレイリスト</string>
@@ -194,6 +197,7 @@
     <string name="spotify_message_premium_required">Spotify の曲の再生には Spotify Premium プランが必要です</string>
     <string name="spotify_message_start_timeout">Spotify で曲の再生を開始できませんでした</string>
     <string name="spotify_message_playback_failure">Spotify での再生に失敗しました: %s</string>
+    <string name="spotify_message_content_failure">Spotify のおすすめを取得できませんでした: %s</string>
     <string name="spotify_message_forbidden">Spotify にリクエストを拒否されました (403)。アカウントがアプリのユーザーに登録されているか確認し、必要な権限が変わっている場合は連携し直してください</string>
     <string name="spotify_message_rate_limited">Spotify へのリクエストが多すぎます。しばらくしてから再度お試しください</string>
     <string name="spotify_message_request_failure">Spotify からの読み込みに失敗しました (%d)</string>

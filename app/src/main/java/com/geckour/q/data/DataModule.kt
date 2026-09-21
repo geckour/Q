@@ -21,4 +21,8 @@ val dataModule = module {
     single {
         SpotifyApiClient(androidApplication())
     }
+
+    single {
+        SpotifyContentClient(androidApplication())
+    }
 }

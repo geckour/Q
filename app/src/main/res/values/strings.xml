@@ -183,6 +183,9 @@
     <string name="spotify_attribution" translatable="false">Spotify</string>
     <string name="spotify_tab_saved">Liked Songs</string>
     <string name="spotify_tab_playlists">Playlists</string>
+    <string name="spotify_tab_recommended">Recommended</string>
+    <string name="spotify_menu_flatten">Flat view</string>
+    <string name="spotify_menu_sectioned">Section view</string>
     <string name="spotify_item_album">Album</string>
     <string name="spotify_item_artist">Artist</string>
     <string name="spotify_item_playlist">Playlist</string>
@@ -204,6 +207,7 @@
     <string name="spotify_message_premium_required">Playing Spotify tracks requires a Spotify Premium subscription</string>
     <string name="spotify_message_start_timeout">Spotify did not start playing the track</string>
     <string name="spotify_message_playback_failure">Failed to play on Spotify: %s</string>
+    <string name="spotify_message_content_failure">Failed to read Spotify recommendations: %s</string>
     <string name="spotify_message_forbidden">Spotify refused the request (403). Check that this account is registered as a user of the app, and link with Spotify again if the required permissions changed</string>
     <string name="spotify_message_rate_limited">Too many requests to Spotify. Try again later</string>
     <string name="spotify_message_request_failure">Failed to load from Spotify (%d)</string>

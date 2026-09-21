@@ -30,6 +30,7 @@ import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.AllArtists
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.SpotifyContainer
+import com.geckour.q.domain.model.SpotifyRecommendedRoot
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.compose.QTheme
 import kotlinx.coroutines.launch
@@ -51,6 +52,7 @@ fun QTopBar(
     onSelectArtist: (artist: Artist?) -> Unit,
     onSelectAllArtists: (allArtists: AllArtists?) -> Unit,
     onSelectSpotifyContainer: (container: SpotifyContainer) -> Unit,
+    onSelectSpotifyRecommendedRoot: (root: SpotifyRecommendedRoot) -> Unit,
 ) {
     val coroutineScope = rememberCoroutineScope()
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -133,6 +135,10 @@ fun QTopBar(
 
                                 is SpotifyContainer -> {
                                     onSelectSpotifyContainer(appBarOptionMediaItem)
+                                }
+
+                                is SpotifyRecommendedRoot -> {
+                                    onSelectSpotifyRecommendedRoot(appBarOptionMediaItem)
                                 }
 
                                 else -> Unit

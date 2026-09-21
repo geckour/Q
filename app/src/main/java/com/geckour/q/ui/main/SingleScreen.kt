@@ -111,6 +111,7 @@ fun SingleScreen(
                     onSetOptionMediaItem = actions::onSetOptionMediaItem,
                     onSelectAllArtists = actions::onSelectAllArtists,
                     onSelectSpotifyContainer = actions::onSelectSpotifyContainer,
+                    onSelectSpotifyRecommendedRoot = actions::onSelectSpotifyRecommendedRoot,
                     onSelectArtist = actions::onSelectArtist,
                     onSelectAlbum = actions::onSelectAlbum,
                     onSelectTrack = actions::onSelectTrack,

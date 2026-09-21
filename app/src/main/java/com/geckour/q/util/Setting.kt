@@ -30,6 +30,7 @@ private val selectedQAudioDeviceInfoKey = stringPreferencesKey("key_selected_q_a
 private val alreadyRunHiraganizedKey = booleanPreferencesKey("key_already_run_hiraganized")
 private val showLyricKey = booleanPreferencesKey("key_show_lyric")
 private val isSpotifyUnlockedKey = booleanPreferencesKey("key_spotify_unlocked")
+private val isSpotifyFlattenedKey = booleanPreferencesKey("key_spotify_flattened")
 
 fun Context.getIsInNightMode(): Flow<Boolean> = dataStore.data.map {
     it[isNightModeKey] ?: false
@@ -135,4 +136,12 @@ fun Context.getIsSpotifyUnlocked(): Flow<Boolean> = dataStore.data.map {
 
 suspend fun Context.setIsSpotifyUnlocked(unlocked: Boolean) {
     dataStore.edit { it[isSpotifyUnlockedKey] = unlocked }
+}
+
+fun Context.getIsSpotifyFlattened(): Flow<Boolean> = dataStore.data.map {
+    it[isSpotifyFlattenedKey] ?: false
+}
+
+suspend fun Context.setIsSpotifyFlattened(flattened: Boolean) {
+    dataStore.edit { it[isSpotifyFlattenedKey] = flattened }
 }
