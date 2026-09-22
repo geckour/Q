@@ -287,6 +287,7 @@
     <string name="equalizer_preset_label_confirm">Confirm</string>
 
     <!-- Queue -->
+    <string name="queue_lyric_unloaded">Lyric is not set or failed to load</string>
     <string name="queue_lyric_shift_timing_label">Shift: %s seconds</string>
 
     <!-- Saved Queue -->

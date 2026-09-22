@@ -67,6 +67,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.lerp
@@ -82,6 +83,8 @@ import com.airbnb.lottie.compose.LottieConstants
 import com.airbnb.lottie.compose.rememberLottieComposition
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
+import com.geckour.q.data.db.model.Album
+import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.domain.model.MediaItem
@@ -94,6 +97,7 @@ import com.geckour.q.util.moved
 import com.geckour.q.util.nonUpScaleSp
 import com.geckour.q.util.removedAt
 import kotlinx.collections.immutable.ImmutableList
+import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.launch
 import sh.calvin.reorderable.ReorderableItem
@@ -237,7 +241,7 @@ fun Queue(
                 state = lazyListState,
                 modifier = Modifier.weight(1f),
             ) {
-                if (lyric?.lines.isNullOrEmpty()) {
+                if (isInLyricEditMode.not() && lyric?.lines.isNullOrEmpty()) {
                     item {
                         Box(
                             modifier = Modifier
@@ -246,7 +250,7 @@ fun Queue(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "歌詞が設定されていないか読み込めませんでした",
+                                text = stringResource(R.string.queue_lyric_unloaded),
                                 fontSize = 20.sp,
                                 color = QTheme.colors.colorTextPrimary
                             )
@@ -746,6 +750,369 @@ fun LrcItem(
             fontWeight = if (focused) FontWeight.Bold else FontWeight.Normal
         )
     }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun QueuePreview() {
+    Queue(
+        uiTracks = persistentListOf(
+            UiTrack(
+                key = "0",
+                id = 0,
+                mediaId = 0,
+                codec = "",
+                bitrate = 0,
+                sampleRate = 0f,
+                album = Album(
+                    id = 0,
+                    artistId = 0,
+                    title = "Sample Album",
+                    titleSort = "",
+                    artworkUriString = null,
+                    hasAlbumArtist = false,
+                    playbackCount = 0,
+                    totalDuration = 10000,
+                    isFavorite = false,
+                ),
+                title = "Sample Title",
+                titleSort = "",
+                artist = Artist(
+                    id = 0,
+                    title = "Sample Artist",
+                    titleSort = "",
+                    playbackCount = 0,
+                    totalDuration = 20000,
+                    artworkUriString = null,
+                    isFavorite = false,
+                ),
+                albumArtist = null,
+                composer = null,
+                composerSort = null,
+                thumbUriString = null,
+                duration = 3000,
+                trackNum = 1,
+                trackTotal = 3,
+                discNum = null,
+                discTotal = null,
+                releaseYear = 2026,
+                releaseMonth = 9,
+                releaseDay = 23,
+                genreName = null,
+                sourcePath = "",
+                dropboxPath = null,
+                dropboxExpiredAt = null,
+                artworkUriString = null,
+                ignored = null,
+                nowPlaying = false,
+                isFavorite = true,
+            ),
+            UiTrack(
+                key = "1",
+                id = 1,
+                mediaId = 1,
+                codec = "",
+                bitrate = 0,
+                sampleRate = 0f,
+                album = Album(
+                    id = 0,
+                    artistId = 0,
+                    title = "Sample Album",
+                    titleSort = "",
+                    artworkUriString = null,
+                    hasAlbumArtist = false,
+                    playbackCount = 0,
+                    totalDuration = 10000,
+                    isFavorite = false,
+                ),
+                title = "Sample Title",
+                titleSort = "",
+                artist = Artist(
+                    id = 0,
+                    title = "Sample Artist",
+                    titleSort = "",
+                    playbackCount = 0,
+                    totalDuration = 20000,
+                    artworkUriString = null,
+                    isFavorite = false,
+                ),
+                albumArtist = null,
+                composer = null,
+                composerSort = null,
+                thumbUriString = null,
+                duration = 3000,
+                trackNum = 2,
+                trackTotal = 3,
+                discNum = null,
+                discTotal = null,
+                releaseYear = 2026,
+                releaseMonth = 9,
+                releaseDay = 23,
+                genreName = null,
+                sourcePath = "",
+                dropboxPath = null,
+                dropboxExpiredAt = null,
+                artworkUriString = null,
+                ignored = null,
+                nowPlaying = true,
+                isFavorite = false,
+            ),
+        ),
+        isPlaying = true,
+        showLyric = false,
+        isInLyricEditMode = false,
+        currentPlaybackPosition = 100,
+        forceScrollToCurrent = 0,
+        isLyricScrolledByUser = remember { mutableStateOf(false) },
+        onQueueMove = { _, _ -> },
+        onRemoveTrackFromQueue = {},
+        onNewProgress = {},
+        onTrackSelected = {},
+        onToggleFavorite = { null },
+        onChangeIndexRequested = {},
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LyricPreview() {
+    Queue(
+        uiTracks = persistentListOf(
+            UiTrack(
+                key = "0",
+                id = 0,
+                mediaId = 0,
+                codec = "",
+                bitrate = 0,
+                sampleRate = 0f,
+                album = Album(
+                    id = 0,
+                    artistId = 0,
+                    title = "Sample Album",
+                    titleSort = "",
+                    artworkUriString = null,
+                    hasAlbumArtist = false,
+                    playbackCount = 0,
+                    totalDuration = 10000,
+                    isFavorite = false,
+                ),
+                title = "Sample Title",
+                titleSort = "",
+                artist = Artist(
+                    id = 0,
+                    title = "Sample Artist",
+                    titleSort = "",
+                    playbackCount = 0,
+                    totalDuration = 20000,
+                    artworkUriString = null,
+                    isFavorite = false,
+                ),
+                albumArtist = null,
+                composer = null,
+                composerSort = null,
+                thumbUriString = null,
+                duration = 3000,
+                trackNum = 1,
+                trackTotal = 3,
+                discNum = null,
+                discTotal = null,
+                releaseYear = 2026,
+                releaseMonth = 9,
+                releaseDay = 23,
+                genreName = null,
+                sourcePath = "",
+                dropboxPath = null,
+                dropboxExpiredAt = null,
+                artworkUriString = null,
+                ignored = null,
+                nowPlaying = false,
+                isFavorite = true,
+            ),
+            UiTrack(
+                key = "1",
+                id = 1,
+                mediaId = 1,
+                codec = "",
+                bitrate = 0,
+                sampleRate = 0f,
+                album = Album(
+                    id = 0,
+                    artistId = 0,
+                    title = "Sample Album",
+                    titleSort = "",
+                    artworkUriString = null,
+                    hasAlbumArtist = false,
+                    playbackCount = 0,
+                    totalDuration = 10000,
+                    isFavorite = false,
+                ),
+                title = "Sample Title",
+                titleSort = "",
+                artist = Artist(
+                    id = 0,
+                    title = "Sample Artist",
+                    titleSort = "",
+                    playbackCount = 0,
+                    totalDuration = 20000,
+                    artworkUriString = null,
+                    isFavorite = false,
+                ),
+                albumArtist = null,
+                composer = null,
+                composerSort = null,
+                thumbUriString = null,
+                duration = 3000,
+                trackNum = 2,
+                trackTotal = 3,
+                discNum = null,
+                discTotal = null,
+                releaseYear = 2026,
+                releaseMonth = 9,
+                releaseDay = 23,
+                genreName = null,
+                sourcePath = "",
+                dropboxPath = null,
+                dropboxExpiredAt = null,
+                artworkUriString = null,
+                ignored = null,
+                nowPlaying = true,
+                isFavorite = false,
+            ),
+        ),
+        isPlaying = true,
+        showLyric = true,
+        isInLyricEditMode = false,
+        currentPlaybackPosition = 100,
+        forceScrollToCurrent = 0,
+        isLyricScrolledByUser = remember { mutableStateOf(false) },
+        onQueueMove = { _, _ -> },
+        onRemoveTrackFromQueue = {},
+        onNewProgress = {},
+        onTrackSelected = {},
+        onToggleFavorite = { null },
+        onChangeIndexRequested = {},
+    )
+}
+
+@Preview(showBackground = true)
+@Composable
+fun LyricEditPreview() {
+    Queue(
+        uiTracks = persistentListOf(
+            UiTrack(
+                key = "0",
+                id = 0,
+                mediaId = 0,
+                codec = "",
+                bitrate = 0,
+                sampleRate = 0f,
+                album = Album(
+                    id = 0,
+                    artistId = 0,
+                    title = "Sample Album",
+                    titleSort = "",
+                    artworkUriString = null,
+                    hasAlbumArtist = false,
+                    playbackCount = 0,
+                    totalDuration = 10000,
+                    isFavorite = false,
+                ),
+                title = "Sample Title",
+                titleSort = "",
+                artist = Artist(
+                    id = 0,
+                    title = "Sample Artist",
+                    titleSort = "",
+                    playbackCount = 0,
+                    totalDuration = 20000,
+                    artworkUriString = null,
+                    isFavorite = false,
+                ),
+                albumArtist = null,
+                composer = null,
+                composerSort = null,
+                thumbUriString = null,
+                duration = 3000,
+                trackNum = 1,
+                trackTotal = 3,
+                discNum = null,
+                discTotal = null,
+                releaseYear = 2026,
+                releaseMonth = 9,
+                releaseDay = 23,
+                genreName = null,
+                sourcePath = "",
+                dropboxPath = null,
+                dropboxExpiredAt = null,
+                artworkUriString = null,
+                ignored = null,
+                nowPlaying = false,
+                isFavorite = true,
+            ),
+            UiTrack(
+                key = "1",
+                id = 1,
+                mediaId = 1,
+                codec = "",
+                bitrate = 0,
+                sampleRate = 0f,
+                album = Album(
+                    id = 0,
+                    artistId = 0,
+                    title = "Sample Album",
+                    titleSort = "",
+                    artworkUriString = null,
+                    hasAlbumArtist = false,
+                    playbackCount = 0,
+                    totalDuration = 10000,
+                    isFavorite = false,
+                ),
+                title = "Sample Title",
+                titleSort = "",
+                artist = Artist(
+                    id = 0,
+                    title = "Sample Artist",
+                    titleSort = "",
+                    playbackCount = 0,
+                    totalDuration = 20000,
+                    artworkUriString = null,
+                    isFavorite = false,
+                ),
+                albumArtist = null,
+                composer = null,
+                composerSort = null,
+                thumbUriString = null,
+                duration = 3000,
+                trackNum = 2,
+                trackTotal = 3,
+                discNum = null,
+                discTotal = null,
+                releaseYear = 2026,
+                releaseMonth = 9,
+                releaseDay = 23,
+                genreName = null,
+                sourcePath = "",
+                dropboxPath = null,
+                dropboxExpiredAt = null,
+                artworkUriString = null,
+                ignored = null,
+                nowPlaying = true,
+                isFavorite = false,
+            ),
+        ),
+        isPlaying = true,
+        showLyric = true,
+        isInLyricEditMode = true,
+        currentPlaybackPosition = 100,
+        forceScrollToCurrent = 0,
+        isLyricScrolledByUser = remember { mutableStateOf(false) },
+        onQueueMove = { _, _ -> },
+        onRemoveTrackFromQueue = {},
+        onNewProgress = {},
+        onTrackSelected = {},
+        onToggleFavorite = { null },
+        onChangeIndexRequested = {},
+    )
 }
 
 data class IndexedLyricLine(

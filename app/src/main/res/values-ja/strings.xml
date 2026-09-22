@@ -268,6 +268,7 @@
 
     <!-- Queue -->
     <string name="queue_lyric_shift_timing_label">シフト: %s 秒</string>
+    <string name="queue_lyric_unloaded">歌詞が設定されていないか読み込めませんでした</string>
 
     <!-- Saved Queue -->
     <string name="saved_queue_item_metadata">%1$d曲・計%2$s</string>
