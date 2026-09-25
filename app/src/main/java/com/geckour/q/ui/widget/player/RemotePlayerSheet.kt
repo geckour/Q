@@ -28,13 +28,11 @@ import androidx.compose.remote.creation.compose.state.rf
 import androidx.compose.remote.creation.compose.state.rs
 import androidx.compose.remote.creation.compose.state.rsp
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.media3.common.Player
-import com.geckour.q.R
 import com.geckour.q.ui.widget.WidgetHostAction
 import com.geckour.q.util.getTimeString
 
@@ -67,31 +65,21 @@ internal fun RemotePlayerSheet(
         RemoteColumn(
             modifier = RemoteModifier
                 .fillMaxWidth()
-                .padding(layout.contentPaddingDp.rdp)
         ) {
             RemoteTrackInfo(
                 state = state,
                 colors = colors,
+                activeIcons = activeIcons,
+                inactiveIcons = inactiveIcons,
                 artworkSizeDp = layout.artworkSizeDp,
             )
-            if (layout.showControls) {
-                RemoteBox(modifier = RemoteModifier.height(8.rdp))
-                RemoteControls(
-                    state = state,
-                    icons = if (state.hasQueue) activeIcons else inactiveIcons,
-                )
-            }
         }
         if (layout.showQueue) {
-            RemoteQueueSummary(
-                state = state,
-                colors = colors,
-                layout = layout,
-            )
             RemoteQueue(
                 modifier = RemoteModifier.weight(1f.rf),
                 state = state,
                 colors = colors,
+                artworkSizeDp = layout.artworkSizeDp / 2,
             )
         }
     }
@@ -102,55 +90,52 @@ internal fun RemotePlayerSheet(
 private fun RemoteTrackInfo(
     state: PlayerWidgetState,
     colors: PlayerWidgetColors,
+    activeIcons: PlayerWidgetIcons,
+    inactiveIcons: PlayerWidgetIcons,
     artworkSizeDp: Int,
 ) {
     val currentTrack = state.currentTrack
 
-    RemoteBox(
+    RemoteRow(
         modifier = RemoteModifier.fillMaxWidth(),
-        contentAlignment = RemoteAlignment.BottomEnd,
+        verticalAlignment = RemoteAlignment.Bottom,
     ) {
-        RemoteRow(
-            modifier = RemoteModifier.fillMaxWidth(),
-            verticalAlignment = RemoteAlignment.CenterVertically,
-        ) {
-            RemoteArtwork(
-                artwork = state.artwork,
-                colors = colors,
-                sizeDp = artworkSizeDp,
-            )
-            RemoteBox(modifier = RemoteModifier.width(12.rdp))
-            RemoteColumn(modifier = RemoteModifier.weight(1f.rf)) {
-                RemoteText(
-                    text = (currentTrack?.title.orEmpty()).rs,
-                    color = colors.textPrimary.rc,
-                    fontSize = 16.rsp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = RemoteModifier.fillMaxWidth(),
-                )
-                RemoteBox(modifier = RemoteModifier.height(2.rdp))
-                RemoteText(
-                    text = currentTrack
-                        ?.let { "${it.artist} - ${it.album}" }
-                        .orEmpty()
-                        .rs,
-                    color = colors.textSecondary.rc,
-                    fontSize = 12.rsp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = RemoteModifier.fillMaxWidth(),
-                )
-                RemoteBox(modifier = RemoteModifier.height(4.rdp))
-            }
-        }
-        RemoteText(
-            text = currentTrack?.duration?.getTimeString().orEmpty().rs,
-            color = colors.textSecondary.rc,
-            fontSize = 10.rsp,
-            textAlign = TextAlign.End,
-            maxLines = 1,
+        RemoteArtwork(
+            artwork = state.artwork,
+            inactiveColor = colors.inactive,
+            sizeDp = artworkSizeDp,
         )
+        RemoteBox(modifier = RemoteModifier.width(12.rdp))
+        RemoteColumn(
+            modifier = RemoteModifier.weight(1f.rf),
+            verticalArrangement = RemoteArrangement.Bottom,
+        ) {
+            RemoteText(
+                text = (currentTrack?.title.orEmpty()).rs,
+                color = colors.textPrimary.rc,
+                fontSize = 16.rsp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = RemoteModifier.fillMaxWidth(),
+            )
+            RemoteBox(modifier = RemoteModifier.height(2.rdp))
+            RemoteText(
+                text = currentTrack
+                    ?.let { "${it.artist} - ${it.album}" }
+                    .orEmpty()
+                    .rs,
+                color = colors.textSecondary.rc,
+                fontSize = 12.rsp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = RemoteModifier.fillMaxWidth(),
+            )
+            RemoteControls(
+                state = state,
+                icons = if (state.hasQueue) activeIcons else inactiveIcons,
+            )
+        }
+        RemoteBox(modifier = RemoteModifier.width(12.rdp))
     }
 }
 
@@ -158,13 +143,13 @@ private fun RemoteTrackInfo(
 @RemoteComposable
 private fun RemoteArtwork(
     artwork: ImageBitmap?,
-    colors: PlayerWidgetColors,
+    inactiveColor: Color,
     sizeDp: Int,
 ) {
     RemoteBox(
         modifier = RemoteModifier
             .size(sizeDp.rdp)
-            .background(colors.inactive.rc)
+            .background(inactiveColor.rc)
     ) {
         if (artwork != null) {
             RemoteImage(
@@ -183,79 +168,48 @@ private fun RemoteControls(
     state: PlayerWidgetState,
     icons: PlayerWidgetIcons,
 ) {
-    RemoteColumn(
+    RemoteRow(
         modifier = RemoteModifier.fillMaxWidth(),
-        verticalArrangement = RemoteArrangement.Center,
+        horizontalArrangement = RemoteArrangement.Center,
+        verticalAlignment = RemoteAlignment.CenterVertically,
     ) {
-        RemoteRow(
-            modifier = RemoteModifier.fillMaxWidth(),
-            horizontalArrangement = RemoteArrangement.End,
-            verticalAlignment = RemoteAlignment.CenterVertically,
-        ) {
-            RemoteIconButton(
-                icon = icons.repeat(state.repeatMode),
-                action = PlayerWidgetAction.RotateRepeatMode,
-                size = 24,
-            )
-            RemoteIconButton(
-                icon = icons.shuffle,
-                action = PlayerWidgetAction.Shuffle,
-                size = 24,
-            )
-        }
-        RemoteRow(
-            modifier = RemoteModifier.fillMaxWidth(),
-            horizontalArrangement = RemoteArrangement.Center,
-            verticalAlignment = RemoteAlignment.CenterVertically,
-        ) {
-            RemoteIconButton(
-                icon = icons.prev,
-                action = PlayerWidgetAction.Prev,
-                size = 24,
-            )
-            RemoteIconButton(
-                icon =
-                    if (state.playing && state.playbackState == Player.STATE_READY) icons.pause
-                    else icons.play,
-                action = PlayerWidgetAction.TogglePlayPause,
-                size = 24,
-                modifier = RemoteModifier.padding(horizontal = 20.rdp),
-            )
-            RemoteIconButton(
-                icon = icons.next,
-                action = PlayerWidgetAction.Next,
-                size = 24,
-            )
-        }
+        RemoteIconButton(
+            modifier = RemoteModifier.padding(2.rdp),
+            icon = icons.prev,
+            action = PlayerWidgetAction.Prev,
+            size = 24,
+        )
+        RemoteBox(modifier = RemoteModifier.width(12.rdp))
+        RemoteIconButton(
+            modifier = RemoteModifier.padding(2.rdp),
+            icon =
+                if (state.playing && state.playbackState == Player.STATE_READY) icons.pause
+                else icons.play,
+            action = PlayerWidgetAction.TogglePlayPause,
+            size = 24,
+        )
+        RemoteBox(modifier = RemoteModifier.width(12.rdp))
+        RemoteIconButton(
+            modifier = RemoteModifier.padding(2.rdp),
+            icon = icons.next,
+            action = PlayerWidgetAction.Next,
+            size = 24,
+        )
+        RemoteBox(modifier = RemoteModifier.width(12.rdp))
+        RemoteIconButton(
+            modifier = RemoteModifier.padding(2.rdp),
+            icon = icons.repeat(state.repeatMode),
+            action = PlayerWidgetAction.RotateRepeatMode,
+            size = 24,
+        )
+        RemoteBox(modifier = RemoteModifier.width(12.rdp))
+        RemoteIconButton(
+            modifier = RemoteModifier.padding(2.rdp),
+            icon = icons.shuffle,
+            action = PlayerWidgetAction.Shuffle,
+            size = 24,
+        )
     }
-}
-
-/** Mirrors the total duration [com.geckour.q.ui.main.Controller] shows above the queue. */
-@Composable
-@RemoteComposable
-private fun RemoteQueueSummary(
-    state: PlayerWidgetState,
-    colors: PlayerWidgetColors,
-    layout: PlayerWidgetLayout,
-) {
-    if (!state.hasQueue) return
-
-    RemoteText(
-        text = stringResource(
-            R.string.bottom_sheet_time_total,
-            state.queueTotalDuration.getTimeString(),
-        ).rs,
-        color = colors.textSecondary.rc,
-        fontSize = 10.rsp,
-        textAlign = TextAlign.End,
-        maxLines = 1,
-        modifier = RemoteModifier
-            .fillMaxWidth()
-            .padding(
-                vertical = 6.rdp,
-                horizontal = layout.contentPaddingDp.rdp,
-            ),
-    )
 }
 
 @Composable
@@ -264,6 +218,7 @@ private fun RemoteQueue(
     modifier: RemoteModifier,
     state: PlayerWidgetState,
     colors: PlayerWidgetColors,
+    artworkSizeDp: Int,
 ) {
     if (!state.hasQueue) return
 
@@ -279,6 +234,7 @@ private fun RemoteQueue(
                 track = track,
                 nowPlaying = index == state.currentIndex,
                 colors = colors,
+                artworkSizeDp = artworkSizeDp,
             )
         }
     }
@@ -290,15 +246,22 @@ private fun RemoteQueueItem(
     track: PlayerWidgetTrack,
     nowPlaying: Boolean,
     colors: PlayerWidgetColors,
+    artworkSizeDp: Int,
 ) {
     RemoteRow(
         modifier = RemoteModifier
             .fillMaxWidth()
             .background((if (nowPlaying) colors.nowPlaying else colors.background).rc)
-            .padding(vertical = 8.rdp, horizontal = 12.rdp),
+            .padding(end = 8.rdp)
+            .height(artworkSizeDp.rdp),
         verticalAlignment = RemoteAlignment.CenterVertically,
     ) {
-        RemoteColumn(modifier = RemoteModifier.weight(1f.rf)) {
+        RemoteArtwork(track.artwork, inactiveColor = Color.Transparent, sizeDp = artworkSizeDp)
+        RemoteColumn(
+            modifier = RemoteModifier
+                .weight(1f.rf)
+                .padding(horizontal = 8.rdp)
+        ) {
             RemoteText(
                 text = track.title.rs,
                 color = colors.textPrimary.rc,
@@ -316,7 +279,6 @@ private fun RemoteQueueItem(
                 modifier = RemoteModifier.fillMaxWidth(),
             )
         }
-        RemoteBox(modifier = RemoteModifier.width(8.rdp))
         RemoteText(
             text = track.duration.getTimeString().rs,
             color = colors.textSecondary.rc,

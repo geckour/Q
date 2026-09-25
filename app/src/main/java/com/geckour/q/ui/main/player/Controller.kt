@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.FastForward
@@ -86,12 +87,12 @@ import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.component.DoubleTrackSlider
-import com.geckour.q.ui.component.SpotifyAttribution
+import com.geckour.q.ui.component.SpotifyLogo
 import com.geckour.q.ui.compose.QTheme
+import com.geckour.q.util.DownloadState
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.getShouldShowCurrentRemain
 import com.geckour.q.util.getTimeString
-import com.geckour.q.util.DownloadState
 import com.geckour.q.util.isDownloaded
 import com.geckour.q.util.isSpotify
 import com.geckour.q.util.nonUpScaleSp
@@ -609,7 +610,9 @@ fun Controller(
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(bottom = 2.dp, start = 16.dp, end = 16.dp)
+                    modifier = Modifier
+                        .padding(bottom = 2.dp, start = 16.dp, end = 16.dp)
+                        .height(15.dp),
                 ) {
                     Text(
                         text = routeInfo?.audioDeviceName
@@ -620,7 +623,11 @@ fun Controller(
                         modifier = Modifier.weight(1f)
                     )
                     if (currentTrack?.isSpotify == true) {
-                        SpotifyAttribution()
+                        SpotifyLogo(
+                            modifier = Modifier
+                                .padding(vertical = 1.5.dp)
+                                .wrapContentWidth(align = Alignment.End)
+                        )
                     } else {
                         Text(
                             text = currentTrack?.let {
@@ -711,9 +718,11 @@ fun Controller(
                 } else {
                     // Applying both padding and size redundantly as same as Icon which will be toggled to
                     // because the calculated size may fluctuate within 1px due to round density error
-                    Spacer(modifier = Modifier
-                        .padding(4.dp)
-                        .size(20.dp))
+                    Spacer(
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .size(20.dp)
+                    )
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(

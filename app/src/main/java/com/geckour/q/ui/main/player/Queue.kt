@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListItemInfo
 import androidx.compose.foundation.lazy.items
@@ -89,8 +90,7 @@ import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.UiTrack
-import com.geckour.q.ui.component.SpotifyAttribution
-import com.geckour.q.ui.compose.ColorBackgroundInverse
+import com.geckour.q.ui.component.SpotifyLogo
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.isSpotify
@@ -496,14 +496,14 @@ fun QueueItem(
                     ) {
                         Text(
                             text = uiTrack.title,
-                            color = if (uiTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
+                            color = if (uiTrack.ignored == true) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
                             fontSize = 16.sp,
                             lineHeight = 24.nonUpScaleSp
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "${uiTrack.artist.title} - ${uiTrack.album.title}",
-                            color = if (uiTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
+                            color = if (uiTrack.ignored == true) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
                             fontSize = 12.sp,
                             lineHeight = 18.nonUpScaleSp
                         )
@@ -549,7 +549,12 @@ fun QueueItem(
                         modifier = Modifier.width(48.dp)
                     )
                     if (uiTrack.isSpotify) {
-                        SpotifyAttribution(modifier = Modifier.weight(1f))
+                        SpotifyLogo(
+                            modifier = Modifier
+                                .weight(1f)
+                                .wrapContentWidth(Alignment.End)
+                                .padding(vertical = 4.dp)
+                        )
                     } else {
                         Text(
                             text = "${uiTrack.codec}・${uiTrack.bitrate}kbps・${uiTrack.sampleRate}kHz",
