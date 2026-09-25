@@ -2,23 +2,14 @@ package com.geckour.q.util
 
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
-import com.geckour.q.data.db.model.shiftedBy
 import java.io.File
 
 fun File.parseLrc(): List<LyricLine> =
     if (extension != "lrc") emptyList()
     else readText().parseLrc()
 
-fun String.parseLrc(): List<LyricLine> {
-    val offset = lines().firstNotNullOfOrNull { line ->
-        Regex("^\\[offset:\\s*([+-]?\\d+)\\s*]$", RegexOption.IGNORE_CASE)
-            .find(line.trim())
-            ?.groupValues
-            ?.get(1)
-            ?.toLongOrNull()
-    } ?: 0
-
-    return lines()
+fun String.parseLrc(): List<LyricLine> =
+    lines()
         .map { line ->
             if (line.matches(Regex("^(\\[\\d+?:\\d+?(\\.\\d+?)?])+.*$"))
                     .not()
@@ -46,8 +37,7 @@ fun String.parseLrc(): List<LyricLine> {
                 .trim()
             timings.map { LyricLine(it, sentence) }
         }.flatten()
-        .shiftedBy(-offset)
-}
+        .sortedBy { it.timing }
 
 fun Lyric.toLrcString(): String = lines.joinToString("\n") {
     "[%s.%02d]%s".format(it.timing.getTimeString(), it.timing % 1000 / 10, it.sentence)

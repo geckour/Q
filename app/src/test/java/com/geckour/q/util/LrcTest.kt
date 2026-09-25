@@ -47,42 +47,16 @@ class LrcTest {
     }
 
     @Test
-    fun `Test parseLrc with positive offset tag`() {
+    fun `Test parseLrc sorts lines by timing`() {
+        Truth.assertThat("[00:03.00][00:01.00]a\n[00:02.00]b".parseLrc())
+            .containsExactly(LyricLine(1000, "a"), LyricLine(2000, "b"), LyricLine(3000, "a"))
+            .inOrder()
+    }
+
+    @Test
+    fun `Test parseLrc ignores offset tag`() {
         Truth.assertThat("[offset:+500]\n[00:01.00]a\n[00:02.50]b".parseLrc())
-            .containsExactly(LyricLine(500, "a"), LyricLine(2000, "b"))
+            .containsExactly(LyricLine(1000, "a"), LyricLine(2500, "b"))
             .inOrder()
-    }
-
-    @Test
-    fun `Test parseLrc with negative offset tag`() {
-        Truth.assertThat("[offset:-500]\n[00:01.00]a\n[00:02.50]b".parseLrc())
-            .containsExactly(LyricLine(1500, "a"), LyricLine(3000, "b"))
-            .inOrder()
-    }
-
-    @Test
-    fun `Test parseLrc with unsigned offset tag and spaces`() {
-        Truth.assertThat("[ti:title]\n [OFFSET: 250 ] \n[00:01.00]a".parseLrc())
-            .containsExactly(LyricLine(750, "a"))
-    }
-
-    @Test
-    fun `Test parseLrc keeps timing at least 1 when offset exceeds timing`() {
-        Truth.assertThat("[offset:3000]\n[00:01.00]a\n[00:05.00]b".parseLrc())
-            .containsExactly(LyricLine(1, "a"), LyricLine(2000, "b"))
-            .inOrder()
-    }
-
-    @Test
-    fun `Test parseLrc does not shift zero timing lines`() {
-        Truth.assertThat("[offset:-500]\n[00:00.00]title\n[00:01.00]a".parseLrc())
-            .containsExactly(LyricLine(0, "title"), LyricLine(1500, "a"))
-            .inOrder()
-    }
-
-    @Test
-    fun `Test parseLrc ignores malformed offset tag`() {
-        Truth.assertThat("[offset:abc]\n[00:01.00]a".parseLrc())
-            .containsExactly(LyricLine(1000, "a"))
     }
 }
