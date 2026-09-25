@@ -125,7 +125,8 @@ fun DrawerItem(
             .clickable(onClick = onClick)
             .background(color = if (isSelected) QTheme.colors.colorBackgroundSelected else QTheme.colors.colorBackground)
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             painter = painterResource(id = iconResId),
@@ -154,7 +155,8 @@ fun DrawerItem(
             .clickable(onClick = onClick)
             .background(color = if (isSelected) QTheme.colors.colorBackgroundSelected else QTheme.colors.colorBackground)
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             imageVector = imageVector,
@@ -186,9 +188,10 @@ fun SpotifyDrawerItem(
                 else QTheme.colors.colorBackground
             )
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        SpotifyLogo(width = 76.dp)
+        SpotifyLogo(height = 24.dp)
         Spacer(modifier = Modifier.width(16.dp))
         Text(
             text = stringResource(R.string.nav_spotify),
