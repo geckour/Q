@@ -48,6 +48,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -138,6 +139,12 @@ fun Controller(
         WindowInsets.navigationBars.getBottom(this).toDp()
     }
     val currentDensity = LocalDensity.current
+    val hasCurrentTrack = currentTrack != null
+    val buttonColor =
+        if (hasCurrentTrack) QTheme.colors.colorButtonNormal else QTheme.colors.colorInactive
+    LaunchedEffect(hasCurrentTrack) {
+        if (hasCurrentTrack.not()) isInLyricEditMode.value = false
+    }
     Column {
         Box(
             modifier = Modifier.layout { measurable, constraints ->
@@ -168,6 +175,7 @@ fun Controller(
                         layout(placeable.width, placeable.height) { placeable.place(0, 0) }
                     }
                     .combinedClickable(
+                        enabled = hasCurrentTrack,
                         onClick = {},
                         onLongClick = { currentTrack?.let { onTrackSelected(it) } }
                     )
@@ -440,9 +448,10 @@ fun Controller(
                     Icon(
                         imageVector = Icons.Default.Shuffle,
                         contentDescription = null,
-                        tint = QTheme.colors.colorButtonNormal,
+                        tint = buttonColor,
                         modifier = Modifier
                             .combinedClickable(
+                                enabled = hasCurrentTrack,
                                 onClick = { shuffleQueue(null) },
                                 onLongClick = resetShuffleQueue,
                                 interactionSource = remember { MutableInteractionSource() },
@@ -474,15 +483,19 @@ fun Controller(
                     Icon(
                         imageVector = Icons.Default.FastRewind,
                         contentDescription = null,
-                        tint = QTheme.colors.colorButtonNormal,
+                        tint = buttonColor,
                         modifier = Modifier
-                            .pointerInput(Unit) {
+                            .pointerInput(hasCurrentTrack) {
+                                if (hasCurrentTrack.not()) return@pointerInput
                                 detectTapGestures(
                                     onLongPress = { onRewind() },
                                     onTap = { onPrev() },
                                     onPress = {
-                                        awaitRelease()
-                                        resetPlaybackButton()
+                                        try {
+                                            awaitRelease()
+                                        } finally {
+                                            resetPlaybackButton()
+                                        }
                                     }
                                 )
                             }
@@ -495,9 +508,10 @@ fun Controller(
                                 Icons.Default.Pause
                             else Icons.Default.PlayArrow,
                         contentDescription = null,
-                        tint = QTheme.colors.colorButtonNormal,
+                        tint = buttonColor,
                         modifier = Modifier
                             .combinedClickable(
+                                enabled = hasCurrentTrack,
                                 indication = ripple(bounded = false),
                                 interactionSource = remember { MutableInteractionSource() },
                                 onClick = {
@@ -518,15 +532,19 @@ fun Controller(
                     Icon(
                         imageVector = Icons.Default.FastForward,
                         contentDescription = null,
-                        tint = QTheme.colors.colorButtonNormal,
+                        tint = buttonColor,
                         modifier = Modifier
-                            .pointerInput(Unit) {
+                            .pointerInput(hasCurrentTrack) {
+                                if (hasCurrentTrack.not()) return@pointerInput
                                 detectTapGestures(
                                     onLongPress = { onFastForward() },
                                     onTap = { onNext() },
                                     onPress = {
-                                        awaitRelease()
-                                        resetPlaybackButton()
+                                        try {
+                                            awaitRelease()
+                                        } finally {
+                                            resetPlaybackButton()
+                                        }
                                     }
                                 )
                             }
@@ -553,6 +571,7 @@ fun Controller(
                             .weight(1f)
                             .fillMaxWidth(),
                         key = currentTrack,
+                        isEnabled = hasCurrentTrack,
                         primaryProgressFraction = currentTrack?.duration
                             ?.let { progress.toFloat() / it }
                             ?: 0f,
@@ -560,8 +579,8 @@ fun Controller(
                             ?.takeIf { it.isSpotify.not() }
                             ?.duration
                             ?.let { bufferProgress.toFloat() / it },
-                        thumbColor = QTheme.colors.colorButtonNormal,
-                        primaryTrackColor = QTheme.colors.colorButtonNormal,
+                        thumbColor = buttonColor,
+                        primaryTrackColor = buttonColor,
                         onSeek = { newProgressFraction ->
                             currentTrack?.let {
                                 onNewProgress((newProgressFraction * it.duration).toLong())
@@ -578,7 +597,7 @@ fun Controller(
                         color = QTheme.colors.colorTextPrimary,
                         textAlign = TextAlign.Center,
                         modifier = Modifier
-                            .clickable {
+                            .clickable(enabled = hasCurrentTrack) {
                                 coroutineScope.launch {
                                     context.setShouldShowCurrentRemain(shouldShowCurrentRemain.not())
                                 }
@@ -643,10 +662,12 @@ fun Controller(
                     imageVector = Icons.Default.VerticalAlignCenter,
                     contentDescription = null,
                     tint =
-                        if (showLyric && isLyricScrolledByUser.not()) QTheme.colors.colorInactive
+                        if (hasCurrentTrack.not() || (showLyric && isLyricScrolledByUser.not()))
+                            QTheme.colors.colorInactive
                         else QTheme.colors.colorButtonNormal,
                     modifier = Modifier
                         .clickable(
+                            enabled = hasCurrentTrack,
                             indication = ripple(bounded = false),
                             interactionSource = remember { MutableInteractionSource() },
                             onClick = moveToCurrentIndex
@@ -673,9 +694,10 @@ fun Controller(
                     Icon(
                         imageVector = Icons.Default.EditNote,
                         contentDescription = null,
-                        tint = QTheme.colors.colorButtonNormal,
+                        tint = buttonColor,
                         modifier = Modifier
                             .clickable(
+                                enabled = hasCurrentTrack,
                                 indication = ripple(bounded = false),
                                 interactionSource = remember { MutableInteractionSource() },
                                 onClick = {
@@ -731,10 +753,11 @@ fun Controller(
             Icon(
                 imageVector = Icons.Default.RemoveCircleOutline,
                 contentDescription = null,
-                tint = QTheme.colors.colorButtonNormal,
+                tint = buttonColor,
                 modifier = Modifier
                     .padding(end = 4.dp)
                     .clickable(
+                        enabled = hasCurrentTrack,
                         indication = ripple(bounded = false),
                         interactionSource = remember { MutableInteractionSource() },
                         onClick = clearQueue

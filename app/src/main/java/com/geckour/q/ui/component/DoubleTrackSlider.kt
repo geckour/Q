@@ -29,6 +29,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -39,6 +40,7 @@ import kotlin.math.abs
 fun DoubleTrackSlider(
     modifier: Modifier = Modifier,
     key: Any? = null,
+    isEnabled: Boolean = true,
     primaryProgressFraction: Float,
     secondaryProgressFraction: Float? = null,
     steps: Int = 0,
@@ -49,6 +51,7 @@ fun DoubleTrackSlider(
     secondaryTrackColor: Color = primaryTrackColor.copy(alpha = 0.48f),
     baseTrackColor: Color = primaryTrackColor.copy(alpha = 0.24f),
     thumbColor: Color = primaryTrackColor,
+    inactiveThumbColor: Color = baseTrackColor,
     onSeek: ((newProgressFraction: Float) -> Unit)? = null,
     onSeekEnded: ((newProgressFraction: Float) -> Unit)? = null,
 ) {
@@ -63,7 +66,8 @@ fun DoubleTrackSlider(
 
     Box(
         modifier = modifier
-            .pointerInput(key ?: Unit) {
+            .pointerInput(key ?: Unit, isEnabled) {
+                if (isEnabled.not()) return@pointerInput
                 detectTapGestures { offset ->
                     val newValue = offset.x
                         .coerceIn(0f..(trackWidth - thickness).toPx())
@@ -77,7 +81,8 @@ fun DoubleTrackSlider(
                     onSeekEnded?.invoke(resolvedValue) ?: onSeek?.invoke(resolvedValue)
                 }
             }
-            .pointerInput(key ?: Unit) {
+            .pointerInput(key ?: Unit, isEnabled) {
+                if (isEnabled.not()) return@pointerInput
                 detectHorizontalDragGestures(
                     onHorizontalDrag = { change, _ ->
                         val newValue = change.position.x
@@ -134,9 +139,14 @@ fun DoubleTrackSlider(
                 )
         )
         Surface(
-            modifier = Modifier.offset(x = (trackWidth - thickness) * innerProgressFraction),
+            modifier = Modifier.offset {
+                IntOffset(
+                    ((trackWidth - thickness) * innerProgressFraction).roundToPx(),
+                    0,
+                )
+            },
             shape = CircleShape,
-            color = thumbColor,
+            color = if (isEnabled) thumbColor else inactiveThumbColor,
             shadowElevation = thumbElevation
         ) {
             Box(modifier = Modifier.size(thumbRadius * 2))
