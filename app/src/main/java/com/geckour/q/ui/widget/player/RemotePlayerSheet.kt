@@ -251,6 +251,7 @@ private fun RemoteQueueItem(
     RemoteRow(
         modifier = RemoteModifier
             .fillMaxWidth()
+            .padding(top = 4.rdp)
             .background((if (nowPlaying) colors.nowPlaying else colors.background).rc)
             .padding(end = 8.rdp)
             .height(artworkSizeDp.rdp),
