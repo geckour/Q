@@ -615,11 +615,32 @@ class MainActivity : ComponentActivity() {
 
 
             is DialogEvent.ShowSpotifyTrackOption -> {
-                viewModel.showDialog(DialogState.SpotifyTrackOption(event.track))
+                viewModel.showDialog(
+                    DialogState.SpotifyTrackOption(event.track, event.showsRemoveFromLibrary)
+                )
             }
 
             is DialogEvent.ShowSpotifyContainerOption -> {
-                viewModel.showDialog(DialogState.SpotifyContainerOption(event.container))
+                viewModel.showDialog(
+                    DialogState.SpotifyContainerOption(
+                        event.container,
+                        event.showsRemoveFromLibrary,
+                    )
+                )
+            }
+
+            DialogEvent.ShowSpotifyLibraryOption -> {
+                viewModel.showDialog(DialogState.SpotifyLibraryOption)
+            }
+
+            DialogEvent.ClearSpotifyLibrary -> viewModel.clearSpotifyLibrary()
+
+            is DialogEvent.RemoveSpotifyTrackFromLibrary -> {
+                viewModel.removeSpotifyTrackFromLibrary(event.track)
+            }
+
+            is DialogEvent.RemoveSpotifyContainerFromLibrary -> {
+                viewModel.removeSpotifyContainerFromLibrary(event.container)
             }
 
             is DialogEvent.OpenInSpotify -> openInSpotify(event.uri)

@@ -10,11 +10,13 @@ import com.geckour.q.ui.component.QOption
 import com.geckour.q.ui.component.QOptionDialog
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
+import com.geckour.q.util.isInLibrary
 import com.geckour.q.util.isSpotifyInstalled
 
 @Composable
 fun SpotifyTrackOptionDialog(
     track: SpotifyTrack,
+    showsRemoveFromLibrary: Boolean,
     onDialogEvent: (event: DialogEvent) -> Unit,
 ) {
     QOptionDialog(
@@ -24,7 +26,12 @@ fun SpotifyTrackOptionDialog(
                 onDialogEvent(DialogEvent.AddSpotifyTrack(track, actionType))
                 onDialogEvent(DialogEvent.Dismiss)
             },
-        ) + trackRadioOption(track.uri, onDialogEvent) + spotifyLinkOption(track.uri, onDialogEvent),
+        ) + trackRadioOption(track.uri, onDialogEvent) +
+                removeFromLibraryOptions(showsRemoveFromLibrary) {
+                    onDialogEvent(DialogEvent.RemoveSpotifyTrackFromLibrary(track))
+                    onDialogEvent(DialogEvent.Dismiss)
+                } +
+                spotifyLinkOption(track.uri, onDialogEvent),
         onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) },
     )
 }
@@ -51,6 +58,7 @@ private fun trackRadioOption(
 @Composable
 fun SpotifyContainerOptionDialog(
     container: SpotifyContainer,
+    showsRemoveFromLibrary: Boolean,
     onDialogEvent: (event: DialogEvent) -> Unit,
 ) {
     val onSelect: (actionType: InsertActionType, classType: OrientedClassType) -> Unit =
@@ -66,9 +74,45 @@ fun SpotifyContainerOptionDialog(
         options = insertOptions(InsertLabelResIds.All, onSelectTrackOriented) +
                 orientedShuffleOptions(container.kind, onSelect) +
                 simpleShuffleOptions(onSelectTrackOriented) +
-                spotifyLinkOption(container.uri, onDialogEvent),
+                removeFromLibraryOptions(showsRemoveFromLibrary) {
+                    onDialogEvent(DialogEvent.RemoveSpotifyContainerFromLibrary(container))
+                    onDialogEvent(DialogEvent.Dismiss)
+                } +
+                containerLinkOptions(container, onDialogEvent),
         onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) },
     )
+}
+
+@Composable
+fun SpotifyLibraryOptionDialog(onDialogEvent: (event: DialogEvent) -> Unit) {
+    QOptionDialog(
+        options = listOf(
+            QOption(R.string.spotify_menu_clear_library) {
+                onDialogEvent(DialogEvent.ClearSpotifyLibrary)
+                onDialogEvent(DialogEvent.Dismiss)
+            }
+        ),
+        onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) },
+    )
+}
+
+private fun removeFromLibraryOptions(
+    showsRemoveFromLibrary: Boolean,
+    onSelect: () -> Unit,
+): List<QOption> {
+    if (showsRemoveFromLibrary.not()) return emptyList()
+
+    return listOf(QOption(R.string.spotify_menu_remove_from_library, onClick = onSelect))
+}
+
+@Composable
+private fun containerLinkOptions(
+    container: SpotifyContainer,
+    onDialogEvent: (event: DialogEvent) -> Unit,
+): List<QOption> {
+    if (container.kind.isInLibrary) return emptyList()
+
+    return listOf(spotifyLinkOption(container.uri, onDialogEvent))
 }
 
 private class InsertLabelResIds(
@@ -130,8 +174,8 @@ private fun orientedShuffleOptions(
     )
 
     return when (kind) {
-        SpotifyContainer.Kind.ALBUM -> emptyList()
-        SpotifyContainer.Kind.ARTIST -> albumOriented
+        SpotifyContainer.Kind.ALBUM, SpotifyContainer.Kind.LIBRARY_ALBUM -> emptyList()
+        SpotifyContainer.Kind.ARTIST, SpotifyContainer.Kind.LIBRARY_ARTIST -> albumOriented
         SpotifyContainer.Kind.PLAYLIST,
         SpotifyContainer.Kind.SAVED,
         SpotifyContainer.Kind.CONTENT -> albumOriented + artistOriented

@@ -17,5 +17,7 @@ data class SpotifyContainer(
         PLAYLIST,
         SAVED,
         CONTENT,
+        LIBRARY_ARTIST,
+        LIBRARY_ALBUM,
     }
 }

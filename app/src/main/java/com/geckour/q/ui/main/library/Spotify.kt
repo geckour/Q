@@ -1,7 +1,6 @@
 package com.geckour.q.ui.main.library
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +19,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -63,10 +63,17 @@ private const val SECTION_URI_PREFIX = "spotify:section:"
 fun SpotifySourceMenu(
     endItemMargin: Dp = 0.dp,
     onSelectSource: (source: SpotifyBrowseSource) -> Unit,
+    onDialogEvent: (event: DialogEvent) -> Unit,
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         items(SpotifyBrowseSource.entries, key = { it.name }) { source ->
-            SpotifySourceItem(source = source, onClick = { onSelectSource(source) })
+            SpotifySourceItem(
+                source = source,
+                onClick = { onSelectSource(source) },
+                onLongClick = if (source == SpotifyBrowseSource.LIBRARY) {
+                    { onDialogEvent(DialogEvent.ShowSpotifyLibraryOption) }
+                } else null,
+            )
         }
         item {
             Spacer(modifier = Modifier.height(endItemMargin))
@@ -79,6 +86,7 @@ fun SpotifyLevel(
     level: SpotifyLevel,
     listState: LazyListState,
     endItemMargin: Dp = 0.dp,
+    showsRemoveFromLibrary: Boolean = false,
     onOpenContainer: (container: SpotifyContainer) -> Unit,
     onLoadMore: () -> Unit,
     onDialogEvent: (event: DialogEvent) -> Unit,
@@ -95,7 +103,12 @@ fun SpotifyLevel(
                             track = item.track,
                             showsArtwork = showsArtwork,
                             onClick = {
-                                onDialogEvent(DialogEvent.ShowSpotifyTrackOption(item.track))
+                                onDialogEvent(
+                                    DialogEvent.ShowSpotifyTrackOption(
+                                        item.track,
+                                        showsRemoveFromLibrary,
+                                    )
+                                )
                             },
                         )
                     }
@@ -107,7 +120,10 @@ fun SpotifyLevel(
                             onClick = { onOpenContainer(item.container) },
                             onLongClick = {
                                 onDialogEvent(
-                                    DialogEvent.ShowSpotifyContainerOption(item.container)
+                                    DialogEvent.ShowSpotifyContainerOption(
+                                        item.container,
+                                        showsRemoveFromLibrary,
+                                    )
                                 )
                             },
                         )
@@ -149,15 +165,17 @@ fun SpotifyLevel(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SpotifySourceItem(
     source: SpotifyBrowseSource,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)?,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 16.dp)
     ) {
@@ -197,7 +215,7 @@ fun spotifySourceOptionTarget(
         totalTracks = null,
     )
 
-    SpotifyBrowseSource.PLAYLISTS -> null
+    SpotifyBrowseSource.PLAYLISTS, SpotifyBrowseSource.LIBRARY -> null
 }
 
 @Composable
@@ -219,6 +237,7 @@ private val SpotifyBrowseSource.labelResId: Int
         SpotifyBrowseSource.SAVED -> R.string.spotify_tab_saved
         SpotifyBrowseSource.PLAYLISTS -> R.string.spotify_tab_playlists
         SpotifyBrowseSource.RECOMMENDED -> R.string.spotify_tab_recommended
+        SpotifyBrowseSource.LIBRARY -> R.string.spotify_tab_library
     }
 
 private val SpotifyBrowseSource.icon: ImageVector
@@ -226,6 +245,7 @@ private val SpotifyBrowseSource.icon: ImageVector
         SpotifyBrowseSource.SAVED -> Icons.Default.Star
         SpotifyBrowseSource.PLAYLISTS -> Icons.Default.QueueMusic
         SpotifyBrowseSource.RECOMMENDED -> Icons.Default.AutoAwesome
+        SpotifyBrowseSource.LIBRARY -> Icons.Default.LibraryMusic
     }
 
 @Composable
@@ -252,8 +272,14 @@ private fun SpotifyContainerItem(
     onLongClick: () -> Unit,
 ) {
     val kindLabel = when (container.kind) {
-        SpotifyContainer.Kind.ALBUM -> stringResource(id = R.string.spotify_item_album)
-        SpotifyContainer.Kind.ARTIST -> stringResource(id = R.string.spotify_item_artist)
+        SpotifyContainer.Kind.ALBUM, SpotifyContainer.Kind.LIBRARY_ALBUM -> {
+            stringResource(id = R.string.spotify_item_album)
+        }
+
+        SpotifyContainer.Kind.ARTIST, SpotifyContainer.Kind.LIBRARY_ARTIST -> {
+            stringResource(id = R.string.spotify_item_artist)
+        }
+
         SpotifyContainer.Kind.PLAYLIST -> stringResource(id = R.string.spotify_item_playlist)
         SpotifyContainer.Kind.SAVED, SpotifyContainer.Kind.CONTENT -> null
     }

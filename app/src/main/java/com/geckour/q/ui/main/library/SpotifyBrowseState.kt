@@ -11,6 +11,7 @@ enum class SpotifyBrowseSource {
     SAVED,
     PLAYLISTS,
     RECOMMENDED,
+    LIBRARY,
 }
 
 sealed interface SpotifyBrowseItem {

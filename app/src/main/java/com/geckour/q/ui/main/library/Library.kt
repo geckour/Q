@@ -44,6 +44,7 @@ import com.geckour.q.ui.main.extra.Pay
 import com.geckour.q.ui.main.extra.Qzi
 import com.geckour.q.ui.main.dialog.DialogEvent
 import com.geckour.q.util.decodeUrlSafe
+import com.geckour.q.util.isInLibrary
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -347,9 +348,13 @@ fun Library(
                 ) {
                     if (isSpotifyConfigured.not() || hasSpotifyCredential.not()) return@SpotifyScreen
 
-                    SpotifySourceMenu(endItemMargin = endItemMargin) { source ->
-                        navController.navigate("spotify/source?type=${source.name}")
-                    }
+                    SpotifySourceMenu(
+                        endItemMargin = endItemMargin,
+                        onSelectSource = { source ->
+                            navController.navigate("spotify/source?type=${source.name}")
+                        },
+                        onDialogEvent = onDialogEvent,
+                    )
                 }
             }
             composable(
@@ -372,7 +377,9 @@ fun Library(
                     onSetOptionMediaItem(optionMediaItem)
                 }
                 LaunchedEffect(source) {
-                    if (level.items.isEmpty()) loadSpotifySource(source, true)
+                    if (level.items.isEmpty() || source == SpotifyBrowseSource.LIBRARY) {
+                        loadSpotifySource(source, true)
+                    }
                 }
                 SpotifyScreen(
                     isSearchActive = isSearchActive,
@@ -387,6 +394,7 @@ fun Library(
                         level = level,
                         backStackEntry = backStackEntry,
                         endItemMargin = endItemMargin,
+                        showsRemoveFromLibrary = source == SpotifyBrowseSource.LIBRARY,
                         onOpenContainer = { navController.navigateToSpotifyContainer(it) },
                         onLoadMore = { loadSpotifySource(source, false) },
                         onDialogEvent = onDialogEvent,
@@ -424,7 +432,9 @@ fun Library(
                 }
                 LaunchedEffect(resolved) {
                     val target = resolved ?: return@LaunchedEffect
-                    if (level.items.isEmpty()) loadSpotifyContainer(target, true)
+                    if (level.items.isEmpty() || target.kind.isInLibrary) {
+                        loadSpotifyContainer(target, true)
+                    }
                 }
                 SpotifyScreen(
                     isSearchActive = isSearchActive,
@@ -439,6 +449,7 @@ fun Library(
                         level = level,
                         backStackEntry = backStackEntry,
                         endItemMargin = endItemMargin,
+                        showsRemoveFromLibrary = kind.isInLibrary,
                         onOpenContainer = { navController.navigateToSpotifyContainer(it) },
                         onLoadMore = { resolved?.let { loadSpotifyContainer(it, false) } },
                         onDialogEvent = onDialogEvent,
@@ -538,6 +549,7 @@ private fun SpotifyLevelList(
     level: SpotifyLevel,
     backStackEntry: NavBackStackEntry,
     endItemMargin: Dp,
+    showsRemoveFromLibrary: Boolean,
     onOpenContainer: (container: SpotifyContainer) -> Unit,
     onLoadMore: () -> Unit,
     onDialogEvent: (event: DialogEvent) -> Unit,
@@ -555,6 +567,7 @@ private fun SpotifyLevelList(
         level = level,
         listState = listState,
         endItemMargin = endItemMargin,
+        showsRemoveFromLibrary = showsRemoveFromLibrary,
         onOpenContainer = onOpenContainer,
         onLoadMore = onLoadMore,
         onDialogEvent = onDialogEvent,

@@ -143,6 +143,8 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
         const val ACTION_COMMAND_RESTORE_STATE = "action_command_restore_state"
 
+        const val ACTION_COMMAND_PRUNE_SPOTIFY_TRACKS = "action_command_prune_spotify_tracks"
+
         const val ACTION_COMMAND_FAST_FORWARD = "action_command_fast_forward"
         const val ACTION_COMMAND_REWIND = "action_command_rewind"
         const val ACTION_COMMAND_STOP_FAST_SEEK = "action_command_stop_fast_seek"
@@ -346,6 +348,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
                         .add(SessionCommand(ACTION_COMMAND_RESET_QUEUE_INDEX, Bundle.EMPTY))
                         .add(SessionCommand(ACTION_COMMAND_ROTATE_REPEAT_MODE, Bundle.EMPTY))
                         .add(SessionCommand(ACTION_COMMAND_RESTORE_STATE, Bundle.EMPTY))
+                        .add(SessionCommand(ACTION_COMMAND_PRUNE_SPOTIFY_TRACKS, Bundle.EMPTY))
                         .add(SessionCommand(ACTION_COMMAND_FAST_FORWARD, Bundle.EMPTY))
                         .add(SessionCommand(ACTION_COMMAND_REWIND, Bundle.EMPTY))
                         .add(SessionCommand(ACTION_COMMAND_STOP_FAST_SEEK, Bundle.EMPTY))
@@ -486,6 +489,11 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
                     ACTION_COMMAND_RESTORE_STATE -> {
                         restoreState()
+                        Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+
+                    ACTION_COMMAND_PRUNE_SPOTIFY_TRACKS -> {
+                        pruneSpotifyTracks()
                         Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
                     }
 
@@ -783,7 +791,6 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
     private var seekJob: Job = Job()
     private var saveQueueHistoryJob: Job = Job()
     private var pruneSpotifyTracksJob: Job = Job()
-    private val pendingSpotifyUris = mutableSetOf<String>()
 
     private val sharedPreferences by inject<SharedPreferences>()
 
@@ -1079,10 +1086,9 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         pruneSpotifyTracksJob = lifecycleScope.launch {
             delay(SPOTIFY_TRACK_PRUNE_DEBOUNCE.milliseconds)
 
-            val urisToKeep = player.currentSourcePaths.filter { it.isSpotifySourcePath } +
-                    pendingSpotifyUris
-            db.spotifyTrackDao().deleteUnused(urisToKeep = urisToKeep)
-            db.lyricDao().deleteUnusedSpotifyLyrics(urisToKeep = urisToKeep)
+            val urisToKeep = player.currentSourcePaths.filter { it.isSpotifySourcePath }
+            db.spotifyTrackDao().deleteUnusedOutsideLibrary(urisToKeep = urisToKeep)
+            db.lyricDao().deleteUnusedSpotifyLyricsOutsideLibrary(urisToKeep = urisToKeep)
         }
     }
 
@@ -1253,17 +1259,11 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         sourcePaths: List<String>,
         spotifyTracks: List<SpotifyTrack>,
     ) {
-        val uris = spotifyTracks.map { it.uri }
-        pendingSpotifyUris += uris
-        try {
-            val spotifyTrackDao = db.spotifyTrackDao()
-            spotifyTracks.forEach {
-                spotifyTrackDao.upsert(it.copy(createdAt = System.currentTimeMillis()))
-            }
-            submitSourcePaths(actionType, sourcePaths)
-        } finally {
-            pendingSpotifyUris -= uris.toSet()
+        val spotifyTrackDao = db.spotifyTrackDao()
+        spotifyTracks.forEach {
+            spotifyTrackDao.upsert(it.copy(createdAt = System.currentTimeMillis()))
         }
+        submitSourcePaths(actionType, sourcePaths)
     }
 
     private suspend fun submitSourcePaths(

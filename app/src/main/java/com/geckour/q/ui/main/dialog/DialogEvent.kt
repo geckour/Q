@@ -68,9 +68,23 @@ sealed interface DialogEvent {
     data class ChangeSpotifyFlatten(val flatten: Boolean) : DialogEvent
 
 
-    data class ShowSpotifyTrackOption(val track: SpotifyTrack) : DialogEvent
+    data class ShowSpotifyTrackOption(
+        val track: SpotifyTrack,
+        val showsRemoveFromLibrary: Boolean = false,
+    ) : DialogEvent
 
-    data class ShowSpotifyContainerOption(val container: SpotifyContainer) : DialogEvent
+    data class ShowSpotifyContainerOption(
+        val container: SpotifyContainer,
+        val showsRemoveFromLibrary: Boolean = false,
+    ) : DialogEvent
+
+    data object ShowSpotifyLibraryOption : DialogEvent
+
+    data object ClearSpotifyLibrary : DialogEvent
+
+    data class RemoveSpotifyTrackFromLibrary(val track: SpotifyTrack) : DialogEvent
+
+    data class RemoveSpotifyContainerFromLibrary(val container: SpotifyContainer) : DialogEvent
 
     data class OpenInSpotify(val uri: String) : DialogEvent
 

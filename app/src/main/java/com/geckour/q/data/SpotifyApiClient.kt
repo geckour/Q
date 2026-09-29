@@ -153,6 +153,10 @@ class SpotifyApiClient(private val context: Context) {
         SpotifyContainer.Kind.CONTENT -> {
             error("Content items are read through SpotifyContentClient")
         }
+
+        SpotifyContainer.Kind.LIBRARY_ARTIST, SpotifyContainer.Kind.LIBRARY_ALBUM -> {
+            error("Library items are read from the local database")
+        }
     }
 
     suspend fun getContainer(uri: String, kind: SpotifyContainer.Kind): SpotifyContainer? {
@@ -171,7 +175,10 @@ class SpotifyApiClient(private val context: Context) {
                 json.decodeFromString<ApiArtist>(get("artists/$id")).toContainer()
             }
 
-            SpotifyContainer.Kind.SAVED, SpotifyContainer.Kind.CONTENT -> null
+            SpotifyContainer.Kind.SAVED,
+            SpotifyContainer.Kind.CONTENT,
+            SpotifyContainer.Kind.LIBRARY_ARTIST,
+            SpotifyContainer.Kind.LIBRARY_ALBUM -> null
         }
     }
 

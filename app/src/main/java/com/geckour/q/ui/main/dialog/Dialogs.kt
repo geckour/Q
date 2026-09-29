@@ -102,6 +102,7 @@ fun BoxScope.Dialogs(
         is DialogState.SpotifyTrackOption -> {
             SpotifyTrackOptionDialog(
                 track = dialogState.track,
+                showsRemoveFromLibrary = dialogState.showsRemoveFromLibrary,
                 onDialogEvent = onDialogEvent,
             )
         }
@@ -109,8 +110,13 @@ fun BoxScope.Dialogs(
         is DialogState.SpotifyContainerOption -> {
             SpotifyContainerOptionDialog(
                 container = dialogState.container,
+                showsRemoveFromLibrary = dialogState.showsRemoveFromLibrary,
                 onDialogEvent = onDialogEvent,
             )
+        }
+
+        DialogState.SpotifyLibraryOption -> {
+            SpotifyLibraryOptionDialog(onDialogEvent = onDialogEvent)
         }
 
         is DialogState.SpotifyRecommendedOption -> {

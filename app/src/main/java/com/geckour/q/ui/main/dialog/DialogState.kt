@@ -35,9 +35,17 @@ sealed interface DialogState {
             Triple("", persistentListOf(), persistentListOf()),
     ) : DialogState
 
-    data class SpotifyTrackOption(val track: SpotifyTrack) : DialogState
+    data class SpotifyTrackOption(
+        val track: SpotifyTrack,
+        val showsRemoveFromLibrary: Boolean = false,
+    ) : DialogState
 
-    data class SpotifyContainerOption(val container: SpotifyContainer) : DialogState
+    data class SpotifyContainerOption(
+        val container: SpotifyContainer,
+        val showsRemoveFromLibrary: Boolean = false,
+    ) : DialogState
+
+    data object SpotifyLibraryOption : DialogState
 
     data class SpotifyRecommendedOption(val isFlattened: Boolean) : DialogState
 
