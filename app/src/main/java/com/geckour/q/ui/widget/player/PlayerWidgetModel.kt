@@ -2,7 +2,6 @@ package com.geckour.q.ui.widget.player
 
 import android.content.ComponentName
 import android.content.Context
-import android.graphics.BitmapFactory
 import androidx.annotation.DrawableRes
 import androidx.appcompat.content.res.AppCompatResources
 import androidx.compose.ui.graphics.Color
@@ -70,7 +69,6 @@ internal enum class PlayerWidgetAction {
  * A single queue entry, reduced to what the widget is able to render.
  */
 internal data class PlayerWidgetTrack(
-    val artwork: ImageBitmap?,
     val title: String,
     val artist: String,
     val album: String,
@@ -287,15 +285,8 @@ internal suspend fun loadPlayerWidgetState(
         // after it.
         val queue = playback.sourcePaths
             .map { sourcePath ->
-                spotifyTracks[sourcePath]?.toPlayerWidgetTrack(
-                    context = context,
-                    artworkSizePx = artworkSizePx / 2,
-                )
-                    ?: joinedTracks[sourcePath].toPlayerWidgetTrack(
-                        context = context,
-                        sourcePath = sourcePath,
-                        artworkSizePx = artworkSizePx / 2,
-                    )
+                spotifyTracks[sourcePath]?.toPlayerWidgetTrack()
+                    ?: joinedTracks[sourcePath].toPlayerWidgetTrack(sourcePath = sourcePath)
             }
             .toImmutableList()
         val currentSourcePath = playback.sourcePaths.getOrNull(playback.currentIndex)
@@ -325,14 +316,9 @@ private data class PlaybackSnapshot(
 )
 
 /** Falls back to the file name so that a track missing from the database still holds its slot. */
-private fun JoinedTrack?.toPlayerWidgetTrack(
-    context: Context,
-    sourcePath: String,
-    artworkSizePx: Int,
-): PlayerWidgetTrack =
+private fun JoinedTrack?.toPlayerWidgetTrack(sourcePath: String): PlayerWidgetTrack =
     if (this == null) {
         PlayerWidgetTrack(
-            artwork = null,
             title = sourcePath.toUri().lastPathSegment.orEmpty(),
             artist = "",
             album = "",
@@ -340,9 +326,6 @@ private fun JoinedTrack?.toPlayerWidgetTrack(
         )
     } else {
         PlayerWidgetTrack(
-            artwork = track.artworkUriString?.let { context.loadArtwork(it, artworkSizePx) }
-                ?: BitmapFactory.decodeResource(context.resources, R.drawable.ic_empty)
-                    .asImageBitmap(),
             title = track.title,
             artist = artist.title,
             album = album.title,
@@ -350,14 +333,8 @@ private fun JoinedTrack?.toPlayerWidgetTrack(
         )
     }
 
-private fun SpotifyTrack.toPlayerWidgetTrack(
-    context: Context,
-    artworkSizePx: Int,
-): PlayerWidgetTrack =
+private fun SpotifyTrack.toPlayerWidgetTrack(): PlayerWidgetTrack =
     PlayerWidgetTrack(
-        artwork = artworkUrl?.let { context.loadArtwork(it, artworkSizePx) }
-            ?: BitmapFactory.decodeResource(context.resources, R.drawable.ic_empty)
-                .asImageBitmap(),
         title = title,
         artist = artistName,
         album = albumName,

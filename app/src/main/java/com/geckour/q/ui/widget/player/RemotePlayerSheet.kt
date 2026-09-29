@@ -79,7 +79,6 @@ internal fun RemotePlayerSheet(
                 modifier = RemoteModifier.weight(1f.rf),
                 state = state,
                 colors = colors,
-                artworkSizeDp = layout.artworkSizeDp / 2,
             )
         }
     }
@@ -218,7 +217,6 @@ private fun RemoteQueue(
     modifier: RemoteModifier,
     state: PlayerWidgetState,
     colors: PlayerWidgetColors,
-    artworkSizeDp: Int,
 ) {
     if (!state.hasQueue) return
 
@@ -234,7 +232,6 @@ private fun RemoteQueue(
                 track = track,
                 nowPlaying = index == state.currentIndex,
                 colors = colors,
-                artworkSizeDp = artworkSizeDp,
             )
         }
     }
@@ -246,7 +243,6 @@ private fun RemoteQueueItem(
     track: PlayerWidgetTrack,
     nowPlaying: Boolean,
     colors: PlayerWidgetColors,
-    artworkSizeDp: Int,
 ) {
     RemoteRow(
         modifier = RemoteModifier
@@ -254,10 +250,9 @@ private fun RemoteQueueItem(
             .padding(top = 4.rdp)
             .background((if (nowPlaying) colors.nowPlaying else colors.background).rc)
             .padding(end = 8.rdp)
-            .height(artworkSizeDp.rdp),
+            .padding(vertical = 4.rdp),
         verticalAlignment = RemoteAlignment.CenterVertically,
     ) {
-        RemoteArtwork(track.artwork, inactiveColor = Color.Transparent, sizeDp = artworkSizeDp)
         RemoteColumn(
             modifier = RemoteModifier
                 .weight(1f.rf)
