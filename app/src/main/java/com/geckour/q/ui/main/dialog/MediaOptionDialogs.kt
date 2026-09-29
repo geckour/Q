@@ -46,6 +46,17 @@ fun TrackOptionDialog(
         option(R.string.menu_insert_last) { newQueue(InsertActionType.LAST) },
         option(R.string.menu_override) { newQueue(InsertActionType.OVERRIDE) },
     )
+    val generatedQueueOptions = listOf(
+        option(R.string.menu_insert_generated_queue_next) {
+            generateQueue(InsertActionType.NEXT)
+        },
+        option(R.string.menu_insert_generated_queue_last) {
+            generateQueue(InsertActionType.LAST)
+        },
+        option(R.string.menu_override_generated_queue) {
+            generateQueue(InsertActionType.OVERRIDE)
+        },
+    )
     if (uiTrack.isSpotify) {
         val isSpotifyInstalled = isSpotifyInstalled(LocalContext.current)
         val radioOptions = if (isSpotifyInstalled) {
@@ -61,7 +72,7 @@ fun TrackOptionDialog(
             )
         } else emptyList()
         QOptionDialog(
-            options = queueOptions + radioOptions + QOption(
+            options = queueOptions + generatedQueueOptions + radioOptions + QOption(
                 if (isSpotifyInstalled) R.string.spotify_menu_open
                 else R.string.spotify_menu_get_free
             ) {
@@ -74,16 +85,7 @@ fun TrackOptionDialog(
     }
 
     QOptionDialog(
-        options = queueOptions + listOf(
-            option(R.string.menu_insert_generated_queue_next) {
-                generateQueue(InsertActionType.NEXT)
-            },
-            option(R.string.menu_insert_generated_queue_last) {
-                generateQueue(InsertActionType.LAST)
-            },
-            option(R.string.menu_override_generated_queue) {
-                generateQueue(InsertActionType.OVERRIDE)
-            },
+        options = queueOptions + generatedQueueOptions + listOf(
             option(R.string.menu_transition_to_artist) {
                 navController.navigate("albums?artistId=${uiTrack.albumArtist?.id ?: uiTrack.artist.id}")
             },

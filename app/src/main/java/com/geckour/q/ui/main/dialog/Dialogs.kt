@@ -15,7 +15,7 @@ import com.geckour.q.ui.component.QConfirmDialog
 import com.geckour.q.ui.component.QOption
 import com.geckour.q.ui.component.QOptionDialog
 import com.geckour.q.util.getReadableStringWithUnit
-import com.geckour.q.util.isSpotify
+import com.geckour.q.util.trackRef
 import kotlinx.collections.immutable.ImmutableList
 
 @Composable
@@ -203,7 +203,7 @@ fun BoxScope.Dialogs(
                     onDialogEvent(
                         DialogEvent.SaveQueue(
                             title,
-                            currentQueue.filterNot { it.isSpotify }.map { it.id },
+                            currentQueue.map { it.trackRef },
                         )
                     )
                     onDialogEvent(DialogEvent.Dismiss)

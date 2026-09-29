@@ -38,6 +38,7 @@ import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.data.db.model.SpotifyContentEntry
 import com.geckour.q.data.db.model.SpotifyTrack
+import com.geckour.q.data.db.model.TrackRef
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.PlaybackButton
@@ -83,6 +84,7 @@ import com.geckour.q.util.getSpotifyCredential
 import com.geckour.q.util.getTimeString
 import com.geckour.q.util.isFavoriteToggled
 import com.geckour.q.util.isInLibrary
+import com.geckour.q.util.isSpotify
 import com.geckour.q.util.isSpotifyConfigured
 import com.geckour.q.util.isSpotifyLibraryUri
 import com.geckour.q.util.isSpotifySourcePath
@@ -98,6 +100,7 @@ import com.geckour.q.util.toLrcString
 import com.geckour.q.util.toSpotifyLibraryAlbums
 import com.geckour.q.util.toSpotifyLibraryArtists
 import com.geckour.q.util.toUiTrack
+import com.geckour.q.util.trackRef
 import com.geckour.q.worker.KEY_PROGRESS_FINISHED
 import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_FRACTION
 import com.geckour.q.worker.KEY_PROGRESS_PROGRESS_PATHS
@@ -528,7 +531,7 @@ class MainViewModel(
             loading.value = false to null
         }
         viewModelScope.launch {
-            val queue = db.queueHistoryDao().generateQueue(track.id)
+            val queue = db.queueHistoryDao().generateQueue(track.trackRef)
 
             withContext(Dispatchers.Main) {
                 mediaController.sendCustomCommand(
@@ -883,6 +886,12 @@ class MainViewModel(
         viewModelScope.launch {
             when (newMediaItem) {
                 is UiTrack -> {
+                    if (newMediaItem.isSpotify) {
+                        db.spotifyTrackDao()
+                            .updateFavorite(newMediaItem.sourcePath, newMediaItem.isFavorite)
+                        return@launch
+                    }
+
                     val trackDao = db.trackDao()
                     val newTrack = trackDao.get(newMediaItem.id)
                         ?.track
@@ -942,14 +951,14 @@ class MainViewModel(
     internal fun saveQueue(
         savedQueueId: Long? = null,
         title: String,
-        trackIds: List<Long>,
+        trackRefs: List<TrackRef>,
         onComplete: () -> Unit = {},
     ) {
         viewModelScope.launch {
             db.savedQueueDao().save(
                 savedQueueId = savedQueueId,
                 title = title,
-                trackIds = trackIds,
+                trackRefs = trackRefs,
             )
             onComplete()
         }
@@ -1291,7 +1300,7 @@ class MainViewModel(
         if (tracks.isEmpty()) return
 
         val storedAt = System.currentTimeMillis()
-        db.spotifyTrackDao().upsertAll(tracks.map { it.copy(createdAt = storedAt) })
+        db.spotifyTrackDao().save(tracks.map { it.copy(createdAt = storedAt) })
     }
 
     private suspend fun spotifyLibraryTracksIn(container: SpotifyContainer): List<SpotifyTrack> =

@@ -57,7 +57,7 @@ import kotlinx.serialization.json.Json
         SpotifyTrack::class,
         SpotifyContentEntry::class,
     ],
-    version = 21,
+    version = 22,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -74,6 +74,7 @@ import kotlinx.serialization.json.Json
         AutoMigration(from = 18, to = 19),
         AutoMigration(from = 19, to = 20),
         AutoMigration(from = 20, to = 21),
+        AutoMigration(from = 21, to = 22),
     ]
 )
 @TypeConverters(BoolConverter::class, LyricLineConverter::class)

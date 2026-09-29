@@ -52,6 +52,7 @@ import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricSource
 import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.data.db.model.TrackHistory
+import com.geckour.q.data.db.model.TrackRef
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.QAudioDeviceInfo
@@ -394,7 +395,13 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
                             if (spotifyTracks.isNotEmpty() ||
                                 sourcePaths.any { it.isSpotifySourcePath }
                             ) {
-                                submitSpotifyQueue(actionType, sourcePaths, spotifyTracks)
+                                submitSpotifyQueue(
+                                    actionType = actionType,
+                                    classType = classType,
+                                    sourcePaths = sourcePaths,
+                                    spotifyTracks = spotifyTracks,
+                                    needSorted = needSorted,
+                                )
                                 return@launch
                             }
 
@@ -520,6 +527,15 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
                     ACTION_COMMAND_TOGGLE_FAVORITE -> {
                         player.currentSourcePaths.getOrNull(currentIndex)?.let {
                             lifecycleScope.launch {
+                                if (it.isSpotifySourcePath) {
+                                    val spotifyTrackDao = db.spotifyTrackDao()
+                                    val spotifyTrack = spotifyTrackDao.get(it) ?: return@launch
+                                    val isFavorite = spotifyTrack.isFavorite.not()
+                                    spotifyTrackDao.updateFavorite(it, isFavorite)
+                                    onStateChanged(isFavorite = isFavorite)
+                                    return@launch
+                                }
+
                                 val trackDao = DB.getInstance(this@PlayerService).trackDao()
                                 val track = trackDao.getBySourcePath(it)?.track ?: return@launch
                                 val isFavorite = track.isFavorite.not()
@@ -1068,8 +1084,11 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
             val sourcePaths = player.currentSourcePaths
             if (sourcePaths.isEmpty()) return@launch
 
-            db.queueHistoryDao()
-                .saveQueue(db.trackDao().getAllIdsBySourcePaths(sourcePaths))
+            val (spotifyUris, localSourcePaths) = sourcePaths.partition { it.isSpotifySourcePath }
+            db.queueHistoryDao().saveQueue(
+                db.trackDao().getAllIdsBySourcePaths(localSourcePaths).map { TrackRef(it) } +
+                        spotifyUris.map { TrackRef.ofSpotify(it) }
+            )
         }
     }
 
@@ -1088,7 +1107,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
             val urisToKeep = player.currentSourcePaths.filter { it.isSpotifySourcePath }
             db.spotifyTrackDao().deleteUnusedOutsideLibrary(urisToKeep = urisToKeep)
-            db.lyricDao().deleteUnusedSpotifyLyricsOutsideLibrary(urisToKeep = urisToKeep)
+            db.lyricDao().deleteSpotifyLyricsWithoutTrack()
         }
     }
 
@@ -1112,27 +1131,37 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
                 return@launch
             }
             val track = db.trackDao().getBySourcePath(sourcePath)?.track
+            val spotifyTrack =
+                if (track == null && sourcePath.isSpotifySourcePath) {
+                    db.spotifyTrackDao().get(sourcePath)
+                } else null
+            val trackRef = when {
+                track != null -> TrackRef(track.id)
+                spotifyTrack != null -> TrackRef.ofSpotify(spotifyTrack.uri)
+                else -> null
+            }
 
-            val isNewTrackStarted = shouldStoreTrackHistory && (
-                    if (track == null) sourcePath.isSpotifySourcePath
-                    else db.trackHistoryDao().getLatest()?.trackId != track.id
-                    )
+            val isNewTrackStarted = shouldStoreTrackHistory && trackRef != null &&
+                    db.trackHistoryDao().getLatest()?.let {
+                        TrackRef(it.trackId, it.spotifyUri)
+                    } != trackRef
             if (isNewTrackStarted && shouldPauseOnCurrentTrackEnd) {
                 shouldPauseOnCurrentTrackEnd = false
                 pause()
             }
-            if (isNewTrackStarted && track != null) {
+            if (isNewTrackStarted && trackRef != null) {
                 db.trackHistoryDao().upsert(
                     TrackHistory(
                         id = 0,
-                        trackId = track.id,
+                        trackId = trackRef.trackId,
                         createdAt = System.currentTimeMillis(),
+                        spotifyUri = trackRef.spotifyUri,
                     )
                 )
             }
 
             val f =
-                isFavorite ?: track?.isFavorite ?: run {
+                isFavorite ?: track?.isFavorite ?: spotifyTrack?.isFavorite ?: run {
                     mediaSession.setCustomLayout(emptyList())
                     return@launch
                 }
@@ -1256,14 +1285,20 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
     private suspend fun submitSpotifyQueue(
         actionType: InsertActionType,
+        classType: OrientedClassType,
         sourcePaths: List<String>,
         spotifyTracks: List<SpotifyTrack>,
+        needSorted: Boolean,
     ) {
-        val spotifyTrackDao = db.spotifyTrackDao()
-        spotifyTracks.forEach {
-            spotifyTrackDao.upsert(it.copy(createdAt = System.currentTimeMillis()))
-        }
-        submitSourcePaths(actionType, sourcePaths)
+        val storedAt = System.currentTimeMillis()
+        db.spotifyTrackDao().save(spotifyTracks.map { it.copy(createdAt = storedAt) })
+        val orderedSourcePaths = if (needSorted) {
+            val tracks = sourcePaths.toDomainTracks(db).associateBy { it.sourcePath }
+            sourcePaths.mapNotNull { tracks[it] }
+                .orderModified(classType, actionType)
+                .map { it.sourcePath }
+        } else sourcePaths
+        submitSourcePaths(actionType, orderedSourcePaths)
     }
 
     private suspend fun submitSourcePaths(
@@ -1529,13 +1564,15 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
     )
 
     private fun increasePlaybackCount() = lifecycleScope.launch {
-        player.currentMediaItem?.toUiTrack(db)
-            ?.takeIf { it.isSpotify.not() }
-            ?.let { track ->
-                db.trackDao().increasePlaybackCount(track.id)
-                db.albumDao().increasePlaybackCount(track.album.id)
-                db.artistDao().increasePlaybackCount(track.artist.id)
-            }
+        val track = player.currentMediaItem?.toUiTrack(db) ?: return@launch
+        if (track.isSpotify) {
+            db.spotifyTrackDao().increasePlaybackCount(track.sourcePath)
+            return@launch
+        }
+
+        db.trackDao().increasePlaybackCount(track.id)
+        db.albumDao().increasePlaybackCount(track.album.id)
+        db.artistDao().increasePlaybackCount(track.artist.id)
     }
 
     private suspend fun verifyByCauseIfNeeded(

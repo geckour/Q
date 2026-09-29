@@ -350,7 +350,7 @@ fun Controller(
                         currentTrack?.sourcePath,
                         downloadChangedCount
                     ) { currentTrack?.isDownloaded == true }
-                    currentTrack?.takeIf { it.isSpotify.not() }?.isFavorite?.let {
+                    currentTrack?.isFavorite?.let {
                         Icon(
                             imageVector = if (it) Icons.Default.Star else Icons.Default.StarBorder,
                             contentDescription = null,

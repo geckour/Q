@@ -2,6 +2,7 @@ package com.geckour.q.ui.main.dialog
 
 import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.data.db.model.SpotifyTrack
+import com.geckour.q.data.db.model.TrackRef
 import com.geckour.q.domain.model.SpotifyContainer
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.util.InsertActionType
@@ -105,12 +106,12 @@ sealed interface DialogEvent {
 
     data object EnablePauseOnCurrentTrackEnd : DialogEvent
 
-    data class SaveQueue(val title: String, val trackIds: List<Long>) : DialogEvent
+    data class SaveQueue(val title: String, val trackRefs: List<TrackRef>) : DialogEvent
 
     data class ModifySavedQueue(
         val savedQueueId: Long,
         val title: String,
-        val trackIds: List<Long>,
+        val trackRefs: List<TrackRef>,
     ) : DialogEvent
 
     data class DeleteSavedQueue(val savedQueueId: Long) : DialogEvent

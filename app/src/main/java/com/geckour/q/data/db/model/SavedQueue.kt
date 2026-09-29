@@ -4,6 +4,7 @@ import androidx.room.Embedded
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import androidx.room.Relation
 
 @Entity(indices = [Index("updatedAt")])
 data class SavedQueue(
@@ -17,6 +18,7 @@ data class SavedQueue(
     indices = [
         Index("savedQueueId", "sortIndex"),
         Index("trackId"),
+        Index("spotifyUri"),
     ]
 )
 data class SavedQueueTrack(
@@ -24,6 +26,15 @@ data class SavedQueueTrack(
     val savedQueueId: Long,
     val trackId: Long,
     val sortIndex: Int,
+    val spotifyUri: String? = null,
+)
+
+data class JoinedSavedQueueTrack(
+    @Embedded val savedQueueTrack: SavedQueueTrack,
+    @Relation(parentColumn = "trackId", entityColumn = "id", entity = Track::class)
+    val joinedTrack: JoinedTrack?,
+    @Relation(parentColumn = "spotifyUri", entityColumn = "uri")
+    val spotifyTrack: SpotifyTrack?,
 )
 
 data class SavedQueueSummary(

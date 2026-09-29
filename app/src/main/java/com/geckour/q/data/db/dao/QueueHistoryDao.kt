@@ -9,6 +9,7 @@ import com.geckour.q.data.db.model.CoQueuedTrack
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.QueueHistory
 import com.geckour.q.data.db.model.QueueHistoryTrack
+import com.geckour.q.data.db.model.TrackRef
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -36,28 +37,35 @@ interface QueueHistoryDao {
     @Query("select id from queueHistory order by id desc limit 1")
     suspend fun getLatestQueueHistoryId(): Long?
 
-    @Query("select trackId from queueHistoryTrack where queueHistoryId = :queueHistoryId")
-    suspend fun getTrackIdsByQueueHistoryId(queueHistoryId: Long): List<Long>
+    @Query(
+        "select trackId, spotifyUri from queueHistoryTrack where queueHistoryId = :queueHistoryId"
+    )
+    suspend fun getTrackRefsByQueueHistoryId(queueHistoryId: Long): List<TrackRef>
 
     @Transaction
     suspend fun saveQueue(
-        trackIds: List<Long>,
+        trackRefs: List<TrackRef>,
         createdAt: Long = System.currentTimeMillis(),
         keepHistoryCount: Int = DEFAULT_KEEP_HISTORY_COUNT,
     ) {
-        val distinctTrackIds = trackIds.distinct()
-        if (distinctTrackIds.isEmpty()) return
+        val distinctTrackRefs = trackRefs.distinct()
+        if (distinctTrackRefs.isEmpty()) return
 
-        val latestTrackIds = getLatestQueueHistoryId()
-            ?.let { getTrackIdsByQueueHistoryId(it).toSet() }
-        if (latestTrackIds == distinctTrackIds.toSet()) return
+        val latestTrackRefs = getLatestQueueHistoryId()
+            ?.let { getTrackRefsByQueueHistoryId(it).toSet() }
+        if (latestTrackRefs == distinctTrackRefs.toSet()) return
 
         val queueHistoryId = insertQueueHistory(
             QueueHistory(id = 0, createdAt = createdAt)
         )
         insertQueueHistoryTracks(
-            distinctTrackIds.map {
-                QueueHistoryTrack(id = 0, queueHistoryId = queueHistoryId, trackId = it)
+            distinctTrackRefs.map {
+                QueueHistoryTrack(
+                    id = 0,
+                    queueHistoryId = queueHistoryId,
+                    trackId = it.trackId,
+                    spotifyUri = it.spotifyUri,
+                )
             }
         )
 
@@ -113,51 +121,59 @@ interface QueueHistoryDao {
     fun getCoQueuedTrackCountsFlow(originTrackId: Long, limit: Int = -1): Flow<List<CoQueuedTrack>>
 
     @Query(
-        "select track.sourcePath from track " +
-                "inner join (" +
-                "select merged.trackId as trackId, merged.tier as tier, " +
-                "merged.score * (case when track.isFavorite then :favoriteScoreFactor else 1.0 end) as score, " +
-                "sum(track.duration) over (" +
-                "order by merged.tier, merged.score * (case when track.isFavorite then :favoriteScoreFactor else 1.0 end) desc " +
+        "with originSet(trackId, spotifyUri) as (" +
+                "select :originTrackId, :originSpotifyUri " +
+                "union " +
+                "select other.trackId, other.spotifyUri from queueHistoryTrack as origin " +
+                "inner join queueHistoryTrack as other on other.queueHistoryId = origin.queueHistoryId " +
+                "where origin.trackId = :originTrackId and origin.spotifyUri is :originSpotifyUri" +
+                ") " +
+                "select cutoff.sourcePath from (" +
+                "select coalesce(track.sourcePath, spotifytrack.uri) as sourcePath, merged.tier as tier, " +
+                "merged.score * (case when coalesce(track.isFavorite, spotifytrack.isFavorite) then :favoriteScoreFactor else 1.0 end) as score, " +
+                "sum(coalesce(track.duration, spotifytrack.duration)) over (" +
+                "order by merged.tier, merged.score * (case when coalesce(track.isFavorite, spotifytrack.isFavorite) then :favoriteScoreFactor else 1.0 end) desc " +
                 "rows between unbounded preceding and current row" +
                 ") as cumulativeDuration " +
                 "from (" +
-                "select candidate.trackId as trackId, " +
+                "select candidate.trackId as trackId, candidate.spotifyUri as spotifyUri, " +
                 "min(candidate.tier) as tier, " +
                 "max(candidate.score) as score " +
                 "from (" +
-                "select other.trackId as trackId, 0 as tier, " +
-                "count(*) * 1.0 / (select count(*) from queueHistoryTrack where trackId = other.trackId) as score " +
+                "select other.trackId as trackId, other.spotifyUri as spotifyUri, 0 as tier, " +
+                "count(*) * 1.0 / (" +
+                "select count(*) from queueHistoryTrack " +
+                "where trackId = other.trackId and spotifyUri is other.spotifyUri" +
+                ") as score " +
                 "from queueHistoryTrack as origin " +
                 "inner join queueHistoryTrack as other on other.queueHistoryId = origin.queueHistoryId " +
-                "where origin.trackId = :originTrackId and other.trackId != :originTrackId " +
-                "group by other.trackId " +
+                "where origin.trackId = :originTrackId and origin.spotifyUri is :originSpotifyUri " +
+                "and not (other.trackId = :originTrackId and other.spotifyUri is :originSpotifyUri) " +
+                "group by other.trackId, other.spotifyUri " +
                 "union all " +
-                "select other.trackId as trackId, 1 as tier, count(*) * 1.0 as score " +
-                "from trackHistory as origin " +
-                "inner join trackHistory as other on other.trackId != origin.trackId " +
+                "select other.trackId as trackId, other.spotifyUri as spotifyUri, 1 as tier, " +
+                "count(*) * 1.0 as score " +
+                "from originSet " +
+                "inner join trackHistory as origin on origin.trackId = originSet.trackId " +
+                "and origin.spotifyUri is originSet.spotifyUri " +
+                "inner join trackHistory as other on not (other.trackId = origin.trackId and other.spotifyUri is origin.spotifyUri) " +
                 "and other.createdAt between origin.createdAt - :window and origin.createdAt + :window " +
-                "where other.trackId != :originTrackId " +
-                "and origin.trackId in (" +
-                "select :originTrackId " +
-                "union " +
-                "select other2.trackId from queueHistoryTrack as origin2 " +
-                "inner join queueHistoryTrack as other2 on other2.queueHistoryId = origin2.queueHistoryId " +
-                "where origin2.trackId = :originTrackId and other2.trackId != :originTrackId " +
-                "group by other2.trackId" +
-                ") " +
-                "group by other.trackId" +
+                "where not (other.trackId = :originTrackId and other.spotifyUri is :originSpotifyUri) " +
+                "group by other.trackId, other.spotifyUri" +
                 ") as candidate " +
-                "group by candidate.trackId" +
+                "group by candidate.trackId, candidate.spotifyUri" +
                 ") as merged " +
-                "inner join track on track.id = merged.trackId " +
-                "where random() % :pickDenominator = 0" +
-                ") as cutoff on track.id = cutoff.trackId " +
+                "left join track on track.id = merged.trackId " +
+                "left join spotifytrack on spotifytrack.uri = merged.spotifyUri " +
+                "where (track.id is not null or spotifytrack.uri is not null) " +
+                "and random() % :pickDenominator = 0" +
+                ") as cutoff " +
                 "where cutoff.cumulativeDuration <= :maxTotalDuration " +
                 "order by cutoff.tier, cutoff.score desc"
     )
     suspend fun getSourcePathsToEnqueueAtRandomWithinDuration(
         originTrackId: Long,
+        originSpotifyUri: String?,
         maxTotalDuration: Long = DEFAULT_MAX_TOTAL_DURATION,
         window: Long = DEFAULT_ADJACENT_WINDOW,
         pickDenominator: Int = DEFAULT_PICK_DENOMINATOR,
@@ -169,15 +185,16 @@ interface QueueHistoryDao {
 
     @Transaction
     suspend fun generateQueue(
-        originTrackId: Long,
+        origin: TrackRef,
         maxTotalDuration: Long = DEFAULT_MAX_TOTAL_DURATION,
         window: Long = DEFAULT_ADJACENT_WINDOW,
         pickDenominator: Int = DEFAULT_PICK_DENOMINATOR,
         favoriteScoreFactor: Double = DEFAULT_FAVORITE_SCORE_FACTOR,
     ): List<String> {
-        val originSourcePath = getOriginSourcePath(originTrackId)
+        val originSourcePath = origin.spotifyUri ?: getOriginSourcePath(origin.trackId)
         val others = getSourcePathsToEnqueueAtRandomWithinDuration(
-            originTrackId = originTrackId,
+            originTrackId = origin.trackId,
+            originSpotifyUri = origin.spotifyUri,
             maxTotalDuration = maxTotalDuration,
             window = window,
             pickDenominator = pickDenominator,

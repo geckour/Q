@@ -40,7 +40,7 @@ import com.geckour.q.ui.component.QOptionDialog
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.isSpotify
+import com.geckour.q.util.trackRef
 
 @Composable
 fun SaveQueueDialog(
@@ -122,7 +122,7 @@ fun SavedQueueOptionDialog(
     ) = option(
         labelResId,
         DialogEvent.NewQueue(
-            uiSavedQueue.queue.map { it.track.sourcePath },
+            uiSavedQueue.queue.map { it.sourcePath },
             actionType,
             classType,
             needSorted,
@@ -301,9 +301,9 @@ fun SavedQueueModifyDialog(
                                     newTitle.text.toString()
                                         .ifEmpty { uiSavedQueue.savedQueueSummary.savedQueue.title },
                                     if (overrideWithCurrentQueue) {
-                                        currentQueue.filterNot { it.isSpotify }.map { it.id }
+                                        currentQueue.map { it.trackRef }
                                     } else {
-                                        uiSavedQueue.queue.map { it.track.id }
+                                        uiSavedQueue.queue.map { it.trackRef }
                                     },
                                 )
                             )

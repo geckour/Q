@@ -1,5 +1,6 @@
 package com.geckour.q.data.db.model
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.geckour.q.domain.model.MediaItem
@@ -20,4 +21,6 @@ data class SpotifyTrack(
     val discNum: Int?,
     val releaseDate: String?,
     val createdAt: Long,
+    @ColumnInfo(defaultValue = "0") val playbackCount: Long = 0,
+    @ColumnInfo(defaultValue = "FALSE") val isFavorite: Boolean = false,
 ) : MediaItem

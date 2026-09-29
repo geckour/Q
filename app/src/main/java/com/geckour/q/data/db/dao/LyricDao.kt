@@ -37,10 +37,10 @@ interface LyricDao {
     suspend fun getLyricIdBySpotifyUri(spotifyUri: String): Long?
 
     @Query(
-        "delete from lyric where spotifyUri is not null and spotifyUri not in (:urisToKeep) " +
-                "and spotifyUri not in (select uri from spotifytrack where createdAt > 0)"
+        "delete from lyric where spotifyUri is not null " +
+                "and spotifyUri not in (select uri from spotifytrack)"
     )
-    suspend fun deleteUnusedSpotifyLyricsOutsideLibrary(urisToKeep: List<String>)
+    suspend fun deleteSpotifyLyricsWithoutTrack()
 
     @Transaction
     suspend fun shiftTimingsByTrackId(trackId: Long, delta: Long) {

@@ -12,6 +12,7 @@ import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.isInLibrary
 import com.geckour.q.util.isSpotifyInstalled
+import com.geckour.q.util.toUiTrack
 
 @Composable
 fun SpotifyTrackOptionDialog(
@@ -26,13 +27,32 @@ fun SpotifyTrackOptionDialog(
                 onDialogEvent(DialogEvent.AddSpotifyTrack(track, actionType))
                 onDialogEvent(DialogEvent.Dismiss)
             },
-        ) + trackRadioOption(track.uri, onDialogEvent) +
+        ) + generatedQueueOptions(track, onDialogEvent) +
+                trackRadioOption(track.uri, onDialogEvent) +
                 removeFromLibraryOptions(showsRemoveFromLibrary) {
                     onDialogEvent(DialogEvent.RemoveSpotifyTrackFromLibrary(track))
                     onDialogEvent(DialogEvent.Dismiss)
                 } +
                 spotifyLinkOption(track.uri, onDialogEvent),
         onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) },
+    )
+}
+
+private fun generatedQueueOptions(
+    track: SpotifyTrack,
+    onDialogEvent: (event: DialogEvent) -> Unit,
+): List<QOption> {
+    fun option(@StringRes labelResId: Int, actionType: InsertActionType) = QOption(labelResId) {
+        onDialogEvent(
+            DialogEvent.GenerateQueue(track.toUiTrack(), actionType, OrientedClassType.TRACK)
+        )
+        onDialogEvent(DialogEvent.Dismiss)
+    }
+
+    return listOf(
+        option(R.string.menu_insert_generated_queue_next, InsertActionType.NEXT),
+        option(R.string.menu_insert_generated_queue_last, InsertActionType.LAST),
+        option(R.string.menu_override_generated_queue, InsertActionType.OVERRIDE),
     )
 }
 

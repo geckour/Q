@@ -16,7 +16,12 @@ interface TrackHistoryDao {
     suspend fun upsert(trackHistory: TrackHistory): Long
 
     @Transaction
-    @Query("select trackhistory.* from trackhistory inner join track on track.id = trackhistory.trackId order by trackhistory.createdAt desc")
+    @Query(
+        "select * from trackhistory " +
+                "where trackId in (select id from track) " +
+                "or spotifyUri in (select uri from spotifytrack) " +
+                "order by createdAt desc"
+    )
     fun getAllAsPagingSource(): PagingSource<Int, JoinedTrackHistory>
 
     @Query("select * from trackhistory order by id desc limit 1")

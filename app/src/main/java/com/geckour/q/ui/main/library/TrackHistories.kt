@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.map
+import androidx.paging.flatMap
 import coil.compose.AsyncImage
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.UiTrackHistory
@@ -59,10 +59,11 @@ fun TrackHistories(
     }
     val uiTrackHistoryFlow = remember(pager) {
         pager.flow.map { pagingData ->
-            pagingData.map {
-                UiTrackHistory(
-                    trackHistory = it.trackHistory,
-                    uiTrack = it.joinedTrack.toUiTrack(),
+            pagingData.flatMap {
+                listOfNotNull(
+                    it.toUiTrack()?.let { uiTrack ->
+                        UiTrackHistory(trackHistory = it.trackHistory, uiTrack = uiTrack)
+                    }
                 )
             }
         }

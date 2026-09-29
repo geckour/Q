@@ -662,7 +662,7 @@ class MainActivity : ComponentActivity() {
             is DialogEvent.SaveQueue -> {
                 viewModel.saveQueue(
                     title = event.title,
-                    trackIds = event.trackIds,
+                    trackRefs = event.trackRefs,
                     onComplete = {
                         lifecycleScope.launch {
                             viewModel.emitSnackbarMessage(
@@ -679,7 +679,7 @@ class MainActivity : ComponentActivity() {
                 viewModel.saveQueue(
                     savedQueueId = event.savedQueueId,
                     title = event.title,
-                    trackIds = event.trackIds,
+                    trackRefs = event.trackRefs,
                 )
             }
 

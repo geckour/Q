@@ -6,10 +6,11 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
-import com.geckour.q.data.db.model.JoinedTrack
+import com.geckour.q.data.db.model.JoinedSavedQueueTrack
 import com.geckour.q.data.db.model.SavedQueue
 import com.geckour.q.data.db.model.SavedQueueSummary
 import com.geckour.q.data.db.model.SavedQueueTrack
+import com.geckour.q.data.db.model.TrackRef
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -36,8 +37,10 @@ interface SavedQueueDao {
         "select savedQueue.*, " +
                 "(select count(*) from savedQueueTrack " +
                 "where savedQueueTrack.savedQueueId = savedQueue.id) as trackCount, " +
-                "(select ifnull(sum(track.duration), 0) from savedQueueTrack " +
-                "inner join track on track.id = savedQueueTrack.trackId " +
+                "(select ifnull(sum(coalesce(track.duration, spotifytrack.duration)), 0) " +
+                "from savedQueueTrack " +
+                "left join track on track.id = savedQueueTrack.trackId " +
+                "left join spotifytrack on spotifytrack.uri = savedQueueTrack.spotifyUri " +
                 "where savedQueueTrack.savedQueueId = savedQueue.id) as totalDuration " +
                 "from savedQueue order by savedQueue.updatedAt desc"
     )
@@ -47,11 +50,14 @@ interface SavedQueueDao {
     fun countAsFlow(): Flow<Int>
 
     @Query(
-        "select coalesce(track.artworkUriString, album.artworkUriString) as artworkUriString " +
+        "select coalesce(track.artworkUriString, album.artworkUriString, spotifytrack.artworkUrl) " +
+                "as artworkUriString " +
                 "from savedQueueTrack " +
-                "inner join track on track.id = savedQueueTrack.trackId " +
+                "left join track on track.id = savedQueueTrack.trackId " +
                 "left join album on album.id = track.albumId " +
+                "left join spotifytrack on spotifytrack.uri = savedQueueTrack.spotifyUri " +
                 "where savedQueueTrack.savedQueueId = :savedQueueId " +
+                "and (track.id is not null or spotifytrack.uri is not null) " +
                 "order by savedQueueTrack.sortIndex " +
                 "limit :limit"
     )
@@ -62,23 +68,25 @@ interface SavedQueueDao {
 
     @Transaction
     @Query(
-        "select track.* from savedQueueTrack " +
-                "inner join track on track.id = savedQueueTrack.trackId " +
-                "where savedQueueTrack.savedQueueId = :savedQueueId " +
-                "order by savedQueueTrack.sortIndex " +
+        "select * from savedQueueTrack " +
+                "where savedQueueId = :savedQueueId " +
+                "and (trackId in (select id from track) " +
+                "or spotifyUri in (select uri from spotifytrack)) " +
+                "order by sortIndex " +
                 "limit :limit"
     )
-    suspend fun getTracks(savedQueueId: Long, limit: Int = -1): List<JoinedTrack>
+    suspend fun getTracks(savedQueueId: Long, limit: Int = -1): List<JoinedSavedQueueTrack>
 
     @Transaction
     @Query(
-        "select track.* from savedQueueTrack " +
-                "inner join track on track.id = savedQueueTrack.trackId " +
-                "where savedQueueTrack.savedQueueId = :savedQueueId " +
-                "order by savedQueueTrack.sortIndex " +
+        "select * from savedQueueTrack " +
+                "where savedQueueId = :savedQueueId " +
+                "and (trackId in (select id from track) " +
+                "or spotifyUri in (select uri from spotifytrack)) " +
+                "order by sortIndex " +
                 "limit :limit"
     )
-    fun getTracksAsFlow(savedQueueId: Long, limit: Int = -1): Flow<List<JoinedTrack>>
+    fun getTracksAsFlow(savedQueueId: Long, limit: Int = -1): Flow<List<JoinedSavedQueueTrack>>
 
     @Query("update savedQueue set title = :title, updatedAt = :now where id = :id")
     suspend fun updateTitle(id: Long, title: String?, now: Long = System.currentTimeMillis()): Int
@@ -98,11 +106,11 @@ interface SavedQueueDao {
     @Transaction
     suspend fun save(
         savedQueueId: Long? = null,
-        trackIds: List<Long>,
+        trackRefs: List<TrackRef>,
         title: String,
         now: Long = System.currentTimeMillis(),
     ): Long? {
-        if (trackIds.isEmpty()) return null
+        if (trackRefs.isEmpty()) return null
 
         val existing = savedQueueId?.let { get(it) }
         val id = insertSavedQueue(
@@ -116,12 +124,13 @@ interface SavedQueueDao {
 
         deleteSavedQueueTracks(id)
         insertSavedQueueTracks(
-            trackIds.mapIndexed { index, trackId ->
+            trackRefs.mapIndexed { index, trackRef ->
                 SavedQueueTrack(
                     id = 0,
                     savedQueueId = id,
-                    trackId = trackId,
+                    trackId = trackRef.trackId,
                     sortIndex = index,
+                    spotifyUri = trackRef.spotifyUri,
                 )
             }
         )

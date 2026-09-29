@@ -13,14 +13,16 @@ data class QueueHistory(
 
 @Entity(
     indices = [
-        Index("queueHistoryId", "trackId", unique = true),
+        Index("queueHistoryId", "trackId", "spotifyUri", unique = true),
         Index("trackId"),
+        Index("spotifyUri"),
     ]
 )
 data class QueueHistoryTrack(
     @PrimaryKey(autoGenerate = true) val id: Long,
     val queueHistoryId: Long,
     val trackId: Long,
+    val spotifyUri: String? = null,
 )
 
 data class CoQueuedTrack(

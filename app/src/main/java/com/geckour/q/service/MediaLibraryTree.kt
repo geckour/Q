@@ -12,6 +12,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.data.db.model.JoinedTrack
+import com.geckour.q.data.db.model.TrackRef
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.dailyRandom
@@ -236,7 +237,7 @@ internal object MediaLibraryTree {
         val db = DB.getInstance(context)
         val originTrack = db.trackDao().getByRandom(db, dailyRandom) ?: return emptyList()
 
-        val sourcePaths = db.queueHistoryDao().generateQueue(originTrack.track.id)
+        val sourcePaths = db.queueHistoryDao().generateQueue(TrackRef(originTrack.track.id))
         val tracks = db.trackDao()
             .getAllBySourcePaths(sourcePaths)
             .associateBy { it.track.sourcePath }

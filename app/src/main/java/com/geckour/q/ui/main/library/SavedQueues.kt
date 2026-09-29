@@ -48,11 +48,12 @@ import androidx.paging.map
 import coil.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.JoinedTrack
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.getTimeString
+import com.geckour.q.util.toUiTrack
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlin.time.Duration.Companion.milliseconds
@@ -91,7 +92,9 @@ fun SavedQueues(
                             savedQueueId = it.savedQueue.id,
                             limit = 40,
                         ),
-                    queue = db.savedQueueDao().getTracks(savedQueueId = it.savedQueue.id),
+                    queue = db.savedQueueDao()
+                        .getTracks(savedQueueId = it.savedQueue.id)
+                        .mapNotNull { track -> track.toUiTrack() },
                 )
             }
         }
@@ -276,16 +279,16 @@ private fun Artworks(artworkUrlStrings: List<String?>, modifier: Modifier = Modi
 }
 
 @Composable
-private fun QueueItem(track: JoinedTrack) {
+private fun QueueItem(track: UiTrack) {
     Row(modifier = Modifier.padding(vertical = 2.dp)) {
         AsyncImage(
-            model = track.track.artworkUriString ?: track.album.artworkUriString
+            model = track.artworkUriString ?: track.album.artworkUriString
             ?: R.drawable.ic_empty,
             contentDescription = null,
             modifier = Modifier.size(28.dp),
         )
         Text(
-            "${track.track.title} - ${track.artist.title} (${track.album.title})",
+            "${track.title} - ${track.artist.title} (${track.album.title})",
             fontSize = 16.sp,
             color = QTheme.colors.colorTextPrimary,
             maxLines = 1,

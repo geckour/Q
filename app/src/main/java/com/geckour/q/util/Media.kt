@@ -24,9 +24,12 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.dao.ArtistDao
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.JoinedSavedQueueTrack
 import com.geckour.q.data.db.model.JoinedTrack
+import com.geckour.q.data.db.model.JoinedTrackHistory
 import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.data.db.model.Track
+import com.geckour.q.data.db.model.TrackRef
 import com.geckour.q.domain.model.UiTrack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ensureActive
@@ -196,8 +199,18 @@ fun SpotifyTrack.toUiTrack(nowPlaying: Boolean = false): UiTrack {
         artworkUriString = artworkUrl,
         ignored = false,
         nowPlaying = nowPlaying,
+        isFavorite = isFavorite,
     )
 }
+
+fun JoinedTrackHistory.toUiTrack(): UiTrack? =
+    joinedTrack?.toUiTrack() ?: spotifyTrack?.toUiTrack()
+
+fun JoinedSavedQueueTrack.toUiTrack(): UiTrack? =
+    joinedTrack?.toUiTrack() ?: spotifyTrack?.toUiTrack()
+
+val UiTrack.trackRef: TrackRef
+    get() = if (isSpotify) TrackRef.ofSpotify(sourcePath) else TrackRef(id)
 
 private fun SpotifyTrack.spotifyArtist(name: String): Artist =
     Artist(
@@ -393,6 +406,41 @@ fun List<JoinedTrack>.orderModified(
         .flatMap { (_, albumTrackMap) ->
             albumTrackMap.flatMap { it.second }
         }
+}
+
+@JvmName("orderModifiedUiTracks")
+fun List<UiTrack>.orderModified(
+    classType: OrientedClassType,
+    actionType: InsertActionType
+): List<UiTrack> {
+    val simpleShuffleConditional = actionType in listOf(
+        InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
+        InsertActionType.SHUFFLE_SIMPLE_NEXT,
+        InsertActionType.SHUFFLE_SIMPLE_LAST,
+    )
+    if (simpleShuffleConditional) return shuffled()
+
+    val shuffleConditional = actionType in listOf(
+        InsertActionType.SHUFFLE_OVERRIDE,
+        InsertActionType.SHUFFLE_NEXT,
+        InsertActionType.SHUFFLE_LAST,
+    )
+    return groupBy { if (it.isSpotify) it.album.title else it.album.id }
+        .values
+        .map { tracks -> tracks.sortedWith(compareBy({ it.discNum }, { it.trackNum })) }
+        .let {
+            if (shuffleConditional && classType == OrientedClassType.ALBUM) it.shuffled() else it
+        }
+        .groupBy { tracks ->
+            val track = tracks.first()
+            if (track.isSpotify) (track.albumArtist ?: track.artist).title
+            else track.album.artistId
+        }
+        .values
+        .let {
+            if (shuffleConditional && classType == OrientedClassType.ARTIST) it.shuffled() else it
+        }
+        .flatMap { albums -> albums.flatten() }
 }
 
 fun JoinedTrack.getMediaMetadata(): MediaMetadata {

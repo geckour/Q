@@ -508,20 +508,18 @@ fun QueueItem(
                             lineHeight = 18.nonUpScaleSp
                         )
                     }
-                    if (uiTrack.isSpotify.not()) {
-                        Icon(
-                            imageVector = if (uiTrack.isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
-                            contentDescription = null,
-                            tint = QTheme.colors.colorTextPrimary,
-                            modifier = Modifier
-                                .clickable(
-                                    indication = ripple(bounded = false),
-                                    interactionSource = remember { MutableInteractionSource() }
-                                ) { onToggleFavorite(uiTrack) }
-                                .padding(8.dp)
-                                .size(20.dp)
-                        )
-                    }
+                    Icon(
+                        imageVector = if (uiTrack.isFavorite) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = null,
+                        tint = QTheme.colors.colorTextPrimary,
+                        modifier = Modifier
+                            .clickable(
+                                indication = ripple(bounded = false),
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) { onToggleFavorite(uiTrack) }
+                            .padding(8.dp)
+                            .size(20.dp)
+                    )
                     Icon(
                         imageVector = Icons.Default.RemoveCircleOutline,
                         contentDescription = null,
