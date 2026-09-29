@@ -124,15 +124,18 @@ internal data class PlayerWidgetLayout(
 
         private const val QUEUE_MIN_HEIGHT_DP = 150
         private const val MIN_ARTWORK_SIZE_DP = 36
-        private const val MAX_ARTWORK_SIZE_DP = 84
+        private const val MAX_ARTWORK_SIZE_DP = 64
+        private const val ARTWORK_SCALE = 0.8f
 
         fun of(heightDp: Int): PlayerWidgetLayout {
             val contentPaddingDp = 12
 
             return PlayerWidgetLayout(
                 contentPaddingDp = contentPaddingDp,
-                artworkSizeDp = (heightDp - contentPaddingDp * 2)
-                    .coerceIn(MIN_ARTWORK_SIZE_DP, MAX_ARTWORK_SIZE_DP),
+                artworkSizeDp = ((heightDp - contentPaddingDp * 2)
+                    .coerceAtLeast(MIN_ARTWORK_SIZE_DP) * ARTWORK_SCALE)
+                    .roundToInt()
+                    .coerceAtMost(MAX_ARTWORK_SIZE_DP),
                 showQueue = heightDp >= QUEUE_MIN_HEIGHT_DP,
             )
         }
