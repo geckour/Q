@@ -12,6 +12,7 @@ import androidx.compose.remote.creation.compose.modifier.RemoteModifier
 import androidx.compose.remote.creation.compose.modifier.background
 import androidx.compose.remote.creation.compose.modifier.clickable
 import androidx.compose.remote.creation.compose.modifier.clip
+import androidx.compose.remote.creation.compose.modifier.fillMaxHeight
 import androidx.compose.remote.creation.compose.modifier.fillMaxSize
 import androidx.compose.remote.creation.compose.modifier.fillMaxWidth
 import androidx.compose.remote.creation.compose.modifier.height
@@ -96,17 +97,20 @@ private fun RemoteTrackInfo(
     val currentTrack = state.currentTrack
 
     RemoteRow(
-        modifier = RemoteModifier.fillMaxWidth(),
-        verticalAlignment = RemoteAlignment.Bottom,
+        modifier = RemoteModifier
+            .fillMaxWidth()
+            .height(artworkSizeDp.rdp)
     ) {
         RemoteArtwork(
             artwork = state.artwork,
             inactiveColor = colors.inactive,
             sizeDp = artworkSizeDp,
         )
-        RemoteBox(modifier = RemoteModifier.width(12.rdp))
         RemoteColumn(
-            modifier = RemoteModifier.weight(1f.rf),
+            modifier = RemoteModifier
+                .weight(1f.rf)
+                .fillMaxHeight()
+                .padding(vertical = 4.rdp, horizontal = 12.rdp),
             verticalArrangement = RemoteArrangement.Bottom,
         ) {
             RemoteText(
@@ -134,7 +138,6 @@ private fun RemoteTrackInfo(
                 icons = if (state.hasQueue) activeIcons else inactiveIcons,
             )
         }
-        RemoteBox(modifier = RemoteModifier.width(12.rdp))
     }
 }
 
@@ -176,37 +179,37 @@ private fun RemoteControls(
             modifier = RemoteModifier.padding(2.rdp),
             icon = icons.prev,
             action = PlayerWidgetAction.Prev,
-            size = 24,
+            size = 20,
         )
-        RemoteBox(modifier = RemoteModifier.width(12.rdp))
+        RemoteBox(modifier = RemoteModifier.width(8.rdp))
         RemoteIconButton(
             modifier = RemoteModifier.padding(2.rdp),
             icon =
                 if (state.playing && state.playbackState == Player.STATE_READY) icons.pause
                 else icons.play,
             action = PlayerWidgetAction.TogglePlayPause,
-            size = 24,
+            size = 20,
         )
-        RemoteBox(modifier = RemoteModifier.width(12.rdp))
+        RemoteBox(modifier = RemoteModifier.width(8.rdp))
         RemoteIconButton(
             modifier = RemoteModifier.padding(2.rdp),
             icon = icons.next,
             action = PlayerWidgetAction.Next,
-            size = 24,
+            size = 20,
         )
-        RemoteBox(modifier = RemoteModifier.width(12.rdp))
+        RemoteBox(modifier = RemoteModifier.width(8.rdp))
         RemoteIconButton(
             modifier = RemoteModifier.padding(2.rdp),
             icon = icons.repeat(state.repeatMode),
             action = PlayerWidgetAction.RotateRepeatMode,
-            size = 24,
+            size = 20,
         )
-        RemoteBox(modifier = RemoteModifier.width(12.rdp))
+        RemoteBox(modifier = RemoteModifier.width(8.rdp))
         RemoteIconButton(
             modifier = RemoteModifier.padding(2.rdp),
             icon = icons.shuffle,
             action = PlayerWidgetAction.Shuffle,
-            size = 24,
+            size = 20,
         )
     }
 }
@@ -247,16 +250,14 @@ private fun RemoteQueueItem(
     RemoteRow(
         modifier = RemoteModifier
             .fillMaxWidth()
-            .padding(top = 4.rdp)
             .background((if (nowPlaying) colors.nowPlaying else colors.background).rc)
-            .padding(end = 8.rdp)
-            .padding(vertical = 4.rdp),
+            .padding(vertical = 4.rdp, horizontal = 8.rdp),
         verticalAlignment = RemoteAlignment.CenterVertically,
     ) {
         RemoteColumn(
             modifier = RemoteModifier
                 .weight(1f.rf)
-                .padding(horizontal = 8.rdp)
+                .padding(end = 8.rdp)
         ) {
             RemoteText(
                 text = track.title.rs,
