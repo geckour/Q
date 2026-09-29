@@ -1,0 +1,123 @@
+name: Firebase App Distribution
+
+on:
+  push:
+    branches: [master]
+    paths-ignore:
+      - '**.md'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firebase-distribution
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: '25'
+  ARTIFACT_NAME: firebase-artifacts
+  APK_PATH: dist/app-release.apk
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the pushed commit
+        uses: actions/checkout@v7
+
+      - name: Compose the release notes
+        run: |
+          mkdir -p dist
+          {
+            git rev-parse --short HEAD
+            git log -1 --format=%s HEAD
+          } > dist/release-notes.txt
+          cat dist/release-notes.txt
+
+      - name: Set up JDK
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Write secret.properties
+        env:
+          DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+          DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
+          SPOTIFY_CLIENT_ID: ${{ secrets.SPOTIFY_CLIENT_ID }}
+          GPR_USER: ${{ secrets.GPR_USER }}
+          GPR_TOKEN: ${{ secrets.GPR_TOKEN }}
+        run: |
+          {
+            echo "DROPBOX_APP_KEY=${DROPBOX_APP_KEY}"
+            echo "DROPBOX_APP_SECRET=${DROPBOX_APP_SECRET}"
+            echo "SPOTIFY_CLIENT_ID=${SPOTIFY_CLIENT_ID}"
+            echo "gpr.usr=${GPR_USER}"
+            echo "gpr.key=${GPR_TOKEN}"
+          } > secret.properties
+
+      - name: Write google-services.json
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
+
+      - name: Restore the release signing config
+        env:
+          RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p app/signing
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > app/signing/release.jks
+          cat > app/signing/release.gradle <<'SIGNING_EOF'
+          signingConfigs {
+              release {
+                  storeFile file("./release.jks")
+                  storePassword System.getenv("RELEASE_KEYSTORE_PASSWORD")
+                  keyAlias System.getenv("RELEASE_KEY_ALIAS")
+                  keyPassword System.getenv("RELEASE_KEY_PASSWORD")
+              }
+          }
+          SIGNING_EOF
+
+      - name: Build the release APK
+        env:
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: ./gradlew --no-daemon :app:assembleRelease
+
+      - name: Collect the built files
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk dist/
+          ls -l dist
+
+      - name: Upload the built files
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist
+          retention-days: 30
+
+  distribute:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download the built files
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist
+
+      - name: Upload to Firebase App Distribution
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ vars.FIREBASE_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
+          groups: ${{ vars.FIREBASE_TESTER_GROUPS }}
+          testers: ${{ vars.FIREBASE_TESTERS }}
+          file: ${{ env.APK_PATH }}
+          releaseNotesFile: dist/release-notes.txt

@@ -2,7 +2,7 @@ name: Release
 
 on:
   release:
-    types: [prereleased, released]
+    types: [released]
 
 permissions:
   contents: read
@@ -16,16 +16,12 @@ env:
   TAG_NAME: ${{ github.event.release.tag_name }}
   PACKAGE_NAME: com.geckour.q
   ARTIFACT_NAME: release-artifacts
-  APK_PATH: dist/app-release.apk
   BUNDLE_PATH: dist/app-release.aab
   MAPPING_PATH: dist/mapping.txt
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    outputs:
-      channel: ${{ steps.channel.outputs.name }}
 
     steps:
       - name: Check out the tag
@@ -42,10 +38,9 @@ jobs:
             exit 1
           fi
 
-      - name: Resolve the distribution channel
-        id: channel
+      - name: Resolve the version
+        id: version
         env:
-          IS_PRERELEASE: ${{ github.event.release.prerelease }}
           PLAY_RELEASE_STATUS: ${{ vars.PLAY_RELEASE_STATUS }}
           PLAY_USER_FRACTION: ${{ vars.PLAY_USER_FRACTION }}
         run: |
@@ -54,12 +49,7 @@ jobs:
             exit 1
           fi
           version="${TAG_NAME#v}"
-          echo "version=${version%%-*}" >> "$GITHUB_OUTPUT"
-          if [[ "$IS_PRERELEASE" == 'true' ]]; then
-            echo "name=firebase" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          echo "name=play" >> "$GITHUB_OUTPUT"
+          echo "name=${version%%-*}" >> "$GITHUB_OUTPUT"
           if [[ "$PLAY_RELEASE_STATUS" == 'inProgress' && -z "$PLAY_USER_FRACTION" ]]; then
             echo "::error::PLAY_RELEASE_STATUS=inProgress needs PLAY_USER_FRACTION between 0.0 and 1.0."
             exit 1
@@ -70,7 +60,7 @@ jobs:
 
       - name: Ensure versionName matches the tag
         env:
-          TAG_VERSION: ${{ steps.channel.outputs.version }}
+          TAG_VERSION: ${{ steps.version.outputs.name }}
         run: |
           version_name=$(sed -n 's/^ *versionName *"\(.*\)"$/\1/p' app/build.gradle)
           if [[ "$version_name" != "$TAG_VERSION" ]]; then
@@ -79,7 +69,6 @@ jobs:
           fi
 
       - name: Compose the release notes
-        if: steps.channel.outputs.name == 'play'
         env:
           RELEASE_BODY: ${{ github.event.release.body }}
         run: |
@@ -88,7 +77,6 @@ jobs:
           python3 script/split_release_notes.py release-body.md dist
 
       - name: Ensure the release notes exist
-        if: steps.channel.outputs.name == 'play'
         run: |
           for locale in ja-JP en-US; do
             if [[ ! -s "dist/whatsnew/whatsnew-${locale}" ]]; then
@@ -96,12 +84,6 @@ jobs:
               exit 1
             fi
           done
-
-      - name: Name the build for Firebase
-        if: steps.channel.outputs.name == 'firebase'
-        run: |
-          mkdir -p dist
-          printf '%s\n' "$TAG_NAME" > dist/release-notes.txt
 
       - name: Set up JDK
         uses: actions/setup-java@v6
@@ -150,16 +132,7 @@ jobs:
           }
           SIGNING_EOF
 
-      - name: Build the release APK
-        if: steps.channel.outputs.name == 'firebase'
-        env:
-          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
-          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon :app:assembleRelease
-
       - name: Build the release bundle
-        if: steps.channel.outputs.name == 'play'
         env:
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
@@ -170,7 +143,6 @@ jobs:
         run: |
           mkdir -p dist
           for built in \
-            app/build/outputs/apk/release/app-release.apk \
             app/build/outputs/bundle/release/app-release.aab \
             app/build/outputs/mapping/release/mapping.txt
           do
@@ -196,19 +168,7 @@ jobs:
           name: ${{ env.ARTIFACT_NAME }}
           path: dist
 
-      - name: Upload to Firebase App Distribution
-        if: needs.build.outputs.channel == 'firebase'
-        uses: wzieba/Firebase-Distribution-Github-Action@v1
-        with:
-          appId: ${{ vars.FIREBASE_APP_ID }}
-          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}
-          groups: ${{ vars.FIREBASE_TESTER_GROUPS }}
-          testers: ${{ vars.FIREBASE_TESTERS }}
-          file: ${{ env.APK_PATH }}
-          releaseNotesFile: dist/release-notes.txt
-
       - name: Upload to Play Store
-        if: needs.build.outputs.channel == 'play'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
