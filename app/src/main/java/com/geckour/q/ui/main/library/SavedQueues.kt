@@ -4,7 +4,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -50,12 +50,15 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.domain.model.UiSavedQueue
+import com.geckour.q.ui.component.SpotifyLogo
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.getTimeString
+import com.geckour.q.util.isSpotify
 import com.geckour.q.util.toUiTrack
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
+import kotlin.math.ceil
 import kotlin.time.Duration.Companion.milliseconds
 
 private const val HEADER_ITEM_COUNT = 0
@@ -240,15 +243,16 @@ fun SavedQueues(
 
 @Composable
 private fun Artworks(artworkUrlStrings: List<String?>, modifier: Modifier = Modifier) {
+    val artworkSize = 20.dp
     val fadeWidth = 20.dp
     val fadeColor = QTheme.colors.colorBackground
-    Box(
+    BoxWithConstraints(
         contentAlignment = Alignment.CenterStart,
         modifier = modifier
             .clipToBounds()
             .drawWithCache {
                 val fadeWidth = fadeWidth.toPx()
-                val artworksWidth = fadeWidth * artworkUrlStrings.size
+                val artworksWidth = artworkSize.toPx() * artworkUrlStrings.size
                 val brush = Brush.horizontalGradient(
                     0f to Color.Transparent,
                     1f to fadeColor,
@@ -264,13 +268,16 @@ private fun Artworks(artworkUrlStrings: List<String?>, modifier: Modifier = Modi
                 }
             },
     ) {
+        val visibleCount =
+            if (constraints.hasBoundedWidth) ceil(maxWidth / artworkSize).toInt()
+            else artworkUrlStrings.size
         Row(modifier = Modifier.wrapContentWidth(align = Alignment.Start, unbounded = true)) {
-            artworkUrlStrings.forEach {
+            artworkUrlStrings.take(visibleCount).forEach {
                 AsyncImage(
                     it ?: R.drawable.ic_empty,
                     contentDescription = null,
                     modifier = Modifier
-                        .size(20.dp)
+                        .size(artworkSize)
                         .clipToBounds(),
                 )
             }
@@ -293,7 +300,17 @@ private fun QueueItem(track: UiTrack) {
             color = QTheme.colors.colorTextPrimary,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(start = 8.dp)
+            modifier = Modifier
+                .padding(start = 8.dp)
+                .weight(1f)
         )
+        if (track.isSpotify) {
+            SpotifyLogo(
+                height = 12.dp,
+                modifier = Modifier
+                    .align(Alignment.CenterVertically)
+                    .padding(start = 8.dp),
+            )
+        }
     }
 }

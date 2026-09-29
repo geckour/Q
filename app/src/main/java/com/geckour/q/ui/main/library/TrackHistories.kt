@@ -30,8 +30,10 @@ import androidx.paging.flatMap
 import coil.compose.AsyncImage
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.UiTrackHistory
+import com.geckour.q.ui.component.SpotifyLogo
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getDateTimeString
+import com.geckour.q.util.isSpotify
 import com.geckour.q.util.toUiTrack
 import kotlinx.coroutines.flow.map
 
@@ -112,13 +114,22 @@ fun TrackHistories(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
-                        Text(
-                            text = uiTrackHistory.trackHistory.createdAt.getDateTimeString(),
-                            fontSize = 12.sp,
-                            color = QTheme.colors.colorTextSecondary,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = uiTrackHistory.trackHistory.createdAt.getDateTimeString(),
+                                fontSize = 12.sp,
+                                color = QTheme.colors.colorTextSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (uiTrackHistory.uiTrack.isSpotify) {
+                                SpotifyLogo(
+                                    height = 12.dp,
+                                    modifier = Modifier.padding(start = 8.dp),
+                                )
+                            }
+                        }
                     }
                 }
                 HorizontalDivider(color = QTheme.colors.colorPrimaryDark)
