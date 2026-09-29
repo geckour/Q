@@ -117,28 +117,30 @@ internal data class PlayerWidgetState(
 internal data class PlayerWidgetLayout(
     val contentPaddingDp: Int,
     val artworkSizeDp: Int,
-    val showQueue: Boolean,
+    val heightStep: Int,
 ) {
 
     companion object {
 
-        private const val QUEUE_MIN_HEIGHT_DP = 150
+        private const val STEP_1_HEIGHT_DP = 95
+        private const val STEP_2_HEIGHT_DP = 190
         private const val MIN_ARTWORK_SIZE_DP = 36
         private const val MAX_ARTWORK_SIZE_DP = 64
         private const val ARTWORK_SCALE = 0.8f
+        private const val CONTENT_PADDING_DP = 12
 
-        fun of(heightDp: Int): PlayerWidgetLayout {
-            val contentPaddingDp = 12
-
-            return PlayerWidgetLayout(
-                contentPaddingDp = contentPaddingDp,
-                artworkSizeDp = ((heightDp - contentPaddingDp * 2)
-                    .coerceAtLeast(MIN_ARTWORK_SIZE_DP) * ARTWORK_SCALE)
+        fun of(heightDp: Int): PlayerWidgetLayout = PlayerWidgetLayout(
+            contentPaddingDp = CONTENT_PADDING_DP,
+            artworkSizeDp =
+                (heightDp.coerceAtLeast(MIN_ARTWORK_SIZE_DP) * ARTWORK_SCALE)
                     .roundToInt()
                     .coerceAtMost(MAX_ARTWORK_SIZE_DP),
-                showQueue = heightDp >= QUEUE_MIN_HEIGHT_DP,
-            )
-        }
+            heightStep = when (heightDp) {
+                in 0 until STEP_1_HEIGHT_DP -> 0
+                in STEP_1_HEIGHT_DP until STEP_2_HEIGHT_DP -> 1
+                else -> 2
+            }
+        )
     }
 }
 

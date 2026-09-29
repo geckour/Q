@@ -1,5 +1,6 @@
 package com.geckour.q.ui.widget.player
 
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.remote.creation.compose.layout.RemoteAlignment
 import androidx.compose.remote.creation.compose.layout.RemoteArrangement
 import androidx.compose.remote.creation.compose.layout.RemoteBox
@@ -16,12 +17,13 @@ import androidx.compose.remote.creation.compose.modifier.fillMaxHeight
 import androidx.compose.remote.creation.compose.modifier.fillMaxSize
 import androidx.compose.remote.creation.compose.modifier.fillMaxWidth
 import androidx.compose.remote.creation.compose.modifier.height
+import androidx.compose.remote.creation.compose.modifier.heightIn
 import androidx.compose.remote.creation.compose.modifier.padding
 import androidx.compose.remote.creation.compose.modifier.rememberRemoteScrollState
 import androidx.compose.remote.creation.compose.modifier.size
 import androidx.compose.remote.creation.compose.modifier.verticalScroll
 import androidx.compose.remote.creation.compose.modifier.width
-import androidx.compose.remote.creation.compose.shapes.RemoteRoundedCornerShape
+import androidx.compose.remote.creation.compose.shapes.RemoteCircleShape
 import androidx.compose.remote.creation.compose.state.RemoteImageBitmap
 import androidx.compose.remote.creation.compose.state.rc
 import androidx.compose.remote.creation.compose.state.rdp
@@ -52,10 +54,10 @@ import com.geckour.q.util.getTimeString
 @RemoteComposable
 internal fun RemotePlayerSheet(
     state: PlayerWidgetState,
+    layout: PlayerWidgetLayout,
     colors: PlayerWidgetColors,
     activeIcons: PlayerWidgetIcons,
     inactiveIcons: PlayerWidgetIcons,
-    layout: PlayerWidgetLayout,
 ) {
     RemoteColumn(
         modifier = RemoteModifier
@@ -63,19 +65,15 @@ internal fun RemotePlayerSheet(
             .background(colors.background.rc)
             .widgetClickable(PlayerWidgetAction.OpenApp.actionId)
     ) {
-        RemoteColumn(
-            modifier = RemoteModifier
-                .fillMaxWidth()
-        ) {
-            RemoteTrackInfo(
-                state = state,
-                colors = colors,
-                activeIcons = activeIcons,
-                inactiveIcons = inactiveIcons,
-                artworkSizeDp = layout.artworkSizeDp,
-            )
-        }
-        if (layout.showQueue) {
+        RemoteTrackInfo(
+            state = state,
+            layout = layout,
+            colors = colors,
+            activeIcons = activeIcons,
+            inactiveIcons = inactiveIcons,
+            artworkSizeDp = layout.artworkSizeDp,
+        )
+        if (layout.heightStep > 1) {
             RemoteQueue(
                 modifier = RemoteModifier.weight(1f.rf),
                 state = state,
@@ -89,6 +87,7 @@ internal fun RemotePlayerSheet(
 @RemoteComposable
 private fun RemoteTrackInfo(
     state: PlayerWidgetState,
+    layout: PlayerWidgetLayout,
     colors: PlayerWidgetColors,
     activeIcons: PlayerWidgetIcons,
     inactiveIcons: PlayerWidgetIcons,
@@ -99,7 +98,7 @@ private fun RemoteTrackInfo(
     RemoteRow(
         modifier = RemoteModifier
             .fillMaxWidth()
-            .height(artworkSizeDp.rdp)
+            .heightIn(min = artworkSizeDp.rdp)
     ) {
         RemoteArtwork(
             artwork = state.artwork,
@@ -109,7 +108,13 @@ private fun RemoteTrackInfo(
         RemoteColumn(
             modifier = RemoteModifier
                 .weight(1f.rf)
-                .fillMaxHeight()
+                .then(
+                    when (layout.heightStep) {
+                        0 -> RemoteModifier
+                        1 -> RemoteModifier.fillMaxHeight()
+                        else -> RemoteModifier.height(artworkSizeDp.rdp)
+                    }
+                )
                 .padding(vertical = 4.rdp, horizontal = 12.rdp),
             verticalArrangement = RemoteArrangement.Bottom,
         ) {
@@ -133,10 +138,12 @@ private fun RemoteTrackInfo(
                 overflow = TextOverflow.Ellipsis,
                 modifier = RemoteModifier.fillMaxWidth(),
             )
-            RemoteControls(
-                state = state,
-                icons = if (state.hasQueue) activeIcons else inactiveIcons,
-            )
+            if (layout.heightStep > 0) {
+                RemoteControls(
+                    state = state,
+                    icons = if (state.hasQueue) activeIcons else inactiveIcons,
+                )
+            }
         }
     }
 }
@@ -297,7 +304,7 @@ private fun RemoteIconButton(
     RemoteBox(
         modifier = modifier
             .size((size + 16).rdp)
-            .clip(RemoteRoundedCornerShape(50))
+            .clip(RemoteCircleShape)
             .widgetClickable(action.actionId, enabled),
         contentAlignment = RemoteAlignment.Center,
     ) {
