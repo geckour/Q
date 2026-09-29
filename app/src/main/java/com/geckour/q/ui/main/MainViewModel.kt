@@ -1360,6 +1360,9 @@ class MainViewModel(
                         hasLoaded = true,
                     )
                 }
+                if (spotifyBrowseState.value.level(key).items.isEmpty()) {
+                    showSnackbar(app.getString(R.string.spotify_message_empty))
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {

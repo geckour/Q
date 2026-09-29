@@ -368,7 +368,7 @@ fun Library(
                     backStackEntry.arguments?.getString("type").orEmpty()
                 )
                 val level = spotifyBrowse.level(source.levelKey)
-                val topBarTitle = spotifyTopBarTitle(spotifySourceLabel(source))
+                val topBarTitle = spotifyTopBarTitle(spotifySourceTitle(source))
                 val optionMediaItem =
                     spotifySourceOptionTarget(source, isSpotifyFlattened)
                 LaunchedEffect(navController.currentDestination, topBarTitle, optionMediaItem) {

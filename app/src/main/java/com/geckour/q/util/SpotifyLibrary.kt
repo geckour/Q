@@ -34,6 +34,7 @@ fun List<SpotifyTrack>.toSpotifyLibraryArtists(): List<SpotifyContainer> =
                 artworkUrl = tracks.firstNotNullOfOrNull { it.artworkUrl },
                 releaseDate = null,
                 totalTracks = tracks.size,
+                totalDuration = tracks.sumOf { it.duration },
             )
         }
         .sortedBy { it.name.lowercase() }
@@ -51,6 +52,7 @@ fun List<SpotifyTrack>.toSpotifyLibraryAlbums(): List<SpotifyContainer> =
                 artworkUrl = tracks.firstNotNullOfOrNull { it.artworkUrl },
                 releaseDate = tracks.firstNotNullOfOrNull { it.releaseDate },
                 totalTracks = tracks.size,
+                totalDuration = tracks.sumOf { it.duration },
             )
         }
         .sortedBy { it.name.lowercase() }

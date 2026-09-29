@@ -589,10 +589,6 @@ class MainActivity : ComponentActivity() {
                 viewModel.showSnackbar(getString(R.string.spotify_message_not_configured))
             }
 
-            DialogEvent.NotifySpotifyEmpty -> {
-                viewModel.showSnackbar(getString(R.string.spotify_message_empty))
-            }
-
             DialogEvent.RequestSpotifyAuth -> {
                 viewModel.showDialog(DialogState.ConfirmSpotifyAuth)
             }

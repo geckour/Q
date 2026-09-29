@@ -157,11 +157,6 @@ fun SpotifyLevel(
                 modifier = Modifier.align(Alignment.Center)
             )
         }
-
-        val isEmpty = items.isEmpty() && level.hasLoaded && level.hasFailed.not()
-        LaunchedEffect(isEmpty) {
-            if (isEmpty) onDialogEvent(DialogEvent.NotifySpotifyEmpty)
-        }
     }
 }
 
@@ -226,8 +221,10 @@ fun spotifyTopBarTitle(section: String?): String {
 }
 
 @Composable
-fun spotifySourceLabel(source: SpotifyBrowseSource): String =
-    stringResource(id = source.labelResId)
+fun spotifySourceTitle(source: SpotifyBrowseSource): String = stringResource(
+    id = if (source == SpotifyBrowseSource.LIBRARY) R.string.spotify_item_artist
+    else source.labelResId
+)
 
 private val SpotifyContainer.holdsTracks: Boolean
     get() = uri.startsWith(SECTION_URI_PREFIX).not()
@@ -276,12 +273,11 @@ private fun SpotifyContainerItem(
             stringResource(id = R.string.spotify_item_album)
         }
 
-        SpotifyContainer.Kind.ARTIST, SpotifyContainer.Kind.LIBRARY_ARTIST -> {
-            stringResource(id = R.string.spotify_item_artist)
-        }
-
+        SpotifyContainer.Kind.ARTIST -> stringResource(id = R.string.spotify_item_artist)
         SpotifyContainer.Kind.PLAYLIST -> stringResource(id = R.string.spotify_item_playlist)
-        SpotifyContainer.Kind.SAVED, SpotifyContainer.Kind.CONTENT -> null
+        SpotifyContainer.Kind.SAVED,
+        SpotifyContainer.Kind.CONTENT,
+        SpotifyContainer.Kind.LIBRARY_ARTIST -> null
     }
 
     SpotifyItemRow(
@@ -289,9 +285,10 @@ private fun SpotifyContainerItem(
         showsArtwork = showsArtwork,
         title = container.name,
         subtitle = listOfNotNull(kindLabel, container.creatorName).joinToString(" - "),
-        trailing = container.totalTracks?.let {
-            stringResource(id = R.string.spotify_item_track_count, it)
-        },
+        trailing = container.totalDuration?.getTimeString()
+            ?: container.totalTracks?.let {
+                stringResource(id = R.string.spotify_item_track_count, it)
+            },
         onClick = onClick,
         onLongClick = onLongClick,
     )

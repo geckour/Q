@@ -9,6 +9,7 @@ data class SpotifyContainer(
     val artworkUrl: String?,
     val releaseDate: String?,
     val totalTracks: Int?,
+    val totalDuration: Long? = null,
 ) : MediaItem {
 
     enum class Kind {

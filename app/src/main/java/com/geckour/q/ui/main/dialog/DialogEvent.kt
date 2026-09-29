@@ -57,8 +57,6 @@ sealed interface DialogEvent {
 
     data object NotifySpotifyNotConfigured : DialogEvent
 
-    data object NotifySpotifyEmpty : DialogEvent
-
     data object RequestSpotifyAuth : DialogEvent
 
     data object StartSpotifyAuth : DialogEvent
