@@ -32,13 +32,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RemoveCircleOutline
-import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -729,7 +729,7 @@ fun Controller(
             }
             if (currentTrack != null) {
                 Icon(
-                    imageVector = Icons.Default.Save,
+                    imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
                     contentDescription = null,
                     tint = QTheme.colors.colorButtonNormal,
                     modifier = Modifier

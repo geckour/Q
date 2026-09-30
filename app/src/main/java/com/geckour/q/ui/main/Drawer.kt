@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.Description
@@ -35,7 +36,6 @@ import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Highlight
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Queue
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
@@ -328,7 +328,7 @@ fun Drawer(
             }
             item {
                 DrawerItem(
-                    imageVector = Icons.Default.Queue,
+                    imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
                     title = stringResource(id = R.string.nav_saved_queue),
                     isSelected = selectedNav == Nav.SAVED_QUEUE,
                     onClick = {
