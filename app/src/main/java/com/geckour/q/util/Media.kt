@@ -7,15 +7,16 @@ import android.graphics.Paint
 import android.icu.util.Calendar
 import android.icu.util.TimeZone
 import androidx.core.graphics.createBitmap
-import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toFile
 import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.exoplayer.ExoPlayer
-import coil.Coil
-import coil.request.ImageRequest
-import coil.size.Scale
+import coil3.SingletonImageLoader
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.size.Scale
+import coil3.toBitmap
 import com.dropbox.core.util.IOUtil.ProgressListener
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.R
@@ -293,7 +294,7 @@ suspend fun List<String?>.getThumb(context: Context): Bitmap? {
             }
             .forEachIndexed { i, uriString ->
                 val b = catchAsNull {
-                    Coil.imageLoader(context)
+                    SingletonImageLoader.get(context)
                         .execute(
                             ImageRequest.Builder(context)
                                 .data(uriString ?: R.drawable.ic_empty)
@@ -302,7 +303,7 @@ suspend fun List<String?>.getThumb(context: Context): Bitmap? {
                                 .allowHardware(false)
                                 .build()
                         )
-                        .drawable
+                        .image
                         ?.toBitmap()
                 } ?: return@forEachIndexed
                 canvas.drawBitmap(

@@ -27,7 +27,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.flatMap
-import coil.compose.AsyncImage
+import coil3.compose.AsyncImage
 import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.UiTrackHistory
 import com.geckour.q.ui.component.SpotifyLogo

@@ -159,8 +159,10 @@ dependencies {
     implementation 'com.github.permissions-dispatcher:ktx:1.1.4'
 
     // Image processing
-    implementation "io.coil-kt:coil-compose:2.7.0"
-    implementation "io.coil-kt:coil-svg:2.7.0"
+    def coil_ver = "3.6.3"
+    implementation "io.coil-kt.coil3:coil-compose:$coil_ver"
+    implementation "io.coil-kt.coil3:coil-svg:$coil_ver"
+    implementation "io.coil-kt.coil3:coil-network-okhttp:$coil_ver"
 
     // Player
     def media3_ver = "1.11.0"

@@ -15,10 +15,12 @@ import androidx.core.net.toUri
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
-import coil.executeBlocking
-import coil.imageLoader
-import coil.request.ImageRequest
-import coil.size.Scale
+import coil3.executeBlocking
+import coil3.imageLoader
+import coil3.request.ImageRequest
+import coil3.request.allowHardware
+import coil3.size.Scale
+import coil3.toBitmap
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.JoinedTrack
@@ -354,5 +356,5 @@ private fun Context.loadArtwork(uriString: String, sizePx: Int): ImageBitmap? = 
             .scale(Scale.FILL)
             .allowHardware(false)
             .build()
-    ).drawable?.toBitmap()?.asImageBitmap()
+    ).image?.toBitmap()?.asImageBitmap()
 }.getOrNull()

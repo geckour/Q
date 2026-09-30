@@ -78,9 +78,9 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import androidx.media3.common.Player
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import coil.size.Size
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.size.Size
 import com.geckour.q.R
 import com.geckour.q.domain.model.MediaItem
 import com.geckour.q.domain.model.QAudioDeviceInfo
