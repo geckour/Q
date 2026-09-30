@@ -17,7 +17,6 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.size.Scale
 import coil3.toBitmap
-import com.dropbox.core.util.IOUtil.ProgressListener
 import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.R
 import com.geckour.q.data.db.BoolConverter
@@ -41,10 +40,6 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import org.jaudiotagger.audio.AudioFileIO
-import org.jaudiotagger.tag.FieldKey
-import org.jaudiotagger.tag.images.ArtworkFactory
-import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
@@ -488,18 +483,6 @@ fun Long.getTimeString(withMillis: Boolean = false): String {
             else String.format("%02d:%02d", minute, second))
 }
 
-fun DbxClientV2.saveTempAudioFile(
-    context: Context,
-    id: String,
-    pathLower: String,
-): Flow<Pair<File, Long?>> = saveFile(tempAudioFile(context, id, pathLower), pathLower)
-
-fun DbxClientV2.saveAudioFile(
-    context: Context,
-    id: String,
-    pathLower: String
-): Flow<Pair<File, Long?>> = saveFile(audioFile(context, id, pathLower), pathLower)
-
 fun saveTempAudioFileFromUrl(
     context: Context,
     id: String,
@@ -534,22 +517,6 @@ private fun audioFile(context: Context, id: String, pathLower: String): File {
     return file
 }
 
-private fun DbxClientV2.saveFile(
-    file: File,
-    pathLower: String,
-): Flow<Pair<File, Long?>> {
-    return callbackFlow {
-        val callback = ProgressListener { processed ->
-            trySend(file to processed)
-        }
-        FileOutputStream(file).use {
-            files().download(pathLower).download(it, callback)
-        }
-        trySend(file to null)
-        channel.close()
-    }.flowOn(Dispatchers.IO)
-}
-
 class DownloadFailedException(val code: Int) : IOException("Failed to download: $code")
 
 private fun saveFileFromUrl(
@@ -582,161 +549,6 @@ private fun saveFileFromUrl(
         trySend(file to null)
         channel.close()
     }.flowOn(Dispatchers.IO)
-}
-
-/**
- * Media placed at the outside of the device will be updated only data on the database
- */
-suspend fun JoinedTrack.updateFileMetadata(
-    context: Context,
-    db: DB,
-    newTrackName: String? = null,
-    newTrackNameSort: String? = null,
-    newAlbumName: String? = null,
-    newAlbumNameSort: String? = null,
-    newArtistName: String? = null,
-    newArtistNameSort: String? = null,
-    newComposerName: String? = null,
-    newComposerNameSort: String? = null,
-    newArtwork: Bitmap? = null
-) = withContext(Dispatchers.IO) {
-    catchAsNull {
-        val artworkUriString = newArtwork?.toByteArray()?.storeArtwork(context)
-        val artwork = artworkUriString?.let { ArtworkFactory.createArtworkFromFile(File(it)) }
-        when {
-            newArtistName.isNullOrBlank().not() || newArtistNameSort.isNullOrBlank().not() -> {
-                db.trackDao().getAllByArtist(artist.id)
-                    .mapNotNull {
-                        if (it.track.sourcePath.startsWith("http")) null
-                        else AudioFileIO.read(File(it.track.sourcePath))
-                    }
-                    .forEach { existingAudioFile ->
-                        existingAudioFile.tag?.apply {
-                            newArtistName?.let { setField(FieldKey.ARTIST, it) }
-                            newArtistNameSort?.let { setField(FieldKey.ARTIST_SORT, it) }
-                            newAlbumName?.let { setField(FieldKey.ALBUM, it) }
-                            newAlbumNameSort?.let { setField(FieldKey.ALBUM_SORT, it) }
-                            artwork?.let { setField(it) }
-                            newTrackName?.let { setField(FieldKey.TITLE, it) }
-                            newTrackNameSort?.let { setField(FieldKey.TITLE_SORT, it) }
-                            newComposerName?.let { setField(FieldKey.COMPOSER, it) }
-                            newComposerNameSort?.let { setField(FieldKey.COMPOSER_SORT, it) }
-                        }
-
-                        existingAudioFile.let { AudioFileIO.write(it) }
-                    }
-                val artistId = db.artistDao().upsert(
-                    db,
-                    artist.let {
-                        it.copy(
-                            title = newArtistName ?: it.title,
-                            titleSort = newArtistNameSort ?: it.titleSort
-                        )
-                    }
-                )
-                val albumId = if (newAlbumName.isNullOrBlank().not()
-                    || newAlbumNameSort.isNullOrBlank().not()
-                ) {
-                    db.albumDao().upsert(
-                        db,
-                        album.let {
-                            it.copy(
-                                title = newAlbumName ?: it.title,
-                                titleSort = newAlbumNameSort ?: it.titleSort,
-                                artistId = artistId,
-                                artworkUriString = artworkUriString ?: it.artworkUriString
-                            )
-                        }
-                    )
-                } else album.id
-                if (newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not()) {
-                    db.trackDao().insert(
-                        track.copy(
-                            title = newTrackName ?: track.title,
-                            titleSort = newTrackNameSort ?: track.titleSort,
-                            composer = newComposerName ?: track.composer,
-                            composerSort = newComposerNameSort ?: track.composerSort,
-                            artistId = artistId,
-                            albumId = albumId
-                        )
-                    )
-                }
-                db.albumDao()
-                    .refreshTotalDurationsIncludingArtists(db, listOf(album.id, albumId).distinct())
-            }
-
-            newAlbumName.isNullOrBlank().not()
-                    || newAlbumNameSort.isNullOrBlank().not()
-                    || newArtwork != null -> {
-                db.trackDao().getAllByAlbum(album.id)
-                    .mapNotNull {
-                        if (it.track.sourcePath.startsWith("http")) null
-                        else AudioFileIO.read(File(it.track.sourcePath))
-                    }
-                    .forEach { existingAudioFile ->
-                        existingAudioFile.tag?.apply {
-                            newAlbumName?.let { setField(FieldKey.ALBUM, it) }
-                            newAlbumNameSort?.let { setField(FieldKey.ALBUM_SORT, it) }
-                            artwork?.let { setField(it) }
-                            newTrackName?.let { setField(FieldKey.TITLE, it) }
-                            newTrackNameSort?.let { setField(FieldKey.TITLE_SORT, it) }
-                            newComposerName?.let { setField(FieldKey.COMPOSER, it) }
-                            newComposerNameSort?.let { setField(FieldKey.COMPOSER_SORT, it) }
-                        }
-
-                        existingAudioFile.let { AudioFileIO.write(it) }
-                    }
-                val albumId = db.albumDao().upsert(
-                    db,
-                    album.let {
-                        it.copy(
-                            title = newAlbumName ?: it.title,
-                            titleSort = newAlbumNameSort ?: it.titleSort,
-                            artworkUriString = artworkUriString
-                                ?: it.artworkUriString
-                        )
-                    }
-                )
-                if (newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not()) {
-                    db.trackDao().insert(
-                        track.copy(
-                            title = newTrackName ?: track.title,
-                            titleSort = newTrackNameSort ?: track.titleSort,
-                            composer = newComposerName ?: track.composer,
-                            composerSort = newComposerNameSort ?: track.composerSort,
-                            albumId = albumId
-                        )
-                    )
-                }
-                db.albumDao()
-                    .refreshTotalDurationsIncludingArtists(db, listOf(album.id, albumId).distinct())
-            }
-
-            newTrackName.isNullOrBlank().not() || newTrackNameSort.isNullOrBlank().not() -> {
-                if (track.sourcePath.startsWith("http").not()) {
-                    AudioFileIO.read(File(track.sourcePath))?.let { audioFile ->
-                        audioFile.tag?.apply {
-                            newTrackName?.let { setField(FieldKey.TITLE, it) }
-                            newTrackNameSort?.let { setField(FieldKey.TITLE_SORT, it) }
-                            newComposerName?.let { setField(FieldKey.COMPOSER, it) }
-                            newComposerNameSort?.let { setField(FieldKey.COMPOSER_SORT, it) }
-                        }
-                        AudioFileIO.write(audioFile)
-                    }
-                }
-
-                db.trackDao().update(
-                    track.copy(
-                        title = newTrackName ?: track.title,
-                        titleSort = newTrackNameSort ?: track.titleSort,
-                        composer = newComposerName ?: track.composer,
-                        composerSort = newComposerNameSort ?: track.composerSort
-                    )
-                )
-            }
-        }
-        return@withContext
-    }
 }
 
 val ExoPlayer.currentSourcePaths: List<String>
@@ -813,10 +625,6 @@ suspend fun JoinedTrack.verifiedWithDropbox(
 
         return@withContext null
     }
-
-private fun Bitmap.toByteArray(): ByteArray =
-    ByteArrayOutputStream().apply { compress(Bitmap.CompressFormat.PNG, 100, this) }
-        .toByteArray()
 
 val String.escapeSql: String
     get() = replace("\\", "\\\\")
