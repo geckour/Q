@@ -1,5 +1,6 @@
 package com.geckour.q.util
 
+import com.geckour.q.core.util.hiraganized
 import com.google.common.truth.Truth
 import org.junit.Test
 

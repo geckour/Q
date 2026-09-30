@@ -44,8 +44,8 @@ import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getThumb
-import com.geckour.q.util.getTimeString
-import com.geckour.q.util.encodeUrlSafe
+import com.geckour.q.core.util.getTimeString
+import com.geckour.q.core.util.encodeUrlSafe
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList

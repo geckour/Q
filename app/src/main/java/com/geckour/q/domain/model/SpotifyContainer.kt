@@ -1,5 +1,7 @@
 package com.geckour.q.domain.model
 
+import com.geckour.q.core.model.MediaItem
+
 data class SpotifyContainer(
     val kind: Kind,
     val id: String,

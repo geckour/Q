@@ -3,7 +3,7 @@ package com.geckour.q.data.db.model
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.core.model.MediaItem
 import kotlinx.serialization.Serializable
 
 @Entity

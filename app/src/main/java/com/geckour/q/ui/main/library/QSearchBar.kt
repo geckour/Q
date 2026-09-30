@@ -57,7 +57,7 @@ import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.SpotifyContainer
 import com.geckour.q.ui.compose.QTheme
-import com.geckour.q.util.escapeSql
+import com.geckour.q.core.util.escapeSql
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf

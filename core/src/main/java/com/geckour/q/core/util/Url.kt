@@ -1,4 +1,4 @@
-package com.geckour.q.util
+package com.geckour.q.core.util
 
 import java.net.URLDecoder
 import java.net.URLEncoder

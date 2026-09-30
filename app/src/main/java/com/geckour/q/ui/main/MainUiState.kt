@@ -1,7 +1,7 @@
 package com.geckour.q.ui.main
 
 import com.geckour.q.domain.model.EqualizerParams
-import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.core.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SyncSizeAlert

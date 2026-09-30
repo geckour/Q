@@ -28,7 +28,7 @@ import com.geckour.q.R
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.AllArtists
-import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.core.model.MediaItem
 import com.geckour.q.domain.model.SpotifyContainer
 import com.geckour.q.domain.model.SpotifyRecommendedRoot
 import com.geckour.q.domain.model.UiTrack

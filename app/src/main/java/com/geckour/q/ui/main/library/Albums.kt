@@ -50,11 +50,11 @@ import coil3.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.JoinedAlbum
-import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.core.model.MediaItem
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.ui.component.QSwitch
 import com.geckour.q.ui.compose.QTheme
-import com.geckour.q.util.getTimeString
+import com.geckour.q.core.util.getTimeString
 import com.geckour.q.util.DownloadState
 import com.geckour.q.util.isDownloaded
 import kotlinx.collections.immutable.ImmutableList

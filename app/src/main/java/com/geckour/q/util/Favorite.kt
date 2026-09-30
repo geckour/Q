@@ -4,7 +4,7 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.UiTrack
 
-fun com.geckour.q.domain.model.MediaItem?.isFavoriteToggled(): com.geckour.q.domain.model.MediaItem? =
+fun com.geckour.q.core.model.MediaItem?.isFavoriteToggled(): com.geckour.q.core.model.MediaItem? =
     when (this) {
         is UiTrack -> {
             copy(isFavorite = isFavorite.not())

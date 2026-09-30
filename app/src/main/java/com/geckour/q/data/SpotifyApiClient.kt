@@ -10,7 +10,7 @@ import com.geckour.q.domain.model.SpotifySearchPage
 import com.geckour.q.domain.model.SpotifyTrackPage
 import com.geckour.q.util.SpotifyAuthRequiredException
 import com.geckour.q.util.SpotifyCredential
-import com.geckour.q.util.UNKNOWN
+import com.geckour.q.core.util.UNKNOWN
 import com.geckour.q.util.getSpotifyCredential
 import com.geckour.q.util.setSpotifyCredential
 import kotlinx.coroutines.Dispatchers

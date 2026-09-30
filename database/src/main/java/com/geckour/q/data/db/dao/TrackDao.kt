@@ -11,8 +11,8 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.Track
-import com.geckour.q.util.containsKatakana
-import com.geckour.q.util.hiraganized
+import com.geckour.q.core.util.containsKatakana
+import com.geckour.q.core.util.hiraganized
 import kotlinx.coroutines.flow.Flow
 import kotlin.random.Random
 

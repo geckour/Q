@@ -38,10 +38,10 @@ import com.geckour.q.util.DownloadFailedException
 import com.geckour.q.util.QNotificationChannel
 import com.geckour.q.util.SyncProgressState
 import com.geckour.q.util.SyncSizeAlertState
-import com.geckour.q.util.getExtension
+import com.geckour.q.core.util.getExtension
 import com.geckour.q.util.getNotificationBuilder
 import com.geckour.q.util.getReadableStringWithUnit
-import com.geckour.q.util.getTimeString
+import com.geckour.q.core.util.getTimeString
 import com.geckour.q.util.isDownloaded
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.saveAudioFileFromUrl

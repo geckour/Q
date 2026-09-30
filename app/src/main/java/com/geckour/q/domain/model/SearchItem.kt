@@ -1,5 +1,7 @@
 package com.geckour.q.domain.model
 
+import com.geckour.q.core.model.MediaItem
+
 data class SearchItem(
     val title: String,
     val data: MediaItem,

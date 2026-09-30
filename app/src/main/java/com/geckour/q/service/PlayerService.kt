@@ -74,7 +74,7 @@ import com.geckour.q.util.isSpotify
 import com.geckour.q.util.isSpotifySourcePath
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.orderModified
-import com.geckour.q.util.removedAt
+import com.geckour.q.core.util.removedAt
 import com.geckour.q.util.setActiveQAudioDeviceInfo
 import com.geckour.q.util.setEqualizerParams
 import com.geckour.q.util.setSelectedEqualizerPresetId

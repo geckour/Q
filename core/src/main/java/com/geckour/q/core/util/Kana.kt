@@ -1,4 +1,4 @@
-package com.geckour.q.util
+package com.geckour.q.core.util
 
 import kotlin.streams.toList
 

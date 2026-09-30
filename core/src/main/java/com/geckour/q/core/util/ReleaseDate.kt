@@ -1,4 +1,4 @@
-package com.geckour.q.util
+package com.geckour.q.core.util
 
 import android.icu.util.Calendar
 import java.text.SimpleDateFormat
@@ -6,7 +6,7 @@ import java.util.Locale
 
 private val releaseDateFormats = listOf("yyyy-MM-dd", "yyyy-MM", "yyyy")
 
-internal val String?.releaseDates: Triple<Int?, Int?, Int?>
+val String?.releaseDates: Triple<Int?, Int?, Int?>
     get() {
         val releaseDateString = this ?: return Triple(null, null, null)
 

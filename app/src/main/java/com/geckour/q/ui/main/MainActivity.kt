@@ -39,7 +39,7 @@ import com.geckour.q.BuildConfig
 import com.geckour.q.R
 import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.domain.model.LayoutType
-import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.core.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.PlaybackButton
@@ -61,7 +61,7 @@ import com.geckour.q.util.isSpotifyInstalled
 import com.geckour.q.util.playOnSpotify
 import com.geckour.q.util.spotifyTrackRadioUri
 import com.geckour.q.util.spotifyWebUrl
-import com.geckour.q.util.getExtension
+import com.geckour.q.core.util.getExtension
 import com.geckour.q.util.parseLrc
 import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME

@@ -46,7 +46,7 @@ import androidx.paging.filter
 import coil3.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.data.db.DB
-import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.core.model.MediaItem
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.component.QSwitch

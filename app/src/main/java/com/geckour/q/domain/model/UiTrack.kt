@@ -1,9 +1,10 @@
 package com.geckour.q.domain.model
 
 import android.os.Parcelable
+import com.geckour.q.core.model.MediaItem
+import com.geckour.q.core.util.getTimeString
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
-import com.geckour.q.util.getTimeString
 import kotlinx.android.parcel.Parcelize
 import kotlinx.serialization.Serializable
 

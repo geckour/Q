@@ -13,7 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.navigation.NavBackStackEntry
 import com.geckour.q.domain.model.SpotifyContainer
-import com.geckour.q.util.encodeUrlSafe
+import com.geckour.q.core.util.encodeUrlSafe
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -31,7 +31,7 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.AllArtists
 import com.geckour.q.domain.model.Genre
-import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.core.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.ui.license.Licenses
 import com.geckour.q.domain.model.QAudioDeviceInfo
@@ -43,7 +43,7 @@ import com.geckour.q.ui.main.extra.Equalizer
 import com.geckour.q.ui.main.extra.Pay
 import com.geckour.q.ui.main.extra.Qzi
 import com.geckour.q.ui.main.dialog.DialogEvent
-import com.geckour.q.util.decodeUrlSafe
+import com.geckour.q.core.util.decodeUrlSafe
 import com.geckour.q.util.isInLibrary
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList

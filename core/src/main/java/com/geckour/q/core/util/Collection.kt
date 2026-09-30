@@ -1,4 +1,4 @@
-package com.geckour.q.util
+package com.geckour.q.core.util
 
 fun <T> MutableList<T>.swap(from: Int, to: Int) {
     val tmp = this[to]

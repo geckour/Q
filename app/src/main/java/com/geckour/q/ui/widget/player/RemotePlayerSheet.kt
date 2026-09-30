@@ -37,7 +37,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.media3.common.Player
 import com.geckour.q.ui.widget.WidgetHostAction
-import com.geckour.q.util.getTimeString
+import com.geckour.q.core.util.getTimeString
 
 /**
  * RemoteCompose rendition of [com.geckour.q.ui.main.PlayerSheet].

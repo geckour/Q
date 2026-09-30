@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.media3.common.Player
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
-import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.core.model.MediaItem
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.util.ShuffleActionType

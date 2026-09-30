@@ -53,7 +53,7 @@ import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.ui.component.SpotifyLogo
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.InsertActionType
-import com.geckour.q.util.getTimeString
+import com.geckour.q.core.util.getTimeString
 import com.geckour.q.util.isSpotify
 import com.geckour.q.util.toUiTrack
 import kotlinx.coroutines.delay

@@ -1,4 +1,4 @@
-package com.geckour.q.util
+package com.geckour.q.core.util
 
 fun Long.getNumberWithUnitPrefix(
     index: Int = 0,

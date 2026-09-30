@@ -82,7 +82,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.size.Size
 import com.geckour.q.R
-import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.core.model.MediaItem
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.component.DoubleTrackSlider
@@ -91,7 +91,7 @@ import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.DownloadState
 import com.geckour.q.util.ShuffleActionType
 import com.geckour.q.util.getShouldShowCurrentRemain
-import com.geckour.q.util.getTimeString
+import com.geckour.q.core.util.getTimeString
 import com.geckour.q.util.isDownloaded
 import com.geckour.q.util.isSpotify
 import com.geckour.q.util.nonUpScaleSp

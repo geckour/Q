@@ -32,7 +32,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.domain.model.UiTrackHistory
 import com.geckour.q.ui.component.SpotifyLogo
 import com.geckour.q.ui.compose.QTheme
-import com.geckour.q.util.getDateTimeString
+import com.geckour.q.core.util.getDateTimeString
 import com.geckour.q.util.isSpotify
 import com.geckour.q.util.toUiTrack
 import kotlinx.coroutines.flow.map

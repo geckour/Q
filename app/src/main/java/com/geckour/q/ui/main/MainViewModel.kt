@@ -39,7 +39,7 @@ import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.data.db.model.SpotifyContentEntry
 import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.data.db.model.TrackRef
-import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.core.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.SearchCategory
@@ -76,12 +76,12 @@ import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.getIsInNightMode
 import com.geckour.q.util.getReadableStringWithUnit
 import com.geckour.q.util.getShowLyric
-import com.geckour.q.util.escapeSql
+import com.geckour.q.core.util.escapeSql
 import com.geckour.q.util.filterInSpotifyLibraryContainer
 import com.geckour.q.util.getIsSpotifyFlattened
 import com.geckour.q.util.getIsSpotifyUnlocked
 import com.geckour.q.util.getSpotifyCredential
-import com.geckour.q.util.getTimeString
+import com.geckour.q.core.util.getTimeString
 import com.geckour.q.util.isFavoriteToggled
 import com.geckour.q.util.isInLibrary
 import com.geckour.q.util.isSpotify

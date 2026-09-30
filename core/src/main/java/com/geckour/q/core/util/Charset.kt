@@ -1,4 +1,4 @@
-package com.geckour.q.util
+package com.geckour.q.core.util
 
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets

@@ -7,9 +7,9 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.Track
-import com.geckour.q.util.UNKNOWN
+import com.geckour.q.core.util.UNKNOWN
 import com.geckour.q.util.catchAsNull
-import com.geckour.q.util.hiraganized
+import com.geckour.q.core.util.hiraganized
 import com.geckour.q.util.storeArtwork
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

@@ -4,7 +4,7 @@ import android.content.Context
 import com.geckour.q.domain.model.SpotifyContainer
 import com.geckour.q.domain.model.SpotifyContentItem
 import com.geckour.q.domain.model.SpotifyContentPage
-import com.geckour.q.util.UNKNOWN
+import com.geckour.q.core.util.UNKNOWN
 import com.geckour.q.util.createSpotifyConnectionParams
 import com.spotify.android.appremote.api.Connector
 import com.spotify.android.appremote.api.ContentApi

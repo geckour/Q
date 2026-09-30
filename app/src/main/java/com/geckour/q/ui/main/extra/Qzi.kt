@@ -32,7 +32,7 @@ import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.ui.compose.QTheme
-import com.geckour.q.util.dailyRandom
+import com.geckour.q.core.util.dailyRandom
 
 @Composable
 fun Qzi(onClick: (item: JoinedTrack) -> Unit) {

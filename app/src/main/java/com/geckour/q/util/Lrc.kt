@@ -1,5 +1,6 @@
 package com.geckour.q.util
 
+import com.geckour.q.core.util.getTimeString
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
 import java.io.File

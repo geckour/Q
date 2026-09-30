@@ -43,7 +43,7 @@ import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.ui.component.DoubleTrackSlider
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getIsInNightMode
-import com.geckour.q.util.getTimeString
+import com.geckour.q.core.util.getTimeString
 import org.koin.androidx.viewmodel.ext.android.viewModel
 import timber.log.Timber
 

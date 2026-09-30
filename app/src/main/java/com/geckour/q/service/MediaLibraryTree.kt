@@ -15,8 +15,8 @@ import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.TrackRef
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.dailyRandom
-import com.geckour.q.util.escapeSql
+import com.geckour.q.core.util.dailyRandom
+import com.geckour.q.core.util.escapeSql
 import com.geckour.q.util.getMediaItem
 import com.geckour.q.util.orderModified
 import kotlinx.coroutines.flow.first

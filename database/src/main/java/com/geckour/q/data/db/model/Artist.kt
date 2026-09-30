@@ -5,7 +5,7 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.geckour.q.domain.model.MediaItem
+import com.geckour.q.core.model.MediaItem
 import kotlinx.android.parcel.Parcelize
 import kotlinx.serialization.Serializable
 

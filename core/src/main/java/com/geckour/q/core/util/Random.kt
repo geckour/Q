@@ -1,4 +1,4 @@
-package com.geckour.q.util
+package com.geckour.q.core.util
 
 import android.icu.util.Calendar
 import android.icu.util.TimeZone
