@@ -11,6 +11,7 @@ import coil3.request.allowHardware
 import coil3.size.Scale
 import coil3.toBitmap
 import com.geckour.q.R
+import com.geckour.q.core.util.catchAsNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 

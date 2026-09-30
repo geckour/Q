@@ -8,6 +8,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.geckour.q.core.util.catchAsNull
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.spotify.SpotifyCredential

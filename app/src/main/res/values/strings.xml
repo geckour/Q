@@ -33,7 +33,6 @@
     <!-- Indicator -->
     <string name="syncing">Syncing library…</string>
     <string name="starting">Starting sync…</string>
-    <string name="progress_title_retrieve_media">@string/starting</string>
     <string name="progress_title_download_dropbox">Downloading…</string>
     <string name="loading">Loading items…</string>
     <string name="remaining">Remaining: %1$d (processed %2$s/%3$s), skipped: %4$d</string>

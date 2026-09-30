@@ -44,6 +44,7 @@ import androidx.mediarouter.media.MediaRouteSelector
 import androidx.mediarouter.media.MediaRouter
 import com.geckour.q.App
 import com.geckour.q.R
+import com.geckour.q.core.util.catchAsNull
 import com.geckour.q.core.util.removedAt
 import com.geckour.q.data.LrcLibApiClient
 import com.geckour.q.data.db.DB
@@ -67,7 +68,6 @@ import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.QueueInfo
 import com.geckour.q.util.QueueMetadata
 import com.geckour.q.util.ShuffleActionType
-import com.geckour.q.util.catchAsNull
 import com.geckour.q.util.currentSourcePaths
 import com.geckour.q.util.getEqualizerEnabled
 import com.geckour.q.util.getEqualizerParams

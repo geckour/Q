@@ -2,33 +2,32 @@ package com.geckour.q.worker
 
 import android.content.Context
 import androidx.work.Data
+import com.geckour.q.core.util.UNKNOWN
+import com.geckour.q.core.util.catchAsNull
+import com.geckour.q.core.util.hiraganized
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.Track
-import com.geckour.q.core.util.UNKNOWN
-import com.geckour.q.util.catchAsNull
-import com.geckour.q.core.util.hiraganized
-import com.geckour.q.util.storeArtwork
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
 import org.jaudiotagger.tag.FieldKey
 import java.io.File
 
-internal const val MEDIA_RETRIEVE_WORKER_NAME = "MediaRetrieveWorker"
+const val MEDIA_RETRIEVE_WORKER_NAME = "MediaRetrieveWorker"
 
-internal const val KEY_PROGRESS_TITLE = "key_progress_title"
-internal const val KEY_PROGRESS_PROGRESS_FRACTION = "key_progress_progress_fraction"
-internal const val KEY_PROGRESS_REMAINING_FILES = "key_progress_remaining_files"
-internal const val KEY_PROGRESS_SKIPPED_FILES = "key_progress_skipped_files"
-internal const val KEY_PROGRESS_TOTAL_FILES = "key_progress_total_files"
-internal const val KEY_PROGRESS_REMAINING_DURATION = "key_progress_processed_remaining_duration"
-internal const val KEY_PROGRESS_PROGRESS_PATHS = "key_progress_progress_paths"
-internal const val KEY_PROGRESS_FINISHED = "key_progress_finished"
+const val KEY_PROGRESS_TITLE = "key_progress_title"
+const val KEY_PROGRESS_PROGRESS_FRACTION = "key_progress_progress_fraction"
+const val KEY_PROGRESS_REMAINING_FILES = "key_progress_remaining_files"
+const val KEY_PROGRESS_SKIPPED_FILES = "key_progress_skipped_files"
+const val KEY_PROGRESS_TOTAL_FILES = "key_progress_total_files"
+const val KEY_PROGRESS_REMAINING_DURATION = "key_progress_processed_remaining_duration"
+const val KEY_PROGRESS_PROGRESS_PATHS = "key_progress_progress_paths"
+const val KEY_PROGRESS_FINISHED = "key_progress_finished"
 
-internal fun createProgressData(
+fun createProgressData(
     title: String,
     progressFraction: Float = -1f,
     remainingFiles: Int = -1,
@@ -47,7 +46,7 @@ internal fun createProgressData(
         .putStringArray(KEY_PROGRESS_PROGRESS_PATHS, paths.toTypedArray())
         .build()
 
-internal suspend fun File.storeMediaInfo(
+suspend fun File.storeMediaInfo(
     context: Context,
     trackPath: String,
     trackId: Long?,

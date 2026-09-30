@@ -7,7 +7,6 @@ import android.provider.MediaStore
 import androidx.work.CoroutineWorker
 import androidx.work.Data
 import androidx.work.WorkerParameters
-import com.geckour.q.R
 import com.geckour.q.data.db.DB
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking

@@ -36,4 +36,4 @@ static def getKey(keyName, File settingsDir) {
     return props[keyName]
 }
 
-include ':app', ':core', ':database', ':spotify'
+include ':app', ':core', ':database', ':spotify', ':worker'

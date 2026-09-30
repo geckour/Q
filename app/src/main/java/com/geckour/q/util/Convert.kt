@@ -1,8 +1,6 @@
 package com.geckour.q.util
 
 import androidx.appcompat.app.AppCompatDelegate
-import com.google.firebase.crashlytics.FirebaseCrashlytics
-import timber.log.Timber
 import kotlin.math.abs
 
 fun Float.getReadableStringWithUnit(digitToKeep: Int = 2): String {
@@ -40,14 +38,3 @@ private fun Float.format(suffix: String, digitToKeep: Int): String =
 val Boolean.toNightModeInt: Int
     get() = if (this) AppCompatDelegate.MODE_NIGHT_YES
     else AppCompatDelegate.MODE_NIGHT_NO
-
-inline fun <reified T> catchAsNull(
-    onError: (Throwable) -> Unit = {},
-    block: () -> T
-) = runCatching {
-    block()
-}.onFailure {
-    Timber.e(it)
-    FirebaseCrashlytics.getInstance().recordException(it)
-    onError(it)
-}.getOrNull()

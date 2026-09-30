@@ -1,18 +1,18 @@
-package com.geckour.q.util
+package com.geckour.q.worker
 
 import android.content.Context
+import com.geckour.q.core.util.catchAsNull
 import org.apache.commons.codec.binary.Hex
 import org.apache.commons.codec.digest.DigestUtils
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.io.InputStream
 import java.net.URLConnection
 
 /**
  * @return Uri String which points stored artwork
  */
-fun ByteArray.storeArtwork(context: Context): String? = catchAsNull {
+internal fun ByteArray.storeArtwork(context: Context): String? = catchAsNull {
     val hex = String(Hex.encodeHex(DigestUtils.md5(this)))
     val ext = URLConnection.guessContentTypeFromStream(ByteArrayInputStream(this))
         ?.replace(Regex(".+/(.+)"), ".$1")

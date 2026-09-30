@@ -28,6 +28,8 @@ import com.dropbox.core.v2.files.FileMetadata
 import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.App
 import com.geckour.q.R
+import com.geckour.q.core.util.getExtension
+import com.geckour.q.core.util.getTimeString
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.domain.model.SyncProgress
@@ -38,10 +40,8 @@ import com.geckour.q.util.DownloadFailedException
 import com.geckour.q.util.QNotificationChannel
 import com.geckour.q.util.SyncProgressState
 import com.geckour.q.util.SyncSizeAlertState
-import com.geckour.q.core.util.getExtension
 import com.geckour.q.util.getNotificationBuilder
 import com.geckour.q.util.getReadableStringWithUnit
-import com.geckour.q.core.util.getTimeString
 import com.geckour.q.util.isDownloaded
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.saveAudioFileFromUrl
@@ -76,6 +76,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.random.Random
 import kotlin.time.Duration.Companion.milliseconds
+import com.geckour.q.worker.R as WorkerR
 
 class DropboxMediaSyncJobService : JobService() {
 
@@ -110,7 +111,7 @@ class DropboxMediaSyncJobService : JobService() {
 
         private val requestLock = Any()
 
-        private var activeSession: DropboxMediaSyncJobService.Session? = null
+        private var activeSession: Session? = null
 
         private var pendingSizeApproval: CompletableDeferred<Boolean>? = null
 
@@ -810,7 +811,7 @@ class DropboxMediaSyncJobService : JobService() {
 
             SyncProgressState.update(
                 SyncProgress(
-                    title = getString(R.string.progress_title_retrieve_media),
+                    title = getString(WorkerR.string.progress_title_retrieve_media),
                     progressFraction = progressFraction,
                     remainingFiles = remainingFilesCount,
                     skippedFiles = skippedTargetsCount,

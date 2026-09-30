@@ -10,3 +10,9 @@ android {
         minSdk 34
     }
 }
+
+dependencies {
+    api 'com.jakewharton.timber:timber:5.0.1'
+    api platform('com.google.firebase:firebase-bom:34.19.0')
+    api 'com.google.firebase:firebase-crashlytics'
+}

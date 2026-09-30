@@ -91,6 +91,7 @@ dependencies {
     implementation project(':core')
     implementation project(':database')
     implementation project(':spotify')
+    implementation project(':worker')
     implementation "org.jetbrains.kotlinx:kotlinx-collections-immutable:0.5.2"
     implementation 'androidx.constraintlayout:constraintlayout:2.2.2'
     implementation 'androidx.appcompat:appcompat:1.8.0'
@@ -179,15 +180,9 @@ dependencies {
     implementation "androidx.compose.remote:remote-creation:$remote_compose_ver"
     implementation "androidx.compose.remote:remote-creation-core:$remote_compose_ver"
 
-    // Hash
-    implementation 'commons-codec:commons-codec:1.22.1'
-
     // Dropbox
     implementation 'com.dropbox.core:dropbox-core-sdk:8.0.2'
     implementation 'com.dropbox.core:dropbox-android-sdk:8.0.2'
-
-    // Audio Metadata
-    implementation "net.jthink:jaudiotagger:3.0.1"
 
     // Billing
     implementation "com.android.billingclient:billing-ktx:9.1.0"
