@@ -1,6 +1,5 @@
 package com.geckour.q.ui.main.player
 
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
@@ -30,7 +29,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.text.BasicTextField
@@ -142,10 +140,7 @@ fun Queue(
         state = pagerState,
         modifier = Modifier.fillMaxSize(),
         userScrollEnabled = isInLyricEditMode.not(),
-        flingBehavior = PagerDefaults.flingBehavior(
-            state = pagerState,
-            snapAnimationSpec = tween(easing = LinearOutSlowInEasing),
-        ),
+        overscrollEffect = null,
     ) { page ->
         when (PlayerSheetPage.entries[page]) {
             PlayerSheetPage.QUEUE -> QueuePage(
