@@ -63,8 +63,8 @@ fun SpotifyTrack.getMediaItem(): MediaItem {
         .build()
 }
 
-fun JoinedTrack.getMediaMetadata(): MediaMetadata {
-    val (year, month, day) = dates
+private fun JoinedTrack.getMediaMetadata(): MediaMetadata {
+    val (year, month, day) = track.releaseDate.releaseDates
 
     return MediaMetadata.Builder()
         .setTitle(track.title)

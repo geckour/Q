@@ -20,7 +20,7 @@ fun JoinedTrack.toUiTrack(
     trackNum: Int? = null,
     nowPlaying: Boolean = false
 ): UiTrack {
-    val (year, month, day) = dates
+    val (year, month, day) = track.releaseDate.releaseDates
     return UiTrack(
         "${random.nextLong()}-${track.id}",
         track.id,

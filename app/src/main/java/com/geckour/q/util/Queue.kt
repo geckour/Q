@@ -38,22 +38,22 @@ data class QueueInfo(
     val queue: List<JoinedTrack>
 )
 
+private val InsertActionType.isSimpleShuffle: Boolean
+    get() = this == InsertActionType.SHUFFLE_SIMPLE_NEXT ||
+            this == InsertActionType.SHUFFLE_SIMPLE_LAST ||
+            this == InsertActionType.SHUFFLE_SIMPLE_OVERRIDE
+
+private val InsertActionType.isOrientedShuffle: Boolean
+    get() = this == InsertActionType.SHUFFLE_NEXT ||
+            this == InsertActionType.SHUFFLE_LAST ||
+            this == InsertActionType.SHUFFLE_OVERRIDE
+
 fun List<JoinedTrack>.orderModified(
     classType: OrientedClassType,
     actionType: InsertActionType
 ): List<JoinedTrack> {
-    val simpleShuffleConditional = actionType in listOf(
-        InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
-        InsertActionType.SHUFFLE_SIMPLE_NEXT,
-        InsertActionType.SHUFFLE_SIMPLE_LAST,
-    )
-    if (simpleShuffleConditional) return shuffled()
+    if (actionType.isSimpleShuffle) return shuffled()
 
-    val shuffleConditional = actionType in listOf(
-        InsertActionType.SHUFFLE_OVERRIDE,
-        InsertActionType.SHUFFLE_NEXT,
-        InsertActionType.SHUFFLE_LAST,
-    )
     return this.groupBy { it.album }
         .map { (album, tracks) ->
             album to tracks.groupBy { it.track.discNum }
@@ -64,12 +64,12 @@ fun List<JoinedTrack>.orderModified(
                 .flatMap { it.second }
         }
         .let {
-            if (shuffleConditional && classType == OrientedClassType.ALBUM) it.shuffled() else it
+            if (actionType.isOrientedShuffle && classType == OrientedClassType.ALBUM) it.shuffled() else it
         }
         .groupBy { it.first.artistId }
         .toList()
         .let {
-            if (shuffleConditional && classType == OrientedClassType.ARTIST) it.shuffled() else it
+            if (actionType.isOrientedShuffle && classType == OrientedClassType.ARTIST) it.shuffled() else it
         }
         .flatMap { (_, albumTrackMap) ->
             albumTrackMap.flatMap { it.second }
@@ -81,23 +81,13 @@ fun List<UiTrack>.orderModified(
     classType: OrientedClassType,
     actionType: InsertActionType
 ): List<UiTrack> {
-    val simpleShuffleConditional = actionType in listOf(
-        InsertActionType.SHUFFLE_SIMPLE_OVERRIDE,
-        InsertActionType.SHUFFLE_SIMPLE_NEXT,
-        InsertActionType.SHUFFLE_SIMPLE_LAST,
-    )
-    if (simpleShuffleConditional) return shuffled()
+    if (actionType.isSimpleShuffle) return shuffled()
 
-    val shuffleConditional = actionType in listOf(
-        InsertActionType.SHUFFLE_OVERRIDE,
-        InsertActionType.SHUFFLE_NEXT,
-        InsertActionType.SHUFFLE_LAST,
-    )
     return groupBy { if (it.isSpotify) it.album.title else it.album.id }
         .values
         .map { tracks -> tracks.sortedWith(compareBy({ it.discNum }, { it.trackNum })) }
         .let {
-            if (shuffleConditional && classType == OrientedClassType.ALBUM) it.shuffled() else it
+            if (actionType.isOrientedShuffle && classType == OrientedClassType.ALBUM) it.shuffled() else it
         }
         .groupBy { tracks ->
             val track = tracks.first()
@@ -106,7 +96,7 @@ fun List<UiTrack>.orderModified(
         }
         .values
         .let {
-            if (shuffleConditional && classType == OrientedClassType.ARTIST) it.shuffled() else it
+            if (actionType.isOrientedShuffle && classType == OrientedClassType.ARTIST) it.shuffled() else it
         }
         .flatMap { albums -> albums.flatten() }
 }
