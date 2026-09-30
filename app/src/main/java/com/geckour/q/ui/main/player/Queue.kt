@@ -584,6 +584,7 @@ fun QueueItem(
                         contentDescription = null,
                         tint = QTheme.colors.colorTextPrimary,
                         modifier = Modifier
+                            .padding(end = 4.dp)
                             .clickable(
                                 indication = ripple(bounded = false),
                                 interactionSource = remember { MutableInteractionSource() }

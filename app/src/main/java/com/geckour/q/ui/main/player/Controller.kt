@@ -739,24 +739,22 @@ fun Controller(
                             interactionSource = remember { MutableInteractionSource() },
                             onClick = onShowSaveQueueDialog
                         )
-                        .padding(4.dp)
+                        .padding(8.dp)
                         .size(20.dp)
                 )
-                Spacer(modifier = Modifier.width(16.dp))
             }
             Icon(
                 imageVector = Icons.Default.RemoveCircleOutline,
                 contentDescription = null,
                 tint = buttonColor,
                 modifier = Modifier
-                    .padding(end = 4.dp)
                     .clickable(
                         enabled = hasCurrentTrack,
                         indication = ripple(bounded = false),
                         interactionSource = remember { MutableInteractionSource() },
                         onClick = clearQueue
                     )
-                    .padding(4.dp)
+                    .padding(8.dp)
                     .size(20.dp)
             )
             Spacer(modifier = Modifier.width(8.dp))
