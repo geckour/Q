@@ -165,7 +165,7 @@ dependencies {
     implementation "io.coil-kt.coil3:coil-network-okhttp:$coil_ver"
 
     // Player
-    def media3_ver = "1.11.0"
+    def media3_ver = "1.11.1"
     implementation "androidx.media3:media3-session:$media3_ver"
     implementation "androidx.media3:media3-exoplayer:$media3_ver"
     implementation "androidx.media3:media3-decoder-ffmpeg:$media3_ver"
