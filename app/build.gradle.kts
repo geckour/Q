@@ -1,16 +1,12 @@
-import java.util.Properties
+import com.geckour.q.buildlogic.secretProperty
 
 plugins {
-    alias(libs.plugins.android.application)
+    alias(libs.plugins.q.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
-}
-
-val secretProperties = Properties().apply {
-    rootProject.file("secret.properties").inputStream().use { load(it) }
 }
 
 apply(from = "signing/release.gradle", to = android)
@@ -20,21 +16,18 @@ android {
 
     buildFeatures.buildConfig = true
 
-    compileSdk = 37
     defaultConfig {
         applicationId = "com.geckour.q"
-        minSdk = 34
-        targetSdk = 37
         versionCode = 55
         versionName = "3.5.0"
         testInstrumentationRunner = "android.support.test.runner.AndroidJUnitRunner"
 
-        val dropboxAppKey = secretProperties.getProperty("DROPBOX_APP_KEY")
+        val dropboxAppKey = secretProperty("DROPBOX_APP_KEY")
         buildConfigField("String", "DROPBOX_APP_KEY", "\"$dropboxAppKey\"")
         buildConfigField(
             "String",
             "DROPBOX_APP_SECRET",
-            "\"${secretProperties.getProperty("DROPBOX_APP_SECRET")}\""
+            "\"${secretProperty("DROPBOX_APP_SECRET")}\""
         )
 
         manifestPlaceholders["dropboxAppKey"] = "db-$dropboxAppKey"
@@ -99,8 +92,10 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     // Networking
+    implementation(platform(libs.retrofit.bom))
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
+    implementation(platform(libs.okhttp.bom))
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging.interceptor)
 
@@ -131,6 +126,7 @@ dependencies {
     implementation(libs.permissions.dispatcher.ktx)
 
     // Image processing
+    implementation(platform(libs.coil.bom))
     implementation(libs.coil.compose)
     implementation(libs.coil.svg)
     implementation(libs.coil.network.okhttp)
@@ -144,6 +140,7 @@ dependencies {
     compileOnly(libs.checker.compat.qual)
 
     // Compose
+    implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material.icons.extended)

@@ -1,5 +1,5 @@
 plugins {
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.q.android.library)
     alias(libs.plugins.kotlin.parcelize)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
@@ -8,11 +8,6 @@ plugins {
 
 android {
     namespace = "com.geckour.q.data.db"
-
-    compileSdk = 37
-    defaultConfig {
-        minSdk = 34
-    }
 }
 
 room {

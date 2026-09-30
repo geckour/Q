@@ -1,14 +1,9 @@
 plugins {
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.q.android.library)
 }
 
 android {
     namespace = "com.geckour.q.core"
-
-    compileSdk = 37
-    defaultConfig {
-        minSdk = 34
-    }
 }
 
 dependencies {

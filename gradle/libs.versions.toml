@@ -14,10 +14,9 @@ checker-qual = "4.2.3"
 coil = "3.6.3"
 commons-codec = "1.22.1"
 commons-io = "2.22.0"
-compose-material-icons = "1.7.8"
+compose-bom = "2026.09.00"
 compose-material3 = "1.5.0-alpha29"
 compose-remote = "1.0.0-alpha20"
-compose-ui = "1.12.1"
 concurrent-futures = "1.3.0"
 constraintlayout = "2.2.2"
 core-ktx = "1.19.1"
@@ -55,19 +54,21 @@ window = "1.5.1"
 work = "2.12.0"
 
 [libraries]
+android-gradle-plugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }
 androidx-activity-ktx = { module = "androidx.activity:activity-ktx", version.ref = "activity" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "appcompat" }
 androidx-browser = { module = "androidx.browser:browser", version.ref = "browser" }
-androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended", version.ref = "compose-material-icons" }
+androidx-compose-bom = { module = "androidx.compose:compose-bom", version.ref = "compose-bom" }
+androidx-compose-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 androidx-compose-material3 = { module = "androidx.compose.material3:material3", version.ref = "compose-material3" }
 androidx-compose-remote-creation = { module = "androidx.compose.remote:remote-creation", version.ref = "compose-remote" }
 androidx-compose-remote-creation-compose = { module = "androidx.compose.remote:remote-creation-compose", version.ref = "compose-remote" }
 androidx-compose-remote-creation-core = { module = "androidx.compose.remote:remote-creation-core", version.ref = "compose-remote" }
-androidx-compose-ui = { module = "androidx.compose.ui:ui", version.ref = "compose-ui" }
-androidx-compose-ui-text-google-fonts = { module = "androidx.compose.ui:ui-text-google-fonts", version.ref = "compose-ui" }
-androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling", version.ref = "compose-ui" }
-androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview", version.ref = "compose-ui" }
+androidx-compose-ui = { module = "androidx.compose.ui:ui" }
+androidx-compose-ui-text-google-fonts = { module = "androidx.compose.ui:ui-text-google-fonts" }
+androidx-compose-ui-tooling = { module = "androidx.compose.ui:ui-tooling" }
+androidx-compose-ui-tooling-preview = { module = "androidx.compose.ui:ui-tooling-preview" }
 androidx-concurrent-futures-ktx = { module = "androidx.concurrent:concurrent-futures-ktx", version.ref = "concurrent-futures" }
 androidx-constraintlayout = { module = "androidx.constraintlayout:constraintlayout", version.ref = "constraintlayout" }
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "core-ktx" }
@@ -97,9 +98,10 @@ androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version
 billing-ktx = { module = "com.android.billingclient:billing-ktx", version.ref = "billing" }
 checker-compat-qual = { module = "org.checkerframework:checker-compat-qual", version.ref = "checker-compat-qual" }
 checker-qual = { module = "org.checkerframework:checker-qual", version.ref = "checker-qual" }
-coil-compose = { module = "io.coil-kt.coil3:coil-compose", version.ref = "coil" }
-coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp", version.ref = "coil" }
-coil-svg = { module = "io.coil-kt.coil3:coil-svg", version.ref = "coil" }
+coil-bom = { module = "io.coil-kt.coil3:coil-bom", version.ref = "coil" }
+coil-compose = { module = "io.coil-kt.coil3:coil-compose" }
+coil-network-okhttp = { module = "io.coil-kt.coil3:coil-network-okhttp" }
+coil-svg = { module = "io.coil-kt.coil3:coil-svg" }
 commons-codec = { module = "commons-codec:commons-codec", version.ref = "commons-codec" }
 commons-io = { module = "commons-io:commons-io", version.ref = "commons-io" }
 dropbox-android-sdk = { module = "com.dropbox.core:dropbox-android-sdk", version.ref = "dropbox" }
@@ -114,12 +116,14 @@ kotlinx-collections-immutable = { module = "org.jetbrains.kotlinx:kotlinx-collec
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "kotlinx-coroutines" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 lottie-compose = { module = "com.airbnb.android:lottie-compose", version.ref = "lottie" }
-okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
-okhttp-logging-interceptor = { module = "com.squareup.okhttp3:logging-interceptor", version.ref = "okhttp" }
+okhttp = { module = "com.squareup.okhttp3:okhttp" }
+okhttp-bom = { module = "com.squareup.okhttp3:okhttp-bom", version.ref = "okhttp" }
+okhttp-logging-interceptor = { module = "com.squareup.okhttp3:logging-interceptor" }
 permissions-dispatcher-ktx = { module = "com.github.permissions-dispatcher:ktx", version.ref = "permissions-dispatcher" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
-retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
-retrofit-converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "retrofit" }
+retrofit = { module = "com.squareup.retrofit2:retrofit" }
+retrofit-bom = { module = "com.squareup.retrofit2:retrofit-bom", version.ref = "retrofit" }
+retrofit-converter-gson = { module = "com.squareup.retrofit2:converter-gson" }
 spotify-app-remote = { module = "com.spotify.android:spotify-app-remote-release", version.ref = "spotify-app-remote" }
 spotify-auth = { module = "com.spotify.android:auth", version.ref = "spotify-auth" }
 timber = { module = "com.jakewharton.timber:timber", version.ref = "timber" }
@@ -134,4 +138,6 @@ kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "ko
 kotlin-parcelize = { id = "org.jetbrains.kotlin.plugin.parcelize", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+q-android-application = { id = "q.android.application" }
+q-android-library = { id = "q.android.library" }
 room = { id = "androidx.room", version.ref = "room" }

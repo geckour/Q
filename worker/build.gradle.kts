@@ -1,13 +1,11 @@
 plugins {
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.q.android.library)
 }
 
 android {
     namespace = "com.geckour.q.worker"
 
-    compileSdk = 37
     defaultConfig {
-        minSdk = 34
         consumerProguardFiles("consumer-rules.pro")
     }
 }

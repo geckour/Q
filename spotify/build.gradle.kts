@@ -1,12 +1,8 @@
-import java.util.Properties
+import com.geckour.q.buildlogic.secretProperty
 
 plugins {
-    alias(libs.plugins.android.library)
+    alias(libs.plugins.q.android.library)
     alias(libs.plugins.kotlin.serialization)
-}
-
-val secretProperties = Properties().apply {
-    rootProject.file("secret.properties").inputStream().use { load(it) }
 }
 
 android {
@@ -14,15 +10,13 @@ android {
 
     buildFeatures.buildConfig = true
 
-    compileSdk = 37
     defaultConfig {
-        minSdk = 34
         consumerProguardFiles("consumer-rules.pro")
 
         buildConfigField(
             "String",
             "SPOTIFY_CLIENT_ID",
-            "\"${secretProperties.getProperty("SPOTIFY_CLIENT_ID") ?: ""}\""
+            "\"${secretProperty("SPOTIFY_CLIENT_ID") ?: ""}\""
         )
     }
 }
@@ -38,6 +32,7 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
+    implementation(platform(libs.okhttp.bom))
     implementation(libs.okhttp)
     implementation(libs.timber)
 }

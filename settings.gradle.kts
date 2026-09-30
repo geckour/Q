@@ -1,6 +1,7 @@
 import java.util.Properties
 
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         google()
         mavenCentral()
