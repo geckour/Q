@@ -62,7 +62,7 @@ jobs:
         env:
           TAG_VERSION: ${{ steps.version.outputs.name }}
         run: |
-          version_name=$(sed -n 's/^ *versionName *"\(.*\)"$/\1/p' app/build.gradle)
+          version_name=$(sed -n 's/^ *versionName *= *"\(.*\)"$/\1/p' app/build.gradle.kts)
           if [[ "$version_name" != "$TAG_VERSION" ]]; then
             echo "::error::versionName ($version_name) does not match the tag ($TAG_VERSION)."
             exit 1

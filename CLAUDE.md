@@ -15,7 +15,7 @@ Media3 を更新するときの手順。
    GPR_USER=... GPR_TOKEN=... ./gradlew :lib-decoder-ffmpeg:publish \
      -PmavenRepo=https://maven.pkg.github.com/geckour/Q
    ```
-4. ルートの `build.gradle` の `media3_ver` を上げる（app と spotify の両モジュールが参照している）
+4. `gradle/libs.versions.toml` の `media3` を上げる（app と spotify の両モジュールが参照している）
 5. FFmpeg のバージョンやデコーダ構成を変えた場合は、`license_text_ffmpeg` の記載（バージョン、デコーダ一覧）も更新する。LGPL の表示義務があるため必須
 
 ビルドには JDK 21 以上が必要（AGP の lint が JDK 21 の API を使うため、17 では `lintVitalAnalyzeRelease` が落ちる）。CI は 25 を使う。
@@ -37,11 +37,11 @@ Play Store へのリリースは `gh` で作成する。ただし下記の前提
 
 - `gh auth status` が通ること
 - 対象コミットが `origin/master` の履歴に含まれること（ワークフロー側でも検査するが、先に弾く）
-- `app/build.gradle` の `versionName` とタグのバージョン部分が一致すること
+- `app/build.gradle.kts` の `versionName` とタグのバージョン部分が一致すること
 - 同名のタグ・リリースが存在しないこと
 - `versionCode` が前回の Play リリースから上がっていること（Play は同じ `versionCode` を受け付けない）
 
-`app/build.gradle` の `versionCode` / `versionName` を上げるのは Play Store へ出すためであって、Firebase への配信のために上げない。Firebase は同じ `versionCode` を受け付けるので、同じバージョンのまま何度でも配信できる。
+`app/build.gradle.kts` の `versionCode` / `versionName` を上げるのは Play Store へ出すためであって、Firebase への配信のために上げない。Firebase は同じ `versionCode` を受け付けるので、同じバージョンのまま何度でも配信できる。
 
 リリースノートを書くのは Play Store へ公開するリリースだけ。GitHub Release の本文が唯一の原本で、ロケール別の見出しで区切って書く。Play の「新機能」は本文から `script/split_release_notes.py` が生成する（1 ロケール 500 文字以内、超えるとワークフローが失敗する）。
 
