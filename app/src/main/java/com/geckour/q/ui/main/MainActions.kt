@@ -80,7 +80,7 @@ interface MainActions {
 
     fun clearQueue()
 
-    fun onToggleShowLyrics()
+    fun onChangeShowLyric(showLyric: Boolean)
 
     fun loadSpotifySource(source: SpotifyBrowseSource, reset: Boolean)
 

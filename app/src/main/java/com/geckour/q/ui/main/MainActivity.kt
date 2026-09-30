@@ -174,7 +174,7 @@ class MainActivity : ComponentActivity() {
 
         override fun clearQueue() = viewModel.onClickClearQueueButton()
 
-        override fun onToggleShowLyrics() = viewModel.toggleShowLyric()
+        override fun onChangeShowLyric(showLyric: Boolean) = viewModel.setShowLyric(showLyric)
 
         override fun loadSpotifySource(source: SpotifyBrowseSource, reset: Boolean) =
             viewModel.loadSpotifySource(source, reset)

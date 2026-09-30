@@ -155,7 +155,7 @@ fun SingleScreen(
                     moveToCurrentIndex = actions::moveToCurrentIndex,
                     clearQueue = actions::clearQueue,
                     onSelectTrack = actions::onSelectTrack,
-                    onToggleShowLyrics = actions::onToggleShowLyrics,
+                    onChangeShowLyric = actions::onChangeShowLyric,
                     onQueueMove = actions::onQueueMove,
                     onChangeIndexRequested = actions::onChangeIndexRequested,
                     onRemoveTrackFromQueue = actions::onRemoveTrackFromQueue,

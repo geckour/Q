@@ -35,7 +35,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.FastRewind
-import androidx.compose.material.icons.filled.Lyrics
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RemoveCircleOutline
@@ -132,7 +131,6 @@ fun Controller(
     clearQueue: () -> Unit,
     onTrackSelected: (item: UiTrack) -> Unit,
     cancelLoad: () -> Unit,
-    onToggleShowLyrics: () -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
 ) {
     var textAreaHeight by remember { mutableIntStateOf(0) }
@@ -679,20 +677,6 @@ fun Controller(
                             indication = ripple(bounded = false),
                             interactionSource = remember { MutableInteractionSource() },
                             onClick = moveToCurrentIndex
-                        )
-                        .padding(4.dp)
-                        .size(20.dp),
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    imageVector = Icons.Default.Lyrics,
-                    contentDescription = null,
-                    tint = if (showLyric) QTheme.colors.colorButtonNormal else QTheme.colors.colorInactive,
-                    modifier = Modifier
-                        .clickable(
-                            indication = ripple(bounded = false),
-                            interactionSource = remember { MutableInteractionSource() },
-                            onClick = onToggleShowLyrics
                         )
                         .padding(4.dp)
                         .size(20.dp),

@@ -2,12 +2,15 @@ package com.geckour.q.ui.main.player
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.boundsInWindow
@@ -58,7 +61,7 @@ fun PlayerSheet(
     moveToCurrentIndex: () -> Unit,
     clearQueue: () -> Unit,
     onSelectTrack: (track: UiTrack) -> Unit,
-    onToggleShowLyrics: () -> Unit,
+    onChangeShowLyric: (showLyric: Boolean) -> Unit,
     onQueueMove: (from: Int, to: Int) -> Unit,
     onChangeIndexRequested: (index: Int) -> Unit,
     onRemoveTrackFromQueue: (index: Int) -> Unit,
@@ -76,6 +79,21 @@ fun PlayerSheet(
         }
     val isInLyricEditMode = remember { mutableStateOf(false) }
     val isLyricScrolledByUser = remember { mutableStateOf(false) }
+    val lyricPage = PlayerSheetPage.LYRIC.ordinal
+    val pagerState = rememberPagerState(
+        initialPage = if (showLyric) lyricPage else PlayerSheetPage.QUEUE.ordinal
+    ) { PlayerSheetPage.entries.size }
+    val currentShowLyric by rememberUpdatedState(showLyric)
+
+    LaunchedEffect(showLyric) {
+        val page = if (showLyric) lyricPage else PlayerSheetPage.QUEUE.ordinal
+        if (pagerState.settledPage != page) pagerState.scrollToPage(page)
+    }
+    LaunchedEffect(pagerState.settledPage) {
+        val isLyricPageSettled = pagerState.settledPage == lyricPage
+        if (isLyricPageSettled.not()) isInLyricEditMode.value = false
+        if (isLyricPageSettled != currentShowLyric) onChangeShowLyric(isLyricPageSettled)
+    }
 
     Column(
         modifier = (if (libraryHeight == null) Modifier else {
@@ -102,7 +120,7 @@ fun PlayerSheet(
             repeatMode = currentRepeatMode,
             isLoading = isLoading.first,
             routeInfo = routeInfo,
-            showLyric = showLyric,
+            showLyric = pagerState.currentPage == lyricPage,
             isInLyricEditMode = isInLyricEditMode,
             isLyricScrolledByUser = isLyricScrolledByUser.value,
             onTogglePlayPause = onTogglePlayPause,
@@ -121,14 +139,13 @@ fun PlayerSheet(
             clearQueue = clearQueue,
             onTrackSelected = onSelectTrack,
             cancelLoad = { isLoading.second?.invoke() },
-            onToggleShowLyrics = onToggleShowLyrics,
             onToggleFavorite = onToggleFavorite,
         )
         Queue(
             endItemMargin = endItemMargin,
+            pagerState = pagerState,
             uiTracks = queue,
             isPlaying = currentPlaybackInfo.first,
-            showLyric = showLyric,
             isInLyricEditMode = isInLyricEditMode.value,
             onTrackSelected = onSelectTrack,
             currentPlaybackPosition = currentPlaybackPosition,
@@ -269,7 +286,7 @@ private fun PlayerSheetPreview() {
         moveToCurrentIndex = {},
         clearQueue = {},
         onSelectTrack = {},
-        onToggleShowLyrics = {},
+        onChangeShowLyric = {},
         onQueueMove = { _, _ -> },
         onChangeIndexRequested = { _ -> },
         onRemoveTrackFromQueue = { _ -> },

@@ -875,9 +875,9 @@ class MainViewModel(
         }
     }
 
-    internal fun toggleShowLyric() {
+    internal fun setShowLyric(showLyric: Boolean) {
         viewModelScope.launch {
-            app.setShowLyric(app.getShowLyric().first().not())
+            app.setShowLyric(showLyric)
         }
     }
 
