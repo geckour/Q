@@ -1,0 +1,12 @@
+plugins {
+    id 'com.android.library'
+}
+
+android {
+    namespace "com.geckour.q.core"
+
+    compileSdk = 37
+    defaultConfig {
+        minSdk 34
+    }
+}

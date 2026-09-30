@@ -179,7 +179,7 @@ abstract class DB : RoomDatabase() {
     abstract fun audioDeviceEqualizerInfoDao(): AudioDeviceEqualizerInfoDao
 }
 
-internal class BoolConverter {
+class BoolConverter {
     @TypeConverter
     fun fromBool(bool: Bool): Int = when (bool) {
         Bool.TRUE -> 1

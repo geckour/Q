@@ -4,7 +4,6 @@ import androidx.appcompat.app.AppCompatDelegate
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import timber.log.Timber
 import kotlin.math.abs
-import kotlin.streams.toList
 
 fun Float.getReadableStringWithUnit(digitToKeep: Int = 2): String {
     if (this == 0f) {
@@ -41,16 +40,6 @@ private fun Float.format(suffix: String, digitToKeep: Int): String =
 val Boolean.toNightModeInt: Int
     get() = if (this) AppCompatDelegate.MODE_NIGHT_YES
     else AppCompatDelegate.MODE_NIGHT_NO
-
-val String.hiraganized: String
-    get() = this.codePoints()
-        .map { if (it in 'ァ'.code..'ヶ'.code) it - 0x60 else it }
-        .toArray()
-        .let { String(it, 0, it.size) }
-
-val String.containsKatakana: Boolean
-    get() = this.codePoints().toList()
-        .any { it in 'ァ'.code..'ヶ'.code }
 
 inline fun <reified T> catchAsNull(
     onError: (Throwable) -> Unit = {},

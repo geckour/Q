@@ -1,0 +1,52 @@
+plugins {
+    id 'com.android.library'
+    id 'kotlin-parcelize'
+    id 'kotlinx-serialization'
+    id 'com.google.devtools.ksp'
+}
+
+android {
+    namespace "com.geckour.q.data.db"
+
+    compileSdk = 37
+    defaultConfig {
+        minSdk 34
+    }
+}
+
+ksp {
+    arg(new RoomSchemaArgProvider(new File(projectDir, "schemas")))
+}
+
+dependencies {
+    api project(':core')
+
+    def aac_room_ver = '2.8.5'
+    api "androidx.room:room-runtime:$aac_room_ver"
+    implementation "androidx.room:room-ktx:$aac_room_ver"
+    api "androidx.room:room-paging:$aac_room_ver"
+    ksp "androidx.room:room-compiler:$aac_room_ver"
+
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0"
+
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation "com.google.truth:truth:1.4.5"
+    testImplementation "androidx.room:room-testing:$aac_room_ver"
+}
+
+class RoomSchemaArgProvider implements CommandLineArgumentProvider {
+
+    @InputDirectory
+    @PathSensitive(PathSensitivity.RELATIVE)
+    File schemaDir
+
+    RoomSchemaArgProvider(File schemaDir) {
+        if (!schemaDir.exists()) schemaDir.mkdir()
+        this.schemaDir = schemaDir
+    }
+
+    @Override
+    Iterable<String> asArguments() {
+        return ["room.schemaLocation=${schemaDir.path}".toString()]
+    }
+}
