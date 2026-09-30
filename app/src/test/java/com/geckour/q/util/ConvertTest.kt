@@ -6,13 +6,23 @@ import org.junit.Test
 class ConvertTest {
 
     @Test
+    fun `Test getReadableString with zero`() {
+        Truth.assertThat(0f.getReadableStringWithUnit()).isEqualTo("0")
+    }
+
+    @Test
+    fun `Test k suffix getReadableString with decimal and specifying digitToKeep`() {
+        Truth.assertThat(1234f.getReadableStringWithUnit(digitToKeep = 3)).isEqualTo("1.234k")
+    }
+
+    @Test
     fun `Test k suffix getReadableString with no specifying digitToKeep`() {
         Truth.assertThat(1000f.getReadableStringWithUnit()).isEqualTo("1k")
     }
 
     @Test
     fun `Test k suffix getReadableString with decimal and no specifying digitToKeep`() {
-        Truth.assertThat(1234f.getReadableStringWithUnit()).isEqualTo("1.234k")
+        Truth.assertThat(1234f.getReadableStringWithUnit()).isEqualTo("1.23k")
     }
 
     @Test
@@ -22,7 +32,7 @@ class ConvertTest {
 
     @Test
     fun `Test M suffix getReadableString with decimal and no specifying digitToKeep`() {
-        Truth.assertThat(1234567f.getReadableStringWithUnit()).isEqualTo("1.235M")
+        Truth.assertThat(1234567f.getReadableStringWithUnit()).isEqualTo("1.23M")
     }
 
     @Test
@@ -32,7 +42,7 @@ class ConvertTest {
 
     @Test
     fun `Test k suffix getReadableString with minus value and decimal and no specifying digitToKeep`() {
-        Truth.assertThat((-1234).toFloat().getReadableStringWithUnit()).isEqualTo("-1.234k")
+        Truth.assertThat((-1234).toFloat().getReadableStringWithUnit()).isEqualTo("-1.23k")
     }
 
     @Test
@@ -42,7 +52,7 @@ class ConvertTest {
 
     @Test
     fun `Test M suffix getReadableString with minus value and decimal and no specifying digitToKeep`() {
-        Truth.assertThat((-1234567).toFloat().getReadableStringWithUnit()).isEqualTo("-1.235M")
+        Truth.assertThat((-1234567).toFloat().getReadableStringWithUnit()).isEqualTo("-1.23M")
     }
 
     @Test
@@ -52,7 +62,7 @@ class ConvertTest {
 
     @Test
     fun `Test m suffix getReadableString with decimal and no specifying digitToKeep`() {
-        Truth.assertThat(0.001234f.getReadableStringWithUnit()).isEqualTo("1.234m")
+        Truth.assertThat(0.001234f.getReadableStringWithUnit()).isEqualTo("1.23m")
     }
 
     @Test
@@ -62,7 +72,7 @@ class ConvertTest {
 
     @Test
     fun `Test μ suffix getReadableString with decimal and no specifying digitToKeep`() {
-        Truth.assertThat(0.000001234567f.getReadableStringWithUnit()).isEqualTo("1.235μ")
+        Truth.assertThat(0.000001234567f.getReadableStringWithUnit()).isEqualTo("1.23μ")
     }
 
     @Test
@@ -72,7 +82,7 @@ class ConvertTest {
 
     @Test
     fun `Test m suffix getReadableString with minus value and decimal and no specifying digitToKeep`() {
-        Truth.assertThat((-0.001234).toFloat().getReadableStringWithUnit()).isEqualTo("-1.234m")
+        Truth.assertThat((-0.001234).toFloat().getReadableStringWithUnit()).isEqualTo("-1.23m")
     }
 
     @Test
@@ -82,7 +92,7 @@ class ConvertTest {
 
     @Test
     fun `Test μ suffix getReadableString with minus value and decimal and no specifying digitToKeep`() {
-        Truth.assertThat((-0.000001234567).toFloat().getReadableStringWithUnit()).isEqualTo("-1.235μ")
+        Truth.assertThat((-0.000001234567).toFloat().getReadableStringWithUnit()).isEqualTo("-1.23μ")
     }
 
     @Test
