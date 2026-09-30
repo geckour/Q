@@ -1,26 +1,24 @@
-package com.geckour.q.util
+package com.geckour.q.spotify
 
 import android.content.Context
-import com.geckour.q.BuildConfig
-import com.geckour.q.domain.model.UiTrack
 import com.spotify.android.appremote.api.ConnectionParams
 import com.spotify.android.appremote.api.Connector
 import com.spotify.android.appremote.api.SpotifyAppRemote
 import com.spotify.sdk.android.auth.AuthorizationRequest
 import com.spotify.sdk.android.auth.AuthorizationResponse
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 import kotlin.time.Duration.Companion.seconds
 
-val SPOTIFY_REDIRECT_URI = "${BuildConfig.APPLICATION_ID}://spotify-auth"
+private const val SPOTIFY_REDIRECT_URI_SUFFIX = "://spotify-auth"
 
 private const val SPOTIFY_SOURCE_PATH_PREFIX = "spotify:"
 
@@ -58,14 +56,19 @@ val String.spotifyWebUrl: String
 
 fun isSpotifyInstalled(context: Context): Boolean = SpotifyAppRemote.isSpotifyInstalled(context)
 
-val UiTrack.isSpotify: Boolean get() = sourcePath.isSpotifySourcePath
-
 @Serializable
 data class SpotifyCredential(
     val accessToken: String,
     val refreshToken: String?,
     val expiresAt: Long,
 )
+
+interface SpotifyCredentialStore {
+
+    suspend fun get(): SpotifyCredential?
+
+    suspend fun set(credential: SpotifyCredential?)
+}
 
 class SpotifyAuthRequiredException : IllegalStateException("Spotify authorization is required")
 
@@ -89,18 +92,18 @@ object SpotifyPlaybackErrorState {
     }
 }
 
-fun createSpotifyAuthorizationRequest(): AuthorizationRequest =
+fun createSpotifyAuthorizationRequest(context: Context): AuthorizationRequest =
     AuthorizationRequest.Builder(
         BuildConfig.SPOTIFY_CLIENT_ID,
         AuthorizationResponse.Type.TOKEN,
-        SPOTIFY_REDIRECT_URI,
+        context.spotifyRedirectUri,
     )
         .setScopes(spotifyScopes)
         .build()
 
-fun createSpotifyConnectionParams(showAuthView: Boolean): ConnectionParams =
+fun createSpotifyConnectionParams(context: Context, showAuthView: Boolean): ConnectionParams =
     ConnectionParams.Builder(BuildConfig.SPOTIFY_CLIENT_ID)
-        .setRedirectUri(SPOTIFY_REDIRECT_URI)
+        .setRedirectUri(context.spotifyRedirectUri)
         .showAuthView(showAuthView)
         .build()
 
@@ -108,7 +111,7 @@ suspend fun authorizeSpotifyAppRemote(context: Context) {
     val appRemote = suspendCancellableCoroutine { continuation ->
         SpotifyAppRemote.connect(
             context,
-            createSpotifyConnectionParams(showAuthView = true),
+            createSpotifyConnectionParams(context, showAuthView = true),
             object : Connector.ConnectionListener {
                 override fun onConnected(appRemote: SpotifyAppRemote) {
                     if (continuation.isActive) continuation.resume(appRemote)
@@ -135,7 +138,7 @@ suspend fun playOnSpotify(context: Context, uri: String) {
     val appRemote = suspendCancellableCoroutine { continuation ->
         SpotifyAppRemote.connect(
             context,
-            createSpotifyConnectionParams(showAuthView = false),
+            createSpotifyConnectionParams(context, showAuthView = false),
             object : Connector.ConnectionListener {
                 override fun onConnected(appRemote: SpotifyAppRemote) {
                     if (continuation.isActive) continuation.resume(appRemote)
@@ -156,6 +159,9 @@ suspend fun playOnSpotify(context: Context, uri: String) {
         SpotifyAppRemote.disconnect(appRemote)
     }
 }
+
+private val Context.spotifyRedirectUri: String
+    get() = packageName + SPOTIFY_REDIRECT_URI_SUFFIX
 
 private suspend fun SpotifyAppRemote.getCanPlayOnDemand(): Boolean? =
     suspendCancellableCoroutine { continuation ->

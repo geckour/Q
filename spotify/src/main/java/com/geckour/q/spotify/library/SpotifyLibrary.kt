@@ -1,7 +1,7 @@
-package com.geckour.q.util
+package com.geckour.q.spotify.library
 
 import com.geckour.q.data.db.model.SpotifyTrack
-import com.geckour.q.domain.model.SpotifyContainer
+import com.geckour.q.spotify.model.SpotifyContainer
 
 private const val SPOTIFY_LIBRARY_URI_PREFIX = "q:spotify-library:"
 

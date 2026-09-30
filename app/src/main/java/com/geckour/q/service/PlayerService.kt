@@ -44,6 +44,7 @@ import androidx.mediarouter.media.MediaRouteSelector
 import androidx.mediarouter.media.MediaRouter
 import com.geckour.q.App
 import com.geckour.q.R
+import com.geckour.q.core.util.removedAt
 import com.geckour.q.data.LrcLibApiClient
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.EqualizerLevelRatio
@@ -56,6 +57,9 @@ import com.geckour.q.data.db.model.TrackRef
 import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.PlayerState
 import com.geckour.q.domain.model.QAudioDeviceInfo
+import com.geckour.q.spotify.isSpotifySourcePath
+import com.geckour.q.spotify.playback.SpotifyAwareMediaSourceFactory
+import com.geckour.q.spotify.playback.SpotifyPlaybackSync
 import com.geckour.q.ui.LauncherActivity
 import com.geckour.q.ui.widget.player.PlayerSheetWidgetProvider
 import com.geckour.q.util.InsertActionType
@@ -71,10 +75,8 @@ import com.geckour.q.util.getMediaItem
 import com.geckour.q.util.getMediaItemOrNull
 import com.geckour.q.util.getSelectedEqualizerPresetId
 import com.geckour.q.util.isSpotify
-import com.geckour.q.util.isSpotifySourcePath
 import com.geckour.q.util.obtainDbxClient
 import com.geckour.q.util.orderModified
-import com.geckour.q.core.util.removedAt
 import com.geckour.q.util.setActiveQAudioDeviceInfo
 import com.geckour.q.util.setEqualizerParams
 import com.geckour.q.util.setSelectedEqualizerPresetId

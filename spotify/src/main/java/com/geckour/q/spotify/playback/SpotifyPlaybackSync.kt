@@ -1,4 +1,4 @@
-package com.geckour.q.service
+package com.geckour.q.spotify.playback
 
 import android.content.Context
 import android.os.SystemClock
@@ -6,11 +6,11 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.Timeline
-import com.geckour.q.util.SpotifyPlaybackErrorState
-import com.geckour.q.util.SpotifyPlaybackStartTimeoutException
-import com.geckour.q.util.SpotifyPremiumRequiredException
-import com.geckour.q.util.createSpotifyConnectionParams
-import com.geckour.q.util.isSpotifySourcePath
+import com.geckour.q.spotify.SpotifyPlaybackErrorState
+import com.geckour.q.spotify.SpotifyPlaybackStartTimeoutException
+import com.geckour.q.spotify.SpotifyPremiumRequiredException
+import com.geckour.q.spotify.createSpotifyConnectionParams
+import com.geckour.q.spotify.isSpotifySourcePath
 import com.spotify.android.appremote.api.Connector
 import com.spotify.android.appremote.api.SpotifyAppRemote
 import com.spotify.android.appremote.api.error.CouldNotFindSpotifyApp
@@ -380,7 +380,7 @@ class SpotifyPlaybackSync(
         isConnecting = true
         SpotifyAppRemote.connect(
             context,
-            createSpotifyConnectionParams(showAuthView = false),
+            createSpotifyConnectionParams(context, showAuthView = false),
             object : Connector.ConnectionListener {
                 override fun onConnected(remote: SpotifyAppRemote) {
                     scope.launch { onAppRemoteConnected(remote) }

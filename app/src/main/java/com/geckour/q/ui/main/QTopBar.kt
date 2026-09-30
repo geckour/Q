@@ -25,13 +25,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import com.geckour.q.R
+import com.geckour.q.core.model.MediaItem
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.domain.model.AllArtists
-import com.geckour.q.core.model.MediaItem
-import com.geckour.q.domain.model.SpotifyContainer
 import com.geckour.q.domain.model.SpotifyRecommendedRoot
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.spotify.model.SpotifyContainer
 import com.geckour.q.ui.compose.QTheme
 import kotlinx.coroutines.launch
 

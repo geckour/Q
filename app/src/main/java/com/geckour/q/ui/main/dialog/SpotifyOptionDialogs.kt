@@ -5,13 +5,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import com.geckour.q.R
 import com.geckour.q.data.db.model.SpotifyTrack
-import com.geckour.q.domain.model.SpotifyContainer
+import com.geckour.q.spotify.isSpotifyInstalled
+import com.geckour.q.spotify.library.isInLibrary
+import com.geckour.q.spotify.model.SpotifyContainer
 import com.geckour.q.ui.component.QOption
 import com.geckour.q.ui.component.QOptionDialog
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.util.isInLibrary
-import com.geckour.q.util.isSpotifyInstalled
 import com.geckour.q.util.toUiTrack
 
 @Composable

@@ -77,21 +77,6 @@
         </activity>
 
         <activity
-            android:name="com.spotify.sdk.android.auth.browser.RedirectUriReceiverActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.VIEW" />
-
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-
-                <data
-                    android:host="spotify-auth"
-                    android:scheme="${applicationId}" />
-            </intent-filter>
-        </activity>
-
-        <activity
             android:name=".ui.instant.InstantPlayerActivity"
             android:excludeFromRecents="true"
             android:exported="true"

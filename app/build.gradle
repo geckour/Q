@@ -11,7 +11,6 @@ android {
 
     def keyNameDropBoxAppKey = "DROPBOX_APP_KEY"
     def keyNameDropBoxAppSecret = "DROPBOX_APP_SECRET"
-    def keyNameSpotifyClientId = "SPOTIFY_CLIENT_ID"
 
     buildFeatures.buildConfig true
 
@@ -26,7 +25,6 @@ android {
 
         buildConfigField "String", keyNameDropBoxAppKey, getQuotedKey(keyNameDropBoxAppKey, project.rootDir)
         buildConfigField "String", keyNameDropBoxAppSecret, getQuotedKey(keyNameDropBoxAppSecret, project.rootDir)
-        buildConfigField "String", keyNameSpotifyClientId, quoted(getKey(keyNameSpotifyClientId, project.rootDir) ?: "")
 
         manifestPlaceholders = [
                 dropboxAppKey: "db-" + getKey(keyNameDropBoxAppKey, project.rootDir)
@@ -92,6 +90,7 @@ dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation project(':core')
     implementation project(':database')
+    implementation project(':spotify')
     implementation "org.jetbrains.kotlinx:kotlinx-collections-immutable:0.5.2"
     implementation 'androidx.constraintlayout:constraintlayout:2.2.2'
     implementation 'androidx.appcompat:appcompat:1.8.0'
@@ -155,7 +154,6 @@ dependencies {
     implementation "io.coil-kt.coil3:coil-network-okhttp:$coil_ver"
 
     // Player
-    def media3_ver = "1.11.1"
     implementation "androidx.media3:media3-session:$media3_ver"
     implementation "androidx.media3:media3-exoplayer:$media3_ver"
     implementation "androidx.media3:media3-decoder-ffmpeg:$media3_ver"
@@ -187,11 +185,6 @@ dependencies {
     // Dropbox
     implementation 'com.dropbox.core:dropbox-core-sdk:8.0.2'
     implementation 'com.dropbox.core:dropbox-android-sdk:8.0.2'
-
-    // Spotify
-    implementation "com.spotify.android:auth:5.0.0"
-    implementation files('libs/spotify-app-remote-release-0.8.0.aar')
-    implementation "com.google.code.gson:gson:2.14.0"
 
     // Audio Metadata
     implementation "net.jthink:jaudiotagger:3.0.1"

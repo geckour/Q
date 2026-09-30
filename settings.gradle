@@ -24,6 +24,9 @@ dependencyResolutionManagement {
                 includeModule('androidx.media3', 'media3-decoder-ffmpeg')
             }
         }
+        flatDir {
+            dirs 'spotify/libs'
+        }
     }
 }
 
@@ -33,4 +36,4 @@ static def getKey(keyName, File settingsDir) {
     return props[keyName]
 }
 
-include ':app', ':core', ':database'
+include ':app', ':core', ':database', ':spotify'

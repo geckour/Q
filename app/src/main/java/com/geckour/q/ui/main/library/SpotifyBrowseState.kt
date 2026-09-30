@@ -1,7 +1,7 @@
 package com.geckour.q.ui.main.library
 
 import com.geckour.q.data.db.model.SpotifyTrack
-import com.geckour.q.domain.model.SpotifyContainer
+import com.geckour.q.spotify.model.SpotifyContainer
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.ImmutableMap
 import kotlinx.collections.immutable.persistentListOf

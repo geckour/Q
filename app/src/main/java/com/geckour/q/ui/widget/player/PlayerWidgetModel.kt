@@ -26,6 +26,7 @@ import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.service.PlayerService
+import com.geckour.q.spotify.isSpotifySourcePath
 import com.geckour.q.ui.compose.ColorBackgroundBottomSheet
 import com.geckour.q.ui.compose.ColorBackgroundBottomSheetInverse
 import com.geckour.q.ui.compose.ColorInactive
@@ -38,7 +39,6 @@ import com.geckour.q.ui.compose.ColorTextSecondary
 import com.geckour.q.ui.compose.ColorTextSecondaryInverse
 import com.geckour.q.ui.compose.ColorWeakAccent
 import com.geckour.q.ui.compose.ColorWeakAccentInverse
-import com.geckour.q.util.isSpotifySourcePath
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList

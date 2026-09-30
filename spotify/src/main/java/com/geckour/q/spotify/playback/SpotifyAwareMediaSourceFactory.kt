@@ -1,4 +1,4 @@
-package com.geckour.q.service
+package com.geckour.q.spotify.playback
 
 import androidx.annotation.OptIn
 import androidx.media3.common.C
@@ -11,8 +11,8 @@ import androidx.media3.exoplayer.source.SilenceMediaSource
 import androidx.media3.exoplayer.upstream.CmcdConfiguration
 import androidx.media3.exoplayer.upstream.LoadErrorHandlingPolicy
 import androidx.media3.extractor.text.SubtitleParser
-import com.geckour.q.util.SPOTIFY_TRAILING_SILENCE_MILLIS
-import com.geckour.q.util.isSpotifySourcePath
+import com.geckour.q.spotify.SPOTIFY_TRAILING_SILENCE_MILLIS
+import com.geckour.q.spotify.isSpotifySourcePath
 
 @OptIn(UnstableApi::class)
 class SpotifyAwareMediaSourceFactory(

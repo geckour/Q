@@ -1,23 +1,23 @@
 package com.geckour.q.ui.main
 
 import androidx.navigation.NavHostController
+import com.geckour.q.core.model.MediaItem
+import com.geckour.q.core.util.encodeUrlSafe
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.domain.model.AllArtists
 import com.geckour.q.domain.model.Genre
-import com.geckour.q.core.model.MediaItem
 import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.SearchItem
-import com.geckour.q.domain.model.SpotifyContainer
-import com.geckour.q.ui.main.library.SpotifyBrowseSource
 import com.geckour.q.domain.model.SpotifyRecommendedRoot
 import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.spotify.model.SpotifyContainer
 import com.geckour.q.ui.main.dialog.DialogEvent
 import com.geckour.q.ui.main.dialog.DialogState
+import com.geckour.q.ui.main.library.SpotifyBrowseSource
 import com.geckour.q.util.ShuffleActionType
-import com.geckour.q.core.util.encodeUrlSafe
 import kotlinx.collections.immutable.toImmutableList
 
 interface MainActions {

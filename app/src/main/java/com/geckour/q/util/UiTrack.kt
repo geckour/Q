@@ -12,6 +12,7 @@ import com.geckour.q.data.db.model.JoinedTrackHistory
 import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.data.db.model.TrackRef
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.spotify.isSpotifySourcePath
 import java.util.Locale
 import kotlin.random.Random
 
@@ -107,6 +108,8 @@ fun JoinedTrackHistory.toUiTrack(): UiTrack? =
 
 fun JoinedSavedQueueTrack.toUiTrack(): UiTrack? =
     joinedTrack?.toUiTrack() ?: spotifyTrack?.toUiTrack()
+
+val UiTrack.isSpotify: Boolean get() = sourcePath.isSpotifySourcePath
 
 val UiTrack.trackRef: TrackRef
     get() = if (isSpotify) TrackRef.ofSpotify(sourcePath) else TrackRef(id)

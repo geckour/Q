@@ -5,10 +5,10 @@ import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.SpotifyTrack
-import com.geckour.q.domain.model.SpotifyContainer
 import com.geckour.q.domain.model.Genre
 import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.spotify.model.SpotifyContainer
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 

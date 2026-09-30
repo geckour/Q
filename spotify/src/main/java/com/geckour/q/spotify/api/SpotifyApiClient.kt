@@ -1,20 +1,17 @@
-package com.geckour.q.data
+package com.geckour.q.spotify.api
 
-import android.content.Context
 import android.os.LocaleList
-import com.geckour.q.BuildConfig
-import com.geckour.q.data.db.model.SpotifyTrack
-import com.geckour.q.domain.model.SpotifyContainer
-import com.geckour.q.domain.model.SpotifyContainerPage
-import com.geckour.q.domain.model.SpotifySearchPage
-import com.geckour.q.domain.model.SpotifyTrackPage
-import com.geckour.q.util.SpotifyAuthRequiredException
-import com.geckour.q.util.SpotifyCredential
 import com.geckour.q.core.util.UNKNOWN
-import com.geckour.q.util.getSpotifyCredential
-import com.geckour.q.util.setSpotifyCredential
+import com.geckour.q.data.db.model.SpotifyTrack
+import com.geckour.q.spotify.BuildConfig
+import com.geckour.q.spotify.SpotifyAuthRequiredException
+import com.geckour.q.spotify.SpotifyCredential
+import com.geckour.q.spotify.SpotifyCredentialStore
+import com.geckour.q.spotify.model.SpotifyContainer
+import com.geckour.q.spotify.model.SpotifyContainerPage
+import com.geckour.q.spotify.model.SpotifySearchPage
+import com.geckour.q.spotify.model.SpotifyTrackPage
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -35,7 +32,7 @@ import java.util.concurrent.TimeUnit
 
 class SpotifyApiException(val code: Int) : IOException("Spotify responded with $code")
 
-class SpotifyApiClient(private val context: Context) {
+class SpotifyApiClient(private val credentialStore: SpotifyCredentialStore) {
 
     companion object {
 
@@ -76,7 +73,7 @@ class SpotifyApiClient(private val context: Context) {
     private var currentUserId: String? = null
 
     suspend fun storeCredential(accessToken: String, refreshToken: String?, expiresInSeconds: Int) {
-        context.setSpotifyCredential(
+        credentialStore.set(
             SpotifyCredential(
                 accessToken = accessToken,
                 refreshToken = refreshToken,
@@ -87,7 +84,7 @@ class SpotifyApiClient(private val context: Context) {
 
     suspend fun clearCredential() {
         currentUserId = null
-        context.setSpotifyCredential(null)
+        credentialStore.set(null)
     }
 
     suspend fun search(query: String, offset: Int): SpotifySearchPage {
@@ -311,8 +308,7 @@ class SpotifyApiClient(private val context: Context) {
     }
 
     private suspend fun getAccessToken(forceRefresh: Boolean): String = tokenMutex.withLock {
-        val credential =
-            context.getSpotifyCredential().first() ?: throw SpotifyAuthRequiredException()
+        val credential = credentialStore.get() ?: throw SpotifyAuthRequiredException()
         if (forceRefresh.not() &&
             credential.expiresAt - TOKEN_EXPIRY_MARGIN_MILLIS > System.currentTimeMillis()
         ) {

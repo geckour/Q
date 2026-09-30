@@ -43,13 +43,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.geckour.q.R
-import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.core.model.MediaItem
-import com.geckour.q.domain.model.SpotifyContainer
+import com.geckour.q.core.util.getTimeString
+import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.domain.model.SpotifyRecommendedRoot
+import com.geckour.q.spotify.model.SpotifyContainer
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.ui.main.dialog.DialogEvent
-import com.geckour.q.core.util.getTimeString
 import kotlinx.coroutines.delay
 import kotlin.time.Duration.Companion.milliseconds
 

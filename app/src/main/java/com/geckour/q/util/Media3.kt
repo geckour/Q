@@ -9,6 +9,7 @@ import com.geckour.q.core.util.releaseDates
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.SpotifyTrack
+import com.geckour.q.spotify.isSpotifySourcePath
 
 suspend fun String.getMediaItem(context: Context): MediaItem =
     getMediaItemOrNull(context) ?: this.getMediaItem()

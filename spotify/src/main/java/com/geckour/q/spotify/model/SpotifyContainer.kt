@@ -1,4 +1,4 @@
-package com.geckour.q.domain.model
+package com.geckour.q.spotify.model
 
 import com.geckour.q.core.model.MediaItem
 

@@ -15,7 +15,7 @@ Media3 を更新するときの手順。
    GPR_USER=... GPR_TOKEN=... ./gradlew :lib-decoder-ffmpeg:publish \
      -PmavenRepo=https://maven.pkg.github.com/geckour/Q
    ```
-4. `app/build.gradle` の `media3_ver` を上げる
+4. ルートの `build.gradle` の `media3_ver` を上げる（app と spotify の両モジュールが参照している）
 5. FFmpeg のバージョンやデコーダ構成を変えた場合は、`license_text_ffmpeg` の記載（バージョン、デコーダ一覧）も更新する。LGPL の表示義務があるため必須
 
 ビルドには JDK 21 以上が必要（AGP の lint が JDK 21 の API を使うため、17 では `lintVitalAnalyzeRelease` が落ちる）。CI は 25 を使う。

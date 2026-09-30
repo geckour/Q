@@ -37,31 +37,31 @@ import com.dropbox.core.DbxHost
 import com.dropbox.core.android.Auth
 import com.geckour.q.BuildConfig
 import com.geckour.q.R
+import com.geckour.q.core.model.MediaItem
+import com.geckour.q.core.util.getExtension
 import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.domain.model.LayoutType
-import com.geckour.q.core.model.MediaItem
 import com.geckour.q.domain.model.Nav
-import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.PlaybackButton
+import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.service.DropboxMediaSyncJobService
+import com.geckour.q.spotify.authorizeSpotifyAppRemote
+import com.geckour.q.spotify.createSpotifyAuthorizationRequest
+import com.geckour.q.spotify.isSpotifyInstalled
+import com.geckour.q.spotify.model.SpotifyContainer
+import com.geckour.q.spotify.playOnSpotify
+import com.geckour.q.spotify.spotifyTrackRadioUri
+import com.geckour.q.spotify.spotifyWebUrl
 import com.geckour.q.ui.compose.ColorBackground
 import com.geckour.q.ui.compose.ColorBackgroundInverse
 import com.geckour.q.ui.compose.ColorPrimaryDark
 import com.geckour.q.ui.compose.ColorPrimaryDarkInverse
-import com.geckour.q.domain.model.SpotifyContainer
-import com.geckour.q.ui.main.library.SpotifyBrowseSource
 import com.geckour.q.ui.main.dialog.DialogEvent
 import com.geckour.q.ui.main.dialog.DialogState
+import com.geckour.q.ui.main.library.SpotifyBrowseSource
 import com.geckour.q.ui.widget.player.PlayerSheetWidgetProvider
 import com.geckour.q.util.ShuffleActionType
-import com.geckour.q.util.authorizeSpotifyAppRemote
-import com.geckour.q.util.createSpotifyAuthorizationRequest
 import com.geckour.q.util.dbxRequestConfig
-import com.geckour.q.util.isSpotifyInstalled
-import com.geckour.q.util.playOnSpotify
-import com.geckour.q.util.spotifyTrackRadioUri
-import com.geckour.q.util.spotifyWebUrl
-import com.geckour.q.core.util.getExtension
 import com.geckour.q.util.parseLrc
 import com.geckour.q.worker.LocalMediaRetrieveWorker
 import com.geckour.q.worker.MEDIA_RETRIEVE_WORKER_NAME
@@ -597,7 +597,7 @@ class MainActivity : ComponentActivity() {
                 spotifyAuth.launch(
                     AuthorizationClient.createLoginActivityIntent(
                         this,
-                        createSpotifyAuthorizationRequest(),
+                        createSpotifyAuthorizationRequest(this),
                     )
                 )
                 viewModel.dismissDialog()

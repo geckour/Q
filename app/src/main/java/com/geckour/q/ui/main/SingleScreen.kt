@@ -30,12 +30,12 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
+import com.geckour.q.spotify.isSpotifyConfigured
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.ui.main.dialog.DialogState
 import com.geckour.q.ui.main.dialog.Dialogs
 import com.geckour.q.ui.main.library.Library
 import com.geckour.q.ui.main.player.PlayerSheet
-import com.geckour.q.util.isSpotifyConfigured
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.sin

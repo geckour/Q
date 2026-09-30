@@ -3,8 +3,8 @@ package com.geckour.q.ui.main.dialog
 import com.dropbox.core.v2.files.FolderMetadata
 import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.data.db.model.TrackRef
-import com.geckour.q.domain.model.SpotifyContainer
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.spotify.model.SpotifyContainer
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 

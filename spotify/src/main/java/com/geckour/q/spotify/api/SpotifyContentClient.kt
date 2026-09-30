@@ -1,11 +1,11 @@
-package com.geckour.q.data
+package com.geckour.q.spotify.api
 
 import android.content.Context
-import com.geckour.q.domain.model.SpotifyContainer
-import com.geckour.q.domain.model.SpotifyContentItem
-import com.geckour.q.domain.model.SpotifyContentPage
 import com.geckour.q.core.util.UNKNOWN
-import com.geckour.q.util.createSpotifyConnectionParams
+import com.geckour.q.spotify.createSpotifyConnectionParams
+import com.geckour.q.spotify.model.SpotifyContainer
+import com.geckour.q.spotify.model.SpotifyContentItem
+import com.geckour.q.spotify.model.SpotifyContentPage
 import com.spotify.android.appremote.api.Connector
 import com.spotify.android.appremote.api.ContentApi
 import com.spotify.android.appremote.api.SpotifyAppRemote
@@ -14,9 +14,9 @@ import com.spotify.protocol.types.ImageUri
 import com.spotify.protocol.types.ListItem
 import com.spotify.protocol.types.ListItems
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
@@ -94,7 +94,7 @@ class SpotifyContentClient(private val context: Context) {
         return suspendCancellableCoroutine { continuation ->
             SpotifyAppRemote.connect(
                 context,
-                createSpotifyConnectionParams(showAuthView = false),
+                createSpotifyConnectionParams(context, showAuthView = false),
                 object : Connector.ConnectionListener {
                     override fun onConnected(appRemote: SpotifyAppRemote) {
                         this@SpotifyContentClient.appRemote = appRemote
