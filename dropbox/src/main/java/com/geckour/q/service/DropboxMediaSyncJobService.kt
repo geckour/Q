@@ -1,7 +1,6 @@
 package com.geckour.q.service
 
 import android.app.Notification
-import android.app.PendingIntent
 import android.app.job.JobInfo
 import android.app.job.JobParameters
 import android.app.job.JobScheduler
@@ -26,26 +25,22 @@ import com.dropbox.core.ServerException
 import com.dropbox.core.v2.DbxClientV2
 import com.dropbox.core.v2.files.FileMetadata
 import com.dropbox.core.v2.files.FolderMetadata
-import com.geckour.q.App
-import com.geckour.q.R
 import com.geckour.q.core.util.getExtension
+import com.geckour.q.core.util.getReadableStringWithUnit
 import com.geckour.q.core.util.getTimeString
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Track
-import com.geckour.q.domain.model.SyncProgress
-import com.geckour.q.domain.model.SyncSizeAlert
-import com.geckour.q.ui.LauncherActivity
-import com.geckour.q.util.DROPBOX_EXPIRES_IN
-import com.geckour.q.util.DownloadFailedException
-import com.geckour.q.util.QNotificationChannel
-import com.geckour.q.util.SyncProgressState
-import com.geckour.q.util.SyncSizeAlertState
-import com.geckour.q.util.getNotificationBuilder
-import com.geckour.q.util.getReadableStringWithUnit
-import com.geckour.q.util.isDownloaded
-import com.geckour.q.util.obtainDbxClient
-import com.geckour.q.util.saveAudioFileFromUrl
-import com.geckour.q.util.saveTempAudioFileFromUrl
+import com.geckour.q.dropbox.DROPBOX_EXPIRES_IN
+import com.geckour.q.dropbox.DownloadFailedException
+import com.geckour.q.dropbox.DropboxSyncEnvironment
+import com.geckour.q.dropbox.R
+import com.geckour.q.dropbox.SyncProgressState
+import com.geckour.q.dropbox.SyncSizeAlertState
+import com.geckour.q.dropbox.isDownloaded
+import com.geckour.q.dropbox.model.SyncProgress
+import com.geckour.q.dropbox.model.SyncSizeAlert
+import com.geckour.q.dropbox.saveAudioFileFromUrl
+import com.geckour.q.dropbox.saveTempAudioFileFromUrl
 import com.geckour.q.worker.storeMediaInfo
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -59,7 +54,6 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -68,6 +62,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import org.koin.android.ext.android.inject
 import timber.log.Timber
 import java.io.File
 import java.util.UUID
@@ -218,6 +213,7 @@ class DropboxMediaSyncJobService : JobService() {
         val urlExpiredAt: Long,
     )
 
+    private val environment: DropboxSyncEnvironment by inject()
     private val db by lazy { DB.getInstance(this) }
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val dbMutex = Mutex()
@@ -375,7 +371,7 @@ class DropboxMediaSyncJobService : JobService() {
             }
 
         suspend fun execute() {
-            val client = obtainDbxClient(applicationContext).firstOrNull() ?: return
+            val client = environment.obtainClient() ?: return
 
             updateProgress()
 
@@ -897,20 +893,13 @@ class DropboxMediaSyncJobService : JobService() {
     }
 
     private fun getNotification(text: String, progressFraction: Float, seed: Long): Notification =
-        getNotificationBuilder(QNotificationChannel.NOTIFICATION_CHANNEL_ID_RETRIEVER)
+        NotificationCompat.Builder(this, environment.notificationChannelId)
             .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setSmallIcon(R.drawable.ic_notification_sync)
             .setLargeIcon(notificationBitmap.drawProgressIcon(progressFraction, seed))
             .setOngoing(true)
             .setShowWhen(false)
-            .setContentIntent(
-                PendingIntent.getActivity(
-                    applicationContext,
-                    App.REQUEST_CODE_LAUNCH_APP,
-                    LauncherActivity.createIntent(applicationContext),
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-            )
+            .setContentIntent(environment.createContentIntent())
             .setContentTitle(getString(R.string.notification_title_retriever))
             .setContentText(text)
             .build()

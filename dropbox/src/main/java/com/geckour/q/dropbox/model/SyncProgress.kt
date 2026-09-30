@@ -1,4 +1,4 @@
-package com.geckour.q.domain.model
+package com.geckour.q.dropbox.model
 
 data class SyncProgress(
     val title: String,

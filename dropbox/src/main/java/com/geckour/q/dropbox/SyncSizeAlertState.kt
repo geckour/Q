@@ -1,6 +1,6 @@
-package com.geckour.q.util
+package com.geckour.q.dropbox
 
-import com.geckour.q.domain.model.SyncSizeAlert
+import com.geckour.q.dropbox.model.SyncSizeAlert
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 

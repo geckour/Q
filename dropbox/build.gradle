@@ -1,0 +1,26 @@
+plugins {
+    id 'com.android.library'
+    id 'kotlinx-serialization'
+}
+
+android {
+    namespace "com.geckour.q.dropbox"
+
+    compileSdk = 37
+    defaultConfig {
+        minSdk 34
+    }
+}
+
+dependencies {
+    api project(':database')
+    implementation project(':worker')
+
+    api 'com.dropbox.core:dropbox-core-sdk:8.0.2'
+
+    implementation "androidx.core:core-ktx:1.19.1"
+    implementation "io.insert-koin:koin-android:4.2.2"
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2"
+    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json:1.11.0"
+    implementation "com.squareup.okhttp3:okhttp:5.5.0"
+}

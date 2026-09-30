@@ -1,5 +1,7 @@
 package com.geckour.q.core.util
 
+import kotlin.math.abs
+
 fun Long.getNumberWithUnitPrefix(
     index: Int = 0,
     onFormat: (value: Long, prefix: String) -> String
@@ -12,3 +14,35 @@ fun Long.getNumberWithUnitPrefix(
         (this / 1000).getNumberWithUnitPrefix(index + 1, onFormat)
     }
 }
+
+fun Float.getReadableStringWithUnit(digitToKeep: Int = 2): String {
+    if (this == 0f) {
+        return "0"
+    }
+
+    val sign = if (this < 0) -1 else 1
+    var absReturnValue = abs(this)
+    var count = 0
+
+    return if (absReturnValue < 1) {
+        val suffixList: List<String> = listOf("", "m", "μ", "n", "p", "f", "a", "z", "y")
+        while (absReturnValue < 1) {
+            absReturnValue *= 1000
+            count++
+        }
+        val suffix = suffixList.getOrNull(count) ?: return this.toString()
+        (absReturnValue * sign).format(suffix, digitToKeep)
+    } else {
+        val suffixList: List<String> = listOf("", "k", "M", "G", "T", "P", "E", "Z", "Y")
+        while (absReturnValue >= 1000) {
+            absReturnValue /= 1000
+            count++
+        }
+        val suffix = suffixList.getOrNull(count) ?: return this.toString()
+        (absReturnValue * sign).format(suffix, digitToKeep)
+    }
+}
+
+private fun Float.format(suffix: String, digitToKeep: Int): String =
+    String.format("%.${digitToKeep}f", this)
+        .replace(Regex("^(.+)\\.0+$"), "$1") + suffix

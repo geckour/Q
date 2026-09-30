@@ -40,8 +40,8 @@ import androidx.navigation.NavHostController
 import androidx.window.layout.FoldingFeature
 import com.geckour.q.domain.model.LayoutType
 import com.geckour.q.domain.model.QAudioDeviceInfo
-import com.geckour.q.domain.model.SyncSizeAlert
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.dropbox.model.SyncSizeAlert
 import com.geckour.q.spotify.isSpotifyConfigured
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.ui.main.dialog.DialogState

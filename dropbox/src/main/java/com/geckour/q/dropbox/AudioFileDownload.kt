@@ -1,4 +1,4 @@
-package com.geckour.q.util
+package com.geckour.q.dropbox
 
 import android.content.Context
 import com.geckour.q.core.util.getExtension

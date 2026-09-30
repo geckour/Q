@@ -2,6 +2,7 @@ package com.geckour.q.data
 
 import androidx.preference.PreferenceManager
 import com.geckour.q.data.db.DB
+import com.geckour.q.dropbox.DropboxSyncEnvironment
 import com.geckour.q.spotify.api.SpotifyApiClient
 import com.geckour.q.spotify.api.SpotifyContentClient
 import org.koin.android.ext.koin.androidApplication
@@ -26,5 +27,9 @@ val dataModule = module {
 
     single {
         SpotifyContentClient(androidApplication())
+    }
+
+    single<DropboxSyncEnvironment> {
+        AppDropboxSyncEnvironment(androidApplication())
     }
 }

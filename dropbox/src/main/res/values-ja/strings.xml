@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_title_retriever">メディアを探索中</string>
+    <string name="notification_text_retriever">残り %d ファイル\nライブラリを同期しています…</string>
+    <string name="notification_text_retriever_with_path">残り %1$d ファイル (%2$s/%3$s 処理済み) %4$d ファイルスキップ\nあと %5$s\nライブラリを同期しています…\n%6$s</string>
+</resources>

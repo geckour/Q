@@ -27,6 +27,7 @@ import com.geckour.q.App
 import com.geckour.q.R
 import com.geckour.q.core.model.MediaItem
 import com.geckour.q.core.util.escapeSql
+import com.geckour.q.core.util.getReadableStringWithUnit
 import com.geckour.q.core.util.getTimeString
 import com.geckour.q.data.BillingApiClient
 import com.geckour.q.data.db.DB
@@ -42,8 +43,10 @@ import com.geckour.q.domain.model.Nav
 import com.geckour.q.domain.model.PlaybackButton
 import com.geckour.q.domain.model.SearchCategory
 import com.geckour.q.domain.model.SearchItem
-import com.geckour.q.domain.model.SyncProgress
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.dropbox.SyncProgressState
+import com.geckour.q.dropbox.SyncSizeAlertState
+import com.geckour.q.dropbox.model.SyncProgress
 import com.geckour.q.service.DropboxMediaSyncJobService
 import com.geckour.q.service.PlayerService
 import com.geckour.q.spotify.SpotifyAuthRequiredException
@@ -77,8 +80,6 @@ import com.geckour.q.util.DownloadState
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
 import com.geckour.q.util.ShuffleActionType
-import com.geckour.q.util.SyncProgressState
-import com.geckour.q.util.SyncSizeAlertState
 import com.geckour.q.util.getActiveQAudioDeviceInfo
 import com.geckour.q.util.getDropboxCredential
 import com.geckour.q.util.getEqualizerParams
@@ -86,7 +87,6 @@ import com.geckour.q.util.getHasAlreadyShownDropboxSyncAlert
 import com.geckour.q.util.getIsInNightMode
 import com.geckour.q.util.getIsSpotifyFlattened
 import com.geckour.q.util.getIsSpotifyUnlocked
-import com.geckour.q.util.getReadableStringWithUnit
 import com.geckour.q.util.getShowLyric
 import com.geckour.q.util.getSpotifyCredential
 import com.geckour.q.util.isFavoriteToggled

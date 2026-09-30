@@ -10,6 +10,8 @@ import com.dropbox.core.v2.DbxClientV2
 import com.geckour.q.BuildConfig
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.JoinedTrack
+import com.geckour.q.dropbox.DROPBOX_EXPIRES_IN
+import com.geckour.q.dropbox.dropboxUrlPattern
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -29,10 +31,6 @@ internal val dbxRequestConfig =
     DbxRequestConfig.newBuilder("qp/${BuildConfig.VERSION_NAME}")
         .withAutoRetryEnabled()
         .build()
-
-const val DROPBOX_EXPIRES_IN = 14400000L
-
-val dropboxUrlPattern = Regex("^https://.+\\.dl\\.dropboxusercontent\\.com/.+$")
 
 suspend fun JoinedTrack.verifiedWithDropbox(
     context: Context,

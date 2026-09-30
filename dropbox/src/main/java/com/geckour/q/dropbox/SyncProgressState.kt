@@ -1,6 +1,6 @@
-package com.geckour.q.util
+package com.geckour.q.dropbox
 
-import com.geckour.q.domain.model.SyncProgress
+import com.geckour.q.dropbox.model.SyncProgress
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 

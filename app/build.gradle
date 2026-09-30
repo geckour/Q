@@ -92,6 +92,7 @@ dependencies {
     implementation project(':database')
     implementation project(':spotify')
     implementation project(':worker')
+    implementation project(':dropbox')
     implementation "org.jetbrains.kotlinx:kotlinx-collections-immutable:0.5.2"
     implementation 'androidx.constraintlayout:constraintlayout:2.2.2'
     implementation 'androidx.appcompat:appcompat:1.8.0'
@@ -181,7 +182,6 @@ dependencies {
     implementation "androidx.compose.remote:remote-creation-core:$remote_compose_ver"
 
     // Dropbox
-    implementation 'com.dropbox.core:dropbox-core-sdk:8.0.2'
     implementation 'com.dropbox.core:dropbox-android-sdk:8.0.2'
 
     // Billing

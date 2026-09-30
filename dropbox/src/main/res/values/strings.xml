@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notification_title_retriever">Retrieving media</string>
+    <string name="notification_text_retriever">Remaining %d files\nSyncing library…</string>
+    <string name="notification_text_retriever_with_path">Remaining %1$d files (processed %2$s/%3$s) skipped %4$d files\n%5$s left\nSyncing library…\n%6$s</string>
+</resources>
