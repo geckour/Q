@@ -49,7 +49,6 @@ import com.geckour.q.spotify.authorizeSpotifyAppRemote
 import com.geckour.q.spotify.createSpotifyAuthorizationRequest
 import com.geckour.q.spotify.isSpotifyInstalled
 import com.geckour.q.spotify.model.SpotifyContainer
-import com.geckour.q.spotify.playOnSpotify
 import com.geckour.q.spotify.spotifyTrackRadioUri
 import com.geckour.q.spotify.spotifyWebUrl
 import com.geckour.q.ui.compose.ColorBackground
@@ -642,7 +641,7 @@ class MainActivity : ComponentActivity() {
             is DialogEvent.OpenInSpotify -> openInSpotify(event.uri)
 
             is DialogEvent.StartSpotifyTrackRadio -> {
-                startSpotifyTrackRadio(event.trackUri)
+                openInSpotify(event.trackUri.spotifyTrackRadioUri)
             }
 
             is DialogEvent.AddSpotifyContainer -> {
@@ -706,15 +705,6 @@ class MainActivity : ComponentActivity() {
                 viewModel.emitSnackbarMessage(null)
             }
         }
-    }
-
-    private fun startSpotifyTrackRadio(trackUri: String) {
-        val radioUri = trackUri.spotifyTrackRadioUri
-        lifecycleScope.launch {
-            runCatching { playOnSpotify(this@MainActivity, radioUri) }
-                .onFailure { viewModel.showSpotifyError(it) }
-        }
-        openInSpotify(radioUri)
     }
 
     private fun openInSpotify(uri: String) {

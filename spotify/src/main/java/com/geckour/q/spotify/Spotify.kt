@@ -6,12 +6,10 @@ import com.spotify.android.appremote.api.Connector
 import com.spotify.android.appremote.api.SpotifyAppRemote
 import com.spotify.sdk.android.auth.AuthorizationRequest
 import com.spotify.sdk.android.auth.AuthorizationResponse
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import kotlin.coroutines.resume
@@ -29,8 +27,6 @@ private const val SPOTIFY_TRACK_RADIO_URI_PREFIX = "spotify:station:track:"
 const val SPOTIFY_TRAILING_SILENCE_MILLIS = 1_500L
 
 private const val SPOTIFY_CAPABILITIES_TIMEOUT_SECONDS = 5
-
-private const val SPOTIFY_PLAY_TIMEOUT_SECONDS = 5
 
 private val spotifyScopes = arrayOf(
     "app-remote-control",
@@ -129,32 +125,6 @@ suspend fun authorizeSpotifyAppRemote(context: Context) {
             appRemote.getCanPlayOnDemand()
         }
         if (canPlayOnDemand == false) throw SpotifyPremiumRequiredException()
-    } finally {
-        SpotifyAppRemote.disconnect(appRemote)
-    }
-}
-
-suspend fun playOnSpotify(context: Context, uri: String) {
-    val appRemote = suspendCancellableCoroutine { continuation ->
-        SpotifyAppRemote.connect(
-            context,
-            createSpotifyConnectionParams(context, showAuthView = false),
-            object : Connector.ConnectionListener {
-                override fun onConnected(appRemote: SpotifyAppRemote) {
-                    if (continuation.isActive) continuation.resume(appRemote)
-                    else SpotifyAppRemote.disconnect(appRemote)
-                }
-
-                override fun onFailure(throwable: Throwable) {
-                    if (continuation.isActive) continuation.resumeWithException(throwable)
-                }
-            }
-        )
-    }
-    try {
-        withTimeoutOrNull(SPOTIFY_PLAY_TIMEOUT_SECONDS.seconds) {
-            withContext(Dispatchers.IO) { appRemote.playerApi.play(uri).await() }
-        }
     } finally {
         SpotifyAppRemote.disconnect(appRemote)
     }
