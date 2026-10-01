@@ -196,9 +196,7 @@ class MainViewModel(
 
     private var mediaController: MediaController? = null
 
-    internal var isDropboxAuthOngoing = false
-
-    internal var pendingSpotifyRadioTrackUri: String? = null
+    internal var pendingResumeAction: PendingResumeAction? = null
 
     internal val currentSourcePathsFlow =
         MutableStateFlow<ImmutableList<String>>(persistentListOf())

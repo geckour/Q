@@ -386,26 +386,33 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        viewModel.pendingSpotifyRadioTrackUri?.let { trackUri ->
-            viewModel.pendingSpotifyRadioTrackUri = null
-            if (hasSpotifyNotificationAccess) startSpotifyTrackRadio(trackUri)
-        }
-
-        if (viewModel.isDropboxAuthOngoing) {
-            viewModel.isDropboxAuthOngoing = false
-            lifecycleScope.launch {
-                val stored = viewModel.storeDropboxApiToken {
-                    lifecycleScope.launch {
-                        onDropboxSyncFailure(it)
-                    }
-                }
-                if (stored) viewModel.showDialog(DialogState.Dropbox())
-            }
+        viewModel.pendingResumeAction?.let { action ->
+            viewModel.pendingResumeAction = null
+            runPendingResumeAction(action)
         }
 
         viewModel.requestBillingInfoUpdate()
 
         viewModel.requestScrollToCurrent()
+    }
+
+    private fun runPendingResumeAction(action: PendingResumeAction) {
+        when (action) {
+            is PendingResumeAction.StartSpotifyTrackRadio -> {
+                if (hasSpotifyNotificationAccess) startSpotifyTrackRadio(action.trackUri)
+            }
+
+            PendingResumeAction.StoreDropboxToken -> {
+                lifecycleScope.launch {
+                    val stored = viewModel.storeDropboxApiToken {
+                        lifecycleScope.launch {
+                            onDropboxSyncFailure(it)
+                        }
+                    }
+                    if (stored) viewModel.showDialog(DialogState.Dropbox())
+                }
+            }
+        }
     }
 
     override fun onStop() {
@@ -567,7 +574,7 @@ class MainActivity : ComponentActivity() {
             DialogEvent.AcknowledgeDropboxSyncAlert -> viewModel.acknowledgeDropboxSyncAlert()
 
             DialogEvent.StartDropboxAuth -> {
-                viewModel.isDropboxAuthOngoing = true
+                viewModel.pendingResumeAction = PendingResumeAction.StoreDropboxToken
                 Auth.startOAuth2PKCE(
                     this,
                     BuildConfig.DROPBOX_APP_KEY,
@@ -613,11 +620,12 @@ class MainActivity : ComponentActivity() {
             DialogEvent.SignOutSpotify -> viewModel.signOutSpotify()
 
             is DialogEvent.OpenSpotifyNotificationAccessSettings -> {
-                viewModel.pendingSpotifyRadioTrackUri = event.trackUri
+                viewModel.pendingResumeAction =
+                    PendingResumeAction.StartSpotifyTrackRadio(event.trackUri)
                 runCatching { startActivity(createSpotifyNotificationAccessSettingsIntent(this)) }
                     .onFailure {
                         Timber.e(it)
-                        viewModel.pendingSpotifyRadioTrackUri = null
+                        viewModel.pendingResumeAction = null
                     }
             }
 
