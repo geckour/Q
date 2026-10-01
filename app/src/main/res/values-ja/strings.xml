@@ -202,6 +202,7 @@
     <string name="spotify_message_rate_limited">Spotify へのリクエストが多すぎます。しばらくしてから再度お試しください</string>
     <string name="spotify_message_request_failure">Spotify からの読み込みに失敗しました (%d)</string>
     <string name="spotify_message_network_failure">Spotify に接続できませんでした</string>
+    <string name="spotify_title_notification_access">通知へのアクセス権限</string>
     <string name="spotify_message_notification_access">ソングラジオは Spotify に通知を介してアクセスする必要があるため、権限の付与が必要です。\n次に開く設定画面から通知へのアクセスを許可してください。</string>
     <string name="spotify_message_radio_unavailable">Spotify でソングラジオを開始できませんでした</string>
 

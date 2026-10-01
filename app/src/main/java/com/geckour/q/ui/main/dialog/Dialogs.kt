@@ -150,7 +150,7 @@ fun BoxScope.Dialogs(
 
         DialogState.ConfirmSpotifyNotificationAccess -> {
             QConfirmDialog(
-                title = stringResource(id = R.string.spotify_title),
+                title = stringResource(id = R.string.spotify_title_notification_access),
                 message = stringResource(id = R.string.spotify_message_notification_access),
                 onPositive = {
                     onDialogEvent(DialogEvent.OpenSpotifyNotificationAccessSettings)

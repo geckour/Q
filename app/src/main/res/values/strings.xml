@@ -212,6 +212,7 @@
     <string name="spotify_message_rate_limited">Too many requests to Spotify. Try again later</string>
     <string name="spotify_message_request_failure">Failed to load from Spotify (%d)</string>
     <string name="spotify_message_network_failure">Could not connect to Spotify</string>
+    <string name="spotify_title_notification_access">Notification access</string>
     <string name="spotify_message_notification_access">Song radio needs to access Spotify through notifications, so a permission is required.\nAllow notification access on the settings screen that opens next.</string>
     <string name="spotify_message_radio_unavailable">Spotify did not offer to start song radio</string>
 
