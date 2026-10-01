@@ -198,6 +198,8 @@ class MainViewModel(
 
     internal var isDropboxAuthOngoing = false
 
+    internal var pendingSpotifyRadioTrackUri: String? = null
+
     internal val currentSourcePathsFlow =
         MutableStateFlow<ImmutableList<String>>(persistentListOf())
     internal val currentIndexFlow = MutableStateFlow(0)

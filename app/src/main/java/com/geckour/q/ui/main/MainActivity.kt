@@ -386,6 +386,11 @@ class MainActivity : ComponentActivity() {
             )
         }
 
+        viewModel.pendingSpotifyRadioTrackUri?.let { trackUri ->
+            viewModel.pendingSpotifyRadioTrackUri = null
+            if (hasSpotifyNotificationAccess) startSpotifyTrackRadio(trackUri)
+        }
+
         if (viewModel.isDropboxAuthOngoing) {
             viewModel.isDropboxAuthOngoing = false
             lifecycleScope.launch {
@@ -607,9 +612,13 @@ class MainActivity : ComponentActivity() {
 
             DialogEvent.SignOutSpotify -> viewModel.signOutSpotify()
 
-            DialogEvent.OpenSpotifyNotificationAccessSettings -> {
+            is DialogEvent.OpenSpotifyNotificationAccessSettings -> {
+                viewModel.pendingSpotifyRadioTrackUri = event.trackUri
                 runCatching { startActivity(createSpotifyNotificationAccessSettingsIntent(this)) }
-                    .onFailure { Timber.e(it) }
+                    .onFailure {
+                        Timber.e(it)
+                        viewModel.pendingSpotifyRadioTrackUri = null
+                    }
             }
 
             is DialogEvent.ChangeSpotifyFlatten -> {
@@ -715,7 +724,7 @@ class MainActivity : ComponentActivity() {
 
     private fun startSpotifyTrackRadio(trackUri: String) {
         if (hasSpotifyNotificationAccess.not()) {
-            viewModel.showDialog(DialogState.ConfirmSpotifyNotificationAccess)
+            viewModel.showDialog(DialogState.ConfirmSpotifyNotificationAccess(trackUri))
             return
         }
 
