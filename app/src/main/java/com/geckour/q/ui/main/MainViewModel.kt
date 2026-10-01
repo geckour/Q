@@ -53,6 +53,7 @@ import com.geckour.q.spotify.SpotifyAuthRequiredException
 import com.geckour.q.spotify.SpotifyPlaybackErrorState
 import com.geckour.q.spotify.SpotifyPlaybackStartTimeoutException
 import com.geckour.q.spotify.SpotifyPremiumRequiredException
+import com.geckour.q.spotify.SpotifyRadioUnavailableException
 import com.geckour.q.spotify.api.SpotifyApiClient
 import com.geckour.q.spotify.api.SpotifyApiException
 import com.geckour.q.spotify.api.SpotifyContentClient
@@ -1744,6 +1745,10 @@ class MainViewModel(
         }
 
         is SpotifyAuthRequiredException -> app.getString(R.string.spotify_message_auth_required)
+        is SpotifyRadioUnavailableException -> {
+            app.getString(R.string.spotify_message_radio_unavailable)
+        }
+
         is SpotifyContentException -> {
             app.getString(R.string.spotify_message_content_failure, message.orEmpty())
         }

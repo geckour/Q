@@ -47,10 +47,13 @@ import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.service.DropboxMediaSyncJobService
 import com.geckour.q.spotify.authorizeSpotifyAppRemote
 import com.geckour.q.spotify.createSpotifyAuthorizationRequest
+import com.geckour.q.spotify.createSpotifyLaunchIntent
+import com.geckour.q.spotify.createSpotifyNotificationAccessSettingsIntent
+import com.geckour.q.spotify.hasSpotifyNotificationAccess
 import com.geckour.q.spotify.isSpotifyInstalled
 import com.geckour.q.spotify.model.SpotifyContainer
-import com.geckour.q.spotify.spotifyTrackRadioUri
 import com.geckour.q.spotify.spotifyWebUrl
+import com.geckour.q.spotify.startSpotifyTrackRadio
 import com.geckour.q.ui.compose.ColorBackground
 import com.geckour.q.ui.compose.ColorBackgroundInverse
 import com.geckour.q.ui.compose.ColorPrimaryDark
@@ -604,6 +607,15 @@ class MainActivity : ComponentActivity() {
 
             DialogEvent.SignOutSpotify -> viewModel.signOutSpotify()
 
+            DialogEvent.RequestSpotifyNotificationAccess -> {
+                viewModel.showDialog(DialogState.ConfirmSpotifyNotificationAccess)
+            }
+
+            DialogEvent.OpenSpotifyNotificationAccessSettings -> {
+                runCatching { startActivity(createSpotifyNotificationAccessSettingsIntent(this)) }
+                    .onFailure { Timber.e(it) }
+            }
+
             is DialogEvent.ChangeSpotifyFlatten -> {
                 viewModel.changeSpotifyFlatten(event.flatten)
             }
@@ -640,9 +652,7 @@ class MainActivity : ComponentActivity() {
 
             is DialogEvent.OpenInSpotify -> openInSpotify(event.uri)
 
-            is DialogEvent.StartSpotifyTrackRadio -> {
-                openInSpotify(event.trackUri.spotifyTrackRadioUri)
-            }
+            is DialogEvent.StartSpotifyTrackRadio -> startSpotifyTrackRadio(event.trackUri)
 
             is DialogEvent.AddSpotifyContainer -> {
                 viewModel.addSpotifyContainer(event.container, event.actionType, event.classType)
@@ -704,6 +714,21 @@ class MainActivity : ComponentActivity() {
                 delay(2000.milliseconds)
                 viewModel.emitSnackbarMessage(null)
             }
+        }
+    }
+
+    private fun startSpotifyTrackRadio(trackUri: String) {
+        if (hasSpotifyNotificationAccess.not()) {
+            viewModel.showDialog(DialogState.ConfirmSpotifyNotificationAccess)
+            return
+        }
+
+        lifecycleScope.launch {
+            runCatching { startSpotifyTrackRadio(this@MainActivity, trackUri) }
+                .onSuccess {
+                    createSpotifyLaunchIntent(this@MainActivity)?.let { startActivity(it) }
+                }
+                .onFailure { viewModel.showSpotifyError(it) }
         }
     }
 

@@ -28,6 +28,7 @@ dependencies {
     api(variantOf(libs.spotify.app.remote) { artifactType("aar") })
     implementation(libs.gson)
 
+    implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.media3.exoplayer)
 
     implementation(libs.kotlinx.coroutines.android)

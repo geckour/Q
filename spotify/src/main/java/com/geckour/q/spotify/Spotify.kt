@@ -104,22 +104,7 @@ fun createSpotifyConnectionParams(context: Context, showAuthView: Boolean): Conn
         .build()
 
 suspend fun authorizeSpotifyAppRemote(context: Context) {
-    val appRemote = suspendCancellableCoroutine { continuation ->
-        SpotifyAppRemote.connect(
-            context,
-            createSpotifyConnectionParams(context, showAuthView = true),
-            object : Connector.ConnectionListener {
-                override fun onConnected(appRemote: SpotifyAppRemote) {
-                    if (continuation.isActive) continuation.resume(appRemote)
-                    else if (continuation.isCancelled) SpotifyAppRemote.disconnect(appRemote)
-                }
-
-                override fun onFailure(throwable: Throwable) {
-                    if (continuation.isActive) continuation.resumeWithException(throwable)
-                }
-            }
-        )
-    }
+    val appRemote = connectSpotifyAppRemote(context, showAuthView = true)
     try {
         val canPlayOnDemand = withTimeoutOrNull(SPOTIFY_CAPABILITIES_TIMEOUT_SECONDS.seconds) {
             appRemote.getCanPlayOnDemand()
@@ -128,6 +113,26 @@ suspend fun authorizeSpotifyAppRemote(context: Context) {
     } finally {
         SpotifyAppRemote.disconnect(appRemote)
     }
+}
+
+internal suspend fun connectSpotifyAppRemote(
+    context: Context,
+    showAuthView: Boolean,
+): SpotifyAppRemote = suspendCancellableCoroutine { continuation ->
+    SpotifyAppRemote.connect(
+        context,
+        createSpotifyConnectionParams(context, showAuthView),
+        object : Connector.ConnectionListener {
+            override fun onConnected(appRemote: SpotifyAppRemote) {
+                if (continuation.isActive) continuation.resume(appRemote)
+                else if (continuation.isCancelled) SpotifyAppRemote.disconnect(appRemote)
+            }
+
+            override fun onFailure(throwable: Throwable) {
+                if (continuation.isActive) continuation.resumeWithException(throwable)
+            }
+        }
+    )
 }
 
 private val Context.spotifyRedirectUri: String

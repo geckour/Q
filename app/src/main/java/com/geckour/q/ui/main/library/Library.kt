@@ -13,6 +13,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
@@ -37,6 +38,7 @@ import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.domain.model.UiTrack
+import com.geckour.q.spotify.hasSpotifyNotificationAccess
 import com.geckour.q.spotify.library.isInLibrary
 import com.geckour.q.spotify.model.SpotifyContainer
 import com.geckour.q.ui.component.QSnackbar
@@ -326,6 +328,7 @@ fun Library(
                     onChangeTopBarTitle(topBarTitle)
                     onSetOptionMediaItem(null)
                 }
+                val context = LocalContext.current
                 LaunchedEffect(isSpotifyConfigured, hasSpotifyCredential) {
                     when {
                         isSpotifyConfigured.not() -> {
@@ -334,6 +337,10 @@ fun Library(
 
                         hasSpotifyCredential.not() -> {
                             onDialogEvent(DialogEvent.RequestSpotifyAuth)
+                        }
+
+                        context.hasSpotifyNotificationAccess.not() -> {
+                            onDialogEvent(DialogEvent.RequestSpotifyNotificationAccess)
                         }
                     }
                 }

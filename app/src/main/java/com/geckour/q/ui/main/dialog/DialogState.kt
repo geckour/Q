@@ -53,6 +53,8 @@ sealed interface DialogState {
 
     data object ConfirmSpotifySignOut : DialogState
 
+    data object ConfirmSpotifyNotificationAccess : DialogState
+
     data class ConfirmDownload(val targets: ImmutableList<String>) : DialogState
 
     data class ConfirmInvalidateDownloaded(val targets: ImmutableList<String>) : DialogState
