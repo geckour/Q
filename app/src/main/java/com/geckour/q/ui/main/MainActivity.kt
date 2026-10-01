@@ -607,10 +607,6 @@ class MainActivity : ComponentActivity() {
 
             DialogEvent.SignOutSpotify -> viewModel.signOutSpotify()
 
-            DialogEvent.RequestSpotifyNotificationAccess -> {
-                viewModel.showDialog(DialogState.ConfirmSpotifyNotificationAccess)
-            }
-
             DialogEvent.OpenSpotifyNotificationAccessSettings -> {
                 runCatching { startActivity(createSpotifyNotificationAccessSettingsIntent(this)) }
                     .onFailure { Timber.e(it) }

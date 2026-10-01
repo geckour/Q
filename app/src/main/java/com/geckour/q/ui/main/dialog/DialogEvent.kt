@@ -64,8 +64,6 @@ sealed interface DialogEvent {
 
     data object SignOutSpotify : DialogEvent
 
-    data object RequestSpotifyNotificationAccess : DialogEvent
-
     data object OpenSpotifyNotificationAccessSettings : DialogEvent
 
     data class ChangeSpotifyFlatten(val flatten: Boolean) : DialogEvent
