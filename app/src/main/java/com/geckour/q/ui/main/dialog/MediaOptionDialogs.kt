@@ -66,8 +66,8 @@ fun TrackOptionDialog(
                     showsSpotifyLogo = true,
                     openInNew = true,
                 ) {
-                    onDialogEvent(DialogEvent.StartSpotifyTrackRadio(uiTrack.sourcePath))
                     onDialogEvent(DialogEvent.Dismiss)
+                    onDialogEvent(DialogEvent.StartSpotifyTrackRadio(uiTrack.sourcePath))
                 }
             )
         } else emptyList()

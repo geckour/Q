@@ -69,8 +69,8 @@ private fun trackRadioOption(
             showsSpotifyLogo = true,
             openInNew = true,
         ) {
-            onDialogEvent(DialogEvent.StartSpotifyTrackRadio(trackUri))
             onDialogEvent(DialogEvent.Dismiss)
+            onDialogEvent(DialogEvent.StartSpotifyTrackRadio(trackUri))
         }
     )
 }

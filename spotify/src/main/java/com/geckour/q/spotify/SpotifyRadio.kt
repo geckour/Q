@@ -1,5 +1,6 @@
 package com.geckour.q.spotify
 
+import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -7,7 +8,6 @@ import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.provider.Settings
-import androidx.core.app.NotificationManagerCompat
 import com.spotify.android.appremote.api.SpotifyAppRemote
 import com.spotify.protocol.client.Subscription
 import com.spotify.protocol.types.PlayerState
@@ -30,7 +30,10 @@ class SpotifyRadioUnavailableException :
     IllegalStateException("Spotify did not offer to start radio")
 
 val Context.hasSpotifyNotificationAccess: Boolean
-    get() = NotificationManagerCompat.getEnabledListenerPackages(this).contains(packageName)
+    get() = getSystemService(NotificationManager::class.java)
+        ?.isNotificationListenerAccessGranted(
+            ComponentName(this, SpotifyNotificationListenerService::class.java)
+        ) == true
 
 fun createSpotifyNotificationAccessSettingsIntent(context: Context): Intent =
     Intent(Settings.ACTION_NOTIFICATION_LISTENER_DETAIL_SETTINGS)
