@@ -1,5 +1,7 @@
 package com.geckour.q.ui.main
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -42,6 +44,8 @@ import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.dropbox.model.SyncSizeAlert
 import com.geckour.q.spotify.isSpotifyConfigured
+import com.geckour.q.ui.component.PredictiveBackProgressHandler
+import com.geckour.q.ui.component.predictiveBackSlide
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.ui.main.dialog.DialogState
 import com.geckour.q.ui.main.dialog.Dialogs
@@ -133,11 +137,25 @@ fun TwinStartPage(
     actions: MainActions,
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val drawerBackProgress = remember { Animatable(0f) }
     ModalNavigationDrawer(
         modifier = modifier,
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet(drawerState = drawerState, windowInsets = WindowInsets()) {
+            PredictiveBackProgressHandler(
+                enabled = drawerState.targetValue == DrawerValue.Open,
+                progress = drawerBackProgress,
+                easing = LinearEasing,
+            ) {
+                drawerState.close()
+            }
+            ModalDrawerSheet(
+                modifier = Modifier.predictiveBackSlide(
+                    progress = { drawerBackProgress.value },
+                    remainingOffset = { drawerState.remainingCloseOffset(size.width) },
+                ),
+                windowInsets = WindowInsets(),
+            ) {
                 Drawer(
                     drawerState = drawerState,
                     navController = navController,

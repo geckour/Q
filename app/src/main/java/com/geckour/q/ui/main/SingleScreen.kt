@@ -1,6 +1,7 @@
 package com.geckour.q.ui.main
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalDrawerSheet
@@ -23,12 +25,11 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -36,19 +37,20 @@ import androidx.compose.ui.unit.lerp
 import androidx.navigation.NavHostController
 import com.geckour.q.spotify.isSpotifyConfigured
 import com.geckour.q.ui.component.PredictiveBackProgressHandler
-import com.geckour.q.ui.component.predictiveBackScale
+import com.geckour.q.ui.component.predictiveBackSlide
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.ui.main.dialog.DialogState
 import com.geckour.q.ui.main.dialog.Dialogs
 import com.geckour.q.ui.main.library.Library
 import com.geckour.q.ui.main.player.PlayerSheet
-import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.sin
 
 private val SheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
 
 private val SheetShadowElevation = 8.dp
+
+private const val SHEET_SHADOW_FADE_SPEED = 4
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,15 +64,19 @@ fun SingleScreen(
 ) {
     val player = uiState.player
     val library = uiState.library
-    val coroutineScope = rememberCoroutineScope()
     val scaffoldState = rememberBottomSheetScaffoldState()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val bottomSheetHeightAngle = remember { Animatable(0f) }
     val sheetBackProgress = remember { Animatable(0f) }
+    val drawerBackProgress = remember { Animatable(0f) }
+    var scaffoldHeight by remember { mutableIntStateOf(0) }
     var libraryHeight by remember { mutableIntStateOf(0) }
     val navigationBarHeight = with(LocalDensity.current) {
         WindowInsets.navigationBars.getBottom(this).toDp()
     }
+
+    val sheetPeekHeight =
+        (144 + abs(sin(bottomSheetHeightAngle.value)) * 20).dp + navigationBarHeight
 
     LaunchedEffect(player.sourcePaths) {
         if (scaffoldState.bottomSheetState.currentValue == SheetValue.Hidden &&
@@ -92,7 +98,20 @@ fun SingleScreen(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet(drawerState = drawerState, windowInsets = WindowInsets()) {
+            PredictiveBackProgressHandler(
+                enabled = drawerState.targetValue == DrawerValue.Open,
+                progress = drawerBackProgress,
+                easing = LinearEasing,
+            ) {
+                drawerState.close()
+            }
+            ModalDrawerSheet(
+                modifier = Modifier.predictiveBackSlide(
+                    progress = { drawerBackProgress.value },
+                    remainingOffset = { drawerState.remainingCloseOffset(size.width) },
+                ),
+                windowInsets = WindowInsets(),
+            ) {
                 Drawer(
                     drawerState = drawerState,
                     navController = navController,
@@ -108,6 +127,7 @@ fun SingleScreen(
         }
     ) {
         BottomSheetScaffold(
+            modifier = Modifier.onSizeChanged { scaffoldHeight = it.height },
             scaffoldState = scaffoldState,
             topBar = {
                 QTopBar(
@@ -130,16 +150,26 @@ fun SingleScreen(
             },
             containerColor = QTheme.colors.colorBackground,
             sheetContainerColor = Color.Transparent,
-            sheetPeekHeight = (144 + abs(sin(bottomSheetHeightAngle.value)) * 20).dp + navigationBarHeight,
+            sheetPeekHeight = sheetPeekHeight,
             sheetShape = SheetShape,
             sheetDragHandle = null,
-            sheetShadowElevation = lerp(SheetShadowElevation, 0.dp, sheetBackProgress.value),
+            sheetShadowElevation = lerp(
+                SheetShadowElevation,
+                0.dp,
+                (sheetBackProgress.value * SHEET_SHADOW_FADE_SPEED).coerceAtMost(1f),
+            ),
             sheetContent = {
                 Box(
                     modifier = Modifier
-                        .predictiveBackScale(
+                        .predictiveBackSlide(
                             progress = { sheetBackProgress.value },
-                            transformOrigin = TransformOrigin(0.5f, 1f),
+                            remainingOffset = {
+                                val sheetOffset = runCatching {
+                                    scaffoldState.bottomSheetState.requireOffset()
+                                }.getOrNull() ?: return@predictiveBackSlide Offset.Zero
+                                val peekOffset = scaffoldHeight - sheetPeekHeight.toPx()
+                                Offset(0f, (peekOffset - sheetOffset).coerceAtLeast(0f))
+                            },
                         )
                         .clip(SheetShape)
                         .background(QTheme.colors.colorBackgroundBottomSheet)
@@ -239,8 +269,9 @@ fun SingleScreen(
                 PredictiveBackProgressHandler(
                     enabled = scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded,
                     progress = sheetBackProgress,
+                    easing = LinearEasing,
                 ) {
-                    coroutineScope.launch { scaffoldState.bottomSheetState.partialExpand() }
+                    scaffoldState.bottomSheetState.partialExpand()
                 }
                 Dialogs(
                     dialogState = uiState.dialogState,
@@ -254,4 +285,11 @@ fun SingleScreen(
             }
         }
     }
+}
+
+internal fun DrawerState.remainingCloseOffset(drawerWidth: Float): Offset {
+    val offset = currentOffset
+    if (offset.isNaN()) return Offset.Zero
+
+    return Offset(-drawerWidth - offset, 0f)
 }
