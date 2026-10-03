@@ -1,6 +1,5 @@
 package com.geckour.q.ui.main
 
-import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -239,12 +238,6 @@ fun Drawer(
         LazyColumn(
             contentPadding = WindowInsets.navigationBars.asPaddingValues()
         ) {
-            item {
-                BackHandler(drawerState.isOpen) {
-                    coroutineScope.launch { drawerState.close() }
-                }
-            }
-
             item {
                 DrawerHeader(
                     openQzi = {

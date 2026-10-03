@@ -24,7 +24,6 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.Layout
@@ -49,7 +48,6 @@ import com.geckour.q.ui.main.dialog.Dialogs
 import com.geckour.q.ui.main.library.Library
 import com.geckour.q.ui.main.player.PlayerSheet
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.coroutines.launch
 
 @Composable
 fun TwinScreen(
@@ -139,7 +137,7 @@ fun TwinStartPage(
         modifier = modifier,
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet(windowInsets = WindowInsets()) {
+            ModalDrawerSheet(drawerState = drawerState, windowInsets = WindowInsets()) {
                 Drawer(
                     drawerState = drawerState,
                     navController = navController,
@@ -176,7 +174,6 @@ fun TwinStartPage(
                 )
             },
         ) { paddingValues ->
-            val coroutineScope = rememberCoroutineScope()
             Box(
                 modifier = Modifier
                     .padding(
@@ -200,9 +197,6 @@ fun TwinStartPage(
                         (dialogState as? DialogState.SavedQueueModify)?.savedQueue,
                     isFavoriteOnly = isFavoriteOnly,
                     routeInfo = routeInfo,
-                    onBackHandle = if (drawerState.currentValue == DrawerValue.Open) {
-                        { coroutineScope.launch { drawerState.close() } }
-                    } else null,
                     onCancelProgress = library.onCancelProgress,
                     onSelectNav = actions::onSelectNav,
                     onChangeTopBarTitle = actions::onChangeTopBarTitle,

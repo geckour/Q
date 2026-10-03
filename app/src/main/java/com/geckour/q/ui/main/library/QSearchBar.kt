@@ -1,7 +1,7 @@
 package com.geckour.q.ui.main.library
 
 import android.content.Context
-import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
@@ -39,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.SoftwareKeyboardController
@@ -57,6 +58,8 @@ import com.geckour.q.domain.model.SearchCategory
 import com.geckour.q.domain.model.SearchItem
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.spotify.model.SpotifyContainer
+import com.geckour.q.ui.component.PredictiveBackProgressHandler
+import com.geckour.q.ui.component.predictiveBackScale
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
@@ -105,9 +108,7 @@ fun QSearchBar(
     LaunchedEffect(isSearchActive.value) {
         if (isSearchActive.value.not()) query.value = ""
     }
-    BackHandler(isSearchActive.value) {
-        isSearchActive.value = false
-    }
+    val searchBackProgress = remember { Animatable(0f) }
 
     DockedSearchBar(
         query = query.value,
@@ -135,7 +136,12 @@ fun QSearchBar(
                 }
             }
         },
-        modifier = Modifier.padding(vertical = 8.dp)
+        modifier = Modifier
+            .padding(vertical = 8.dp)
+            .predictiveBackScale(
+                progress = { searchBackProgress.value },
+                transformOrigin = TransformOrigin(0.5f, 0f),
+            )
     ) {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
             items(result.value) { item ->
@@ -175,6 +181,12 @@ fun QSearchBar(
                 }
             }
         }
+    }
+    PredictiveBackProgressHandler(
+        enabled = isSearchActive.value,
+        progress = searchBackProgress,
+    ) {
+        isSearchActive.value = false
     }
 }
 

@@ -26,11 +26,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
 import androidx.navigation.NavHostController
 import com.geckour.q.spotify.isSpotifyConfigured
+import com.geckour.q.ui.component.PredictiveBackProgressHandler
+import com.geckour.q.ui.component.predictiveBackScale
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.ui.main.dialog.DialogState
 import com.geckour.q.ui.main.dialog.Dialogs
@@ -39,6 +45,10 @@ import com.geckour.q.ui.main.player.PlayerSheet
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.sin
+
+private val SheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+
+private val SheetShadowElevation = 8.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,6 +66,7 @@ fun SingleScreen(
     val scaffoldState = rememberBottomSheetScaffoldState()
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val bottomSheetHeightAngle = remember { Animatable(0f) }
+    val sheetBackProgress = remember { Animatable(0f) }
     var libraryHeight by remember { mutableIntStateOf(0) }
     val navigationBarHeight = with(LocalDensity.current) {
         WindowInsets.navigationBars.getBottom(this).toDp()
@@ -81,7 +92,7 @@ fun SingleScreen(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet(windowInsets = WindowInsets()) {
+            ModalDrawerSheet(drawerState = drawerState, windowInsets = WindowInsets()) {
                 Drawer(
                     drawerState = drawerState,
                     navController = navController,
@@ -118,12 +129,21 @@ fun SingleScreen(
                 )
             },
             containerColor = QTheme.colors.colorBackground,
-            sheetContainerColor = QTheme.colors.colorBackgroundBottomSheet,
+            sheetContainerColor = Color.Transparent,
             sheetPeekHeight = (144 + abs(sin(bottomSheetHeightAngle.value)) * 20).dp + navigationBarHeight,
-            sheetShape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
+            sheetShape = SheetShape,
             sheetDragHandle = null,
-            sheetShadowElevation = 8.dp,
+            sheetShadowElevation = lerp(SheetShadowElevation, 0.dp, sheetBackProgress.value),
             sheetContent = {
+                Box(
+                    modifier = Modifier
+                        .predictiveBackScale(
+                            progress = { sheetBackProgress.value },
+                            transformOrigin = TransformOrigin(0.5f, 1f),
+                        )
+                        .clip(SheetShape)
+                        .background(QTheme.colors.colorBackgroundBottomSheet)
+                ) {
                 PlayerSheet(
                     needToAnimateController = true,
                     libraryHeight = libraryHeight,
@@ -161,6 +181,7 @@ fun SingleScreen(
                     onRemoveTrackFromQueue = actions::onRemoveTrackFromQueue,
                     onToggleFavorite = actions::onToggleFavorite,
                 )
+                }
             }
         ) { paddingValues ->
             Box(
@@ -184,9 +205,6 @@ fun SingleScreen(
                         (uiState.dialogState as? DialogState.SavedQueueModify)?.savedQueue,
                     isFavoriteOnly = isFavoriteOnly,
                     routeInfo = uiState.routeInfo,
-                    onBackHandle = if (scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) {
-                        { coroutineScope.launch { scaffoldState.bottomSheetState.partialExpand() } }
-                    } else null,
                     onCancelProgress = library.onCancelProgress,
                     onSelectNav = actions::onSelectNav,
                     onChangeTopBarTitle = actions::onChangeTopBarTitle,
@@ -218,6 +236,12 @@ fun SingleScreen(
                     hasSpotifyCredential = library.hasSpotifyCredential,
                     onDialogEvent = actions::onDialogEvent,
                 )
+                PredictiveBackProgressHandler(
+                    enabled = scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded,
+                    progress = sheetBackProgress,
+                ) {
+                    coroutineScope.launch { scaffoldState.bottomSheetState.partialExpand() }
+                }
                 Dialogs(
                     dialogState = uiState.dialogState,
                     syncSizeAlert = uiState.syncSizeAlert,

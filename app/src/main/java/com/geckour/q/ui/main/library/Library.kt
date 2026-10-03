@@ -1,6 +1,5 @@
 package com.geckour.q.ui.main.library
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -69,7 +68,6 @@ fun Library(
     selectedSavedQueueForModify: UiSavedQueue?,
     isFavoriteOnly: MutableState<Boolean>,
     routeInfo: QAudioDeviceInfo?,
-    onBackHandle: (() -> Unit)?,
     onCancelProgress: (() -> Unit)?,
     onSelectNav: (nav: Nav?) -> Unit,
     onChangeTopBarTitle: (newTitle: String) -> Unit,
@@ -137,9 +135,6 @@ fun Library(
             predictivePopExitTransition = { fadeOut(tween(NAV_TRANSITION_MILLIS)) },
         ) {
             composable("artists") { backStackEntry ->
-                BackHandler(enabled = onBackHandle != null) {
-                    onBackHandle?.invoke()
-                }
                 RegisterScreenMeta(
                     screenMetas,
                     backStackEntry,
@@ -178,9 +173,6 @@ fun Library(
                     }
                 )
             ) { backStackEntry ->
-                BackHandler(enabled = onBackHandle != null) {
-                    onBackHandle?.invoke()
-                }
                 val artistId = backStackEntry.arguments?.getLong("artistId")
                     ?: -1
                 val scrollPosition = rememberScrollPosition(backStackEntry)
@@ -233,9 +225,6 @@ fun Library(
                     }
                 )
             ) { backStackEntry ->
-                BackHandler(enabled = onBackHandle != null) {
-                    onBackHandle?.invoke()
-                }
                 val albumId = backStackEntry.arguments?.getLong("albumId") ?: -1
                 val genreName = backStackEntry.arguments?.getString("genreName")?.decodeUrlSafe()
                 val scrollPosition = rememberScrollPosition(backStackEntry)
@@ -276,9 +265,6 @@ fun Library(
                 )
             }
             composable("genres") { backStackEntry ->
-                BackHandler(enabled = onBackHandle != null) {
-                    onBackHandle?.invoke()
-                }
                 RegisterScreenMeta(
                     screenMetas,
                     backStackEntry,
@@ -302,9 +288,6 @@ fun Library(
                 )
             }
             composable("saved_queue") { backStackEntry ->
-                BackHandler(enabled = onBackHandle != null) {
-                    onBackHandle?.invoke()
-                }
                 RegisterScreenMeta(
                     screenMetas,
                     backStackEntry,
@@ -323,9 +306,6 @@ fun Library(
                 )
             }
             composable("history") { backStackEntry ->
-                BackHandler(enabled = onBackHandle != null) {
-                    onBackHandle?.invoke()
-                }
                 RegisterScreenMeta(
                     screenMetas,
                     backStackEntry,
@@ -343,9 +323,6 @@ fun Library(
                 )
             }
             composable("spotify") { backStackEntry ->
-                BackHandler(enabled = onBackHandle != null) {
-                    onBackHandle?.invoke()
-                }
                 RegisterScreenMeta(
                     screenMetas,
                     backStackEntry,
@@ -386,9 +363,6 @@ fun Library(
                 "spotify/source?type={type}",
                 arguments = listOf(navArgument("type") { type = NavType.StringType }),
             ) { backStackEntry ->
-                BackHandler(enabled = onBackHandle != null) {
-                    onBackHandle?.invoke()
-                }
                 val source = SpotifyBrowseSource.valueOf(
                     backStackEntry.arguments?.getString("type").orEmpty()
                 )
@@ -434,9 +408,6 @@ fun Library(
                     navArgument("kind") { type = NavType.StringType },
                 ),
             ) { backStackEntry ->
-                BackHandler(enabled = onBackHandle != null) {
-                    onBackHandle?.invoke()
-                }
                 val uri = backStackEntry.arguments?.getString("uri").orEmpty().decodeUrlSafe()
                 val kind = SpotifyContainer.Kind.valueOf(
                     backStackEntry.arguments?.getString("kind").orEmpty()
@@ -485,9 +456,6 @@ fun Library(
                 }
             }
             composable("qzi") { backStackEntry ->
-                BackHandler(enabled = onBackHandle != null) {
-                    onBackHandle?.invoke()
-                }
                 RegisterScreenMeta(
                     screenMetas,
                     backStackEntry,
@@ -498,9 +466,6 @@ fun Library(
                 )
             }
             composable("pay") { backStackEntry ->
-                BackHandler(enabled = onBackHandle != null) {
-                    onBackHandle?.invoke()
-                }
                 RegisterScreenMeta(
                     screenMetas,
                     backStackEntry,
@@ -509,9 +474,6 @@ fun Library(
                 Pay(onStartBilling = onStartBilling)
             }
             composable("equalizer") { backStackEntry ->
-                BackHandler(enabled = onBackHandle != null) {
-                    onBackHandle?.invoke()
-                }
                 RegisterScreenMeta(
                     screenMetas,
                     backStackEntry,
@@ -520,9 +482,6 @@ fun Library(
                 Equalizer(routeInfo = routeInfo)
             }
             composable("license") { backStackEntry ->
-                BackHandler(enabled = onBackHandle != null) {
-                    onBackHandle?.invoke()
-                }
                 RegisterScreenMeta(
                     screenMetas,
                     backStackEntry,
