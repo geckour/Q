@@ -1,6 +1,9 @@
 package com.geckour.q.ui.main.library
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -8,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -23,6 +27,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.navArgument
 import com.geckour.q.R
 import com.geckour.q.core.model.MediaItem
@@ -48,6 +53,8 @@ import com.geckour.q.ui.main.extra.Qzi
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
+
+private const val NAV_TRANSITION_MILLIS = 300
 
 @Composable
 fun Library(
@@ -99,6 +106,19 @@ fun Library(
     // repopulated on its own once the restored query is applied. Keeping it out of the saved
     // instance state also avoids serializing every MediaItem of a result set into a Bundle.
     val result = remember { mutableStateOf<ImmutableList<SearchItem>>(persistentListOf()) }
+    val screenMetas = remember { mutableStateMapOf<String, ScreenMeta>() }
+    val currentBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentScreenMeta = currentBackStackEntry?.id?.let { screenMetas[it] }
+    LaunchedEffect(currentScreenMeta) {
+        val screenMeta = currentScreenMeta ?: return@LaunchedEffect
+        onSelectNav(screenMeta.nav)
+        onChangeTopBarTitle(screenMeta.title)
+        when (val target = screenMeta.optionTarget) {
+            is OptionTarget.Item -> onSetOptionMediaItem(target.mediaItem)
+            is OptionTarget.ArtistId -> onSetOptionArtist(target.artistId)
+            is OptionTarget.AlbumId -> onSetOptionAlbum(target.albumId)
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -108,18 +128,23 @@ fun Library(
             startDestination = "artists",
             modifier = Modifier
                 .weight(1f)
-                .fillMaxSize()
+                .fillMaxSize(),
+            enterTransition = { fadeIn(tween(NAV_TRANSITION_MILLIS)) },
+            exitTransition = { fadeOut(tween(NAV_TRANSITION_MILLIS)) },
+            popEnterTransition = { fadeIn(tween(NAV_TRANSITION_MILLIS)) },
+            popExitTransition = { fadeOut(tween(NAV_TRANSITION_MILLIS)) },
+            predictivePopEnterTransition = { fadeIn(tween(NAV_TRANSITION_MILLIS)) },
+            predictivePopExitTransition = { fadeOut(tween(NAV_TRANSITION_MILLIS)) },
         ) {
             composable("artists") { backStackEntry ->
                 BackHandler(enabled = onBackHandle != null) {
                     onBackHandle?.invoke()
                 }
-                val topBarTitle = stringResource(id = R.string.nav_artist)
-                LaunchedEffect(navController.currentDestination) {
-                    onSelectNav(Nav.ARTIST)
-                    onChangeTopBarTitle(topBarTitle)
-                    onSetOptionMediaItem(AllArtists)
-                }
+                RegisterScreenMeta(
+                    screenMetas,
+                    backStackEntry,
+                    ScreenMeta(Nav.ARTIST, stringResource(id = R.string.nav_artist), OptionTarget.Item(AllArtists)),
+                )
                 val scrollPosition = rememberScrollPosition(backStackEntry)
 
                 Artists(
@@ -159,9 +184,13 @@ fun Library(
                 val artistId = backStackEntry.arguments?.getLong("artistId")
                     ?: -1
                 val scrollPosition = rememberScrollPosition(backStackEntry)
-                LaunchedEffect(artistId) {
-                    onSelectNav(Nav.ALBUM)
-                    onSetOptionArtist(artistId)
+                var topBarTitle by remember { mutableStateOf<String?>(null) }
+                topBarTitle?.let {
+                    RegisterScreenMeta(
+                        screenMetas,
+                        backStackEntry,
+                        ScreenMeta(Nav.ALBUM, it, OptionTarget.ArtistId(artistId)),
+                    )
                 }
 
                 Albums(
@@ -174,9 +203,7 @@ fun Library(
                     query = query,
                     result = result,
                     keyboardController = keyboardController,
-                    changeTopBarTitle = {
-                        onChangeTopBarTitle(it)
-                    },
+                    changeTopBarTitle = { topBarTitle = it },
                     onSelectAlbum = {
                         onSelectAlbum(it.album)
                     },
@@ -212,9 +239,13 @@ fun Library(
                 val albumId = backStackEntry.arguments?.getLong("albumId") ?: -1
                 val genreName = backStackEntry.arguments?.getString("genreName")?.decodeUrlSafe()
                 val scrollPosition = rememberScrollPosition(backStackEntry)
-                LaunchedEffect(albumId) {
-                    onSelectNav(Nav.TRACK)
-                    onSetOptionAlbum(albumId)
+                var topBarTitle by remember { mutableStateOf<String?>(null) }
+                topBarTitle?.let {
+                    RegisterScreenMeta(
+                        screenMetas,
+                        backStackEntry,
+                        ScreenMeta(Nav.TRACK, it, OptionTarget.AlbumId(albumId)),
+                    )
                 }
                 Tracks(
                     endItemMargin = endItemMargin,
@@ -225,9 +256,7 @@ fun Library(
                     query = query,
                     result = result,
                     keyboardController = keyboardController,
-                    changeTopBarTitle = {
-                        onChangeTopBarTitle(it)
-                    },
+                    changeTopBarTitle = { topBarTitle = it },
                     onTrackSelected = {
                         onSelectTrack(it)
                     },
@@ -250,12 +279,11 @@ fun Library(
                 BackHandler(enabled = onBackHandle != null) {
                     onBackHandle?.invoke()
                 }
-                val topBarTitle = stringResource(id = R.string.nav_genre)
-                LaunchedEffect(navController.currentDestination) {
-                    onSelectNav(Nav.GENRE)
-                    onChangeTopBarTitle(topBarTitle)
-                    onSetOptionMediaItem(null)
-                }
+                RegisterScreenMeta(
+                    screenMetas,
+                    backStackEntry,
+                    ScreenMeta(Nav.GENRE, stringResource(id = R.string.nav_genre), OptionTarget.Item(null)),
+                )
                 val scrollPosition = rememberScrollPosition(backStackEntry)
                 Genres(
                     endItemMargin = endItemMargin,
@@ -277,12 +305,11 @@ fun Library(
                 BackHandler(enabled = onBackHandle != null) {
                     onBackHandle?.invoke()
                 }
-                val topBarTitle = stringResource(id = R.string.nav_saved_queue)
-                LaunchedEffect(navController.currentDestination) {
-                    onSelectNav(Nav.SAVED_QUEUE)
-                    onChangeTopBarTitle(topBarTitle)
-                    onSetOptionMediaItem(null)
-                }
+                RegisterScreenMeta(
+                    screenMetas,
+                    backStackEntry,
+                    ScreenMeta(Nav.SAVED_QUEUE, stringResource(id = R.string.nav_saved_queue), OptionTarget.Item(null)),
+                )
                 val scrollPosition = rememberScrollPosition(backStackEntry)
                 SavedQueues(
                     endItemMargin = endItemMargin,
@@ -299,12 +326,11 @@ fun Library(
                 BackHandler(enabled = onBackHandle != null) {
                     onBackHandle?.invoke()
                 }
-                val topBarTitle = stringResource(id = R.string.nav_history)
-                LaunchedEffect(navController.currentDestination) {
-                    onSelectNav(Nav.HISTORY)
-                    onChangeTopBarTitle(topBarTitle)
-                    onSetOptionMediaItem(null)
-                }
+                RegisterScreenMeta(
+                    screenMetas,
+                    backStackEntry,
+                    ScreenMeta(Nav.HISTORY, stringResource(id = R.string.nav_history), OptionTarget.Item(null)),
+                )
                 val scrollPosition = rememberScrollPosition(backStackEntry)
                 TrackHistories(
                     endItemMargin = endItemMargin,
@@ -320,12 +346,11 @@ fun Library(
                 BackHandler(enabled = onBackHandle != null) {
                     onBackHandle?.invoke()
                 }
-                val topBarTitle = spotifyTopBarTitle(section = null)
-                LaunchedEffect(navController.currentDestination, topBarTitle) {
-                    onSelectNav(Nav.SPOTIFY)
-                    onChangeTopBarTitle(topBarTitle)
-                    onSetOptionMediaItem(null)
-                }
+                RegisterScreenMeta(
+                    screenMetas,
+                    backStackEntry,
+                    ScreenMeta(Nav.SPOTIFY, spotifyTopBarTitle(section = null), OptionTarget.Item(null)),
+                )
                 LaunchedEffect(isSpotifyConfigured, hasSpotifyCredential) {
                     when {
                         isSpotifyConfigured.not() -> {
@@ -368,14 +393,15 @@ fun Library(
                     backStackEntry.arguments?.getString("type").orEmpty()
                 )
                 val level = spotifyBrowse.level(source.levelKey)
-                val topBarTitle = spotifyTopBarTitle(spotifySourceTitle(source))
-                val optionMediaItem =
-                    spotifySourceOptionTarget(source, isSpotifyFlattened)
-                LaunchedEffect(navController.currentDestination, topBarTitle, optionMediaItem) {
-                    onSelectNav(Nav.SPOTIFY)
-                    onChangeTopBarTitle(topBarTitle)
-                    onSetOptionMediaItem(optionMediaItem)
-                }
+                RegisterScreenMeta(
+                    screenMetas,
+                    backStackEntry,
+                    ScreenMeta(
+                        Nav.SPOTIFY,
+                        spotifyTopBarTitle(spotifySourceTitle(source)),
+                        OptionTarget.Item(spotifySourceOptionTarget(source, isSpotifyFlattened)),
+                    ),
+                )
                 LaunchedEffect(source) {
                     if (level.items.isEmpty() || source == SpotifyBrowseSource.LIBRARY) {
                         loadSpotifySource(source, true)
@@ -423,13 +449,15 @@ fun Library(
 
                 val resolved = container
                 val level = spotifyBrowse.level(uri)
-                val topBarTitle = spotifyTopBarTitle(resolved?.name)
-                val optionMediaItem = resolved?.let { spotifyContainerOptionTarget(it) }
-                LaunchedEffect(navController.currentDestination, topBarTitle, optionMediaItem) {
-                    onSelectNav(Nav.SPOTIFY)
-                    onChangeTopBarTitle(topBarTitle)
-                    onSetOptionMediaItem(optionMediaItem)
-                }
+                RegisterScreenMeta(
+                    screenMetas,
+                    backStackEntry,
+                    ScreenMeta(
+                        Nav.SPOTIFY,
+                        spotifyTopBarTitle(resolved?.name),
+                        OptionTarget.Item(resolved?.let { spotifyContainerOptionTarget(it) }),
+                    ),
+                )
                 LaunchedEffect(resolved) {
                     val target = resolved ?: return@LaunchedEffect
                     if (level.items.isEmpty() || target.kind.isInLibrary) {
@@ -456,54 +484,50 @@ fun Library(
                     )
                 }
             }
-            composable("qzi") {
+            composable("qzi") { backStackEntry ->
                 BackHandler(enabled = onBackHandle != null) {
                     onBackHandle?.invoke()
                 }
-                val topBarTitle = stringResource(id = R.string.nav_fortune)
-                LaunchedEffect(navController.currentDestination) {
-                    onSelectNav(null)
-                    onChangeTopBarTitle(topBarTitle)
-                    onSetOptionMediaItem(null)
-                }
+                RegisterScreenMeta(
+                    screenMetas,
+                    backStackEntry,
+                    ScreenMeta(null, stringResource(id = R.string.nav_fortune), OptionTarget.Item(null)),
+                )
                 Qzi(
                     onClick = { onSelectTrack(it.toUiTrack()) }
                 )
             }
-            composable("pay") {
+            composable("pay") { backStackEntry ->
                 BackHandler(enabled = onBackHandle != null) {
                     onBackHandle?.invoke()
                 }
-                val topBarTitle = stringResource(id = R.string.nav_pay)
-                LaunchedEffect(navController.currentDestination) {
-                    onSelectNav(Nav.PAY)
-                    onChangeTopBarTitle(topBarTitle)
-                    onSetOptionMediaItem(null)
-                }
+                RegisterScreenMeta(
+                    screenMetas,
+                    backStackEntry,
+                    ScreenMeta(Nav.PAY, stringResource(id = R.string.nav_pay), OptionTarget.Item(null)),
+                )
                 Pay(onStartBilling = onStartBilling)
             }
-            composable("equalizer") {
+            composable("equalizer") { backStackEntry ->
                 BackHandler(enabled = onBackHandle != null) {
                     onBackHandle?.invoke()
                 }
-                val topBarTitle = stringResource(id = R.string.nav_equalizer)
-                LaunchedEffect(navController.currentDestination) {
-                    onSelectNav(Nav.EQUALIZER)
-                    onChangeTopBarTitle(topBarTitle)
-                    onSetOptionMediaItem(null)
-                }
+                RegisterScreenMeta(
+                    screenMetas,
+                    backStackEntry,
+                    ScreenMeta(Nav.EQUALIZER, stringResource(id = R.string.nav_equalizer), OptionTarget.Item(null)),
+                )
                 Equalizer(routeInfo = routeInfo)
             }
-            composable("license") {
+            composable("license") { backStackEntry ->
                 BackHandler(enabled = onBackHandle != null) {
                     onBackHandle?.invoke()
                 }
-                val topBarTitle = stringResource(id = R.string.nav_license)
-                LaunchedEffect(navController.currentDestination) {
-                    onSelectNav(Nav.LICENSE)
-                    onChangeTopBarTitle(topBarTitle)
-                    onSetOptionMediaItem(null)
-                }
+                RegisterScreenMeta(
+                    screenMetas,
+                    backStackEntry,
+                    ScreenMeta(Nav.LICENSE, stringResource(id = R.string.nav_license), OptionTarget.Item(null)),
+                )
                 Licenses(endItemMargin = endItemMargin)
             }
         }
