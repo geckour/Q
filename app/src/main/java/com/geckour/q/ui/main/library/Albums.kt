@@ -164,10 +164,12 @@ fun Albums(
             Surface(
                 color = QTheme.colors.colorBackground,
                 shadowElevation = 0.dp,
-                modifier = Modifier.combinedClickable(
-                    onClick = { navController.navigate(route = "tracks?albumId=${joinedAlbum.album.id}") },
-                    onLongClick = { onSelectAlbum(joinedAlbum) }
-                )
+                modifier = Modifier
+                    .containerTransform(albumContainerKey(joinedAlbum.album.id))
+                    .combinedClickable(
+                        onClick = { navController.navigate(route = "tracks?albumId=${joinedAlbum.album.id}") },
+                        onLongClick = { onSelectAlbum(joinedAlbum) }
+                    )
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

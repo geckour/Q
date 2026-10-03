@@ -1,12 +1,16 @@
 package com.geckour.q.ui.main.library
 
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -21,7 +25,9 @@ import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NamedNavArgument
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -44,6 +50,7 @@ import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.spotify.library.isInLibrary
 import com.geckour.q.spotify.model.SpotifyContainer
 import com.geckour.q.ui.component.QSnackbar
+import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.ui.license.Licenses
 import com.geckour.q.ui.main.dialog.DialogEvent
 import com.geckour.q.ui.main.extra.Equalizer
@@ -52,8 +59,6 @@ import com.geckour.q.ui.main.extra.Qzi
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
-
-private const val NAV_TRANSITION_MILLIS = 300
 
 @Composable
 fun Library(
@@ -121,373 +126,396 @@ fun Library(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        NavHost(
-            navController = navController,
-            startDestination = "artists",
+        SharedTransitionLayout(
             modifier = Modifier
                 .weight(1f)
-                .fillMaxSize(),
-            enterTransition = { fadeIn(tween(NAV_TRANSITION_MILLIS)) },
-            exitTransition = { fadeOut(tween(NAV_TRANSITION_MILLIS)) },
-            popEnterTransition = { fadeIn(tween(NAV_TRANSITION_MILLIS)) },
-            popExitTransition = { fadeOut(tween(NAV_TRANSITION_MILLIS)) },
-            predictivePopEnterTransition = { fadeIn(tween(NAV_TRANSITION_MILLIS)) },
-            predictivePopExitTransition = { fadeOut(tween(NAV_TRANSITION_MILLIS)) },
+                .fillMaxSize()
         ) {
-            composable("artists") { backStackEntry ->
-                RegisterScreenMeta(
-                    screenMetas,
-                    backStackEntry,
-                    ScreenMeta(Nav.ARTIST, stringResource(id = R.string.nav_artist), OptionTarget.Item(AllArtists)),
-                )
-                val scrollPosition = rememberScrollPosition(backStackEntry)
+            CompositionLocalProvider(LocalSharedTransitionScope provides this) {
+                NavHost(
+                    navController = navController,
+                    startDestination = "artists",
+                    modifier = Modifier.fillMaxSize(),
+                    enterTransition = { fadeIn(tween(NAV_TRANSITION_MILLIS)) },
+                    exitTransition = { fadeOut(tween(NAV_TRANSITION_MILLIS)) },
+                    popEnterTransition = { fadeIn(tween(NAV_TRANSITION_MILLIS)) },
+                    popExitTransition = { fadeOut(tween(NAV_TRANSITION_MILLIS)) },
+                    predictivePopEnterTransition = { fadeIn(tween(NAV_TRANSITION_MILLIS)) },
+                    predictivePopExitTransition = { fadeOut(tween(NAV_TRANSITION_MILLIS)) },
+                ) {
+                    screen("artists") { backStackEntry ->
+                        RegisterScreenMeta(
+                            screenMetas,
+                            backStackEntry,
+                            ScreenMeta(Nav.ARTIST, stringResource(id = R.string.nav_artist), OptionTarget.Item(AllArtists)),
+                        )
+                        val scrollPosition = rememberScrollPosition(backStackEntry)
 
-                Artists(
-                    endItemMargin = endItemMargin,
-                    navController = navController,
-                    isSearchActive = isSearchActive,
-                    isFavoriteOnly = isFavoriteOnly,
-                    query = query,
-                    result = result,
-                    keyboardController = keyboardController,
-                    onSelectArtist = {
-                        onSelectArtist(it)
-                    },
-                    onDownload = onDownload,
-                    onInvalidateDownloaded = onInvalidateDownloadedArtist,
-                    initialScrollPosition = scrollPosition.initialPosition,
-                    scrollToTop = scrollToTop,
-                    onScrollPositionUpdated = scrollPosition::update,
-                    onToggleFavorite = onToggleFavorite,
-                    onSearchItemClicked = onSearchItemClicked,
-                    onSearchItemLongClicked = onSearchItemLongClicked,
-                    searchSpotify = searchSpotify,
-                )
-            }
-            composable(
-                "albums?artistId={artistId}",
-                arguments = listOf(
-                    navArgument("artistId") {
-                        type = NavType.LongType
-                        defaultValue = -1
+                        Artists(
+                            endItemMargin = endItemMargin,
+                            navController = navController,
+                            isSearchActive = isSearchActive,
+                            isFavoriteOnly = isFavoriteOnly,
+                            query = query,
+                            result = result,
+                            keyboardController = keyboardController,
+                            onSelectArtist = {
+                                onSelectArtist(it)
+                            },
+                            onDownload = onDownload,
+                            onInvalidateDownloaded = onInvalidateDownloadedArtist,
+                            initialScrollPosition = scrollPosition.initialPosition,
+                            scrollToTop = scrollToTop,
+                            onScrollPositionUpdated = scrollPosition::update,
+                            onToggleFavorite = onToggleFavorite,
+                            onSearchItemClicked = onSearchItemClicked,
+                            onSearchItemLongClicked = onSearchItemLongClicked,
+                            searchSpotify = searchSpotify,
+                        )
                     }
-                )
-            ) { backStackEntry ->
-                val artistId = backStackEntry.arguments?.getLong("artistId")
-                    ?: -1
-                val scrollPosition = rememberScrollPosition(backStackEntry)
-                var topBarTitle by remember { mutableStateOf<String?>(null) }
-                topBarTitle?.let {
-                    RegisterScreenMeta(
-                        screenMetas,
-                        backStackEntry,
-                        ScreenMeta(Nav.ALBUM, it, OptionTarget.ArtistId(artistId)),
-                    )
-                }
-
-                Albums(
-                    endItemMargin = endItemMargin,
-                    navController = navController,
-                    artistId = backStackEntry.arguments?.getLong("artistId")
-                        ?: -1,
-                    isSearchActive = isSearchActive,
-                    isFavoriteOnly = isFavoriteOnly,
-                    query = query,
-                    result = result,
-                    keyboardController = keyboardController,
-                    changeTopBarTitle = { topBarTitle = it },
-                    onSelectAlbum = {
-                        onSelectAlbum(it.album)
-                    },
-                    onDownload = {
-                        onDownload(it)
-                    },
-                    onInvalidateDownloaded = onInvalidateDownloadedAlbum,
-                    initialScrollPosition = scrollPosition.initialPosition,
-                    scrollToTop = scrollToTop,
-                    onScrollPositionUpdated = scrollPosition::update,
-                    onToggleFavorite = onToggleFavorite,
-                    onSearchItemClicked = onSearchItemClicked,
-                    onSearchItemLongClicked = onSearchItemLongClicked,
-                    searchSpotify = searchSpotify,
-                )
-            }
-            composable(
-                "tracks?albumId={albumId}&genreName={genreName}",
-                arguments = listOf(
-                    navArgument("albumId") {
-                        type = NavType.LongType
-                        defaultValue = -1
-                    },
-                    navArgument("genreName") {
-                        type = NavType.StringType
-                        nullable = true
-                    }
-                )
-            ) { backStackEntry ->
-                val albumId = backStackEntry.arguments?.getLong("albumId") ?: -1
-                val genreName = backStackEntry.arguments?.getString("genreName")?.decodeUrlSafe()
-                val scrollPosition = rememberScrollPosition(backStackEntry)
-                var topBarTitle by remember { mutableStateOf<String?>(null) }
-                topBarTitle?.let {
-                    RegisterScreenMeta(
-                        screenMetas,
-                        backStackEntry,
-                        ScreenMeta(Nav.TRACK, it, OptionTarget.AlbumId(albumId)),
-                    )
-                }
-                Tracks(
-                    endItemMargin = endItemMargin,
-                    albumId = albumId,
-                    genreName = genreName,
-                    isSearchActive = isSearchActive,
-                    isFavoriteOnly = isFavoriteOnly,
-                    query = query,
-                    result = result,
-                    keyboardController = keyboardController,
-                    changeTopBarTitle = { topBarTitle = it },
-                    onTrackSelected = {
-                        onSelectTrack(it)
-                    },
-                    onDownload = {
-                        onDownload(listOfNotNull(it.dropboxPath))
-                    },
-                    onInvalidateDownloaded = {
-                        onInvalidateDownloaded(listOf(it.sourcePath))
-                    },
-                    initialScrollPosition = scrollPosition.initialPosition,
-                    scrollToTop = scrollToTop,
-                    onScrollPositionUpdated = scrollPosition::update,
-                    onToggleFavorite = onToggleFavorite,
-                    onSearchItemClicked = onSearchItemClicked,
-                    onSearchItemLongClicked = onSearchItemLongClicked,
-                    searchSpotify = searchSpotify,
-                )
-            }
-            composable("genres") { backStackEntry ->
-                RegisterScreenMeta(
-                    screenMetas,
-                    backStackEntry,
-                    ScreenMeta(Nav.GENRE, stringResource(id = R.string.nav_genre), OptionTarget.Item(null)),
-                )
-                val scrollPosition = rememberScrollPosition(backStackEntry)
-                Genres(
-                    endItemMargin = endItemMargin,
-                    navController = navController,
-                    isSearchActive = isSearchActive,
-                    query = query,
-                    result = result,
-                    keyboardController = keyboardController,
-                    onSelectGenre = { onSelectGenre(it) },
-                    initialScrollPosition = scrollPosition.initialPosition,
-                    scrollToTop = scrollToTop,
-                    onScrollPositionUpdated = scrollPosition::update,
-                    onSearchItemClicked = onSearchItemClicked,
-                    onSearchItemLongClicked = onSearchItemLongClicked,
-                    searchSpotify = searchSpotify,
-                )
-            }
-            composable("saved_queue") { backStackEntry ->
-                RegisterScreenMeta(
-                    screenMetas,
-                    backStackEntry,
-                    ScreenMeta(Nav.SAVED_QUEUE, stringResource(id = R.string.nav_saved_queue), OptionTarget.Item(null)),
-                )
-                val scrollPosition = rememberScrollPosition(backStackEntry)
-                SavedQueues(
-                    endItemMargin = endItemMargin,
-                    initialScrollPosition = scrollPosition.initialPosition,
-                    scrollToTop = scrollToTop,
-                    selectedSavedQueueForModify = selectedSavedQueueForModify,
-                    onSelectSavedQueueForOption = onSelectSavedQueueForOption,
-                    onSelectSavedQueueForModify = onSelectSavedQueueForModify,
-                    onScrollPositionUpdated = scrollPosition::update,
-                    onDeleteSavedQueue = onDeleteSavedQueue,
-                )
-            }
-            composable("history") { backStackEntry ->
-                RegisterScreenMeta(
-                    screenMetas,
-                    backStackEntry,
-                    ScreenMeta(Nav.HISTORY, stringResource(id = R.string.nav_history), OptionTarget.Item(null)),
-                )
-                val scrollPosition = rememberScrollPosition(backStackEntry)
-                TrackHistories(
-                    endItemMargin = endItemMargin,
-                    onSelectHistory = { uiTrackHistory ->
-                        onSelectTrack(uiTrackHistory.uiTrack)
-                    },
-                    initialScrollPosition = scrollPosition.initialPosition,
-                    scrollToTop = scrollToTop,
-                    onScrollPositionUpdated = scrollPosition::update,
-                )
-            }
-            composable("spotify") { backStackEntry ->
-                RegisterScreenMeta(
-                    screenMetas,
-                    backStackEntry,
-                    ScreenMeta(Nav.SPOTIFY, spotifyTopBarTitle(section = null), OptionTarget.Item(null)),
-                )
-                LaunchedEffect(isSpotifyConfigured, hasSpotifyCredential) {
-                    when {
-                        isSpotifyConfigured.not() -> {
-                            onDialogEvent(DialogEvent.NotifySpotifyNotConfigured)
+                    screen(
+                        "albums?artistId={artistId}",
+                        arguments = listOf(
+                            navArgument("artistId") {
+                                type = NavType.LongType
+                                defaultValue = -1
+                            }
+                        )
+                    ) { backStackEntry ->
+                        val artistId = backStackEntry.arguments?.getLong("artistId")
+                            ?: -1
+                        val scrollPosition = rememberScrollPosition(backStackEntry)
+                        var topBarTitle by remember { mutableStateOf<String?>(null) }
+                        topBarTitle?.let {
+                            RegisterScreenMeta(
+                                screenMetas,
+                                backStackEntry,
+                                ScreenMeta(Nav.ALBUM, it, OptionTarget.ArtistId(artistId)),
+                            )
                         }
 
-                        hasSpotifyCredential.not() -> {
-                            onDialogEvent(DialogEvent.RequestSpotifyAuth)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .containerTransform(artistId.takeIf { it > 0 }?.let(::artistContainerKey))
+                                .background(QTheme.colors.colorBackground)
+                        ) {
+                            Albums(
+                                endItemMargin = endItemMargin,
+                                navController = navController,
+                                artistId = backStackEntry.arguments?.getLong("artistId")
+                                    ?: -1,
+                                isSearchActive = isSearchActive,
+                                isFavoriteOnly = isFavoriteOnly,
+                                query = query,
+                                result = result,
+                                keyboardController = keyboardController,
+                                changeTopBarTitle = { topBarTitle = it },
+                                onSelectAlbum = {
+                                    onSelectAlbum(it.album)
+                                },
+                                onDownload = {
+                                    onDownload(it)
+                                },
+                                onInvalidateDownloaded = onInvalidateDownloadedAlbum,
+                                initialScrollPosition = scrollPosition.initialPosition,
+                                scrollToTop = scrollToTop,
+                                onScrollPositionUpdated = scrollPosition::update,
+                                onToggleFavorite = onToggleFavorite,
+                                onSearchItemClicked = onSearchItemClicked,
+                                onSearchItemLongClicked = onSearchItemLongClicked,
+                                searchSpotify = searchSpotify,
+                            )
                         }
                     }
-                }
-                SpotifyScreen(
-                    isSearchActive = isSearchActive,
-                    query = query,
-                    result = result,
-                    keyboardController = keyboardController,
-                    onSearchItemClicked = onSearchItemClicked,
-                    onSearchItemLongClicked = onSearchItemLongClicked,
-                    searchSpotify = searchSpotify,
-                ) {
-                    if (isSpotifyConfigured.not() || hasSpotifyCredential.not()) return@SpotifyScreen
+                    screen(
+                        "tracks?albumId={albumId}&genreName={genreName}",
+                        arguments = listOf(
+                            navArgument("albumId") {
+                                type = NavType.LongType
+                                defaultValue = -1
+                            },
+                            navArgument("genreName") {
+                                type = NavType.StringType
+                                nullable = true
+                            }
+                        )
+                    ) { backStackEntry ->
+                        val albumId = backStackEntry.arguments?.getLong("albumId") ?: -1
+                        val genreName = backStackEntry.arguments?.getString("genreName")?.decodeUrlSafe()
+                        val scrollPosition = rememberScrollPosition(backStackEntry)
+                        var topBarTitle by remember { mutableStateOf<String?>(null) }
+                        topBarTitle?.let {
+                            RegisterScreenMeta(
+                                screenMetas,
+                                backStackEntry,
+                                ScreenMeta(Nav.TRACK, it, OptionTarget.AlbumId(albumId)),
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .containerTransform(
+                                    albumId.takeIf { it > 0 }?.let(::albumContainerKey)
+                                        ?: genreName?.let(::genreContainerKey)
+                                )
+                                .background(QTheme.colors.colorBackground)
+                        ) {
+                            Tracks(
+                                endItemMargin = endItemMargin,
+                                albumId = albumId,
+                                genreName = genreName,
+                                isSearchActive = isSearchActive,
+                                isFavoriteOnly = isFavoriteOnly,
+                                query = query,
+                                result = result,
+                                keyboardController = keyboardController,
+                                changeTopBarTitle = { topBarTitle = it },
+                                onTrackSelected = {
+                                    onSelectTrack(it)
+                                },
+                                onDownload = {
+                                    onDownload(listOfNotNull(it.dropboxPath))
+                                },
+                                onInvalidateDownloaded = {
+                                    onInvalidateDownloaded(listOf(it.sourcePath))
+                                },
+                                initialScrollPosition = scrollPosition.initialPosition,
+                                scrollToTop = scrollToTop,
+                                onScrollPositionUpdated = scrollPosition::update,
+                                onToggleFavorite = onToggleFavorite,
+                                onSearchItemClicked = onSearchItemClicked,
+                                onSearchItemLongClicked = onSearchItemLongClicked,
+                                searchSpotify = searchSpotify,
+                            )
+                        }
+                    }
+                    screen("genres") { backStackEntry ->
+                        RegisterScreenMeta(
+                            screenMetas,
+                            backStackEntry,
+                            ScreenMeta(Nav.GENRE, stringResource(id = R.string.nav_genre), OptionTarget.Item(null)),
+                        )
+                        val scrollPosition = rememberScrollPosition(backStackEntry)
+                        Genres(
+                            endItemMargin = endItemMargin,
+                            navController = navController,
+                            isSearchActive = isSearchActive,
+                            query = query,
+                            result = result,
+                            keyboardController = keyboardController,
+                            onSelectGenre = { onSelectGenre(it) },
+                            initialScrollPosition = scrollPosition.initialPosition,
+                            scrollToTop = scrollToTop,
+                            onScrollPositionUpdated = scrollPosition::update,
+                            onSearchItemClicked = onSearchItemClicked,
+                            onSearchItemLongClicked = onSearchItemLongClicked,
+                            searchSpotify = searchSpotify,
+                        )
+                    }
+                    screen("saved_queue") { backStackEntry ->
+                        RegisterScreenMeta(
+                            screenMetas,
+                            backStackEntry,
+                            ScreenMeta(Nav.SAVED_QUEUE, stringResource(id = R.string.nav_saved_queue), OptionTarget.Item(null)),
+                        )
+                        val scrollPosition = rememberScrollPosition(backStackEntry)
+                        SavedQueues(
+                            endItemMargin = endItemMargin,
+                            initialScrollPosition = scrollPosition.initialPosition,
+                            scrollToTop = scrollToTop,
+                            selectedSavedQueueForModify = selectedSavedQueueForModify,
+                            onSelectSavedQueueForOption = onSelectSavedQueueForOption,
+                            onSelectSavedQueueForModify = onSelectSavedQueueForModify,
+                            onScrollPositionUpdated = scrollPosition::update,
+                            onDeleteSavedQueue = onDeleteSavedQueue,
+                        )
+                    }
+                    screen("history") { backStackEntry ->
+                        RegisterScreenMeta(
+                            screenMetas,
+                            backStackEntry,
+                            ScreenMeta(Nav.HISTORY, stringResource(id = R.string.nav_history), OptionTarget.Item(null)),
+                        )
+                        val scrollPosition = rememberScrollPosition(backStackEntry)
+                        TrackHistories(
+                            endItemMargin = endItemMargin,
+                            onSelectHistory = { uiTrackHistory ->
+                                onSelectTrack(uiTrackHistory.uiTrack)
+                            },
+                            initialScrollPosition = scrollPosition.initialPosition,
+                            scrollToTop = scrollToTop,
+                            onScrollPositionUpdated = scrollPosition::update,
+                        )
+                    }
+                    screen("spotify") { backStackEntry ->
+                        RegisterScreenMeta(
+                            screenMetas,
+                            backStackEntry,
+                            ScreenMeta(Nav.SPOTIFY, spotifyTopBarTitle(section = null), OptionTarget.Item(null)),
+                        )
+                        LaunchedEffect(isSpotifyConfigured, hasSpotifyCredential) {
+                            when {
+                                isSpotifyConfigured.not() -> {
+                                    onDialogEvent(DialogEvent.NotifySpotifyNotConfigured)
+                                }
 
-                    SpotifySourceMenu(
-                        endItemMargin = endItemMargin,
-                        onSelectSource = { source ->
-                            navController.navigate("spotify/source?type=${source.name}")
-                        },
-                        onDialogEvent = onDialogEvent,
-                    )
-                }
-            }
-            composable(
-                "spotify/source?type={type}",
-                arguments = listOf(navArgument("type") { type = NavType.StringType }),
-            ) { backStackEntry ->
-                val source = SpotifyBrowseSource.valueOf(
-                    backStackEntry.arguments?.getString("type").orEmpty()
-                )
-                val level = spotifyBrowse.level(source.levelKey)
-                RegisterScreenMeta(
-                    screenMetas,
-                    backStackEntry,
-                    ScreenMeta(
-                        Nav.SPOTIFY,
-                        spotifyTopBarTitle(spotifySourceTitle(source)),
-                        OptionTarget.Item(spotifySourceOptionTarget(source, isSpotifyFlattened)),
-                    ),
-                )
-                LaunchedEffect(source) {
-                    if (level.items.isEmpty() || source == SpotifyBrowseSource.LIBRARY) {
-                        loadSpotifySource(source, true)
+                                hasSpotifyCredential.not() -> {
+                                    onDialogEvent(DialogEvent.RequestSpotifyAuth)
+                                }
+                            }
+                        }
+                        SpotifyScreen(
+                            isSearchActive = isSearchActive,
+                            query = query,
+                            result = result,
+                            keyboardController = keyboardController,
+                            onSearchItemClicked = onSearchItemClicked,
+                            onSearchItemLongClicked = onSearchItemLongClicked,
+                            searchSpotify = searchSpotify,
+                        ) {
+                            if (isSpotifyConfigured.not() || hasSpotifyCredential.not()) return@SpotifyScreen
+
+                            SpotifySourceMenu(
+                                endItemMargin = endItemMargin,
+                                onSelectSource = { source ->
+                                    navController.navigate("spotify/source?type=${source.name}")
+                                },
+                                onDialogEvent = onDialogEvent,
+                            )
+                        }
+                    }
+                    screen(
+                        "spotify/source?type={type}",
+                        arguments = listOf(navArgument("type") { type = NavType.StringType }),
+                    ) { backStackEntry ->
+                        val source = SpotifyBrowseSource.valueOf(
+                            backStackEntry.arguments?.getString("type").orEmpty()
+                        )
+                        val level = spotifyBrowse.level(source.levelKey)
+                        RegisterScreenMeta(
+                            screenMetas,
+                            backStackEntry,
+                            ScreenMeta(
+                                Nav.SPOTIFY,
+                                spotifyTopBarTitle(spotifySourceTitle(source)),
+                                OptionTarget.Item(spotifySourceOptionTarget(source, isSpotifyFlattened)),
+                            ),
+                        )
+                        LaunchedEffect(source) {
+                            if (level.items.isEmpty() || source == SpotifyBrowseSource.LIBRARY) {
+                                loadSpotifySource(source, true)
+                            }
+                        }
+                        SpotifyScreen(
+                            isSearchActive = isSearchActive,
+                            query = query,
+                            result = result,
+                            keyboardController = keyboardController,
+                            onSearchItemClicked = onSearchItemClicked,
+                            onSearchItemLongClicked = onSearchItemLongClicked,
+                            searchSpotify = searchSpotify,
+                        ) {
+                            SpotifyLevelList(
+                                level = level,
+                                backStackEntry = backStackEntry,
+                                endItemMargin = endItemMargin,
+                                showsRemoveFromLibrary = source == SpotifyBrowseSource.LIBRARY,
+                                onOpenContainer = { navController.navigateToSpotifyContainer(it) },
+                                onLoadMore = { loadSpotifySource(source, false) },
+                                onDialogEvent = onDialogEvent,
+                            )
+                        }
+                    }
+                    screen(
+                        "spotify/container?uri={uri}&kind={kind}",
+                        arguments = listOf(
+                            navArgument("uri") { type = NavType.StringType },
+                            navArgument("kind") { type = NavType.StringType },
+                        ),
+                    ) { backStackEntry ->
+                        val uri = backStackEntry.arguments?.getString("uri").orEmpty().decodeUrlSafe()
+                        val kind = SpotifyContainer.Kind.valueOf(
+                            backStackEntry.arguments?.getString("kind").orEmpty()
+                        )
+                        var container by remember { mutableStateOf<SpotifyContainer?>(null) }
+                        LaunchedEffect(uri, kind) {
+                            container = resolveSpotifyContainer(uri, kind)
+                            if (container == null) navController.popBackStack()
+                        }
+
+                        val resolved = container
+                        val level = spotifyBrowse.level(uri)
+                        RegisterScreenMeta(
+                            screenMetas,
+                            backStackEntry,
+                            ScreenMeta(
+                                Nav.SPOTIFY,
+                                spotifyTopBarTitle(resolved?.name),
+                                OptionTarget.Item(resolved?.let { spotifyContainerOptionTarget(it) }),
+                            ),
+                        )
+                        LaunchedEffect(resolved) {
+                            val target = resolved ?: return@LaunchedEffect
+                            if (level.items.isEmpty() || target.kind.isInLibrary) {
+                                loadSpotifyContainer(target, true)
+                            }
+                        }
+                        SpotifyScreen(
+                            isSearchActive = isSearchActive,
+                            query = query,
+                            result = result,
+                            keyboardController = keyboardController,
+                            onSearchItemClicked = onSearchItemClicked,
+                            onSearchItemLongClicked = onSearchItemLongClicked,
+                            searchSpotify = searchSpotify,
+                        ) {
+                            SpotifyLevelList(
+                                level = level,
+                                backStackEntry = backStackEntry,
+                                endItemMargin = endItemMargin,
+                                showsRemoveFromLibrary = kind.isInLibrary,
+                                onOpenContainer = { navController.navigateToSpotifyContainer(it) },
+                                onLoadMore = { resolved?.let { loadSpotifyContainer(it, false) } },
+                                onDialogEvent = onDialogEvent,
+                            )
+                        }
+                    }
+                    screen("qzi") { backStackEntry ->
+                        RegisterScreenMeta(
+                            screenMetas,
+                            backStackEntry,
+                            ScreenMeta(null, stringResource(id = R.string.nav_fortune), OptionTarget.Item(null)),
+                        )
+                        Qzi(
+                            onClick = { onSelectTrack(it.toUiTrack()) }
+                        )
+                    }
+                    screen("pay") { backStackEntry ->
+                        RegisterScreenMeta(
+                            screenMetas,
+                            backStackEntry,
+                            ScreenMeta(Nav.PAY, stringResource(id = R.string.nav_pay), OptionTarget.Item(null)),
+                        )
+                        Pay(onStartBilling = onStartBilling)
+                    }
+                    screen("equalizer") { backStackEntry ->
+                        RegisterScreenMeta(
+                            screenMetas,
+                            backStackEntry,
+                            ScreenMeta(Nav.EQUALIZER, stringResource(id = R.string.nav_equalizer), OptionTarget.Item(null)),
+                        )
+                        Equalizer(routeInfo = routeInfo)
+                    }
+                    screen("license") { backStackEntry ->
+                        RegisterScreenMeta(
+                            screenMetas,
+                            backStackEntry,
+                            ScreenMeta(Nav.LICENSE, stringResource(id = R.string.nav_license), OptionTarget.Item(null)),
+                        )
+                        Licenses(endItemMargin = endItemMargin)
                     }
                 }
-                SpotifyScreen(
-                    isSearchActive = isSearchActive,
-                    query = query,
-                    result = result,
-                    keyboardController = keyboardController,
-                    onSearchItemClicked = onSearchItemClicked,
-                    onSearchItemLongClicked = onSearchItemLongClicked,
-                    searchSpotify = searchSpotify,
-                ) {
-                    SpotifyLevelList(
-                        level = level,
-                        backStackEntry = backStackEntry,
-                        endItemMargin = endItemMargin,
-                        showsRemoveFromLibrary = source == SpotifyBrowseSource.LIBRARY,
-                        onOpenContainer = { navController.navigateToSpotifyContainer(it) },
-                        onLoadMore = { loadSpotifySource(source, false) },
-                        onDialogEvent = onDialogEvent,
-                    )
-                }
-            }
-            composable(
-                "spotify/container?uri={uri}&kind={kind}",
-                arguments = listOf(
-                    navArgument("uri") { type = NavType.StringType },
-                    navArgument("kind") { type = NavType.StringType },
-                ),
-            ) { backStackEntry ->
-                val uri = backStackEntry.arguments?.getString("uri").orEmpty().decodeUrlSafe()
-                val kind = SpotifyContainer.Kind.valueOf(
-                    backStackEntry.arguments?.getString("kind").orEmpty()
-                )
-                var container by remember { mutableStateOf<SpotifyContainer?>(null) }
-                LaunchedEffect(uri, kind) {
-                    container = resolveSpotifyContainer(uri, kind)
-                    if (container == null) navController.popBackStack()
-                }
-
-                val resolved = container
-                val level = spotifyBrowse.level(uri)
-                RegisterScreenMeta(
-                    screenMetas,
-                    backStackEntry,
-                    ScreenMeta(
-                        Nav.SPOTIFY,
-                        spotifyTopBarTitle(resolved?.name),
-                        OptionTarget.Item(resolved?.let { spotifyContainerOptionTarget(it) }),
-                    ),
-                )
-                LaunchedEffect(resolved) {
-                    val target = resolved ?: return@LaunchedEffect
-                    if (level.items.isEmpty() || target.kind.isInLibrary) {
-                        loadSpotifyContainer(target, true)
-                    }
-                }
-                SpotifyScreen(
-                    isSearchActive = isSearchActive,
-                    query = query,
-                    result = result,
-                    keyboardController = keyboardController,
-                    onSearchItemClicked = onSearchItemClicked,
-                    onSearchItemLongClicked = onSearchItemLongClicked,
-                    searchSpotify = searchSpotify,
-                ) {
-                    SpotifyLevelList(
-                        level = level,
-                        backStackEntry = backStackEntry,
-                        endItemMargin = endItemMargin,
-                        showsRemoveFromLibrary = kind.isInLibrary,
-                        onOpenContainer = { navController.navigateToSpotifyContainer(it) },
-                        onLoadMore = { resolved?.let { loadSpotifyContainer(it, false) } },
-                        onDialogEvent = onDialogEvent,
-                    )
-                }
-            }
-            composable("qzi") { backStackEntry ->
-                RegisterScreenMeta(
-                    screenMetas,
-                    backStackEntry,
-                    ScreenMeta(null, stringResource(id = R.string.nav_fortune), OptionTarget.Item(null)),
-                )
-                Qzi(
-                    onClick = { onSelectTrack(it.toUiTrack()) }
-                )
-            }
-            composable("pay") { backStackEntry ->
-                RegisterScreenMeta(
-                    screenMetas,
-                    backStackEntry,
-                    ScreenMeta(Nav.PAY, stringResource(id = R.string.nav_pay), OptionTarget.Item(null)),
-                )
-                Pay(onStartBilling = onStartBilling)
-            }
-            composable("equalizer") { backStackEntry ->
-                RegisterScreenMeta(
-                    screenMetas,
-                    backStackEntry,
-                    ScreenMeta(Nav.EQUALIZER, stringResource(id = R.string.nav_equalizer), OptionTarget.Item(null)),
-                )
-                Equalizer(routeInfo = routeInfo)
-            }
-            composable("license") { backStackEntry ->
-                RegisterScreenMeta(
-                    screenMetas,
-                    backStackEntry,
-                    ScreenMeta(Nav.LICENSE, stringResource(id = R.string.nav_license), OptionTarget.Item(null)),
-                )
-                Licenses(endItemMargin = endItemMargin)
             }
         }
         QSnackbar(
@@ -561,4 +589,16 @@ private fun NavHostController.navigateToSpotifyContainer(container: SpotifyConta
     navigate(
         "spotify/container?uri=${container.uri.encodeUrlSafe()}&kind=${container.kind.name}"
     )
+}
+
+private fun NavGraphBuilder.screen(
+    route: String,
+    arguments: List<NamedNavArgument> = emptyList(),
+    content: @Composable (NavBackStackEntry) -> Unit,
+) {
+    composable(route, arguments) { backStackEntry ->
+        CompositionLocalProvider(LocalNavAnimatedVisibilityScope provides this) {
+            content(backStackEntry)
+        }
+    }
 }

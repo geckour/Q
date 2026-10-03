@@ -122,6 +122,8 @@ fun Genres(
         ) { genre ->
             Column(
                 modifier = Modifier
+                    .containerTransform(genreContainerKey(genre.name))
+                    .background(QTheme.colors.colorBackground)
                     .combinedClickable(
                         onClick = {
                             navController.navigate(

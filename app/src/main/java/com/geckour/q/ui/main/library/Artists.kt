@@ -151,9 +151,12 @@ fun Artists(
             Surface(
                 color = QTheme.colors.colorBackground,
                 shadowElevation = 0.dp,
-                modifier = Modifier.combinedClickable(
-                    onClick = { navController.navigate(route = "albums?artistId=${artist.id}") },
-                    onLongClick = { onSelectArtist(artist) }),
+                modifier = Modifier
+                    .containerTransform(artistContainerKey(artist.id))
+                    .combinedClickable(
+                        onClick = { navController.navigate(route = "albums?artistId=${artist.id}") },
+                        onLongClick = { onSelectArtist(artist) }
+                    ),
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
