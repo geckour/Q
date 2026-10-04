@@ -213,14 +213,18 @@ class MainViewModel(
         currentIndexFlow,
     ) { allTracks, (currentSourcePaths, spotifyTracks), currentIndex ->
         val spotifyTrackMap = spotifyTracks.associateBy { it.uri }
+        val occurrenceCounts = mutableMapOf<String, Int>()
         currentSourcePaths.mapIndexedNotNull { index, sourcePath ->
+            val occurrence = occurrenceCounts.getOrDefault(sourcePath, 0)
+            occurrenceCounts[sourcePath] = occurrence + 1
             val nowPlaying = currentIndex == index
-            if (sourcePath.isSpotifySourcePath) {
+            val uiTrack = if (sourcePath.isSpotifySourcePath) {
                 spotifyTrackMap[sourcePath]?.toUiTrack(nowPlaying = nowPlaying)
             } else {
                 allTracks.firstOrNull { it.track.sourcePath == sourcePath }
                     ?.toUiTrack(nowPlaying = nowPlaying)
             }
+            uiTrack?.copy(key = "$sourcePath#$occurrence")
         }
     }
     internal val currentPlaybackPositionFlow = MutableStateFlow(0L)
