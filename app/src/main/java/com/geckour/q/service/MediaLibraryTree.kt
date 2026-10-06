@@ -8,17 +8,20 @@ import androidx.core.net.toUri
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import com.geckour.q.R
+import com.geckour.q.core.util.escapeSql
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.JoinedAlbum
 import com.geckour.q.data.db.model.JoinedTrack
-import com.geckour.q.data.db.model.TrackRef
+import com.geckour.q.spotify.isSpotifySourcePath
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
-import com.geckour.q.core.util.dailyRandom
-import com.geckour.q.core.util.escapeSql
+import com.geckour.q.util.canPickSpotifyTracks
 import com.geckour.q.util.getMediaItem
 import com.geckour.q.util.orderModified
+import com.geckour.q.util.pickDailyTrack
+import com.geckour.q.util.toMediaItem
+import com.geckour.q.util.trackRef
 import kotlinx.coroutines.flow.first
 
 internal object MediaLibraryTree {
@@ -200,11 +203,11 @@ internal object MediaLibraryTree {
         }
     }
 
-    suspend fun resolveQueryToTracks(
+    suspend fun resolveQueryToMediaItems(
         context: Context,
         query: String,
         extras: Bundle?
-    ): List<JoinedTrack> {
+    ): List<MediaItem> {
         if (query.isBlank()) return randomQueue(context)
 
         val focus = extras?.getString(MediaStore.EXTRA_MEDIA_FOCUS)
@@ -228,21 +231,30 @@ internal object MediaLibraryTree {
 
             else -> null
         }
-        if (focused != null && focused.isNotEmpty()) return focused
+        if (focused != null && focused.isNotEmpty()) return focused.map { it.getMediaItem() }
 
-        return findTracksByFreeQuery(context, query)
+        return findTracksByFreeQuery(context, query).map { it.getMediaItem() }
     }
 
-    suspend fun randomQueue(context: Context): List<JoinedTrack> {
+    suspend fun randomQueue(context: Context): List<MediaItem> {
         val db = DB.getInstance(context)
-        val originTrack = db.trackDao().getByRandom(db, dailyRandom) ?: return emptyList()
+        val origin = pickDailyTrack(context) ?: return emptyList()
+        val includesSpotify = context.canPickSpotifyTracks()
 
-        val sourcePaths = db.queueHistoryDao().generateQueue(TrackRef(originTrack.track.id))
-        val tracks = db.trackDao()
-            .getAllBySourcePaths(sourcePaths)
+        val sourcePaths = db.queueHistoryDao().generateQueue(origin.trackRef)
+        val localTracks = db.trackDao()
+            .getAllBySourcePaths(sourcePaths.filterNot { it.isSpotifySourcePath })
             .associateBy { it.track.sourcePath }
+        val spotifyTracks =
+            if (includesSpotify) {
+                db.spotifyTrackDao()
+                    .getAllByUris(sourcePaths.filter { it.isSpotifySourcePath })
+                    .associateBy { it.uri }
+            } else emptyMap()
 
-        return sourcePaths.mapNotNull { tracks[it] }.ifEmpty { listOf(originTrack) }
+        return sourcePaths
+            .mapNotNull { localTracks[it]?.getMediaItem() ?: spotifyTracks[it]?.getMediaItem() }
+            .ifEmpty { listOf(origin.toMediaItem()) }
     }
 
     private suspend fun findTracksByFreeQuery(

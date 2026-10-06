@@ -56,7 +56,6 @@ import com.geckour.q.ui.main.dialog.DialogEvent
 import com.geckour.q.ui.main.extra.Equalizer
 import com.geckour.q.ui.main.extra.Pay
 import com.geckour.q.ui.main.extra.Qzi
-import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 
@@ -488,7 +487,7 @@ fun Library(
                             ScreenMeta(null, stringResource(id = R.string.nav_fortune), OptionTarget.Item(null)),
                         )
                         Qzi(
-                            onClick = { onSelectTrack(it.toUiTrack()) }
+                            onClick = { onSelectTrack(it) }
                         )
                     }
                     screen("pay") { backStackEntry ->

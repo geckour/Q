@@ -29,19 +29,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.geckour.q.R
-import com.geckour.q.data.db.DB
-import com.geckour.q.data.db.model.JoinedTrack
+import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.compose.QTheme
-import com.geckour.q.core.util.dailyRandom
+import com.geckour.q.util.pickDailyTrack
+import com.geckour.q.util.toUiTrack
 
 @Composable
-fun Qzi(onClick: (item: JoinedTrack) -> Unit) {
+fun Qzi(onClick: (item: UiTrack) -> Unit) {
     val context = LocalContext.current
-    var track by remember { mutableStateOf<JoinedTrack?>(null) }
+    var track by remember { mutableStateOf<UiTrack?>(null) }
 
     LaunchedEffect(Unit) {
-        val db = DB.getInstance(context)
-        track = db.trackDao().getByRandom(db, dailyRandom)
+        track = pickDailyTrack(context)?.toUiTrack()
     }
 
     Box(
@@ -75,7 +74,7 @@ fun Qzi(onClick: (item: JoinedTrack) -> Unit) {
                     }
                 }
                 AsyncImage(
-                    model = track?.track?.artworkUriString ?: R.drawable.ic_empty,
+                    model = track?.artworkUriString ?: R.drawable.ic_empty,
                     contentDescription = null,
                     modifier = Modifier
                         .size(200.dp)
@@ -87,7 +86,7 @@ fun Qzi(onClick: (item: JoinedTrack) -> Unit) {
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = track?.track?.title.orEmpty(),
+                    text = track?.title.orEmpty(),
                     fontSize = 20.sp,
                     color = QTheme.colors.colorTextPrimary
                 )

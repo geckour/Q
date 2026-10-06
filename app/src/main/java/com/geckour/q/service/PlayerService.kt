@@ -847,11 +847,11 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
             val requestMetadata = mediaItem.requestMetadata
             val searchQuery = requestMetadata.searchQuery
             when {
-                searchQuery != null -> MediaLibraryTree.resolveQueryToTracks(
+                searchQuery != null -> MediaLibraryTree.resolveQueryToMediaItems(
                     context = this,
                     query = searchQuery,
                     extras = requestMetadata.extras
-                ).map { it.getMediaItem() }
+                )
 
                 mediaItem.mediaId.isNotBlank() -> {
                     MediaLibraryTree.resolveToTracks(this, mediaItem.mediaId)
@@ -861,11 +861,11 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
                 mediaItem.hasPlayableUri -> listOf(mediaItem)
 
-                else -> MediaLibraryTree.resolveQueryToTracks(
+                else -> MediaLibraryTree.resolveQueryToMediaItems(
                     context = this,
                     query = "",
                     extras = null
-                ).map { it.getMediaItem() }
+                )
             }
         }
 
