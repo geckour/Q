@@ -115,7 +115,7 @@ abstract class DB : RoomDatabase() {
             }
         }
 
-        private val migrationFrom15To16 = object : Migration(15, 16) {
+        private fun migrationFrom15To16(context: Context) = object : Migration(15, 16) {
 
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL(
@@ -127,6 +127,25 @@ abstract class DB : RoomDatabase() {
                 )
                 db.execSQL(
                     "create index if not exists index_Artist_title on Artist (title)"
+                )
+                db.execSQL(
+                    "create table if not exists `_new_SavedQueue` (" +
+                            "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                            "`title` TEXT NOT NULL, " +
+                            "`createdAt` INTEGER NOT NULL, " +
+                            "`updatedAt` INTEGER NOT NULL)"
+                )
+                db.execSQL(
+                    "insert into `_new_SavedQueue` (id, title, createdAt, updatedAt) " +
+                            "select id, coalesce(title, replace(?, '%d', id)), createdAt, updatedAt " +
+                            "from `SavedQueue`",
+                    arrayOf(context.getString(R.string.saved_queue_default_title))
+                )
+                db.execSQL("drop table `SavedQueue`")
+                db.execSQL("alter table `_new_SavedQueue` rename to `SavedQueue`")
+                db.execSQL(
+                    "create index if not exists `index_SavedQueue_updatedAt` " +
+                            "on `SavedQueue` (`updatedAt`)"
                 )
             }
         }
@@ -158,7 +177,7 @@ abstract class DB : RoomDatabase() {
                         migrationFrom11To12(context),
                         migrationFrom13To14,
                         migrationFrom14To15,
-                        migrationFrom15To16,
+                        migrationFrom15To16(context),
                         migrationFrom17To18
                     )
                     .build()
