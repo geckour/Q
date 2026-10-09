@@ -17,6 +17,7 @@ import com.spotify.android.appremote.api.error.CouldNotFindSpotifyApp
 import com.spotify.protocol.client.Subscription
 import com.spotify.protocol.types.Capabilities
 import com.spotify.protocol.types.PlayerState
+import com.spotify.protocol.types.Repeat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -67,6 +68,7 @@ class SpotifyPlaybackSync(
     private var isSeekingQuietly = false
     private var pendingStart: Pair<String, Long>? = null
     private var isFinishingTrack = false
+    private var repeatModeBeforeOwning: Int? = null
 
     private var seekJob: Job? = null
     private var pollJob: Job? = null
@@ -111,6 +113,7 @@ class SpotifyPlaybackSync(
         isReleased = true
         player.removeListener(listener)
         if (isOwningPlayback && isPausedByUs.not()) appRemote?.playerApi?.pause()
+        restoreRepeatMode()
         disconnect()
     }
 
@@ -129,6 +132,7 @@ class SpotifyPlaybackSync(
             stopPolling()
             if (isOwningPlayback) {
                 pauseSpotify()
+                restoreRepeatMode()
                 isOwningPlayback = false
                 loadedUri = null
             }
@@ -250,6 +254,8 @@ class SpotifyPlaybackSync(
         val uri = loadedUri ?: return
         if (isOwningPlayback.not() || activeUri != uri) return
 
+        disableRepeatWhileOwning(state)
+
         val trackUri = state.track?.uri
         val elapsedSinceCommand = SystemClock.elapsedRealtime() - lastCommandedAt
 
@@ -272,6 +278,7 @@ class SpotifyPlaybackSync(
                     finishCurrentTrack()
                 } else {
                     Timber.d("qgeck spotify switched to another item: $trackUri")
+                    restoreRepeatMode()
                     isOwningPlayback = false
                     loadedUri = null
                     player.pause()
@@ -292,6 +299,13 @@ class SpotifyPlaybackSync(
                 Timber.d("qgeck spotify resumed outside the app")
                 isPausedByUs = false
                 player.play()
+            }
+
+            state.isPaused.not() &&
+                    isNearTrackEnd() &&
+                    state.playbackPosition <= START_POSITION_TOLERANCE_MILLIS -> {
+                Timber.d("qgeck spotify restarted the current track")
+                finishCurrentTrack()
             }
 
             state.isPaused.not() && isFresh -> {
@@ -316,6 +330,24 @@ class SpotifyPlaybackSync(
                 seekPlayerQuietly(state.playbackPosition)
             }
         }
+    }
+
+    private fun disableRepeatWhileOwning(state: PlayerState) {
+        val repeatMode = state.playbackOptions?.repeatMode ?: return
+        if (repeatMode == Repeat.OFF) return
+
+        if (repeatModeBeforeOwning == null) repeatModeBeforeOwning = repeatMode
+        Timber.d("qgeck spotify repeat disabled: $repeatMode")
+        appRemote?.playerApi?.setRepeat(Repeat.OFF)?.setErrorCallback { Timber.e(it) }
+    }
+
+    private fun restoreRepeatMode() {
+        val repeatMode = repeatModeBeforeOwning ?: return
+        val remote = appRemote?.takeIf { it.isConnected } ?: return
+
+        repeatModeBeforeOwning = null
+        Timber.d("qgeck spotify repeat restored: $repeatMode")
+        remote.playerApi.setRepeat(repeatMode).setErrorCallback { Timber.e(it) }
     }
 
     private fun isNearTrackEnd(): Boolean {
