@@ -504,6 +504,7 @@ class SpotifyPlaybackSync(
         isOwningPlayback = false
         loadedUri = null
         isFinishingTrack = false
+        repeatModeBeforeOwning = null
     }
 
     private fun onPlaybackError(throwable: Throwable) {
