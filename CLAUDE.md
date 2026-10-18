@@ -26,12 +26,14 @@ Media3 を更新するときの手順。
 
 | ユーザーの指示 | 行うこと | ワークフローの動作 |
 | --- | --- | --- |
-| 「Firebase App Distribution に上げて」 | master へ push | `assembleRelease` の APK を Firebase App Distribution へ |
+| 「Firebase App Distribution に上げて」 | master へ push | `assembleFad` の APK を Firebase App Distribution へ |
 | 「Play Store に上げて」 | リリースを作成 | `bundleRelease` の AAB を Play Store へ |
 
 この指示自体が実行許可なので、改めて確認は取らずに進める。
 
 Firebase への配信は、変更をコミットして master へ push すれば始まる。Markdown ファイルだけの変更では走らない。前のワークフローが終わる前に次の push があると、前のものは取り消されて最新のものだけが配信される。Firebase のリリースノートには、push された最後のコミットの短いハッシュと、そのメッセージの 1 行目が改行を挟んで入る。
+
+Firebase へ配信するのは buildType `fad` のビルドで、パッケージ名は `com.geckour.q.fad`、アプリ名は「Q FAD」。ストア版とパッケージ名を分けて、Play Store のアップデート対象にならないようにしている。Firebase プロジェクトにはこのパッケージのアプリを別に登録してあり、Actions の変数 `FIREBASE_APP_ID` はそのアプリを指す。google-services.json にこのパッケージの client がないとビルドが失敗する。
 
 Play Store へのリリースは `gh` で作成する。ただし下記の前提を先に検査し、満たさない場合は作成せずに報告する。
 

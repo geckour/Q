@@ -52,6 +52,11 @@ android {
             )
             signingConfig = signingConfigs.getByName("release")
         }
+        create("fad") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".fad"
+            matchingFallbacks += "release"
+        }
     }
     buildFeatures {
         compose = true

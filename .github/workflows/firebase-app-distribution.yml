@@ -16,7 +16,7 @@ concurrency:
 env:
   JAVA_VERSION: '25'
   ARTIFACT_NAME: firebase-artifacts
-  APK_PATH: dist/app-release.apk
+  APK_PATH: dist/app-fad.apk
 
 jobs:
   build:
@@ -84,16 +84,16 @@ jobs:
           }
           SIGNING_EOF
 
-      - name: Build the release APK
+      - name: Build the FAD APK
         env:
           RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
           RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
           RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
-        run: ./gradlew --no-daemon :app:assembleRelease
+        run: ./gradlew --no-daemon :app:assembleFad
 
       - name: Collect the built files
         run: |
-          cp app/build/outputs/apk/release/app-release.apk dist/
+          cp app/build/outputs/apk/fad/app-fad.apk dist/
           ls -l dist
 
       - name: Upload the built files
