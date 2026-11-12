@@ -3,6 +3,7 @@ package com.geckour.q.ui.main.library
 import android.content.Context
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -117,7 +118,7 @@ fun QSearchBar(
         active = isSearchActive.value,
         onActiveChange = { newActive -> isSearchActive.value = newActive },
         colors = SearchBarDefaults.colors(
-            containerColor = QTheme.colors.colorBackgroundSearch,
+            containerColor = QTheme.colors.colorSurface,
             dividerColor = Color.Transparent,
             inputFieldColors = TextFieldDefaults.colors(
                 cursorColor = QTheme.colors.colorTextPrimary,
@@ -147,7 +148,12 @@ fun QSearchBar(
                 transformOrigin = TransformOrigin(0.5f, 0f),
             )
     ) {
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+        // The input field keeps the surface color; the results sit between it and the background.
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(QTheme.colors.colorSurfaceDim)
+        ) {
             items(result.value) { item ->
                 when (item.type) {
                     SearchItem.SearchItemType.CATEGORY -> SearchResultSectionHeader(title = item.title)
@@ -179,7 +185,7 @@ fun QSearchBar(
                     ) {
                         CircularWavyProgressIndicator(
                             color = QTheme.colors.colorAccent,
-                            trackColor = QTheme.colors.colorPrimaryDark,
+                            trackColor = QTheme.colors.colorPrimaryStrong,
                             modifier = Modifier.size(24.dp)
                         )
                     }

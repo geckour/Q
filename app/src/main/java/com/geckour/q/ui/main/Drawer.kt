@@ -122,7 +122,7 @@ fun DrawerItem(
     Row(
         modifier = Modifier
             .clickable(onClick = onClick)
-            .background(color = if (isSelected) QTheme.colors.colorBackgroundSelected else QTheme.colors.colorBackground)
+            .background(color = if (isSelected) QTheme.colors.colorPrimaryWeak else QTheme.colors.colorBackground)
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -152,7 +152,7 @@ fun DrawerItem(
     Row(
         modifier = Modifier
             .clickable(onClick = onClick)
-            .background(color = if (isSelected) QTheme.colors.colorBackgroundSelected else QTheme.colors.colorBackground)
+            .background(color = if (isSelected) QTheme.colors.colorPrimaryWeak else QTheme.colors.colorBackground)
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -183,7 +183,7 @@ fun SpotifyDrawerItem(
         modifier = Modifier
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .background(
-                color = if (isSelected) QTheme.colors.colorBackgroundSelected
+                color = if (isSelected) QTheme.colors.colorPrimaryWeak
                 else QTheme.colors.colorBackground
             )
             .fillMaxWidth()
@@ -314,7 +314,7 @@ fun Drawer(
                 }
             }
             item {
-                HorizontalDivider(color = QTheme.colors.colorDivider)
+                HorizontalDivider(color = QTheme.colors.colorPrimaryWeak)
             }
             item {
                 DrawerSectionHeader(title = stringResource(id = R.string.nav_category_others))

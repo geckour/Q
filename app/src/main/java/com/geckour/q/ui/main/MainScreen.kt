@@ -22,7 +22,7 @@ fun MainScreen(
     viewModel: MainViewModel,
     layoutType: LayoutType,
     actions: MainActions,
-    onChangeNightMode: (isInNightMode: Boolean) -> Unit,
+    onChangePaletteDarkness: (isDark: Boolean) -> Unit,
 ) {
     val isInNightMode by viewModel.isInNightMode.collectAsState(initial = isSystemInDarkTheme())
     val isLoading by viewModel.loading.collectAsState()
@@ -50,12 +50,15 @@ fun MainScreen(
     val hasSpotifyCredential by viewModel.hasSpotifyCredential.collectAsState(initial = false)
     val appBarOptionMediaItem by viewModel.appBarOptionMediaItem.collectAsState()
     val routeInfo by viewModel.activeQAudioDeviceInfo.collectAsState(initial = null)
+    val artworkColors by viewModel.artworkColors.collectAsState()
     val isSearchActive = rememberSaveable { mutableStateOf(false) }
     val searchQuery = rememberSaveable { mutableStateOf("") }
     val isFavoriteOnly = rememberSaveable { mutableStateOf(false) }
 
-    LaunchedEffect(isInNightMode) {
-        onChangeNightMode(isInNightMode)
+    // A palette built from the artwork ignores the night mode.
+    val isPaletteDark = artworkColors?.isLight?.not() ?: isInNightMode
+    LaunchedEffect(isPaletteDark) {
+        onChangePaletteDarkness(isPaletteDark)
     }
 
     LaunchedEffect(isSearchActive.value) {
@@ -102,7 +105,7 @@ fun MainScreen(
         syncSizeAlert = syncSizeAlert,
     )
 
-    QTheme(darkTheme = isInNightMode) {
+    QTheme(darkTheme = isInNightMode, artworkColors = artworkColors) {
         QBackgroundSurface(modifier = Modifier.fillMaxSize()) {
             when (layoutType) {
                 is LayoutType.Single -> {

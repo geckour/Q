@@ -232,7 +232,7 @@ fun Artists(
             item {
                 CircularWavyProgressIndicator(
                     color = QTheme.colors.colorPrimary,
-                    trackColor = QTheme.colors.colorPrimaryDark,
+                    trackColor = QTheme.colors.colorPrimaryStrong,
                     modifier = Modifier
                         .fillMaxWidth()
                         .wrapContentWidth(Alignment.CenterHorizontally)

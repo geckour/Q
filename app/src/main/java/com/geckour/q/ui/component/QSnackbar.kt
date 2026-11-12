@@ -42,7 +42,7 @@ fun QSnackbar(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = QTheme.colors.colorBackgroundProgress),
+                colors = CardDefaults.cardColors(containerColor = QTheme.colors.colorSurface),
             ) {
                 Column {
                     Row(

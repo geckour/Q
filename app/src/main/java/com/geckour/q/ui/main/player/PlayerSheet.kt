@@ -1,5 +1,6 @@
 package com.geckour.q.ui.main.player
 
+import android.graphics.Bitmap
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.pager.rememberPagerState
@@ -66,6 +67,7 @@ fun PlayerSheet(
     onChangeIndexRequested: (index: Int) -> Unit,
     onRemoveTrackFromQueue: (index: Int) -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
+    onArtworkLoaded: (artwork: Bitmap?) -> Unit,
 ) {
     val currentDensity = LocalDensity.current
     var sheetSize by remember { mutableIntStateOf(0) }
@@ -140,6 +142,7 @@ fun PlayerSheet(
             onTrackSelected = onSelectTrack,
             cancelLoad = { isLoading.second?.invoke() },
             onToggleFavorite = onToggleFavorite,
+            onArtworkLoaded = onArtworkLoaded,
         )
         Queue(
             endItemMargin = endItemMargin,
@@ -291,5 +294,6 @@ private fun PlayerSheetPreview() {
         onChangeIndexRequested = { _ -> },
         onRemoveTrackFromQueue = { _ -> },
         onToggleFavorite = { _ -> null },
+        onArtworkLoaded = { _ -> },
     )
 }

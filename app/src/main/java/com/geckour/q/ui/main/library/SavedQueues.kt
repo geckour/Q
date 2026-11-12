@@ -169,7 +169,7 @@ fun SavedQueues(
                             uiSavedQueue.savedQueueSummary.savedQueue.title,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
-                            color = QTheme.colors.colorButtonNormal,
+                            color = QTheme.colors.colorAccent,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier
@@ -197,7 +197,7 @@ fun SavedQueues(
                         Icon(
                             imageVector = Icons.Default.RemoveCircleOutline,
                             contentDescription = null,
-                            tint = QTheme.colors.colorButtonNormal,
+                            tint = QTheme.colors.colorAccent,
                             modifier = Modifier
                                 .size(20.dp)
                                 .clickable(

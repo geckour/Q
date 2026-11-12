@@ -293,7 +293,7 @@ fun TwinEndPage(
             .onSizeChanged { isPortrait = it.height > it.width }
     ) {
         Card(
-            colors = CardDefaults.cardColors(containerColor = QTheme.colors.colorBackgroundBottomSheet),
+            colors = CardDefaults.cardColors(containerColor = QTheme.colors.colorSurface),
             shape = if (isSideBySide) {
                 RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
             } else {
@@ -333,6 +333,7 @@ fun TwinEndPage(
                 onChangeIndexRequested = actions::onChangeIndexRequested,
                 onRemoveTrackFromQueue = actions::onRemoveTrackFromQueue,
                 onToggleFavorite = actions::onToggleFavorite,
+                onArtworkLoaded = actions::onArtworkLoaded,
             )
         }
     }

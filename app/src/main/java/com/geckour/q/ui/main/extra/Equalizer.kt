@@ -377,7 +377,7 @@ fun ColumnScope.EqualizerSubstance(
                                         .width(with(LocalDensity.current) { boxHeight.toDp() }),
                                     primaryProgressFraction = selectedPresetLevelRatios[index].ratio,
                                     steps = equalizerParams.levelRange.second - equalizerParams.levelRange.first,
-                                    primaryTrackColor = QTheme.colors.colorButtonNormal,
+                                    primaryTrackColor = QTheme.colors.colorAccent,
                                     onSeekEnded = { newRatio ->
                                         updateEqualizerPresetJob.cancel()
                                         updateEqualizerPresetJob = coroutineScope.launch {

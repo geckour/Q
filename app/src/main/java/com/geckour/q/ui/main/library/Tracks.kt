@@ -214,7 +214,7 @@ fun Tracks(
                                     )
                                     Text(
                                         text = "-",
-                                        color = QTheme.colors.colorTextSettingNormal,
+                                        color = QTheme.colors.colorAccent,
                                         fontSize = 10.sp,
                                         modifier = Modifier.padding(horizontal = 2.dp)
                                     )
@@ -288,7 +288,7 @@ fun Tracks(
             item {
                 CircularWavyProgressIndicator(
                     color = QTheme.colors.colorPrimary,
-                    trackColor = QTheme.colors.colorPrimaryDark,
+                    trackColor = QTheme.colors.colorPrimaryStrong,
                     modifier = Modifier
                         .fillMaxWidth()
                         .wrapContentWidth(Alignment.CenterHorizontally)

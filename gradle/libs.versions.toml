@@ -40,6 +40,7 @@ mediarouter = "1.8.1"
 navigation = "2.10.2"
 okhttp = "5.5.0"
 paging = "3.5.1"
+palette = "1.0.0"
 permissions-dispatcher = "1.1.4"
 preference = "1.2.1"
 reorderable = "3.1.0"
@@ -85,6 +86,7 @@ androidx-media3-ui = { module = "androidx.media3:media3-ui", version.ref = "medi
 androidx-mediarouter = { module = "androidx.mediarouter:mediarouter", version.ref = "mediarouter" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigation" }
 androidx-paging-compose = { module = "androidx.paging:paging-compose", version.ref = "paging" }
+androidx-palette = { module = "androidx.palette:palette", version.ref = "palette" }
 androidx-preference-ktx = { module = "androidx.preference:preference-ktx", version.ref = "preference" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }

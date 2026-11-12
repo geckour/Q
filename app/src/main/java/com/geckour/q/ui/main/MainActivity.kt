@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.content.res.Resources
 import android.database.ContentObserver
+import android.graphics.Bitmap
 import android.graphics.Rect
 import android.net.Uri
 import android.os.Bundle
@@ -113,6 +114,8 @@ class MainActivity : ComponentActivity() {
             viewModel.toggleNightMode()
             PlayerSheetWidgetProvider.requestUpdate(this@MainActivity)
         }
+
+        override fun onArtworkLoaded(artwork: Bitmap?) = viewModel.onArtworkLoaded(artwork)
 
         override fun onChangeTopBarTitle(title: String) {
             viewModel.topBarTitle.value = title
@@ -351,7 +354,7 @@ class MainActivity : ComponentActivity() {
                 viewModel = viewModel,
                 layoutType = layoutType,
                 actions = mainActions,
-                onChangeNightMode = ::applySystemBarStyle,
+                onChangePaletteDarkness = ::applySystemBarStyle,
             )
         }
 
@@ -510,17 +513,17 @@ class MainActivity : ComponentActivity() {
 
     private fun onReadMediaDenied() = Unit
 
-    private fun applySystemBarStyle(isInNightMode: Boolean) {
+    private fun applySystemBarStyle(isDark: Boolean) {
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.auto(
                 lightScrim = ColorPrimaryDark.toArgb(),
                 darkScrim = ColorPrimaryDarkInverse.toArgb(),
-                detectDarkMode = { isInNightMode }
+                detectDarkMode = { isDark }
             ),
             navigationBarStyle = SystemBarStyle.auto(
                 lightScrim = ColorBackground.toArgb(),
                 darkScrim = ColorBackgroundInverse.toArgb(),
-                detectDarkMode = { isInNightMode }
+                detectDarkMode = { isDark }
             )
         )
     }

@@ -127,6 +127,7 @@ dependencies {
 
     // AndroidX
     implementation(libs.androidx.preference.ktx)
+    implementation(libs.androidx.palette)
     implementation(libs.androidx.browser)
     implementation(libs.androidx.window)
     implementation(libs.androidx.mediarouter)

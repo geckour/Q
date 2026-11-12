@@ -520,7 +520,7 @@ fun QueueItem(
 
     Surface(
         shadowElevation = elevation,
-        color = if (uiTrack.nowPlaying) QTheme.colors.colorWeekAccent else QTheme.colors.colorBackgroundBottomSheet,
+        color = if (uiTrack.nowPlaying) QTheme.colors.colorAccentWeak else QTheme.colors.colorSurface,
         onClick = { onChangeIndexRequested(index) },
         modifier = modifier
     ) {
@@ -596,7 +596,7 @@ fun QueueItem(
                     Icon(
                         imageVector = Icons.Default.RemoveCircleOutline,
                         contentDescription = null,
-                        tint = QTheme.colors.colorButtonNormal,
+                        tint = QTheme.colors.colorAccent,
                         modifier = Modifier
                             .clickable(
                                 indication = ripple(bounded = false),
@@ -666,7 +666,7 @@ fun LyricTimingShiftController(
         ) {
             Text(
                 text = stringResource(R.string.text_edit_reset),
-                color = QTheme.colors.colorButtonNormal,
+                color = QTheme.colors.colorAccent,
                 fontSize = 14.sp,
             )
         }
@@ -677,7 +677,7 @@ fun LyricTimingShiftController(
             Icon(
                 imageVector = Icons.Default.Remove,
                 contentDescription = null,
-                tint = QTheme.colors.colorButtonNormal,
+                tint = QTheme.colors.colorAccent,
                 modifier = Modifier
                     .clickable(onClick = { onShiftDelta(-100) })
                     .size(20.dp)
@@ -695,7 +695,7 @@ fun LyricTimingShiftController(
             Icon(
                 imageVector = Icons.Default.Add,
                 contentDescription = null,
-                tint = QTheme.colors.colorButtonNormal,
+                tint = QTheme.colors.colorAccent,
                 modifier = Modifier
                     .clickable(onClick = { onShiftDelta(100) })
                     .size(20.dp)
@@ -739,8 +739,8 @@ fun EditableLrcItem(
                 colors = ButtonDefaults.buttonColors()
                     .copy(
                         containerColor =
-                            if (focused) QTheme.colors.colorButtonNormal
-                            else QTheme.colors.colorPrimaryDark
+                            if (focused) QTheme.colors.colorAccent
+                            else QTheme.colors.colorPrimaryStrong
                     )
             ) {
                 Text(
@@ -790,7 +790,7 @@ fun EditableLrcItem(
             Icon(
                 imageVector = if (line == null) Icons.Default.Add else Icons.Default.Delete,
                 contentDescription = null,
-                tint = QTheme.colors.colorButtonNormal
+                tint = QTheme.colors.colorAccent
             )
         }
     }
@@ -825,7 +825,7 @@ fun LrcItem(
         Text(
             text = lyric,
             fontSize = 20.sp,
-            color = if (focused) QTheme.colors.colorButtonNormal else QTheme.colors.colorTextPrimary,
+            color = if (focused) QTheme.colors.colorAccent else QTheme.colors.colorTextPrimary,
             fontWeight = if (focused) FontWeight.Bold else FontWeight.Normal
         )
     }

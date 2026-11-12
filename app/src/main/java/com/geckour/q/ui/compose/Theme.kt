@@ -17,86 +17,92 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 
 private val lightColorPalette = QColors(
-    colorPrimary = ColorPrimary,
-    colorPrimaryDark = ColorPrimaryDark,
-    colorAccent = ColorAccent,
-    colorWeekAccent = ColorWeakAccent,
     colorBackground = ColorBackground,
+    colorSurface = ColorSurface,
+    colorPrimary = ColorPrimary,
+    colorPrimaryStrong = ColorPrimaryDark,
+    colorAccent = ColorAccent,
     colorTextPrimary = ColorTextPrimary,
-    colorTextSecondary = ColorTextSecondary,
-    colorInactive = ColorInactive,
-    colorCoverInactive = ColorCoverInactive,
-    colorButtonNormal = ColorPrimary,
-    colorTextSettingNormal = ColorTextStrong,
-    colorBackgroundSelected = ColorBackgroundSelected,
-    colorBackgroundBottomSheet = ColorBackgroundBottomSheet,
-    colorBackgroundProgress = ColorBackgroundProgress,
-    colorBackgroundSearch = ColorBackgroundSearch,
-    colorDivider = ColorDivider,
     isLight = true
 )
 
 private val darkColorPalette = QColors(
-    colorPrimary = ColorPrimaryInverse,
-    colorPrimaryDark = ColorPrimaryDarkInverse,
-    colorAccent = ColorAccentInverse,
-    colorWeekAccent = ColorWeakAccentInverse,
     colorBackground = ColorBackgroundInverse,
+    colorSurface = ColorSurfaceInverse,
+    colorPrimary = ColorPrimaryInverse,
+    colorPrimaryStrong = ColorPrimaryDarkInverse,
+    colorAccent = ColorAccentInverse,
     colorTextPrimary = ColorTextPrimaryInverse,
-    colorTextSecondary = ColorTextSecondaryInverse,
-    colorInactive = ColorInactiveInverse,
-    colorCoverInactive = ColorCoverInactiveInverse,
-    colorButtonNormal = ColorStrong,
-    colorTextSettingNormal = ColorTextStrongInverse,
-    colorBackgroundSelected = ColorBackgroundSelectedInverse,
-    colorBackgroundBottomSheet = ColorBackgroundBottomSheetInverse,
-    colorBackgroundProgress = ColorBackgroundProgressInverse,
-    colorBackgroundSearch = ColorBackgroundSearchInverse,
-    colorDivider = ColorDividerInverse,
     isLight = false
 )
 
+/**
+ * The palette: five roles, plus a deeper primary color. The other colors are derived from them, so
+ * that a palette built from an artwork stays consistent.
+ */
 @Immutable
 data class QColors(
-    val colorPrimary: Color,
-    val colorPrimaryDark: Color,
-    val colorAccent: Color,
-    val colorWeekAccent: Color,
+    /** The ground of the screens, dialogs and the drawer. */
     val colorBackground: Color,
+    /** Panes over the background: the player sheet, the search bar and the snackbar. */
+    val colorSurface: Color,
+    /** Fills that carry the theme, such as the top bar and progress indicators. */
+    val colorPrimary: Color,
+    /** A deeper [colorPrimary] for list dividers and the tracks of progress indicators. */
+    val colorPrimaryStrong: Color,
+    /** Highlights: playback controls, confirmations and selected items. */
+    val colorAccent: Color,
+    /** Text and icons. */
     val colorTextPrimary: Color,
-    val colorTextSecondary: Color,
-    val colorInactive: Color,
-    val colorCoverInactive: Color,
-    val colorButtonNormal: Color,
-    val colorTextSettingNormal: Color,
-    val colorBackgroundSelected: Color,
-    val colorBackgroundBottomSheet: Color,
-    val colorBackgroundProgress: Color,
-    val colorBackgroundSearch: Color,
-    val colorDivider: Color,
+    /** Whether the palette is light, that is, carries dark text. */
     val isLight: Boolean,
 ) {
 
+    /** Less prominent text. */
+    val colorTextSecondary: Color
+        get() = colorTextPrimary.copy(alpha = colorTextPrimary.alpha * 0.79f)
+
+    /** Text and controls that are disabled or ignored. */
+    val colorInactive: Color
+        get() = colorTextPrimary.copy(alpha = colorTextPrimary.alpha * 0.25f)
+
+    /** A veil over content that is unavailable for now. */
+    val colorCoverInactive: Color
+        get() = colorBackground.copy(alpha = 0.63f)
+
     /** The scrim behind a modal drawer, matching Material3's `DrawerDefaults.scrimColor`. */
     val colorDrawerScrim: Color
-        get() = colorCoverInactive.copy(alpha = 0.32f)
+        get() = colorBackground.copy(alpha = 0.32f)
+
+    /** Halfway from [colorSurface] to [colorBackground], for the search results. */
+    val colorSurfaceDim: Color
+        get() = lerp(colorSurface, colorBackground, 0.5f)
+
+    /** A faint [colorPrimaryStrong] for the selected item and the dividers in the drawer. */
+    val colorPrimaryWeak: Color
+        get() = colorPrimaryStrong.copy(alpha = 0.5f).compositeOver(colorBackground)
+
+    /** A faint [colorAccent] for the row of the playing track in the queue. */
+    val colorAccentWeak: Color
+        get() = colorAccent.copy(alpha = 0.4f).compositeOver(colorSurface)
 
     val asMaterialColorScheme = ColorScheme(
         primary = colorPrimary,
         onPrimary = colorTextPrimary,
-        primaryContainer = colorPrimaryDark,
+        primaryContainer = colorPrimaryStrong,
         onPrimaryContainer = colorTextPrimary,
-        inversePrimary = colorPrimaryDark,
+        inversePrimary = colorPrimaryStrong,
         secondary = colorPrimary,
         onSecondary = colorTextPrimary,
-        secondaryContainer = colorPrimaryDark,
+        secondaryContainer = colorPrimaryStrong,
         onSecondaryContainer = colorTextPrimary,
         tertiary = colorPrimary,
         onTertiary = colorTextPrimary,
-        tertiaryContainer = colorPrimaryDark,
+        tertiaryContainer = colorPrimaryStrong,
         onTertiaryContainer = colorTextPrimary,
         background = colorBackground,
         onBackground = colorTextPrimary,
@@ -112,25 +118,25 @@ data class QColors(
         errorContainer = colorBackground,
         onErrorContainer = colorAccent,
         outline = colorTextSecondary,
-        outlineVariant = colorWeekAccent,
+        outlineVariant = colorAccentWeak,
         scrim = colorCoverInactive,
         surfaceBright = colorBackground,
         surfaceDim = colorBackground,
         surfaceContainer = colorBackground,
-        surfaceContainerHigh = colorBackgroundBottomSheet,
-        surfaceContainerHighest = colorBackgroundBottomSheet,
+        surfaceContainerHigh = colorSurface,
+        surfaceContainerHighest = colorSurface,
         surfaceContainerLow = colorBackground,
         surfaceContainerLowest = colorBackground,
         primaryFixed = colorPrimary,
-        primaryFixedDim = colorPrimaryDark,
+        primaryFixedDim = colorPrimaryStrong,
         onPrimaryFixed = colorTextPrimary,
         onPrimaryFixedVariant = colorTextSecondary,
         secondaryFixed = colorPrimary,
-        secondaryFixedDim = colorPrimaryDark,
+        secondaryFixedDim = colorPrimaryStrong,
         onSecondaryFixed = colorTextPrimary,
         onSecondaryFixedVariant = colorTextSecondary,
         tertiaryFixed = colorPrimary,
-        tertiaryFixedDim = colorPrimaryDark,
+        tertiaryFixedDim = colorPrimaryStrong,
         onTertiaryFixed = colorTextPrimary,
         onTertiaryFixedVariant = colorTextSecondary,
     )
@@ -140,12 +146,23 @@ private val LocalQColors = staticCompositionLocalOf<State<QColors>> {
     mutableStateOf(lightColorPalette)
 }
 
+/**
+ * @param darkTheme Picks the built-in palette, which is used until [artworkColors] are given.
+ * @param artworkColors The colors of the current track's artwork. When given, the palette is built
+ * from them regardless of [darkTheme].
+ */
 @Composable
 fun QTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    artworkColors: ArtworkColors? = null,
     content: @Composable () -> Unit
 ) {
-    val target = if (darkTheme) darkColorPalette else lightColorPalette
+    val basePalette = if (darkTheme) darkColorPalette else lightColorPalette
+    // Remembered so that the Material color scheme keeps its identity across recompositions: a new
+    // scheme instance would recompose the whole content.
+    val target = remember(basePalette, artworkColors) {
+        artworkColors?.toQColors() ?: basePalette
+    }
     val qColors = rememberTransitioningQColors(target)
 
     CompositionLocalProvider(LocalQColors provides qColors) {
@@ -224,21 +241,11 @@ private fun rememberTransitioningQColors(target: QColors): State<QColors> {
 }
 
 private fun QColors.lerpTo(target: QColors, fraction: Float) = QColors(
-    colorPrimary = lerp(colorPrimary, target.colorPrimary, fraction),
-    colorPrimaryDark = lerp(colorPrimaryDark, target.colorPrimaryDark, fraction),
-    colorAccent = lerp(colorAccent, target.colorAccent, fraction),
-    colorWeekAccent = lerp(colorWeekAccent, target.colorWeekAccent, fraction),
     colorBackground = lerp(colorBackground, target.colorBackground, fraction),
+    colorSurface = lerp(colorSurface, target.colorSurface, fraction),
+    colorPrimary = lerp(colorPrimary, target.colorPrimary, fraction),
+    colorPrimaryStrong = lerp(colorPrimaryStrong, target.colorPrimaryStrong, fraction),
+    colorAccent = lerp(colorAccent, target.colorAccent, fraction),
     colorTextPrimary = lerp(colorTextPrimary, target.colorTextPrimary, fraction),
-    colorTextSecondary = lerp(colorTextSecondary, target.colorTextSecondary, fraction),
-    colorInactive = lerp(colorInactive, target.colorInactive, fraction),
-    colorCoverInactive = lerp(colorCoverInactive, target.colorCoverInactive, fraction),
-    colorButtonNormal = lerp(colorButtonNormal, target.colorButtonNormal, fraction),
-    colorTextSettingNormal = lerp(colorTextSettingNormal, target.colorTextSettingNormal, fraction),
-    colorBackgroundSelected = lerp(colorBackgroundSelected, target.colorBackgroundSelected, fraction),
-    colorBackgroundBottomSheet = lerp(colorBackgroundBottomSheet, target.colorBackgroundBottomSheet, fraction),
-    colorBackgroundProgress = lerp(colorBackgroundProgress, target.colorBackgroundProgress, fraction),
-    colorBackgroundSearch = lerp(colorBackgroundSearch, target.colorBackgroundSearch, fraction),
-    colorDivider = lerp(colorDivider, target.colorDivider, fraction),
     isLight = target.isLight,
 )

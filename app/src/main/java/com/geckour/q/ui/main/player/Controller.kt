@@ -1,5 +1,6 @@
 package com.geckour.q.ui.main.player
 
+import android.graphics.Bitmap
 import androidx.compose.animation.core.EaseInExpo
 import androidx.compose.animation.core.EaseInOutSine
 import androidx.compose.animation.core.EaseOutExpo
@@ -81,6 +82,7 @@ import androidx.media3.common.Player
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.size.Size
+import coil3.toBitmap
 import com.geckour.q.R
 import com.geckour.q.core.model.MediaItem
 import com.geckour.q.domain.model.QAudioDeviceInfo
@@ -132,6 +134,7 @@ fun Controller(
     onTrackSelected: (item: UiTrack) -> Unit,
     cancelLoad: () -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
+    onArtworkLoaded: (artwork: Bitmap?) -> Unit,
 ) {
     var textAreaHeight by remember { mutableIntStateOf(0) }
     val navigationBarHeight = with(LocalDensity.current) {
@@ -140,7 +143,7 @@ fun Controller(
     val currentDensity = LocalDensity.current
     val hasCurrentTrack = currentTrack != null
     val buttonColor =
-        if (hasCurrentTrack) QTheme.colors.colorButtonNormal else QTheme.colors.colorInactive
+        if (hasCurrentTrack) QTheme.colors.colorAccent else QTheme.colors.colorInactive
     LaunchedEffect(hasCurrentTrack) {
         if (hasCurrentTrack.not()) isInLyricEditMode.value = false
     }
@@ -158,14 +161,22 @@ fun Controller(
                 layout(placeable.width, placeable.height) { placeable.place(0, 0) }
             }
         ) {
+            val artworkUriString = currentTrack?.artworkUriString
             AsyncImage(
-                model = currentTrack?.artworkUriString?.let {
+                model = artworkUriString?.let {
                     ImageRequest.Builder(LocalContext.current).data(it).size(
                         Size(width = 384, height = 384)
                     ).build()
                 } ?: R.drawable.ic_empty,
                 contentDescription = null,
                 contentScale = ContentScale.Inside,
+                onSuccess = { state ->
+                    // The placeholder for a track without artwork is not an artwork.
+                    onArtworkLoaded(
+                        if (artworkUriString != null) state.result.image.toBitmap() else null
+                    )
+                },
+                onError = { onArtworkLoaded(null) },
                 modifier = Modifier
                     .layout { measurable, _ ->
                         val easedProgress = EaseInOutSine.transform(sheetProgress())
@@ -675,7 +686,7 @@ fun Controller(
                     tint =
                         if (hasCurrentTrack.not() || (showLyric && isLyricScrolledByUser.not()))
                             QTheme.colors.colorInactive
-                        else QTheme.colors.colorButtonNormal,
+                        else QTheme.colors.colorAccent,
                     modifier = Modifier
                         .clickable(
                             enabled = hasCurrentTrack,
@@ -736,7 +747,7 @@ fun Controller(
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.PlaylistAdd,
                     contentDescription = null,
-                    tint = QTheme.colors.colorButtonNormal,
+                    tint = QTheme.colors.colorAccent,
                     modifier = Modifier
                         .padding(end = 4.dp)
                         .clickable(

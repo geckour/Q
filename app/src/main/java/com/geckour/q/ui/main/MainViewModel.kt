@@ -3,6 +3,7 @@ package com.geckour.q.ui.main
 import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
+import android.graphics.Bitmap
 import android.os.Bundle
 import android.os.SystemClock
 import androidx.concurrent.futures.await
@@ -68,6 +69,9 @@ import com.geckour.q.spotify.library.toSpotifyLibraryAlbums
 import com.geckour.q.spotify.library.toSpotifyLibraryArtists
 import com.geckour.q.spotify.model.SpotifyContainer
 import com.geckour.q.spotify.model.SpotifyContentItem
+import com.geckour.q.ui.compose.ArtworkColors
+import com.geckour.q.ui.compose.DefaultArtworkColors
+import com.geckour.q.ui.compose.extractArtworkColors
 import com.geckour.q.ui.main.dialog.DialogState
 import com.geckour.q.ui.main.dialog.TrackSource
 import com.geckour.q.ui.main.library.SpotifyBrowseItem
@@ -127,6 +131,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -291,6 +296,10 @@ class MainViewModel(
     private var cancelProgressAction: (() -> Unit)? = null
     private var latestWorkInfoList: List<WorkInfo> = emptyList()
     private val finishedWorkIds = mutableSetOf<UUID>()
+
+    private val mutableArtworkColors = MutableStateFlow<ArtworkColors?>(null)
+    internal val artworkColors: StateFlow<ArtworkColors?> = mutableArtworkColors
+    private var extractArtworkColorsJob: Job? = null
 
     internal val topBarTitle = MutableStateFlow("")
     internal val selectedNav = MutableStateFlow<Nav?>(null)
@@ -849,6 +858,21 @@ class MainViewModel(
     internal fun toggleNightMode() {
         viewModelScope.launch {
             app.setIsNightMode(app.getIsInNightMode().first().not())
+        }
+    }
+
+    /**
+     * Called when the current track's artwork has been loaded, or with null when the track has no
+     * artwork or it failed to load. Without colors from the artwork, [DefaultArtworkColors] are
+     * used.
+     */
+    internal fun onArtworkLoaded(artwork: Bitmap?) {
+        extractArtworkColorsJob?.cancel()
+        extractArtworkColorsJob = viewModelScope.launch(Dispatchers.Default) {
+            val colors = artwork?.extractArtworkColors() ?: DefaultArtworkColors
+            // Drop the result if a newer artwork has arrived while this one was being scanned.
+            ensureActive()
+            mutableArtworkColors.value = colors
         }
     }
 

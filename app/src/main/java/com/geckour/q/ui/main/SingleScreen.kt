@@ -174,7 +174,7 @@ fun SingleScreen(
                             },
                         )
                         .clip(SheetShape)
-                        .background(QTheme.colors.colorBackgroundBottomSheet)
+                        .background(QTheme.colors.colorSurface)
                 ) {
                 PlayerSheet(
                     needToAnimateController = true,
@@ -212,6 +212,7 @@ fun SingleScreen(
                     onChangeIndexRequested = actions::onChangeIndexRequested,
                     onRemoveTrackFromQueue = actions::onRemoveTrackFromQueue,
                     onToggleFavorite = actions::onToggleFavorite,
+                    onArtworkLoaded = actions::onArtworkLoaded,
                 )
                 }
             }

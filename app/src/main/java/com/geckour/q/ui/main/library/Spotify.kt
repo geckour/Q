@@ -141,7 +141,7 @@ fun SpotifyLevel(
                     ) {
                         CircularWavyProgressIndicator(
                             color = QTheme.colors.colorAccent,
-                            trackColor = QTheme.colors.colorPrimaryDark,
+                            trackColor = QTheme.colors.colorPrimaryStrong,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -155,7 +155,7 @@ fun SpotifyLevel(
         if (items.isEmpty() && level.hasLoaded.not() && level.hasFailed.not()) {
             CircularWavyProgressIndicator(
                 color = QTheme.colors.colorAccent,
-                trackColor = QTheme.colors.colorPrimaryDark,
+                trackColor = QTheme.colors.colorPrimaryStrong,
                 modifier = Modifier.align(Alignment.Center)
             )
         }

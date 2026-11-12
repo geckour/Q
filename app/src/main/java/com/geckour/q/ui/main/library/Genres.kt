@@ -174,7 +174,7 @@ fun Genres(
                         )
                     }
                 }
-                HorizontalDivider(color = QTheme.colors.colorPrimaryDark)
+                HorizontalDivider(color = QTheme.colors.colorPrimaryStrong)
             }
         }
         item {

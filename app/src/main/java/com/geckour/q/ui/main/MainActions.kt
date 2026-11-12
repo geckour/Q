@@ -1,5 +1,6 @@
 package com.geckour.q.ui.main
 
+import android.graphics.Bitmap
 import androidx.navigation.NavHostController
 import com.geckour.q.core.model.MediaItem
 import com.geckour.q.core.util.encodeUrlSafe
@@ -31,6 +32,8 @@ interface MainActions {
     suspend fun onSearchSpotify(query: String): List<SearchItem>
 
     fun onToggleTheme()
+
+    fun onArtworkLoaded(artwork: Bitmap?)
 
     fun onChangeTopBarTitle(title: String)
 

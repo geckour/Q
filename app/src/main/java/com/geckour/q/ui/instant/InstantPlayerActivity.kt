@@ -99,7 +99,7 @@ private fun Controller(viewModel: InstantPlayerViewModel) {
 
     Card(
         shape = RoundedCornerShape(size = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = QTheme.colors.colorBackgroundBottomSheet),
+        colors = CardDefaults.cardColors(containerColor = QTheme.colors.colorSurface),
         modifier = Modifier
             .padding(horizontal = 40.dp)
             .clickable(enabled = false, onClick = {})
@@ -126,7 +126,7 @@ private fun Controller(viewModel: InstantPlayerViewModel) {
                     Icon(
                         imageVector = Icons.Default.FastRewind,
                         contentDescription = "Rewind",
-                        tint = QTheme.colors.colorButtonNormal,
+                        tint = QTheme.colors.colorAccent,
                         modifier = Modifier
                             .pointerInput(Unit) {
                                 detectTapGestures(
@@ -154,7 +154,7 @@ private fun Controller(viewModel: InstantPlayerViewModel) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                         contentDescription = if (isPlaying) "Pause" else "Play",
-                        tint = QTheme.colors.colorButtonNormal,
+                        tint = QTheme.colors.colorAccent,
                         modifier = Modifier
                             .clickable {
                                 viewModel.onPlaybackButtonPressed(
@@ -168,7 +168,7 @@ private fun Controller(viewModel: InstantPlayerViewModel) {
                     Icon(
                         imageVector = Icons.Default.FastForward,
                         contentDescription = "FastForward",
-                        tint = QTheme.colors.colorButtonNormal,
+                        tint = QTheme.colors.colorAccent,
                         modifier = Modifier
                             .pointerInput(Unit) {
                                 detectTapGestures(
