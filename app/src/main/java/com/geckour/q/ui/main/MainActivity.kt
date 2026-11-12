@@ -115,6 +115,8 @@ class MainActivity : ComponentActivity() {
             PlayerSheetWidgetProvider.requestUpdate(this@MainActivity)
         }
 
+        override fun onToggleArtworkColorTheme() = viewModel.toggleArtworkColorTheme()
+
         override fun onArtworkLoaded(artwork: Bitmap?) = viewModel.onArtworkLoaded(artwork)
 
         override fun onChangeTopBarTitle(title: String) {

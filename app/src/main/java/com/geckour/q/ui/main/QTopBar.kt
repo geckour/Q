@@ -2,8 +2,12 @@ package com.geckour.q.ui.main
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
@@ -17,13 +21,17 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import com.geckour.q.R
 import com.geckour.q.core.model.MediaItem
 import com.geckour.q.data.db.model.Album
@@ -45,6 +53,7 @@ fun QTopBar(
     onTapBar: () -> Unit,
     onTapTitle: () -> Unit,
     onToggleTheme: () -> Unit,
+    onToggleArtworkColorTheme: () -> Unit,
     onToggleFavorite: (mediaItem: MediaItem?) -> MediaItem?,
     onSetOptionMediaItem: (mediaItem: MediaItem?) -> Unit,
     onSelectTrack: (track: UiTrack?) -> Unit,
@@ -107,12 +116,10 @@ fun QTopBar(
                         }
                     }
                 }
-                IconButton(onClick = onToggleTheme) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_daynight),
-                        contentDescription = null
-                    )
-                }
+                ThemeToggleButton(
+                    onClick = onToggleTheme,
+                    onLongClick = onToggleArtworkColorTheme,
+                )
                 if (appBarOptionMediaItem != null) {
                     IconButton(
                         onClick = {
@@ -159,6 +166,31 @@ fun QTopBar(
                 titleContentColor = QTheme.colors.colorTextPrimary,
                 actionIconContentColor = QTheme.colors.colorTextPrimary
             ),
+        )
+    }
+}
+
+/**
+ * Laid out like an [IconButton], which does not take a long click: a 40dp circle in a 48dp touch
+ * target.
+ */
+@Composable
+private fun ThemeToggleButton(onClick: () -> Unit, onLongClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .minimumInteractiveComponentSize()
+            .size(40.dp)
+            .clip(CircleShape)
+            .combinedClickable(
+                role = Role.Button,
+                onLongClick = onLongClick,
+                onClick = onClick,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            painter = painterResource(id = R.drawable.ic_daynight),
+            contentDescription = null
         )
     }
 }

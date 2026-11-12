@@ -33,6 +33,8 @@ interface MainActions {
 
     fun onToggleTheme()
 
+    fun onToggleArtworkColorTheme()
+
     fun onArtworkLoaded(artwork: Bitmap?)
 
     fun onChangeTopBarTitle(title: String)

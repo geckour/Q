@@ -140,6 +140,7 @@ fun SingleScreen(
                     onTapBar = actions::onTapBar,
                     onTapTitle = actions::onTapTopBarTitle,
                     onToggleTheme = actions::onToggleTheme,
+                    onToggleArtworkColorTheme = actions::onToggleArtworkColorTheme,
                     onToggleFavorite = actions::onToggleFavorite,
                     onSetOptionMediaItem = actions::onSetOptionMediaItem,
                     onSelectAllArtists = actions::onSelectAllArtists,

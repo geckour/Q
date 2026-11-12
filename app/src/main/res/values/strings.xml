@@ -172,6 +172,8 @@
     <!-- Snackbar -->
     <string name="snackbar_message_dropbox_sync_failure">Failed to sync with Dropbox: %s</string>
     <string name="snackbar_message_save_queue_complete">Completed saving queue</string>
+    <string name="snackbar_message_artwork_color_theme_enabled">Enabling the color theme based on the artwork</string>
+    <string name="snackbar_message_artwork_color_theme_disabled">Disabling the color theme based on the artwork</string>
 
     <!-- Spotify -->
     <string name="spotify_title" translatable="false">Spotify</string>

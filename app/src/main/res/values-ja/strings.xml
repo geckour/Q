@@ -167,6 +167,8 @@
     <!-- Snackbar -->
     <string name="snackbar_message_dropbox_sync_failure">Dropbox との同期に失敗しました: %s</string>
     <string name="snackbar_message_save_queue_complete">キューを保存しました</string>
+    <string name="snackbar_message_artwork_color_theme_enabled">アートワークを基にしたカラーテーマを有効にします</string>
+    <string name="snackbar_message_artwork_color_theme_disabled">アートワークを基にしたカラーテーマを無効にします</string>
 
     <!-- Spotify -->
     <string name="spotify_tab_saved">お気に入りの曲</string>

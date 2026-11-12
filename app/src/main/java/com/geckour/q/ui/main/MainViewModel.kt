@@ -104,6 +104,7 @@ import com.geckour.q.util.setIsNightMode
 import com.geckour.q.util.setIsSpotifyFlattened
 import com.geckour.q.util.setIsSpotifyUnlocked
 import com.geckour.q.util.setShowLyric
+import com.geckour.q.util.setUseArtworkColorTheme
 import com.geckour.q.util.toLrcString
 import com.geckour.q.util.toUiTrack
 import com.geckour.q.util.trackRef
@@ -309,6 +310,7 @@ class MainViewModel(
             colors.takeIf { useArtworkColorTheme }
         }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     private var extractArtworkColorsJob: Job? = null
+    private var toggleArtworkColorThemeJob: Job? = null
 
     internal val topBarTitle = MutableStateFlow("")
     internal val selectedNav = MutableStateFlow<Nav?>(null)
@@ -867,6 +869,21 @@ class MainViewModel(
     internal fun toggleNightMode() {
         viewModelScope.launch {
             app.setIsNightMode(app.getIsInNightMode().first().not())
+        }
+    }
+
+    internal fun toggleArtworkColorTheme() {
+        // Cancelled so that a toggle in quick succession does not clear the newer message early.
+        toggleArtworkColorThemeJob?.cancel()
+        toggleArtworkColorThemeJob = viewModelScope.launch {
+            val useArtworkColorTheme = app.getUseArtworkColorTheme().first().not()
+            app.setUseArtworkColorTheme(useArtworkColorTheme)
+            snackbarMessageFlow.value = app.getString(
+                if (useArtworkColorTheme) R.string.snackbar_message_artwork_color_theme_enabled
+                else R.string.snackbar_message_artwork_color_theme_disabled
+            )
+            delay(2000.milliseconds)
+            snackbarMessageFlow.value = null
         }
     }
 
