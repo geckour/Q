@@ -37,6 +37,7 @@ import com.geckour.q.domain.model.UiSavedQueue
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.component.QOption
 import com.geckour.q.ui.component.QOptionDialog
+import com.geckour.q.ui.compose.ProvideQMaterialColors
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -52,8 +53,7 @@ fun SaveQueueDialog(
     val defaultTitle = stringResource(R.string.dialog_title_save_queue, nextId)
     Dialog(onDismissRequest = onCancel) {
         Card(
-            colors = CardDefaults.cardColors()
-                .copy(containerColor = QTheme.colors.colorBackground)
+            colors = CardDefaults.cardColors(containerColor = QTheme.colors.colorBackground)
         ) {
             Column(
                 modifier = Modifier.padding(
@@ -66,18 +66,20 @@ fun SaveQueueDialog(
                     fontSize = 18.sp,
                     color = QTheme.colors.colorTextPrimary,
                 )
-                TextField(
-                    title.orEmpty(),
-                    onValueChange = { title = it },
-                    placeholder = {
-                        Text(
-                            defaultTitle,
-                            fontSize = 16.sp,
-                            color = QTheme.colors.colorTextSecondary,
-                        )
-                    },
-                    modifier = Modifier.padding(top = 8.dp)
-                )
+                ProvideQMaterialColors {
+                    TextField(
+                        title.orEmpty(),
+                        onValueChange = { title = it },
+                        placeholder = {
+                            Text(
+                                defaultTitle,
+                                fontSize = 16.sp,
+                                color = QTheme.colors.colorTextSecondary,
+                            )
+                        },
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
                 Row(
                     modifier = Modifier
                         .align(Alignment.End)
@@ -205,8 +207,7 @@ fun SavedQueueModifyDialog(
     var overrideWithCurrentQueue by remember { mutableStateOf(false) }
     Dialog(onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) }) {
         Card(
-            colors = CardDefaults.cardColors()
-                .copy(containerColor = QTheme.colors.colorBackground)
+            colors = CardDefaults.cardColors(containerColor = QTheme.colors.colorBackground)
         ) {
             Column(
                 modifier = Modifier.padding(
@@ -221,50 +222,52 @@ fun SavedQueueModifyDialog(
                     color = QTheme.colors.colorAccent,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
-                OutlinedTextField(
-                    state = newTitle,
-                    contentPadding = ButtonDefaults.TextButtonContentPadding,
-                    lineLimits = TextFieldLineLimits.SingleLine,
-                    textStyle = TextStyle(
-                        fontSize = 16.sp,
-                        color = QTheme.colors.colorTextPrimary,
-                    ),
-                    label = {
-                        Text(
-                            stringResource(R.string.dialog_label_saved_queue_modify_title),
-                            fontSize = 10.sp,
-                            color = QTheme.colors.colorTextSecondary,
-                        )
-                    },
-                    placeholder = {
-                        Text(
-                            newTitle.text.toString(),
+                ProvideQMaterialColors {
+                    OutlinedTextField(
+                        state = newTitle,
+                        contentPadding = ButtonDefaults.TextButtonContentPadding,
+                        lineLimits = TextFieldLineLimits.SingleLine,
+                        textStyle = TextStyle(
                             fontSize = 16.sp,
-                            color = QTheme.colors.colorTextSecondary,
-                        )
-                    },
-                    trailingIcon = {
-                        TextButton(
-                            onClick = {
-                                newTitle.setTextAndPlaceCursorAtEnd(
-                                    uiSavedQueue.savedQueueSummary.savedQueue.title,
+                            color = QTheme.colors.colorTextPrimary,
+                        ),
+                        label = {
+                            Text(
+                                stringResource(R.string.dialog_label_saved_queue_modify_title),
+                                fontSize = 10.sp,
+                                color = QTheme.colors.colorTextSecondary,
+                            )
+                        },
+                        placeholder = {
+                            Text(
+                                newTitle.text.toString(),
+                                fontSize = 16.sp,
+                                color = QTheme.colors.colorTextSecondary,
+                            )
+                        },
+                        trailingIcon = {
+                            TextButton(
+                                onClick = {
+                                    newTitle.setTextAndPlaceCursorAtEnd(
+                                        uiSavedQueue.savedQueueSummary.savedQueue.title,
+                                    )
+                                }
+                            ) {
+                                Text(
+                                    stringResource(R.string.text_edit_reset),
+                                    fontSize = 16.sp,
+                                    color = QTheme.colors.colorPrimary,
                                 )
                             }
-                        ) {
-                            Text(
-                                stringResource(R.string.text_edit_reset),
-                                fontSize = 16.sp,
-                                color = QTheme.colors.colorPrimary,
+                        },
+                        modifier = Modifier
+                            .defaultMinSize(
+                                minWidth = ButtonDefaults.MinWidth,
+                                minHeight = ButtonDefaults.MinHeight,
                             )
-                        }
-                    },
-                    modifier = Modifier
-                        .defaultMinSize(
-                            minWidth = ButtonDefaults.MinWidth,
-                            minHeight = ButtonDefaults.MinHeight,
-                        )
-                        .fillMaxWidth(),
-                )
+                            .fillMaxWidth(),
+                    )
+                }
                 Row(
                     modifier = Modifier.padding(top = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -275,10 +278,12 @@ fun SavedQueueModifyDialog(
                         color = QTheme.colors.colorTextPrimary,
                         modifier = Modifier.padding(end = 8.dp)
                     )
-                    Switch(
-                        checked = overrideWithCurrentQueue,
-                        onCheckedChange = { overrideWithCurrentQueue = it },
-                    )
+                    ProvideQMaterialColors {
+                        Switch(
+                            checked = overrideWithCurrentQueue,
+                            onCheckedChange = { overrideWithCurrentQueue = it },
+                        )
+                    }
                 }
                 Row(
                     modifier = Modifier

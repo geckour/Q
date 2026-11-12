@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -98,6 +99,7 @@ private fun Controller(viewModel: InstantPlayerViewModel) {
 
     Card(
         shape = RoundedCornerShape(size = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = QTheme.colors.colorBackgroundBottomSheet),
         modifier = Modifier
             .padding(horizontal = 40.dp)
             .clickable(enabled = false, onClick = {})

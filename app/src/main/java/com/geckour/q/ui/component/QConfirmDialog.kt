@@ -32,8 +32,7 @@ fun QConfirmDialog(
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
         Card(
-            colors = CardDefaults.cardColors()
-                .copy(containerColor = QTheme.colors.colorBackground)
+            colors = CardDefaults.cardColors(containerColor = QTheme.colors.colorBackground)
         ) {
             Column(
                 modifier = Modifier.padding(

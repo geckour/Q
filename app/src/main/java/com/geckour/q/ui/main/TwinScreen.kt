@@ -141,6 +141,7 @@ fun TwinStartPage(
     ModalNavigationDrawer(
         modifier = modifier,
         drawerState = drawerState,
+        scrimColor = QTheme.colors.colorDrawerScrim,
         drawerContent = {
             PredictiveBackProgressHandler(
                 enabled = drawerState.targetValue == DrawerValue.Open,
@@ -154,6 +155,7 @@ fun TwinStartPage(
                     progress = { drawerBackProgress.value },
                     remainingOffset = { drawerState.remainingCloseOffset(size.width) },
                 ),
+                drawerContainerColor = QTheme.colors.colorBackground,
                 windowInsets = WindowInsets(),
             ) {
                 Drawer(
@@ -172,6 +174,7 @@ fun TwinStartPage(
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
+            containerColor = QTheme.colors.colorBackground,
             topBar = {
                 QTopBar(
                     title = library.topBarTitle,
@@ -290,8 +293,7 @@ fun TwinEndPage(
             .onSizeChanged { isPortrait = it.height > it.width }
     ) {
         Card(
-            colors = CardDefaults.cardColors()
-                .copy(containerColor = QTheme.colors.colorBackgroundBottomSheet),
+            colors = CardDefaults.cardColors(containerColor = QTheme.colors.colorBackgroundBottomSheet),
             shape = if (isSideBySide) {
                 RoundedCornerShape(topStart = 12.dp, bottomStart = 12.dp)
             } else {

@@ -72,8 +72,7 @@ fun DropboxDialog(
             Dialog(onDismissRequest = { onDialogEvent(DialogEvent.Dismiss) }) {
                 var needDownloaded by remember { mutableStateOf(false) }
                 Card(
-                    colors = CardDefaults.cardColors()
-                        .copy(containerColor = QTheme.colors.colorBackground),
+                    colors = CardDefaults.cardColors(containerColor = QTheme.colors.colorBackground),
                     modifier = Modifier.heightIn(max = 800.dp)
                 ) {
                     Column(

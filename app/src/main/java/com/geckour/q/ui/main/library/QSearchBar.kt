@@ -122,7 +122,11 @@ fun QSearchBar(
             inputFieldColors = TextFieldDefaults.colors(
                 cursorColor = QTheme.colors.colorTextPrimary,
                 focusedTextColor = QTheme.colors.colorTextPrimary,
-                unfocusedTextColor = QTheme.colors.colorTextPrimary
+                unfocusedTextColor = QTheme.colors.colorTextPrimary,
+                focusedLeadingIconColor = QTheme.colors.colorTextPrimary,
+                unfocusedLeadingIconColor = QTheme.colors.colorTextPrimary,
+                focusedTrailingIconColor = QTheme.colors.colorTextPrimary,
+                unfocusedTrailingIconColor = QTheme.colors.colorTextPrimary,
             )
         ),
         leadingIcon = { Icon(imageVector = Icons.Default.Search, contentDescription = null) },
@@ -175,6 +179,7 @@ fun QSearchBar(
                     ) {
                         CircularWavyProgressIndicator(
                             color = QTheme.colors.colorAccent,
+                            trackColor = QTheme.colors.colorPrimaryDark,
                             modifier = Modifier.size(24.dp)
                         )
                     }

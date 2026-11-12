@@ -7,6 +7,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
+import com.geckour.q.ui.compose.ProvideQMaterialColors
 
 @Composable
 fun QSwitch(
@@ -15,11 +16,13 @@ fun QSwitch(
     scale: Float = 0.8f,
     padding: PaddingValues = PaddingValues(0.dp)
 ) {
-    Switch(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        modifier = Modifier
-            .padding(padding)
-            .scale(scale)
-    )
+    ProvideQMaterialColors {
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            modifier = Modifier
+                .padding(padding)
+                .scale(scale)
+        )
+    }
 }

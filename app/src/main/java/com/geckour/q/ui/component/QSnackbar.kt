@@ -42,8 +42,7 @@ fun QSnackbar(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors()
-                    .copy(containerColor = QTheme.colors.colorBackgroundProgress),
+                colors = CardDefaults.cardColors(containerColor = QTheme.colors.colorBackgroundProgress),
             ) {
                 Column {
                     Row(
@@ -85,6 +84,7 @@ fun QSnackbar(
                     progress?.let {
                         LinearProgressIndicator(
                             modifier = Modifier.fillMaxWidth(),
+                            color = QTheme.colors.colorPrimary,
                             trackColor = Color.Transparent,
                             progress = { it }
                         )

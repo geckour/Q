@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -31,6 +30,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import com.geckour.q.ui.compose.QTheme
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
@@ -47,7 +47,7 @@ fun DoubleTrackSlider(
     thickness: Dp = 4.dp,
     thumbRadius: Dp = 6.dp,
     thumbElevation: Dp = 1.dp,
-    primaryTrackColor: Color = MaterialTheme.colorScheme.primary,
+    primaryTrackColor: Color = QTheme.colors.colorPrimary,
     secondaryTrackColor: Color = primaryTrackColor.copy(alpha = 0.48f),
     baseTrackColor: Color = primaryTrackColor.copy(alpha = 0.24f),
     thumbColor: Color = primaryTrackColor,

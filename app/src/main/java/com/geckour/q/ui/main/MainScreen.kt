@@ -3,7 +3,6 @@ package com.geckour.q.ui.main
 import android.widget.Toast
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -14,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.rememberNavController
 import com.geckour.q.domain.model.LayoutType
+import com.geckour.q.ui.compose.QBackgroundSurface
 import com.geckour.q.ui.compose.QTheme
 import kotlinx.collections.immutable.toImmutableList
 
@@ -103,7 +103,7 @@ fun MainScreen(
     )
 
     QTheme(darkTheme = isInNightMode) {
-        Surface(modifier = Modifier.fillMaxSize()) {
+        QBackgroundSurface(modifier = Modifier.fillMaxSize()) {
             when (layoutType) {
                 is LayoutType.Single -> {
                     SingleScreen(

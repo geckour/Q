@@ -13,6 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.geckour.q.R
+import com.geckour.q.ui.compose.ProvideQMaterialColors
 import com.geckour.q.ui.compose.QTheme
 
 @Composable
@@ -27,12 +28,14 @@ fun Pay(onStartBilling: () -> Unit) {
             color = QTheme.colors.colorTextSecondary
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Button(onClick = onStartBilling) {
-            Text(
-                text = stringResource(id = R.string.payment_action_pay),
-                fontSize = 16.sp,
-                color = QTheme.colors.colorTextPrimary
-            )
+        ProvideQMaterialColors {
+            Button(onClick = onStartBilling) {
+                Text(
+                    text = stringResource(id = R.string.payment_action_pay),
+                    fontSize = 16.sp,
+                    color = QTheme.colors.colorTextPrimary
+                )
+            }
         }
     }
 }

@@ -78,6 +78,7 @@ import com.geckour.q.domain.model.EqualizerParams
 import com.geckour.q.domain.model.QAudioDeviceInfo
 import com.geckour.q.ui.component.DoubleTrackSlider
 import com.geckour.q.ui.component.QSwitch
+import com.geckour.q.ui.compose.ProvideQMaterialColors
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.util.getEqualizerEnabled
 import com.geckour.q.util.getEqualizerParams
@@ -248,42 +249,44 @@ fun TopController(
     val coroutineScope = rememberCoroutineScope()
 
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Button(
-            modifier = Modifier.alpha(if (routeInfo == null) 0f else 1f),
-            onClick = {
-                routeInfo ?: return@Button
-                selectedPreset ?: return@Button
-                coroutineScope.launch {
-                    if (audioDeviceEqualizerInfo?.defaultEqualizerPresetId == null || audioDeviceEqualizerInfo.defaultEqualizerPresetId != selectedPreset.key.id) {
-                        db.audioDeviceEqualizerInfoDao().upsertByCustomConflictDetection(
-                            AudioDeviceEqualizerInfo(
-                                id = 0,
-                                routeId = routeInfo.routeId,
-                                deviceAddress = routeInfo.address,
-                                deviceId = routeInfo.audioDeviceId,
-                                deviceName = routeInfo.audioDeviceName,
-                                defaultEqualizerPresetId = selectedPreset.key.id
+        ProvideQMaterialColors {
+            Button(
+                modifier = Modifier.alpha(if (routeInfo == null) 0f else 1f),
+                onClick = {
+                    routeInfo ?: return@Button
+                    selectedPreset ?: return@Button
+                    coroutineScope.launch {
+                        if (audioDeviceEqualizerInfo?.defaultEqualizerPresetId == null || audioDeviceEqualizerInfo.defaultEqualizerPresetId != selectedPreset.key.id) {
+                            db.audioDeviceEqualizerInfoDao().upsertByCustomConflictDetection(
+                                AudioDeviceEqualizerInfo(
+                                    id = 0,
+                                    routeId = routeInfo.routeId,
+                                    deviceAddress = routeInfo.address,
+                                    deviceId = routeInfo.audioDeviceId,
+                                    deviceName = routeInfo.audioDeviceName,
+                                    defaultEqualizerPresetId = selectedPreset.key.id
+                                )
                             )
-                        )
-                    } else {
-                        db.audioDeviceEqualizerInfoDao()
-                            .deleteBy(
-                                routeId = routeInfo.routeId,
-                                deviceAddress = routeInfo.address,
-                                deviceId = routeInfo.audioDeviceId,
-                            )
+                        } else {
+                            db.audioDeviceEqualizerInfoDao()
+                                .deleteBy(
+                                    routeId = routeInfo.routeId,
+                                    deviceAddress = routeInfo.address,
+                                    deviceId = routeInfo.audioDeviceId,
+                                )
+                        }
                     }
                 }
-            }
-        ) {
-            Text(
-                text = stringResource(
-                    id = if (audioDeviceEqualizerInfo?.defaultEqualizerPresetId == null || audioDeviceEqualizerInfo.defaultEqualizerPresetId != selectedPreset?.key?.id) {
-                        R.string.equalizer_set_as_default_for_the_device
-                    } else R.string.equalizer_clear_default_for_the_device,
-                    routeInfo?.audioDeviceName.orEmpty()
+            ) {
+                Text(
+                    text = stringResource(
+                        id = if (audioDeviceEqualizerInfo?.defaultEqualizerPresetId == null || audioDeviceEqualizerInfo.defaultEqualizerPresetId != selectedPreset?.key?.id) {
+                            R.string.equalizer_set_as_default_for_the_device
+                        } else R.string.equalizer_clear_default_for_the_device,
+                        routeInfo?.audioDeviceName.orEmpty()
+                    )
                 )
-            )
+            }
         }
         Spacer(modifier = Modifier.weight(1f))
         Text(
@@ -480,23 +483,25 @@ private fun ColumnScope.BottomController(
             }
         }
         Spacer(modifier = Modifier.width(16.dp))
-        Button(
-            onClick = {
-                val preset = selectedPreset ?: return@Button
-                coroutineScope.launch {
-                    preset.value.forEach {
-                        db.equalizerPresetDao().upsertEqualizerLevelRatio(
-                            it.copy(ratio = 0.5f)
-                        )
+        ProvideQMaterialColors {
+            Button(
+                onClick = {
+                    val preset = selectedPreset ?: return@Button
+                    coroutineScope.launch {
+                        preset.value.forEach {
+                            db.equalizerPresetDao().upsertEqualizerLevelRatio(
+                                it.copy(ratio = 0.5f)
+                            )
+                        }
                     }
                 }
+            ) {
+                Text(
+                    text = stringResource(id = R.string.equalizer_flatten),
+                    fontSize = 16.sp,
+                    color = QTheme.colors.colorTextPrimary
+                )
             }
-        ) {
-            Text(
-                text = stringResource(id = R.string.equalizer_flatten),
-                fontSize = 16.sp,
-                color = QTheme.colors.colorTextPrimary
-            )
         }
         Spacer(modifier = Modifier.width(16.dp))
         IconButton(

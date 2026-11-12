@@ -97,6 +97,7 @@ fun SingleScreen(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
+        scrimColor = QTheme.colors.colorDrawerScrim,
         drawerContent = {
             PredictiveBackProgressHandler(
                 enabled = drawerState.targetValue == DrawerValue.Open,
@@ -110,6 +111,7 @@ fun SingleScreen(
                     progress = { drawerBackProgress.value },
                     remainingOffset = { drawerState.remainingCloseOffset(size.width) },
                 ),
+                drawerContainerColor = QTheme.colors.colorBackground,
                 windowInsets = WindowInsets(),
             ) {
                 Drawer(

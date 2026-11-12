@@ -253,6 +253,8 @@ fun Albums(
         if (lazyPagingItems.loadState.append == LoadState.Loading) {
             item {
                 CircularWavyProgressIndicator(
+                    color = QTheme.colors.colorPrimary,
+                    trackColor = QTheme.colors.colorPrimaryDark,
                     modifier = Modifier
                         .fillMaxWidth()
                         .wrapContentWidth(Alignment.CenterHorizontally)

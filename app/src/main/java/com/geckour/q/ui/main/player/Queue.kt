@@ -94,6 +94,7 @@ import com.geckour.q.data.db.model.LyricLine
 import com.geckour.q.core.model.MediaItem
 import com.geckour.q.domain.model.UiTrack
 import com.geckour.q.ui.component.SpotifyLogo
+import com.geckour.q.ui.compose.ProvideQMaterialColors
 import com.geckour.q.ui.compose.QTheme
 import com.geckour.q.core.util.getTimeString
 import com.geckour.q.util.isSpotify
@@ -723,29 +724,31 @@ fun EditableLrcItem(
         modifier = Modifier.padding(horizontal = 24.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Button(
-            onClick = {
-                if (line != null) {
-                    onUpdateLine(
-                        line.index,
-                        line.lyricLine.copy(timing = currentPlaybackPosition)
+        ProvideQMaterialColors {
+            Button(
+                onClick = {
+                    if (line != null) {
+                        onUpdateLine(
+                            line.index,
+                            line.lyricLine.copy(timing = currentPlaybackPosition)
+                        )
+                    }
+                },
+                enabled = line != null,
+                contentPadding = PaddingValues(horizontal = 8.dp),
+                colors = ButtonDefaults.buttonColors()
+                    .copy(
+                        containerColor =
+                            if (focused) QTheme.colors.colorButtonNormal
+                            else QTheme.colors.colorPrimaryDark
                     )
-                }
-            },
-            enabled = line != null,
-            contentPadding = PaddingValues(horizontal = 8.dp),
-            colors = ButtonDefaults.buttonColors()
-                .copy(
-                    containerColor =
-                        if (focused) QTheme.colors.colorButtonNormal
-                        else QTheme.colors.colorPrimaryDark
+            ) {
+                Text(
+                    text = (line?.lyricLine?.timing
+                        ?: currentPlaybackPosition).getTimeString(withMillis = true),
+                    color = QTheme.colors.colorTextPrimary
                 )
-        ) {
-            Text(
-                text = (line?.lyricLine?.timing
-                    ?: currentPlaybackPosition).getTimeString(withMillis = true),
-                color = QTheme.colors.colorTextPrimary
-            )
+            }
         }
         BasicTextField(
             modifier = Modifier
