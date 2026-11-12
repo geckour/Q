@@ -20,6 +20,7 @@ import kotlinx.serialization.json.Json
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 private val isNightModeKey = booleanPreferencesKey("key_night-mode")
+private val useArtworkColorThemeKey = booleanPreferencesKey("key_use_artwork_color_theme")
 private val shouldShowCurrentRemainKey = booleanPreferencesKey("key_show_current_remain")
 private val hasAlreadyShownDropboxSyncAlertKey =
     booleanPreferencesKey("key_has_already_shown_dropbox_sync_alert")
@@ -40,6 +41,15 @@ fun Context.getIsInNightMode(): Flow<Boolean> = dataStore.data.map {
 
 suspend fun Context.setIsNightMode(isNightMode: Boolean) {
     dataStore.edit { it[isNightModeKey] = isNightMode }
+}
+
+/** Whether the color theme is built from the playing track's artwork instead of the night mode. */
+fun Context.getUseArtworkColorTheme(): Flow<Boolean> = dataStore.data.map {
+    it[useArtworkColorThemeKey] ?: false
+}
+
+suspend fun Context.setUseArtworkColorTheme(useArtworkColorTheme: Boolean) {
+    dataStore.edit { it[useArtworkColorThemeKey] = useArtworkColorTheme }
 }
 
 fun Context.getShouldShowCurrentRemain(): Flow<Boolean> = dataStore.data.map {

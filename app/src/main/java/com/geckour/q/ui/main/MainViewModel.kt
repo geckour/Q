@@ -94,6 +94,7 @@ import com.geckour.q.util.getIsSpotifyFlattened
 import com.geckour.q.util.getIsSpotifyUnlocked
 import com.geckour.q.util.getShowLyric
 import com.geckour.q.util.getSpotifyCredential
+import com.geckour.q.util.getUseArtworkColorTheme
 import com.geckour.q.util.isFavoriteToggled
 import com.geckour.q.util.isSpotify
 import com.geckour.q.util.obtainDbxClient
@@ -298,7 +299,15 @@ class MainViewModel(
     private val finishedWorkIds = mutableSetOf<UUID>()
 
     private val mutableArtworkColors = MutableStateFlow<ArtworkColors?>(null)
-    internal val artworkColors: StateFlow<ArtworkColors?> = mutableArtworkColors
+
+    /**
+     * The colors of the current track's artwork, or null while the artwork color theme is turned
+     * off. The colors are extracted either way so that turning the theme on shows them at once.
+     */
+    internal val artworkColors: StateFlow<ArtworkColors?> =
+        combine(app.getUseArtworkColorTheme(), mutableArtworkColors) { useArtworkColorTheme, colors ->
+            colors.takeIf { useArtworkColorTheme }
+        }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
     private var extractArtworkColorsJob: Job? = null
 
     internal val topBarTitle = MutableStateFlow("")
