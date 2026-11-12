@@ -57,6 +57,18 @@ android {
             applicationIdSuffix = ".fad"
             matchingFallbacks += "release"
         }
+        // Release-equivalent (minified, not debuggable) build for measuring performance on a device.
+        // It shares the debug app's package and signing key, so it installs over the debug app and
+        // keeps its data. The mapping file is not uploaded to Crashlytics.
+        create("profiling") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+            configure<com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension> {
+                mappingFileUploadEnabled = false
+            }
+        }
     }
     buildFeatures {
         compose = true
