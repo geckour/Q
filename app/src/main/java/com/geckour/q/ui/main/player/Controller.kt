@@ -308,23 +308,26 @@ fun Controller(
                 )
             }
             Box(modifier = Modifier.align(Alignment.TopEnd)) {
-                val infiniteTransition = rememberInfiniteTransition(label = "")
-                val degree by infiniteTransition.animateFloat(
-                    initialValue = 0f,
-                    targetValue = 360f,
-                    animationSpec = infiniteRepeatable(
-                        animation = tween(
-                            1000,
-                            easing = LinearEasing
-                        )
-                    ),
-                    label = ""
-                )
                 val queueStateIndicatorAlpha by animateFloatAsState(
                     targetValue = if (isLoading) 1f else 0f,
                     animationSpec = tween(200),
                     label = ""
                 )
+                // An infinite transition requests a frame on every vsync for as long as it exists, so
+                // create it only while the indicator is visible.
+                val degree = if (isLoading || queueStateIndicatorAlpha > 0f) {
+                    rememberInfiniteTransition(label = "").animateFloat(
+                        initialValue = 0f,
+                        targetValue = 360f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(
+                                1000,
+                                easing = LinearEasing
+                            )
+                        ),
+                        label = ""
+                    )
+                } else null
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
@@ -409,7 +412,7 @@ fun Controller(
                         }
                         .alpha(queueStateIndicatorAlpha)
                         .graphicsLayer {
-                            rotationZ = degree
+                            rotationZ = degree?.value ?: 0f
                         }
                 )
                 Spacer(modifier = Modifier.width(8.dp))
@@ -471,15 +474,18 @@ fun Controller(
                     horizontalArrangement = Arrangement.SpaceAround,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val infiniteTransition = rememberInfiniteTransition(label = "")
-                    val degree by infiniteTransition.animateFloat(
-                        initialValue = 360f,
-                        targetValue = 0f,
-                        animationSpec = infiniteRepeatable(
-                            animation = tween(1000)
-                        ),
-                        label = ""
-                    )
+                    // Spin the play button only while buffering; an idle infinite transition would
+                    // still request a frame on every vsync.
+                    val degree = if (playbackInfo.second == Player.STATE_BUFFERING) {
+                        rememberInfiniteTransition(label = "").animateFloat(
+                            initialValue = 360f,
+                            targetValue = 0f,
+                            animationSpec = infiniteRepeatable(
+                                animation = tween(1000)
+                            ),
+                            label = ""
+                        )
+                    } else null
                     Icon(
                         imageVector = Icons.Default.FastRewind,
                         contentDescription = null,
@@ -525,8 +531,7 @@ fun Controller(
                             .padding(8.dp)
                             .size(24.dp)
                             .graphicsLayer {
-                                rotationZ =
-                                    if (playbackInfo.second == Player.STATE_BUFFERING) degree else 0f
+                                rotationZ = degree?.value ?: 0f
                             }
                     )
                     Icon(
