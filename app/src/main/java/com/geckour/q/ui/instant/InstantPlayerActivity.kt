@@ -28,6 +28,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -66,18 +67,25 @@ class InstantPlayerActivity : AppCompatActivity() {
         setContent {
             val isInNightMode by LocalContext.current.getIsInNightMode()
                 .collectAsState(initial = isSystemInDarkTheme())
+            val artworkColors by viewModel.artworkColors.collectAsState()
+            val isColorThemeReady by viewModel.isColorThemeReady.collectAsState()
 
-            QTheme(darkTheme = isInNightMode) {
-                Box(
-                    contentAlignment = Alignment.Center,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            color = colorResource(id = R.color.colorBackgroundInstantPlayer)
-                        )
-                        .clickable(onClick = ::finish),
-                ) {
-                    Controller(viewModel = viewModel)
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        color = colorResource(id = R.color.colorBackgroundInstantPlayer)
+                    )
+                    // Outside of the theme, which would otherwise provide the ripple.
+                    .clickable(interactionSource = null, indication = ripple(), onClick = ::finish),
+            ) {
+                // The theme opens in the colors it is first given and fades into later ones, so it
+                // waits until they are settled.
+                if (isColorThemeReady) {
+                    QTheme(darkTheme = isInNightMode, artworkColors = artworkColors) {
+                        Controller(viewModel = viewModel)
+                    }
                 }
             }
         }

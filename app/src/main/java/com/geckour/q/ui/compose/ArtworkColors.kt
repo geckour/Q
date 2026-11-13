@@ -1,6 +1,7 @@
 package com.geckour.q.ui.compose
 
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -103,6 +104,34 @@ internal fun Bitmap.extractArtworkColors(): ArtworkColors? {
         return ArtworkColors(key = key, accent = accent)
     } finally {
         strip.recycle()
+    }
+}
+
+/**
+ * Picks the colors of an encoded image, such as the artwork embedded in an audio file. Returns null
+ * when the image cannot be decoded or has no opaque pixels.
+ *
+ * This decodes the image, so call it off the main thread.
+ */
+internal fun ByteArray.extractArtworkColors(): ArtworkColors? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(this, 0, size, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    // An embedded artwork can take tens of megabytes at its full size, so it is decoded at the
+    // smallest size that still keeps twice the sample's width and height.
+    val area = bounds.outWidth.toLong() * bounds.outHeight
+    var inSampleSize = 1
+    while (area / (4L * inSampleSize * inSampleSize) >= 4L * SAMPLE_AREA) inSampleSize *= 2
+    val bitmap = BitmapFactory.decodeByteArray(
+        this,
+        0,
+        size,
+        BitmapFactory.Options().also { it.inSampleSize = inSampleSize },
+    ) ?: return null
+    return try {
+        bitmap.extractArtworkColors()
+    } finally {
+        bitmap.recycle()
     }
 }
 
