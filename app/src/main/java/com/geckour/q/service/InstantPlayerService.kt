@@ -164,6 +164,9 @@ class InstantPlayerService : MediaSessionService() {
 
     override fun onDestroy() {
         purge()
+        // The session keeps its id taken in the process until it is released, and the next
+        // instance of this service builds one with the same id.
+        mediaSession.release()
 
         super.onDestroy()
     }
