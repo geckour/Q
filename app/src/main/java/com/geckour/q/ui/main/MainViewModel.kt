@@ -81,6 +81,7 @@ import com.geckour.q.ui.main.library.SpotifyLevel
 import com.geckour.q.ui.main.library.key
 import com.geckour.q.ui.main.library.level
 import com.geckour.q.ui.main.library.levelKey
+import com.geckour.q.ui.widget.player.PlayerSheetWidgetProvider
 import com.geckour.q.util.DownloadState
 import com.geckour.q.util.InsertActionType
 import com.geckour.q.util.OrientedClassType
@@ -878,6 +879,7 @@ class MainViewModel(
         toggleArtworkColorThemeJob = viewModelScope.launch {
             val useArtworkColorTheme = app.getUseArtworkColorTheme().first().not()
             app.setUseArtworkColorTheme(useArtworkColorTheme)
+            PlayerSheetWidgetProvider.requestUpdate(app)
             snackbarMessageFlow.value = app.getString(
                 if (useArtworkColorTheme) R.string.snackbar_message_artwork_color_theme_enabled
                 else R.string.snackbar_message_artwork_color_theme_disabled

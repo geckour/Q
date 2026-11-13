@@ -18,12 +18,17 @@ import androidx.core.os.bundleOf
 import androidx.compose.remote.creation.compose.capture.RemoteCreationDisplayInfo
 import androidx.compose.remote.creation.compose.capture.captureSingleRemoteDocument
 import androidx.compose.remote.creation.profile.RcPlatformProfiles
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
 import androidx.media3.session.SessionToken
 import androidx.concurrent.futures.await
 import com.geckour.q.service.PlayerService
+import com.geckour.q.ui.compose.DefaultArtworkColors
+import com.geckour.q.ui.compose.extractArtworkColors
 import com.geckour.q.util.getIsInNightMode
+import com.geckour.q.util.getUseArtworkColorTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -187,16 +192,14 @@ class PlayerSheetWidgetProvider : AppWidgetProvider() {
             ?.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0)
             ?.takeIf { it > 0 }
             ?: DEFAULT_HEIGHT_DP
-        val isInNightMode: Boolean = context.getIsInNightMode().firstOrNull() == true
-
         val layout = PlayerWidgetLayout.of(heightDp)
-        val colors = PlayerWidgetColors.of(isInNightMode)
-        val activeIcons = PlayerWidgetIcons.of(context, colors.button)
-        val inactiveIcons = PlayerWidgetIcons.of(context, colors.inactive)
         val state = loadPlayerWidgetState(
             context = context,
             artworkSizePx = (layout.artworkSizeDp * displayMetrics.density).roundToInt() * 2,
         )
+        val colors = loadPlayerWidgetColors(context, state.artwork)
+        val activeIcons = PlayerWidgetIcons.of(context, colors.button)
+        val inactiveIcons = PlayerWidgetIcons.of(context, colors.inactive)
 
         val capturedDocument = runCatching {
             captureSingleRemoteDocument(
@@ -238,6 +241,22 @@ class PlayerSheetWidgetProvider : AppWidgetProvider() {
                 .onFailure { Timber.e(it, "Failed to publish the player sheet widget") }
         }
     }
+
+    /**
+     * Follows the app's color theme. The widget is redrawn whenever the playing track changes, so
+     * the artwork based theme switches along with it, without the fade the app has.
+     */
+    private suspend fun loadPlayerWidgetColors(
+        context: Context,
+        artwork: ImageBitmap?,
+    ): PlayerWidgetColors =
+        if (context.getUseArtworkColorTheme().firstOrNull() == true) {
+            PlayerWidgetColors.of(
+                artwork?.asAndroidBitmap()?.extractArtworkColors() ?: DefaultArtworkColors
+            )
+        } else {
+            PlayerWidgetColors.of(isInNightMode = context.getIsInNightMode().firstOrNull() == true)
+        }
 
     private suspend fun dispatchCommand(
         context: Context,
