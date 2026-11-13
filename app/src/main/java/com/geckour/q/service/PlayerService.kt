@@ -1046,6 +1046,9 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
     }
 
     private fun purge() {
+        // onTaskRemoved purges before it stops the service, and onDestroy then comes here again.
+        // Moving the lifecycle to destroyed a second time throws.
+        if (inPurge) return
         Timber.d("qgeck purge called")
         inPurge = true
 
