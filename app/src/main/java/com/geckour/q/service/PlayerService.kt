@@ -927,7 +927,7 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
             override fun stop() {
                 Timber.d("qgeck stop forwarded")
-                this@PlayerService.stop()
+                this@PlayerService.stopKeepingPosition()
             }
 
             override fun seekToNext() {
@@ -1714,9 +1714,19 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
         player.pause()
     }
 
+    /** Stops at the end of the queue, rewinding it to its first track. */
     fun stop() {
-        pause()
+        stopKeepingPosition()
         forceIndex(0)
+    }
+
+    /**
+     * Stops without moving in the queue. A stop sent from outside the app, by the system's media
+     * controls or a Bluetooth device for example, comes here so that the queue resumes where it was
+     * paused. The position saved on the stop is what the queue is restored to.
+     */
+    private fun stopKeepingPosition() {
+        pause()
         stopForeground(Service.STOP_FOREGROUND_REMOVE)
     }
 
