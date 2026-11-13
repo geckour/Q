@@ -18,8 +18,8 @@ android {
 
     defaultConfig {
         applicationId = "com.geckour.q"
-        versionCode = 56
-        versionName = "3.5.1"
+        versionCode = 57
+        versionName = "3.6.0"
         testInstrumentationRunner = "android.support.test.runner.AndroidJUnitRunner"
 
         val dropboxAppKey = secretProperty("DROPBOX_APP_KEY")
