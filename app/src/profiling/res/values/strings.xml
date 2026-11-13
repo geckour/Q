@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Installed over the debug app, under a name of its own to tell which of the two it is. -->
+    <string name="app_name" translatable="false">Q prof</string>
+</resources>
