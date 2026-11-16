@@ -50,8 +50,8 @@ fun DoubleTrackSlider(
     primaryTrackColor: Color = QTheme.colors.colorPrimary,
     secondaryTrackColor: Color = primaryTrackColor.copy(alpha = 0.48f),
     baseTrackColor: Color = primaryTrackColor.copy(alpha = 0.24f),
+    // Keep it opaque: the thumb's own shadow shows through a translucent one as a second circle.
     thumbColor: Color = primaryTrackColor,
-    inactiveThumbColor: Color = baseTrackColor,
     onSeek: ((newProgressFraction: Float) -> Unit)? = null,
     onSeekEnded: ((newProgressFraction: Float) -> Unit)? = null,
 ) {
@@ -146,7 +146,7 @@ fun DoubleTrackSlider(
                 )
             },
             shape = CircleShape,
-            color = if (isEnabled) thumbColor else inactiveThumbColor,
+            color = thumbColor,
             shadowElevation = thumbElevation
         ) {
             Box(modifier = Modifier.size(thumbRadius * 2))

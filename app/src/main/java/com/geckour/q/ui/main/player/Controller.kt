@@ -61,6 +61,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -595,7 +596,8 @@ fun Controller(
                             ?.takeIf { it.isSpotify.not() }
                             ?.duration
                             ?.let { bufferProgress.toFloat() / it },
-                        thumbColor = buttonColor,
+                        // colorInactive is translucent, so settle it on the sheet the slider sits on.
+                        thumbColor = buttonColor.compositeOver(QTheme.colors.colorSurface),
                         primaryTrackColor = buttonColor,
                         onSeek = { newProgressFraction ->
                             currentTrack?.let {
