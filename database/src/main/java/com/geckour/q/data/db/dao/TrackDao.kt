@@ -73,57 +73,47 @@ interface TrackDao {
     suspend fun getDurationWithMediaId(mediaId: Long): Long?
 
     @Transaction
-    @Query("select * from track where ignored != :ignore")
-    suspend fun getAll(ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
+    @Query("select * from track")
+    suspend fun getAll(): List<JoinedTrack>
 
     @Transaction
-    @Query("select * from track inner join album on track.albumId = album.id inner join artist on album.artistId = artist.id where (track.isFavorite or album.isFavorite or artist.isFavorite) and ignored != :ignore")
-    suspend fun getAllWithFavorite(ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
+    @Query("select * from track inner join album on track.albumId = album.id inner join artist on album.artistId = artist.id where (track.isFavorite or album.isFavorite or artist.isFavorite)")
+    suspend fun getAllWithFavorite(): List<JoinedTrack>
 
     @Query("select mediaId from track where dropboxPath is null")
     suspend fun getAllLocalMediaIds(): List<Long>
 
     @Transaction
-    @Query("select * from track where ignored != :ignore order by titleSort collate nocase")
-    fun getAllAsFlow(ignore: Bool = Bool.UNDEFINED): Flow<List<JoinedTrack>>
+    @Query("select * from track order by titleSort collate nocase")
+    fun getAllAsFlow(): Flow<List<JoinedTrack>>
 
     @Transaction
-    @Query("select * from track where ignored != :ignore order by titleSort collate nocase")
-    fun getAllAsPagingSource(ignore: Bool = Bool.UNDEFINED): PagingSource<Int, JoinedTrack>
+    @Query("select * from track order by titleSort collate nocase")
+    fun getAllAsPagingSource(): PagingSource<Int, JoinedTrack>
 
     @Transaction
-    @Query("select * from track where ignored != :ignore order by titleSort collate nocase limit :limit offset :offset")
-    suspend fun getAllPaged(
-        limit: Int,
-        offset: Int,
-        ignore: Bool = Bool.UNDEFINED
-    ): List<JoinedTrack>
+    @Query("select * from track order by titleSort collate nocase limit :limit offset :offset")
+    suspend fun getAllPaged(limit: Int, offset: Int): List<JoinedTrack>
 
     @Transaction
     @Query("select * from track where title like ('%'||:title||'%') escape '\\'")
     suspend fun getAllByTitle(title: String): List<JoinedTrack>
 
     @Transaction
-    @Query("select * from track where albumId = :albumId and ignored != :ignore")
-    suspend fun getAllByAlbum(albumId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
+    @Query("select * from track where albumId = :albumId")
+    suspend fun getAllByAlbum(albumId: Long): List<JoinedTrack>
 
     @Transaction
-    @Query("select * from track where albumId = :albumId and ignored != :ignore")
-    fun getAllByAlbumAsFlow(albumId: Long, ignore: Bool = Bool.UNDEFINED): Flow<List<Track>>
+    @Query("select * from track where albumId = :albumId")
+    fun getAllByAlbumAsFlow(albumId: Long): Flow<List<Track>>
 
     @Transaction
-    @Query("select * from track where albumId = :albumId and isFavorite and ignored != :ignore")
-    suspend fun getAllWithFavoriteByAlbum(
-        albumId: Long,
-        ignore: Bool = Bool.UNDEFINED
-    ): List<JoinedTrack>
+    @Query("select * from track where albumId = :albumId and isFavorite")
+    suspend fun getAllWithFavoriteByAlbum(albumId: Long): List<JoinedTrack>
 
     @Transaction
-    @Query("select * from track where albumId = :albumId and ignored != :ignore order by discNum, trackNum")
-    fun getAllByAlbumAsPagingSource(
-        albumId: Long,
-        ignore: Bool = Bool.UNDEFINED
-    ): PagingSource<Int, JoinedTrack>
+    @Query("select * from track where albumId = :albumId order by discNum, trackNum")
+    fun getAllByAlbumAsPagingSource(albumId: Long): PagingSource<Int, JoinedTrack>
 
     @Transaction
     @Query("select * from track where genre = :genreName")
@@ -134,22 +124,16 @@ interface TrackDao {
     fun getAllByGenreNameAsPagingSource(genreName: String): PagingSource<Int, JoinedTrack>
 
     @Transaction
-    @Query("select * from track where albumId in (select id from album where artistId = :artistId) and ignored != :ignore")
-    suspend fun getAllByArtist(artistId: Long, ignore: Bool = Bool.UNDEFINED): List<JoinedTrack>
+    @Query("select * from track where albumId in (select id from album where artistId = :artistId)")
+    suspend fun getAllByArtist(artistId: Long): List<JoinedTrack>
 
     @Transaction
-    @Query("select dropboxPath from track where albumId in (select id from album where artistId = :artistId) and ignored != :ignore")
-    suspend fun getAllDropboxPathsByArtist(
-        artistId: Long,
-        ignore: Bool = Bool.UNDEFINED
-    ): List<String>
+    @Query("select dropboxPath from track where albumId in (select id from album where artistId = :artistId)")
+    suspend fun getAllDropboxPathsByArtist(artistId: Long): List<String>
 
     @Transaction
-    @Query("select * from track inner join album on track.albumId = album.id where album.artistId = :artistId and (track.isFavorite or album.isFavorite) and track.ignored != :ignore")
-    suspend fun getAllWithFavoriteByArtist(
-        artistId: Long,
-        ignore: Bool = Bool.UNDEFINED
-    ): List<JoinedTrack>
+    @Query("select * from track inner join album on track.albumId = album.id where album.artistId = :artistId and (track.isFavorite or album.isFavorite)")
+    suspend fun getAllWithFavoriteByArtist(artistId: Long): List<JoinedTrack>
 
     @Transaction
     @Query("select distinct genre from track where genre is not null")
@@ -186,7 +170,7 @@ interface TrackDao {
         deleteAllByIds(trackIds.toList())
 
         tracks.forEach {
-            if (getAllByAlbum(it.track.albumId, Bool.UNDEFINED).isEmpty()) {
+            if (getAllByAlbum(it.track.albumId).isEmpty()) {
                 db.albumDao().deleteIncludingRootIfEmpty(db, it.track.albumId)
             } else {
                 db.albumDao().refreshTotalDurationsIncludingArtists(db, listOf(it.track.albumId))
