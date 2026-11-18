@@ -34,6 +34,7 @@ import com.geckour.q.data.BillingApiClient
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
+import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricLine
@@ -935,6 +936,16 @@ class MainViewModel(
     internal fun setShowLyric(showLyric: Boolean) {
         viewModelScope.launch {
             app.setShowLyric(showLyric)
+        }
+    }
+
+    internal fun setIgnoredInGeneratedQueue(track: UiTrack, ignored: Boolean) {
+        viewModelScope.launch {
+            if (track.isSpotify) {
+                db.spotifyTrackDao().updateIgnored(track.sourcePath, ignored)
+            } else {
+                db.trackDao().setIgnored(track.id, if (ignored) Bool.TRUE else Bool.FALSE)
+            }
         }
     }
 

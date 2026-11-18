@@ -97,7 +97,7 @@ fun SpotifyTrack.toUiTrack(nowPlaying: Boolean = false): UiTrack {
         dropboxPath = null,
         dropboxExpiredAt = null,
         artworkUriString = artworkUrl,
-        ignored = false,
+        ignored = ignored,
         nowPlaying = nowPlaying,
         isFavorite = isFavorite,
     )

@@ -558,6 +558,10 @@ class MainActivity : ComponentActivity() {
 
             is DialogEvent.DeleteTrack -> viewModel.deleteTrack(event.track)
 
+            is DialogEvent.SetIgnoredInGeneratedQueue -> {
+                viewModel.setIgnoredInGeneratedQueue(event.track, event.ignored)
+            }
+
             is DialogEvent.DeleteTracksFromSource -> {
                 viewModel.deleteTracksFromSource(event.source, event.favoriteOnly)
             }

@@ -166,6 +166,7 @@ interface QueueHistoryDao {
                 "left join track on track.id = merged.trackId " +
                 "left join spotifytrack on spotifytrack.uri = merged.spotifyUri " +
                 "where (track.id is not null or spotifytrack.uri is not null) " +
+                "and coalesce(track.ignored, spotifytrack.ignored, 0) != 1 " +
                 "and random() % :pickDenominator = 0" +
                 ") as cutoff " +
                 "where cutoff.cumulativeDuration <= :maxTotalDuration " +

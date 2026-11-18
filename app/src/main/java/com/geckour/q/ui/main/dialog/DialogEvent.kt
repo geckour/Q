@@ -34,6 +34,9 @@ sealed interface DialogEvent {
 
     data class DeleteTrack(val track: UiTrack) : DialogEvent
 
+    /** Leaves [track] out of generated queues, or brings it back, as [ignored] says. */
+    data class SetIgnoredInGeneratedQueue(val track: UiTrack, val ignored: Boolean) : DialogEvent
+
     data class DeleteTracksFromSource(
         val source: TrackSource,
         val favoriteOnly: Boolean,

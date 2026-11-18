@@ -34,6 +34,7 @@ data class Track(
     val genre: String?,
     val playbackCount: Long,
     val artworkUriString: String?,
+    /** Whether the track is left out of generated queues. */
     val ignored: Bool = Bool.FALSE,
     @ColumnInfo(defaultValue = "FALSE") val isFavorite: Boolean = false,
 )

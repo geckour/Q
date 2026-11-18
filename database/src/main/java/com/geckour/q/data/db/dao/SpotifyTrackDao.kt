@@ -21,7 +21,13 @@ interface SpotifyTrackDao {
         upsertAll(
             spotifyTracks.map { track ->
                 stored[track.uri]
-                    ?.let { track.copy(playbackCount = it.playbackCount, isFavorite = it.isFavorite) }
+                    ?.let {
+                        track.copy(
+                            playbackCount = it.playbackCount,
+                            isFavorite = it.isFavorite,
+                            ignored = it.ignored,
+                        )
+                    }
                     ?: track
             }
         )
@@ -42,6 +48,9 @@ interface SpotifyTrackDao {
     @Query("update spotifytrack set isFavorite = :isFavorite where uri = :uri")
     suspend fun updateFavorite(uri: String, isFavorite: Boolean)
 
+    @Query("update spotifytrack set ignored = :ignored where uri = :uri")
+    suspend fun updateIgnored(uri: String, ignored: Boolean)
+
     @Query("update spotifytrack set playbackCount = playbackCount + 1 where uri = :uri")
     suspend fun increasePlaybackCount(uri: String)
 
@@ -52,7 +61,7 @@ interface SpotifyTrackDao {
     suspend fun clearLibrary()
 
     @Query(
-        "delete from spotifytrack where createdAt = 0 and isFavorite = 0 " +
+        "delete from spotifytrack where createdAt = 0 and isFavorite = 0 and ignored = 0 " +
                 "and uri not in (:urisToKeep) " +
                 "and uri not in (select spotifyUri from trackhistory where spotifyUri is not null) " +
                 "and uri not in (select spotifyUri from queuehistorytrack where spotifyUri is not null) " +

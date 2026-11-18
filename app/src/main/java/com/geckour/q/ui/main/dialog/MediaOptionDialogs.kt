@@ -57,6 +57,16 @@ fun TrackOptionDialog(
             generateQueue(InsertActionType.OVERRIDE)
         },
     )
+
+    // An undefined flag does not leave the track out either, so the option offers to leave it out.
+    val isIgnored = uiTrack.ignored == true
+    val ignoredOption = option(
+        if (isIgnored) R.string.menu_include_in_generated_queue
+        else R.string.menu_exclude_from_generated_queue
+    ) {
+        onDialogEvent(DialogEvent.SetIgnoredInGeneratedQueue(uiTrack, isIgnored.not()))
+    }
+
     if (uiTrack.isSpotify) {
         val isSpotifyInstalled = isSpotifyInstalled(LocalContext.current)
         val radioOptions = if (isSpotifyInstalled) {
@@ -72,7 +82,7 @@ fun TrackOptionDialog(
             )
         } else emptyList()
         QOptionDialog(
-            options = queueOptions + generatedQueueOptions + radioOptions + QOption(
+            options = queueOptions + generatedQueueOptions + radioOptions + ignoredOption + QOption(
                 if (isSpotifyInstalled) R.string.spotify_menu_open
                 else R.string.spotify_menu_get_free
             ) {
@@ -101,6 +111,7 @@ fun TrackOptionDialog(
             option(R.string.menu_detach_lyric) {
                 onDialogEvent(DialogEvent.DetachLyric(uiTrack.id))
             },
+            ignoredOption,
             option(R.string.menu_delete_from_device) {
                 onDialogEvent(DialogEvent.DeleteTrack(uiTrack))
             },

@@ -23,4 +23,6 @@ data class SpotifyTrack(
     val createdAt: Long,
     @ColumnInfo(defaultValue = "0") val playbackCount: Long = 0,
     @ColumnInfo(defaultValue = "FALSE") val isFavorite: Boolean = false,
+    /** Whether the track is left out of generated queues, as [Track.ignored] for a local track. */
+    @ColumnInfo(defaultValue = "FALSE") val ignored: Boolean = false,
 ) : MediaItem
