@@ -26,3 +26,10 @@ fun <T> List<T>.removedAt(index: Int): List<T> =
     this.slice(0 until index) + this.slice(index + 1 until this.size)
 
 fun <T> List<T>.removedRange(from: Int, to: Int): List<T> = this - this.subList(from, to)
+
+/**
+ * Moves the items named exactly [query] to the front of search results, keeping the order of the
+ * rest. The case is ignored as the `like` of the search queries ignores it.
+ */
+fun <T> List<T>.exactMatchesFirst(query: String, nameOf: (T) -> String): List<T> =
+    sortedByDescending { nameOf(it).equals(query, ignoreCase = true) }

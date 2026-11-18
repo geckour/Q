@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.geckour.q.R
 import com.geckour.q.core.util.escapeSql
+import com.geckour.q.core.util.exactMatchesFirst
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
@@ -272,6 +273,7 @@ private suspend fun search(context: Context, query: String): ImmutableList<Searc
     val items = mutableListOf<SearchItem>()
     val db = DB.getInstance(context)
     val tracks = db.trackDao().getAllByTitle(query.escapeSql)
+        .exactMatchesFirst(query) { it.track.title }
         .take(10)
         .map {
             SearchItem(
@@ -292,6 +294,7 @@ private suspend fun search(context: Context, query: String): ImmutableList<Searc
     }
 
     val albums = db.albumDao().findAllByTitle(query.escapeSql)
+        .exactMatchesFirst(query) { it.album.title }
         .take(10)
         .map { SearchItem(it.album.title, it.album, SearchItem.SearchItemType.ALBUM) }
     if (albums.isNotEmpty()) {
@@ -306,6 +309,7 @@ private suspend fun search(context: Context, query: String): ImmutableList<Searc
     }
 
     val artists = db.artistDao().findAllByTitle(query.escapeSql)
+        .exactMatchesFirst(query) { it.title }
         .take(10)
         .map { SearchItem(it.title, it, SearchItem.SearchItemType.ARTIST) }
     if (artists.isNotEmpty()) {

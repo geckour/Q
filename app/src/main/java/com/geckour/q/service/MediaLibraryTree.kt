@@ -9,6 +9,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import com.geckour.q.R
 import com.geckour.q.core.util.escapeSql
+import com.geckour.q.core.util.exactMatchesFirst
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.JoinedAlbum
@@ -145,14 +146,17 @@ internal object MediaLibraryTree {
 
         val artists = db.artistDao()
             .findAllByTitle(escaped)
+            .exactMatchesFirst(query) { it.title }
             .take(SEARCH_RESULT_LIMIT_PER_CATEGORY)
             .map { it.toMediaItem() }
         val albums = db.albumDao()
             .findAllByTitle(escaped)
+            .exactMatchesFirst(query) { it.album.title }
             .take(SEARCH_RESULT_LIMIT_PER_CATEGORY)
             .map { it.toMediaItem() }
         val tracks = db.trackDao()
             .getAllByTitle(escaped)
+            .exactMatchesFirst(query) { it.track.title }
             .take(SEARCH_RESULT_LIMIT_PER_CATEGORY)
             .map { it.getMediaItem() }
         val genres = db.trackDao()
