@@ -9,22 +9,26 @@ import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.shiftedBy
 import kotlinx.coroutines.flow.Flow
 
+/**
+ * The lyrics of Spotify tracks are stored under one shared [Lyric.trackId] of -1, the same id that
+ * stands for no track, so the queries by a track id look only at the lyrics of local tracks.
+ */
 @Dao
 interface LyricDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertLyric(lyric: Lyric): Long
 
-    @Query("delete from lyric where trackId = :trackId")
+    @Query("delete from lyric where trackId = :trackId and spotifyUri is null")
     suspend fun deleteLyricByTrackId(trackId: Long)
 
-    @Query("select * from lyric where trackId = :trackId")
+    @Query("select * from lyric where trackId = :trackId and spotifyUri is null")
     fun getLyricFlowByTrackId(trackId: Long): Flow<Lyric?>
 
-    @Query("select * from lyric where trackId = :trackId")
+    @Query("select * from lyric where trackId = :trackId and spotifyUri is null")
     suspend fun getLyricByTrackId(trackId: Long): Lyric?
 
-    @Query("select id from lyric where trackId = :trackId")
+    @Query("select id from lyric where trackId = :trackId and spotifyUri is null")
     suspend fun getLyricIdByTrackId(trackId: Long): Long?
 
     @Query("select * from lyric where spotifyUri = :spotifyUri")
