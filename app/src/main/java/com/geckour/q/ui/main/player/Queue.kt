@@ -568,14 +568,14 @@ fun QueueItem(
                     ) {
                         Text(
                             text = uiTrack.title,
-                            color = if (uiTrack.ignored == true) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
+                            color = QTheme.colors.colorTextPrimary,
                             fontSize = 16.sp,
                             lineHeight = 24.nonUpScaleSp
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
                             text = "${uiTrack.artist.title} - ${uiTrack.album.title}",
-                            color = if (uiTrack.ignored == true) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
+                            color = QTheme.colors.colorTextPrimary,
                             fontSize = 12.sp,
                             lineHeight = 18.nonUpScaleSp
                         )
@@ -629,7 +629,7 @@ fun QueueItem(
                     } else {
                         Text(
                             text = "${uiTrack.codec}・${uiTrack.bitrate}kbps・${uiTrack.sampleRate}kHz",
-                            color = if (uiTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
+                            color = QTheme.colors.colorTextPrimary,
                             fontSize = 10.nonUpScaleSp,
                             lineHeight = 25.nonUpScaleSp,
                             textAlign = TextAlign.End,

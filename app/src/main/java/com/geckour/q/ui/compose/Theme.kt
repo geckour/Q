@@ -66,7 +66,7 @@ data class QColors(
     val colorTextSecondary: Color
         get() = colorTextPrimary.copy(alpha = colorTextPrimary.alpha * 0.79f)
 
-    /** Text and controls that are disabled or ignored. */
+    /** Text and controls that are disabled. */
     val colorInactive: Color
         get() = colorTextPrimary.copy(alpha = colorTextPrimary.alpha * 0.25f)
 

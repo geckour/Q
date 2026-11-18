@@ -187,13 +187,13 @@ fun Tracks(
                             ) {
                                 Text(
                                     text = domainTrack.title,
-                                    color = if (domainTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
+                                    color = QTheme.colors.colorTextPrimary,
                                     fontSize = 16.sp
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
                                     text = "${domainTrack.artist.title} - ${domainTrack.album.title}",
-                                    color = if (domainTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
+                                    color = QTheme.colors.colorTextPrimary,
                                     fontSize = 12.sp
                                 )
                             }
@@ -229,7 +229,7 @@ fun Tracks(
                             }
                             Text(
                                 text = "${domainTrack.codec}・${domainTrack.bitrate}kbps・${domainTrack.sampleRate}kHz",
-                                color = if (domainTrack.ignored != false) QTheme.colors.colorInactive else QTheme.colors.colorTextPrimary,
+                                color = QTheme.colors.colorTextPrimary,
                                 fontSize = 10.sp,
                                 textAlign = TextAlign.End,
                                 modifier = Modifier
