@@ -47,9 +47,11 @@ import com.geckour.q.R
 import com.geckour.q.core.util.catchAsNull
 import com.geckour.q.core.util.removedAt
 import com.geckour.q.data.LrcLibApiClient
+import com.geckour.q.data.TrackSignature
 import com.geckour.q.data.db.DB
 import com.geckour.q.data.db.model.EqualizerLevelRatio
 import com.geckour.q.data.db.model.EqualizerPreset
+import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.LyricSource
 import com.geckour.q.data.db.model.SpotifyTrack
@@ -1479,8 +1481,8 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
     }
 
     /**
-     * Fetches lyrics of the current track and the next one from LRCLIB
-     * unless they are already stored in the DB.
+     * Fetches lyrics of the current track and the next one unless they are already stored in the
+     * DB: copies the lyric of the same song stored for a linked track if any, or asks LRCLIB.
      */
     private fun fetchLyricIfNeeded() {
         val nextMediaItem = player.nextMediaItemIndex
@@ -1500,11 +1502,20 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
                 if (storedLyricIdOf(request) != null) return@launch
 
+                lyricOfSameSong(request)?.let { lyric ->
+                    db.lyricDao().upsertLyric(
+                        lyric.copy(
+                            id = 0,
+                            trackId = request.trackId,
+                            spotifyUri = request.spotifyUri,
+                        )
+                    )
+                    return@launch
+                }
+
                 runCatching {
                     lrcLibApiClient.getLyricLines(
-                        title = request.title,
-                        artistName = request.artistName,
-                        albumName = request.albumName,
+                        signatures = request.signatures,
                         durationMillis = request.durationMillis,
                     )
                 }
@@ -1532,40 +1543,71 @@ class PlayerService : MediaLibraryService(), LifecycleOwner {
 
     private suspend fun lyricRequestOf(sourcePath: String): LyricRequest? =
         if (sourcePath.isSpotifySourcePath) {
-            db.spotifyTrackDao().get(sourcePath)?.let {
+            db.spotifyTrackDao().get(sourcePath)?.let { spotifyTrack ->
                 LyricRequest(
-                    title = it.title,
-                    artistName = it.artistName,
-                    albumName = it.albumName,
-                    durationMillis = it.duration,
+                    signatures = listOf(spotifyTrack.signature) +
+                            db.trackDao()
+                                .getAllByLinkedSpotifyUri(sourcePath)
+                                .map { it.signature },
+                    durationMillis = spotifyTrack.duration,
                     trackId = SPOTIFY_LYRIC_TRACK_ID,
                     spotifyUri = sourcePath,
+                    songUri = sourcePath,
                 )
             }
         } else {
-            db.trackDao().getBySourcePath(sourcePath)?.let {
+            db.trackDao().getBySourcePath(sourcePath)?.let { joinedTrack ->
+                val songUri = joinedTrack.track.linkedSpotifyUri
                 LyricRequest(
-                    title = it.track.title,
-                    artistName = it.artist.title,
-                    albumName = it.album.title,
-                    durationMillis = it.track.duration,
-                    trackId = it.track.id,
+                    signatures = listOfNotNull(
+                        joinedTrack.signature,
+                        songUri?.let { db.spotifyTrackDao().get(it) }?.signature,
+                    ),
+                    durationMillis = joinedTrack.track.duration,
+                    trackId = joinedTrack.track.id,
                     spotifyUri = null,
+                    songUri = songUri,
                 )
             }
         }
+
+    private val SpotifyTrack.signature: TrackSignature
+        get() = TrackSignature(title = title, artistName = artistName, albumName = albumName)
+
+    private val JoinedTrack.signature: TrackSignature
+        get() = TrackSignature(
+            title = track.title,
+            artistName = artist.title,
+            albumName = album.title,
+        )
+
+    /**
+     * The lyric stored for another track of the same song as [request], preferring a synced one.
+     */
+    private suspend fun lyricOfSameSong(request: LyricRequest): Lyric? {
+        val songUri = request.songUri ?: return null
+        val lyrics = db.lyricDao().getLyricsOfSong(
+            spotifyUri = songUri,
+            durationMillis = request.durationMillis,
+            toleranceMillis = LrcLibApiClient.DURATION_TOLERANCE_MILLIS,
+        )
+
+        return lyrics.firstOrNull { lyric -> lyric.lines.any { it.timing > 0 } }
+            ?: lyrics.firstOrNull()
+    }
 
     private suspend fun storedLyricIdOf(request: LyricRequest): Long? =
         if (request.spotifyUri == null) db.lyricDao().getLyricIdByTrackId(request.trackId)
         else db.lyricDao().getLyricIdBySpotifyUri(request.spotifyUri)
 
     private data class LyricRequest(
-        val title: String,
-        val artistName: String,
-        val albumName: String,
+        /** The names of the track, followed by the ones of the linked tracks of the same song. */
+        val signatures: List<TrackSignature>,
         val durationMillis: Long,
         val trackId: Long,
         val spotifyUri: String?,
+        /** The Spotify URI that the tracks of the same song share, if the track is linked. */
+        val songUri: String?,
     )
 
     private fun increasePlaybackCount() = lifecycleScope.launch {

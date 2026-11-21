@@ -47,6 +47,10 @@ interface TrackDao {
     suspend fun getBySourcePath(sourcePath: String): JoinedTrack?
 
     @Transaction
+    @Query("select * from track where linkedSpotifyUri = :spotifyUri")
+    suspend fun getAllByLinkedSpotifyUri(spotifyUri: String): List<JoinedTrack>
+
+    @Transaction
     @Query("select * from track where sourcePath in (:sourcePaths)")
     suspend fun getAllBySourcePaths(sourcePaths: List<String>): List<JoinedTrack>
 

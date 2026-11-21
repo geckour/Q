@@ -40,6 +40,28 @@ interface LyricDao {
     @Query("select id from lyric where spotifyUri = :spotifyUri")
     suspend fun getLyricIdBySpotifyUri(spotifyUri: String): Long?
 
+    /**
+     * The lyrics stored for the tracks of the song [spotifyUri] stands for, the Spotify track and
+     * the local tracks linked to it, that last within [toleranceMillis] of [durationMillis] so that
+     * their timings fit.
+     */
+    @Query(
+        "select lyric.* from lyric " +
+                "inner join spotifytrack on spotifytrack.uri = lyric.spotifyUri " +
+                "where lyric.spotifyUri = :spotifyUri " +
+                "and abs(spotifytrack.duration - :durationMillis) <= :toleranceMillis " +
+                "union all " +
+                "select lyric.* from lyric " +
+                "inner join track on track.id = lyric.trackId " +
+                "where lyric.spotifyUri is null and track.linkedSpotifyUri = :spotifyUri " +
+                "and abs(track.duration - :durationMillis) <= :toleranceMillis"
+    )
+    suspend fun getLyricsOfSong(
+        spotifyUri: String,
+        durationMillis: Long,
+        toleranceMillis: Long,
+    ): List<Lyric>
+
     @Query(
         "delete from lyric where spotifyUri is not null " +
                 "and spotifyUri not in (select uri from spotifytrack)"
