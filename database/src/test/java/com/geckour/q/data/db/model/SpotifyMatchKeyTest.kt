@@ -18,6 +18,20 @@ class SpotifyMatchKeyTest {
     }
 
     @Test
+    fun `Test the suffixes of singles and EPs in the album do not matter`() {
+        Truth.assertThat(spotifyMatchKeyOf("Song", "Song - Single", "Artist"))
+            .isEqualTo(spotifyMatchKeyOf("Song", "Song", "Artist"))
+        Truth.assertThat(spotifyMatchKeyOf("Song", "Album - ep", "Artist"))
+            .isEqualTo(spotifyMatchKeyOf("Song", "Album", "Artist"))
+    }
+
+    @Test
+    fun `Test an album named single alone is kept`() {
+        Truth.assertThat(spotifyMatchKeyOf("Song", "Single", "Artist"))
+            .isEqualTo("song/single/artist")
+    }
+
+    @Test
     fun `Test digits tell songs apart`() {
         Truth.assertThat(spotifyMatchKeyOf("Part 1", "Album", "Artist"))
             .isNotEqualTo(spotifyMatchKeyOf("Part 2", "Album", "Artist"))
