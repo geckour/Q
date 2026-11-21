@@ -5,6 +5,7 @@ import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.AutoMigrationSpec
 import androidx.room.migration.Migration
 import androidx.room.TypeConverter
 import androidx.room.TypeConverters
@@ -36,6 +37,7 @@ import com.geckour.q.data.db.model.SpotifyContentEntry
 import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.data.db.model.TrackHistory
+import com.geckour.q.data.db.model.spotifyMatchKeyOf
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -57,7 +59,7 @@ import kotlinx.serialization.json.Json
         SpotifyTrack::class,
         SpotifyContentEntry::class,
     ],
-    version = 23,
+    version = 24,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -76,6 +78,7 @@ import kotlinx.serialization.json.Json
         AutoMigration(from = 20, to = 21),
         AutoMigration(from = 21, to = 22),
         AutoMigration(from = 22, to = 23),
+        AutoMigration(from = 23, to = 24, spec = DB.LinkSpotifyTracksSpec::class),
     ]
 )
 @TypeConverters(BoolConverter::class, LyricLineConverter::class)
@@ -184,6 +187,64 @@ abstract class DB : RoomDatabase() {
                     .build()
                     .apply { instance = this }
             }
+    }
+
+    /**
+     * Fills the match keys of the tracks stored so far, and links the local tracks to the Spotify
+     * tracks of the same song by them.
+     */
+    class LinkSpotifyTracksSpec : AutoMigrationSpec {
+
+        override fun onPostMigrate(db: SupportSQLiteDatabase) {
+            val trackKeys = db.query(
+                "select track.id, track.title, album.title, artist.title from track " +
+                        "inner join album on album.id = track.albumId " +
+                        "inner join artist on artist.id = track.artistId"
+            ).use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) {
+                        val key = spotifyMatchKeyOf(
+                            cursor.getString(1),
+                            cursor.getString(2),
+                            cursor.getString(3),
+                        ) ?: continue
+                        add(cursor.getLong(0) to key)
+                    }
+                }
+            }
+            db.compileStatement("update track set matchKey = ? where id = ?").use { statement ->
+                trackKeys.forEach { (id, key) ->
+                    statement.bindString(1, key)
+                    statement.bindLong(2, id)
+                    statement.executeUpdateDelete()
+                }
+            }
+
+            val spotifyTrackKeys = db.query(
+                "select uri, title, albumName, artistName from spotifytrack"
+            ).use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) {
+                        val key = spotifyMatchKeyOf(
+                            cursor.getString(1),
+                            cursor.getString(2),
+                            cursor.getString(3),
+                        ) ?: continue
+                        add(cursor.getString(0) to key)
+                    }
+                }
+            }
+            db.compileStatement("update spotifytrack set matchKey = ? where uri = ?")
+                .use { statement ->
+                    spotifyTrackKeys.forEach { (uri, key) ->
+                        statement.bindString(1, key)
+                        statement.bindString(2, uri)
+                        statement.executeUpdateDelete()
+                    }
+                }
+
+            db.execSQL(SpotifyTrackDao.LINK_ALL_LOCAL_TRACKS)
+        }
     }
 
     abstract fun trackDao(): TrackDao

@@ -5,10 +5,37 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
 import com.geckour.q.data.db.model.SpotifyTrack
+import com.geckour.q.data.db.model.spotifyMatchKeyOf
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SpotifyTrackDao {
+
+    companion object {
+
+        /**
+         * Orders the Spotify tracks of the same match key to pick the one to link a local track to:
+         * the ones in the library first, and then the most played.
+         */
+        private const val LINK_PREFERENCE_ORDER =
+            "order by spotifytrack.createdAt > 0 desc, spotifytrack.playbackCount desc, " +
+                    "spotifytrack.uri"
+
+        private const val PICK_SPOTIFY_URI_TO_LINK =
+            "(select spotifytrack.uri from spotifytrack " +
+                    "where spotifytrack.matchKey = track.matchKey " +
+                    LINK_PREFERENCE_ORDER + " " +
+                    "limit 1)"
+
+        /**
+         * Links every local track not linked yet to a Spotify track of the same match key. A track
+         * keeps the link it already has.
+         */
+        internal const val LINK_ALL_LOCAL_TRACKS =
+            "update track set linkedSpotifyUri = " + PICK_SPOTIFY_URI_TO_LINK + " " +
+                    "where linkedSpotifyUri is null " +
+                    "and matchKey in (select matchKey from spotifytrack)"
+    }
 
     @Upsert
     suspend fun upsertAll(spotifyTracks: List<SpotifyTrack>)
@@ -17,21 +44,41 @@ interface SpotifyTrackDao {
     suspend fun save(spotifyTracks: List<SpotifyTrack>) {
         if (spotifyTracks.isEmpty()) return
 
-        val stored = getAllByUris(spotifyTracks.map { it.uri }).associateBy { it.uri }
+        val uris = spotifyTracks.map { it.uri }
+        val stored = getAllByUris(uris).associateBy { it.uri }
         upsertAll(
             spotifyTracks.map { track ->
+                val matchKey = spotifyMatchKeyOf(track.title, track.albumName, track.artistName)
                 stored[track.uri]
                     ?.let {
                         track.copy(
                             playbackCount = it.playbackCount,
                             isFavorite = it.isFavorite,
                             ignored = it.ignored,
+                            matchKey = matchKey,
                         )
                     }
-                    ?: track
+                    ?: track.copy(matchKey = matchKey)
             }
         )
+        linkLocalTracks(uris)
     }
+
+    /** Links the local tracks not linked yet to a Spotify track of the same match key as [uris]. */
+    @Query(
+        "update track set linkedSpotifyUri = " + PICK_SPOTIFY_URI_TO_LINK + " " +
+                "where linkedSpotifyUri is null " +
+                "and matchKey in (select matchKey from spotifytrack where uri in (:uris))"
+    )
+    suspend fun linkLocalTracks(uris: List<String>)
+
+    /** The Spotify track to link a local track of [matchKey] to. */
+    @Query(
+        "select uri from spotifytrack where matchKey = :matchKey " +
+                LINK_PREFERENCE_ORDER + " " +
+                "limit 1"
+    )
+    suspend fun getUriToLink(matchKey: String): String?
 
     @Query("select * from spotifytrack where uri = :uri")
     suspend fun get(uri: String): SpotifyTrack?

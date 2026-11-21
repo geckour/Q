@@ -2,11 +2,12 @@ package com.geckour.q.data.db.model
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import com.geckour.q.core.model.MediaItem
 import kotlinx.serialization.Serializable
 
-@Entity
+@Entity(indices = [Index("matchKey")])
 @Serializable
 data class SpotifyTrack(
     @PrimaryKey val uri: String,
@@ -25,4 +26,6 @@ data class SpotifyTrack(
     @ColumnInfo(defaultValue = "FALSE") val isFavorite: Boolean = false,
     /** Whether the track is left out of generated queues, as [Track.ignored] for a local track. */
     @ColumnInfo(defaultValue = "FALSE") val ignored: Boolean = false,
+    /** The key to link local tracks of the same song, made by [spotifyMatchKeyOf]. */
+    val matchKey: String? = null,
 ) : MediaItem

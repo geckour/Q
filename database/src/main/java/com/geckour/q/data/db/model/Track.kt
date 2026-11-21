@@ -7,7 +7,15 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
 
-@Entity(indices = [Index("dropboxPath"), Index("mediaId"), Index("albumId")])
+@Entity(
+    indices = [
+        Index("dropboxPath"),
+        Index("mediaId"),
+        Index("albumId"),
+        Index("linkedSpotifyUri"),
+        Index("matchKey"),
+    ]
+)
 data class Track(
     @PrimaryKey(autoGenerate = true) val id: Long,
     val mediaId: Long,
@@ -37,6 +45,10 @@ data class Track(
     /** Whether the track is left out of generated queues. */
     val ignored: Bool = Bool.FALSE,
     @ColumnInfo(defaultValue = "FALSE") val isFavorite: Boolean = false,
+    /** The Spotify track of the same song, which generated queues treat as one with this track. */
+    val linkedSpotifyUri: String? = null,
+    /** The key to find [linkedSpotifyUri], made by [spotifyMatchKeyOf]. */
+    val matchKey: String? = null,
 )
 
 data class JoinedTrack(

@@ -10,6 +10,7 @@ import com.geckour.q.data.db.model.Album
 import com.geckour.q.data.db.model.Artist
 import com.geckour.q.data.db.model.Bool
 import com.geckour.q.data.db.model.Track
+import com.geckour.q.data.db.model.spotifyMatchKeyOf
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jaudiotagger.audio.AudioFileIO
@@ -152,6 +153,13 @@ suspend fun File.storeMediaInfo(
     )
     val albumId = db.albumDao().upsert(db, album)
 
+    val matchKey = spotifyMatchKeyOf(title, albumTitle, artistTitle)
+    // A track keeps the link it has while its tags still match, as the first link wins.
+    val linkedSpotifyUri = matchKey?.let { key ->
+        existingTrack?.linkedSpotifyUri?.takeIf { existingTrack.matchKey == key }
+            ?: db.spotifyTrackDao().getUriToLink(key)
+    }
+
     val track = Track(
         id = trackId ?: 0,
         mediaId = trackMediaId ?: existingTrack?.mediaId ?: -1,
@@ -180,6 +188,8 @@ suspend fun File.storeMediaInfo(
         playbackCount = existingTrack?.playbackCount ?: 0,
         ignored = existingTrack?.ignored ?: Bool.FALSE,
         isFavorite = existingTrack?.isFavorite ?: false,
+        linkedSpotifyUri = linkedSpotifyUri,
+        matchKey = matchKey,
     )
 
     val newTrackId = db.trackDao().insert(track)
