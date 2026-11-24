@@ -38,6 +38,7 @@ import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.data.db.model.TrackHistory
 import com.geckour.q.data.db.model.spotifyMatchKeyOf
+import com.geckour.q.data.db.model.toSearchText
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -59,7 +60,7 @@ import kotlinx.serialization.json.Json
         SpotifyTrack::class,
         SpotifyContentEntry::class,
     ],
-    version = 24,
+    version = 25,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
@@ -79,6 +80,7 @@ import kotlinx.serialization.json.Json
         AutoMigration(from = 21, to = 22),
         AutoMigration(from = 22, to = 23),
         AutoMigration(from = 23, to = 24, spec = DB.LinkSpotifyTracksSpec::class),
+        AutoMigration(from = 24, to = 25, spec = DB.FillLyricSearchTextsSpec::class),
     ]
 )
 @TypeConverters(BoolConverter::class, LyricLineConverter::class)
@@ -244,6 +246,31 @@ abstract class DB : RoomDatabase() {
                 }
 
             db.execSQL(SpotifyTrackDao.LINK_ALL_LOCAL_TRACKS)
+        }
+    }
+
+    /**
+     * Fills the search texts of the lyrics stored so far.
+     */
+    class FillLyricSearchTextsSpec : AutoMigrationSpec {
+
+        override fun onPostMigrate(db: SupportSQLiteDatabase) {
+            val converter = LyricLineConverter()
+            val searchTexts = db.query("select id, lines from lyric").use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) {
+                        val lines = converter.toLyricLineList(cursor.getString(1))
+                        add(cursor.getLong(0) to lines.toSearchText())
+                    }
+                }
+            }
+            db.compileStatement("update lyric set searchText = ? where id = ?").use { statement ->
+                searchTexts.forEach { (id, searchText) ->
+                    statement.bindString(1, searchText)
+                    statement.bindLong(2, id)
+                    statement.executeUpdateDelete()
+                }
+            }
         }
     }
 

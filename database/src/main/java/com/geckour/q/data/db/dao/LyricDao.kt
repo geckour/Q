@@ -7,6 +7,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import com.geckour.q.data.db.model.Lyric
 import com.geckour.q.data.db.model.shiftedBy
+import com.geckour.q.data.db.model.toSearchText
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -16,8 +17,14 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface LyricDao {
 
+    /**
+     * Use [upsertLyric] instead, which keeps [Lyric.searchText] in sync with the lines.
+     */
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertLyric(lyric: Lyric): Long
+    suspend fun insertLyric(lyric: Lyric): Long
+
+    suspend fun upsertLyric(lyric: Lyric): Long =
+        insertLyric(lyric.copy(searchText = lyric.lines.toSearchText()))
 
     @Query("delete from lyric where trackId = :trackId and spotifyUri is null")
     suspend fun deleteLyricByTrackId(trackId: Long)

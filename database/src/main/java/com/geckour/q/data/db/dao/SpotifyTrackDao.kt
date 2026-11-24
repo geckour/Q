@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Upsert
+import com.geckour.q.core.util.normalizedForSearch
 import com.geckour.q.data.db.model.SpotifyTrack
 import com.geckour.q.data.db.model.spotifyMatchKeyOf
 import kotlinx.coroutines.flow.Flow
@@ -91,6 +92,16 @@ interface SpotifyTrackDao {
 
     @Query("select * from spotifytrack where createdAt > 0")
     suspend fun getAllInLibrary(): List<SpotifyTrack>
+
+    @Query("select * from spotifytrack where uri in (select spotifyUri from lyric where searchText like ('%'||:searchText||'%'))")
+    suspend fun findAllByLyricSearchText(searchText: String): List<SpotifyTrack>
+
+    /**
+     * The Spotify tracks whose lyric has a line containing [keyword], regardless of the width, the
+     * case, the kana, spaces and symbols.
+     */
+    suspend fun findAllByLyricKeyword(keyword: String): List<SpotifyTrack> =
+        findAllByLyricSearchText(keyword.normalizedForSearch().ifEmpty { return emptyList() })
 
     @Query("update spotifytrack set isFavorite = :isFavorite where uri = :uri")
     suspend fun updateFavorite(uri: String, isFavorite: Boolean)

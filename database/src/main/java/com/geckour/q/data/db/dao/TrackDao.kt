@@ -13,6 +13,7 @@ import com.geckour.q.data.db.model.JoinedTrack
 import com.geckour.q.data.db.model.Track
 import com.geckour.q.core.util.containsKatakana
 import com.geckour.q.core.util.hiraganized
+import com.geckour.q.core.util.normalizedForSearch
 import kotlinx.coroutines.flow.Flow
 import kotlin.random.Random
 
@@ -148,8 +149,15 @@ interface TrackDao {
     suspend fun findAllByName(name: String): List<String>
 
     @Transaction
-    @Query("select * from track where exists (select 1 from lyric where lyric.trackId = track.id and exists (select 1 from json_each(lyric.lines) where json_extract(json_each.value, '\$.sentence') like ('%'||:keyword||'%') escape '\\'))")
-    suspend fun findAllByLyricKeyword(keyword: String): List<JoinedTrack>
+    @Query("select * from track where id in (select trackId from lyric where spotifyUri is null and searchText like ('%'||:searchText||'%'))")
+    suspend fun findAllByLyricSearchText(searchText: String): List<JoinedTrack>
+
+    /**
+     * The tracks whose lyric has a line containing [keyword], regardless of the width, the case,
+     * the kana, spaces and symbols.
+     */
+    suspend fun findAllByLyricKeyword(keyword: String): List<JoinedTrack> =
+        findAllByLyricSearchText(keyword.normalizedForSearch().ifEmpty { return emptyList() })
 
     @Query("update track set playbackCount = (select playbackCount from track where id = :trackId) + 1 where id = :trackId")
     suspend fun increasePlaybackCount(trackId: Long)

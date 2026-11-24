@@ -63,6 +63,7 @@ import com.geckour.q.spotify.model.SpotifyContainer
 import com.geckour.q.ui.component.PredictiveBackProgressHandler
 import com.geckour.q.ui.component.predictiveBackScale
 import com.geckour.q.ui.compose.QTheme
+import com.geckour.q.util.canPickSpotifyTracks
 import com.geckour.q.util.toUiTrack
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
@@ -345,9 +346,14 @@ private suspend fun search(context: Context, query: String): ImmutableList<Searc
         items.addAll(genres)
     }
 
-    val lyrics = db.trackDao().findAllByLyricKeyword(query.escapeSql)
-        .take(10)
+    val localLyrics = db.trackDao().findAllByLyricKeyword(query)
         .map { SearchItem(it.track.title, it.toUiTrack(), SearchItem.SearchItemType.LYRIC) }
+    val spotifyLyrics =
+        if (context.canPickSpotifyTracks()) {
+            db.spotifyTrackDao().findAllByLyricKeyword(query)
+                .map { SearchItem(it.title, it, SearchItem.SearchItemType.SPOTIFY_TRACK) }
+        } else emptyList()
+    val lyrics = (localLyrics + spotifyLyrics).take(10)
     if (lyrics.isNotEmpty()) {
         items.add(
             SearchItem(

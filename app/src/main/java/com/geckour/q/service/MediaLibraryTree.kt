@@ -238,6 +238,7 @@ internal object MediaLibraryTree {
         if (focused != null && focused.isNotEmpty()) return focused.map { it.getMediaItem() }
 
         return findTracksByFreeQuery(context, query).map { it.getMediaItem() }
+            .ifEmpty { findMediaItemsByLyricKeyword(context, query) }
     }
 
     suspend fun randomQueue(context: Context): List<MediaItem> {
@@ -299,8 +300,25 @@ internal object MediaLibraryTree {
             }
         }
 
-        return db.trackDao().findAllByLyricKeyword(escaped)
+        return emptyList()
+    }
+
+    /**
+     * Finds the tracks whose lyric contains [keyword], including the Spotify tracks when they can
+     * be played.
+     */
+    private suspend fun findMediaItemsByLyricKeyword(
+        context: Context,
+        keyword: String
+    ): List<MediaItem> {
+        val db = DB.getInstance(context)
+        val localTracks = db.trackDao().findAllByLyricKeyword(keyword)
             .orderModified(OrientedClassType.TRACK, InsertActionType.OVERRIDE)
+        val spotifyTracks =
+            if (context.canPickSpotifyTracks()) db.spotifyTrackDao().findAllByLyricKeyword(keyword)
+            else emptyList()
+
+        return localTracks.map { it.getMediaItem() } + spotifyTracks.map { it.getMediaItem() }
     }
 
     private suspend fun findTracksByArtistName(

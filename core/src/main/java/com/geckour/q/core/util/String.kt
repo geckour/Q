@@ -28,6 +28,12 @@ fun String.normalizedForMatch(): String {
     }
 }
 
+/**
+ * Normalizes a text to search it loosely: on top of what [normalizedForMatch] ignores, katakana and
+ * hiragana do not matter either.
+ */
+fun String.normalizedForSearch(): String = normalizedForMatch().hiraganized
+
 fun String.getExtension(): String = replace(Regex("^.+\\.(.+?)$"), "$1")
 
 val String.escapeSql: String
