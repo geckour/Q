@@ -4,6 +4,11 @@ import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Box
@@ -62,7 +67,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.pointer.PointerId
+import androidx.compose.ui.input.pointer.PointerInputChange
+import androidx.compose.ui.input.pointer.PointerInputScope
+import androidx.compose.ui.input.pointer.changedToUp
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
@@ -104,7 +116,9 @@ import com.geckour.q.core.util.removedAt
 import kotlinx.collections.immutable.ImmutableList
 import kotlinx.collections.immutable.persistentListOf
 import kotlinx.collections.immutable.toImmutableList
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
+import sh.calvin.reorderable.DragGestureDetector
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import kotlin.math.roundToInt
@@ -226,14 +240,19 @@ private fun QueuePage(
                 state = reorderableState,
                 key = domainTrack.key,
             ) { isDragging ->
+                val dragGestureDetector = remember { LongPressDragGestureDetector() }
+
                 QueueItem(
-                    modifier = Modifier.longPressDraggableHandle(
+                    modifier = Modifier.draggableHandle(
                         onDragStopped = {
                             if (from >= 0 && to >= 0) onQueueMove(from, to)
                             from = -1
                             to = -1
-                        }
+                        },
+                        dragGestureDetector = dragGestureDetector,
                     ),
+                    // A long press on the artwork shows the track options instead of a reorder.
+                    artworkModifier = dragGestureDetector.exclusion,
                     isPlaying = isPlaying,
                     uiTrack = domainTrack,
                     index = index,
@@ -248,6 +267,59 @@ private fun QueuePage(
         }
         item {
             Spacer(modifier = Modifier.height(endItemMargin))
+        }
+    }
+}
+
+/**
+ * Detects the drag after a long press as [DragGestureDetector.LongPress] does, except for the
+ * presses that start on the element marked with [exclusion], so that the element can take long
+ * presses for itself.
+ */
+private class LongPressDragGestureDetector : DragGestureDetector {
+
+    private var excludedPointerId: PointerId? = null
+
+    /**
+     * Marks the element whose presses never start a drag.
+     */
+    val exclusion: Modifier = Modifier.pointerInput(Unit) {
+        awaitEachGesture {
+            excludedPointerId = awaitFirstDown(requireUnconsumed = false).id
+        }
+    }
+
+    override suspend fun PointerInputScope.detect(
+        onDragStart: (Offset) -> Unit,
+        onDragEnd: () -> Unit,
+        onDragCancel: () -> Unit,
+        onDrag: (change: PointerInputChange, dragAmount: Offset) -> Unit,
+    ) {
+        awaitEachGesture {
+            try {
+                val down = awaitFirstDown(requireUnconsumed = false)
+                // The marked element has seen the press already, as the main pass of a pointer
+                // event goes from the children to the parents.
+                if (down.id == excludedPointerId) return@awaitEachGesture
+
+                val longPress = awaitLongPressOrCancellation(down.id) ?: return@awaitEachGesture
+                onDragStart(longPress.position)
+
+                val completed = drag(longPress.id) {
+                    onDrag(it, it.positionChange())
+                    it.consume()
+                }
+                if (completed) {
+                    // Consumes the up ending the drag, as detectDragGesturesAfterLongPress does.
+                    currentEvent.changes.forEach { if (it.changedToUp()) it.consume() }
+                    onDragEnd()
+                } else {
+                    onDragCancel()
+                }
+            } catch (e: CancellationException) {
+                onDragCancel()
+                throw e
+            }
         }
     }
 }
@@ -506,6 +578,7 @@ private fun LyricPage(
 @Composable
 fun QueueItem(
     modifier: Modifier = Modifier,
+    artworkModifier: Modifier = Modifier,
     isPlaying: Boolean,
     uiTrack: UiTrack,
     index: Int,
@@ -554,9 +627,12 @@ fun QueueItem(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     AsyncImage(
-                        modifier = Modifier
+                        modifier = artworkModifier
                             .size(48.dp)
-                            .clickable { onTrackSelected(uiTrack) },
+                            .combinedClickable(
+                                onLongClick = { onTrackSelected(uiTrack) },
+                                onClick = { onTrackSelected(uiTrack) },
+                            ),
                         model = uiTrack.artworkUriString ?: R.drawable.ic_empty,
                         contentDescription = null
                     )
